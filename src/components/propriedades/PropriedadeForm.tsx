@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { Propriedade, ESTADOS_BR, EstadoBR } from '@/types'
+import { Propriedade } from '@/types'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,24 +21,19 @@ import {
   FormMessage,
   FormDescription,
 } from '@/components/ui/form'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { Loader2, MapPin } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { Textarea } from '@/components/ui/textarea'
+import { Loader2 } from 'lucide-react'
 
 const propriedadeSchema = z.object({
-  nome: z.string().trim().min(3, 'Nome deve ter no mínimo 3 caracteres').max(100, 'Nome muito longo'),
-  area_total: z.coerce.number().positive('Área deve ser maior que zero').nullable().optional(),
-  endereco: z.string().trim().max(255, 'Endereço muito longo').optional().or(z.literal('')),
-  cidade: z.string().trim().min(2, 'Cidade é obrigatória').max(100, 'Cidade muito longa'),
-  estado: z.string().length(2, 'Selecione um estado'),
-  coordenadas_gps: z.string().trim().max(50, 'Coordenadas muito longas').optional().or(z.literal('')),
+  nome: z.string().trim().min(3, 'Nome deve ter no mínimo 3 caracteres').max(255, 'Nome muito longo'),
+  area_total: z.coerce
+    .number()
+    .positive('Área deve ser maior que zero')
+    .nullable()
+    .optional(),
+  localizacao: z.string().trim().max(500, 'Localização muito longa').optional().or(z.literal('')),
+  responsavel: z.string().trim().max(255, 'Nome muito longo').optional().or(z.literal('')),
 })
 
 type PropriedadeFormValues = z.infer<typeof propriedadeSchema>
@@ -58,17 +53,13 @@ export function PropriedadeForm({
   onSubmit,
   isLoading,
 }: PropriedadeFormProps) {
-  const { toast } = useToast()
-  
   const form = useForm<PropriedadeFormValues>({
     resolver: zodResolver(propriedadeSchema),
     defaultValues: {
       nome: '',
       area_total: null,
-      endereco: '',
-      cidade: '',
-      estado: '',
-      coordenadas_gps: '',
+      localizacao: '',
+      responsavel: '',
     },
   })
 
@@ -79,51 +70,19 @@ export function PropriedadeForm({
         form.reset({
           nome: propriedade.nome,
           area_total: propriedade.area_total,
-          endereco: propriedade.endereco || '',
-          cidade: propriedade.cidade || '',
-          estado: propriedade.estado || '',
-          coordenadas_gps: propriedade.coordenadas_gps || '',
+          localizacao: propriedade.localizacao || '',
+          responsavel: propriedade.responsavel || '',
         })
       } else {
         form.reset({
           nome: '',
           area_total: null,
-          endereco: '',
-          cidade: '',
-          estado: '',
-          coordenadas_gps: '',
+          localizacao: '',
+          responsavel: '',
         })
       }
     }
   }, [open, propriedade, form])
-
-  const handleGetCurrentLocation = () => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const coords = `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`
-          form.setValue('coordenadas_gps', coords)
-          toast({
-            title: 'Localização obtida!',
-            description: 'Coordenadas GPS atualizadas.',
-          })
-        },
-        (error) => {
-          toast({
-            title: 'Erro ao obter localização',
-            description: 'Verifique as permissões de localização do navegador.',
-            variant: 'destructive',
-          })
-        }
-      )
-    } else {
-      toast({
-        title: 'Geolocalização não suportada',
-        description: 'Seu navegador não suporta geolocalização.',
-        variant: 'destructive',
-      })
-    }
-  }
 
   const handleSubmit = (data: PropriedadeFormValues) => {
     onSubmit(data)
@@ -184,30 +143,17 @@ export function PropriedadeForm({
 
               <FormField
                 control={form.control}
-                name="coordenadas_gps"
+                name="responsavel"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Coordenadas GPS</FormLabel>
-                    <div className="flex gap-2">
-                      <FormControl>
-                        <Input
-                          placeholder="-23.550520, -46.633308"
-                          {...field}
-                        />
-                      </FormControl>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={handleGetCurrentLocation}
-                        title="Obter localização atual"
-                      >
-                        <MapPin className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <FormDescription className="text-xs">
-                      Formato: latitude, longitude
-                    </FormDescription>
+                    <FormLabel>Responsável</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Nome do responsável"
+                        {...field}
+                        value={field.value || ''}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -216,63 +162,25 @@ export function PropriedadeForm({
 
             <FormField
               control={form.control}
-              name="endereco"
+              name="localizacao"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Endereço</FormLabel>
+                  <FormLabel>Localização</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="Rua, número, bairro"
+                    <Textarea
+                      placeholder="Endereço completo, cidade, estado, coordenadas GPS..."
+                      rows={3}
                       {...field}
+                      value={field.value || ''}
                     />
                   </FormControl>
+                  <FormDescription>
+                    Informe o endereço, município, estado ou coordenadas GPS
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="sm:col-span-2">
-                <FormField
-                  control={form.control}
-                  name="cidade"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cidade *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Campinas" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="estado"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estado *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="UF" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(ESTADOS_BR).map(([sigla, nome]) => (
-                          <SelectItem key={sigla} value={sigla}>
-                            {sigla} - {nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             <DialogFooter className="gap-2 sm:gap-0">
               <Button

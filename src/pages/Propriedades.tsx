@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Plus, MoreVertical, Pencil, Trash2, MapPin, Loader2 } from 'lucide-react'
+import { Plus, MoreVertical, Pencil, Trash2, Home, MapPin, Loader2 } from 'lucide-react'
 
 export function Propriedades() {
   const {
@@ -154,7 +154,7 @@ export function Propriedades() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-4">
-              <MapPin className="h-10 w-10 text-muted-foreground" />
+              <Home className="h-10 w-10 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-semibold mb-2">
               Nenhuma propriedade cadastrada
@@ -183,8 +183,9 @@ export function Propriedades() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Localização</TableHead>
                     <TableHead>Área Total</TableHead>
+                    <TableHead>Localização</TableHead>
+                    <TableHead>Responsável</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-[70px]">Ações</TableHead>
                   </TableRow>
@@ -196,14 +197,26 @@ export function Propriedades() {
                         {propriedade.nome}
                       </TableCell>
                       <TableCell>
-                        {propriedade.cidade && propriedade.estado
-                          ? `${propriedade.cidade}/${propriedade.estado}`
+                        {propriedade.area_total
+                          ? `${propriedade.area_total.toLocaleString('pt-BR', {
+                              minimumFractionDigits: 2,
+                            })} ha`
                           : <span className="text-muted-foreground">-</span>}
                       </TableCell>
                       <TableCell>
-                        {propriedade.area_total
-                          ? `${propriedade.area_total.toLocaleString('pt-BR')} ha`
-                          : <span className="text-muted-foreground">-</span>}
+                        {propriedade.localizacao ? (
+                          <div className="flex items-center gap-1 max-w-xs truncate">
+                            <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            <span className="truncate text-sm">
+                              {propriedade.localizacao}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {propriedade.responsavel || <span className="text-muted-foreground">-</span>}
                       </TableCell>
                       <TableCell>
                         <Badge variant={propriedade.ativo ? 'default' : 'secondary'}>
