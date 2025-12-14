@@ -2,8 +2,11 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Layout } from '@/components/layout/Layout'
 
-// Páginas
-import { AuthPage } from '@/pages/Auth'
+// Páginas de autenticação
+import { Login } from '@/pages/Login'
+import { Signup } from '@/pages/Signup'
+
+// Páginas protegidas
 import Dashboard from '@/pages/Dashboard'
 import { Propriedades } from '@/pages/Propriedades'
 import { Talhoes } from '@/pages/Talhoes'
@@ -31,7 +34,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
-  return user ? <>{children}</> : <Navigate to="/auth" />
+  return user ? <>{children}</> : <Navigate to="/login" />
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -56,13 +59,24 @@ export function AppRoutes() {
     <Routes>
       {/* Rotas públicas */}
       <Route 
-        path="/auth" 
+        path="/login" 
         element={
           <PublicRoute>
-            <AuthPage />
+            <Login />
           </PublicRoute>
         } 
       />
+      <Route 
+        path="/signup" 
+        element={
+          <PublicRoute>
+            <Signup />
+          </PublicRoute>
+        } 
+      />
+      
+      {/* Redirect /auth to /login */}
+      <Route path="/auth" element={<Navigate to="/login" />} />
       
       {/* Rotas protegidas */}
       <Route

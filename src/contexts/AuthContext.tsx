@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: 'Verifique seu email para confirmar a conta.',
       })
 
-      navigate('/auth')
+      navigate('/login')
     } catch (error) {
       const authError = error as AuthError
       toast({
@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: 'Até logo!',
       })
 
-      navigate('/auth')
+      navigate('/login')
     } catch (error) {
       const authError = error as AuthError
       toast({
