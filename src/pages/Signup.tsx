@@ -19,14 +19,16 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Loader2, Leaf, Mail, Lock, User } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Loader2, Check, Leaf, Mail, Lock, User } from 'lucide-react'
 
 const signupSchema = z.object({
   name: z.string()
     .trim()
-    .min(2, 'Nome deve ter no mínimo 2 caracteres')
+    .min(3, 'Nome deve ter no mínimo 3 caracteres')
     .max(100, 'Nome muito longo'),
   email: z.string()
     .trim()
@@ -35,11 +37,16 @@ const signupSchema = z.object({
     .max(255, 'Email muito longo'),
   password: z.string()
     .min(6, 'Senha deve ter no mínimo 6 caracteres')
-    .max(72, 'Senha muito longa'),
+    .max(72, 'Senha muito longa')
+    .regex(/[A-Z]/, 'Senha deve conter pelo menos uma letra maiúscula')
+    .regex(/[0-9]/, 'Senha deve conter pelo menos um número'),
   confirmPassword: z.string()
     .min(1, 'Confirme sua senha'),
+  acceptTerms: z.boolean().refine(val => val === true, {
+    message: 'Você deve aceitar os termos de uso',
+  }),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: 'As senhas não conferem',
+  message: 'As senhas não coincidem',
   path: ['confirmPassword'],
 })
 
@@ -56,8 +63,17 @@ export function Signup() {
       email: '',
       password: '',
       confirmPassword: '',
+      acceptTerms: false,
     },
   })
+
+  // Calcular força da senha
+  const password = form.watch('password')
+  const passwordStrength = {
+    length: password.length >= 6,
+    uppercase: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+  }
 
   async function onSubmit(data: SignupFormValues) {
     try {
@@ -159,6 +175,40 @@ export function Signup() {
                           />
                         </div>
                       </FormControl>
+                      <FormDescription>
+                        <div className="space-y-1 mt-2">
+                          <div className="flex items-center gap-2 text-xs">
+                            <Check
+                              className={`h-3 w-3 ${
+                                passwordStrength.length
+                                  ? 'text-green-600'
+                                  : 'text-muted-foreground/30'
+                              }`}
+                            />
+                            <span>Mínimo 6 caracteres</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <Check
+                              className={`h-3 w-3 ${
+                                passwordStrength.uppercase
+                                  ? 'text-green-600'
+                                  : 'text-muted-foreground/30'
+                              }`}
+                            />
+                            <span>Uma letra maiúscula</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <Check
+                              className={`h-3 w-3 ${
+                                passwordStrength.number
+                                  ? 'text-green-600'
+                                  : 'text-muted-foreground/30'
+                              }`}
+                            />
+                            <span>Um número</span>
+                          </div>
+                        </div>
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -183,6 +233,35 @@ export function Signup() {
                         </div>
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="acceptTerms"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm font-normal">
+                          Aceito os{' '}
+                          <Link to="/termos" className="text-primary hover:underline">
+                            termos de uso
+                          </Link>{' '}
+                          e{' '}
+                          <Link to="/privacidade" className="text-primary hover:underline">
+                            política de privacidade
+                          </Link>
+                        </FormLabel>
+                        <FormMessage />
+                      </div>
                     </FormItem>
                   )}
                 />
@@ -217,14 +296,6 @@ export function Signup() {
             </Form>
           </CardContent>
         </Card>
-
-        {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground">
-          Ao criar uma conta, você concorda com nossos{' '}
-          <a href="#" className="text-primary hover:underline">Termos de Uso</a>
-          {' '}e{' '}
-          <a href="#" className="text-primary hover:underline">Política de Privacidade</a>
-        </p>
       </div>
     </div>
   )
