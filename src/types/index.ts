@@ -194,10 +194,8 @@ export type EstadoBR = keyof typeof ESTADOS_BR
 export interface FormPropriedade {
   nome: string
   area_total: number | null
-  endereco: string
-  cidade: string
-  estado: EstadoBR | ''
-  coordenadas_gps: string
+  localizacao: string
+  responsavel: string
 }
 
 export interface FormSafra {

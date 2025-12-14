@@ -15,36 +15,33 @@ export type Database = {
           user_id: string
           nome: string
           area_total: number | null
-          endereco: string | null
-          cidade: string | null
-          estado: string | null
-          coordenadas_gps: string | null
+          localizacao: string | null
+          responsavel: string | null
           ativo: boolean
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
           user_id: string
           nome: string
           area_total?: number | null
-          endereco?: string | null
-          cidade?: string | null
-          estado?: string | null
-          coordenadas_gps?: string | null
+          localizacao?: string | null
+          responsavel?: string | null
           ativo?: boolean
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           user_id?: string
           nome?: string
           area_total?: number | null
-          endereco?: string | null
-          cidade?: string | null
-          estado?: string | null
-          coordenadas_gps?: string | null
+          localizacao?: string | null
+          responsavel?: string | null
           ativo?: boolean
           created_at?: string
+          updated_at?: string
         }
       }
       safras: {

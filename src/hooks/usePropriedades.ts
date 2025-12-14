@@ -7,10 +7,8 @@ import { useToast } from '@/hooks/use-toast'
 interface PropriedadeFormData {
   nome: string
   area_total?: number | null
-  endereco?: string
-  cidade: string
-  estado: string
-  coordenadas_gps?: string
+  localizacao?: string
+  responsavel?: string
 }
 
 export function usePropriedades() {
@@ -40,10 +38,8 @@ export function usePropriedades() {
         .insert({
           nome: propriedade.nome,
           area_total: propriedade.area_total ?? null,
-          endereco: propriedade.endereco || null,
-          cidade: propriedade.cidade,
-          estado: propriedade.estado,
-          coordenadas_gps: propriedade.coordenadas_gps || null,
+          localizacao: propriedade.localizacao || null,
+          responsavel: propriedade.responsavel || null,
           user_id: user!.id,
         })
         .select()
@@ -81,10 +77,8 @@ export function usePropriedades() {
         .update({
           nome: updates.nome,
           area_total: updates.area_total ?? null,
-          endereco: updates.endereco || null,
-          cidade: updates.cidade,
-          estado: updates.estado,
-          coordenadas_gps: updates.coordenadas_gps || null,
+          localizacao: updates.localizacao || null,
+          responsavel: updates.responsavel || null,
         })
         .eq('id', id)
         .select()
