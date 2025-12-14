@@ -2,95 +2,127 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* SGA - Sistema de Gestão Agropecuária - Design System */
+/* Theme: Earthy agricultural tones with forest green primary */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
+    /* Forest Green - Primary agricultural theme */
+    --primary: 142 45% 28%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Warm Earth - Secondary */
+    --secondary: 30 25% 92%;
+    --secondary-foreground: 30 35% 25%;
+    
+    /* Golden Harvest - Accent */
+    --accent: 42 85% 55%;
+    --accent-foreground: 42 90% 15%;
+    
+    /* Backgrounds */
+    --background: 40 25% 98%;
+    --foreground: 30 25% 15%;
+    
+    /* Cards */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
+    --card-foreground: 30 25% 15%;
+    
+    /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --popover-foreground: 30 25% 15%;
+    
+    /* Muted - Soft earth tones */
+    --muted: 40 20% 94%;
+    --muted-foreground: 30 15% 45%;
+    
+    /* Borders and inputs */
+    --border: 40 20% 88%;
+    --input: 40 20% 88%;
+    --ring: 142 45% 28%;
+    
+    /* Destructive */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Success - Growth green */
+    --success: 142 70% 40%;
+    --success-foreground: 0 0% 100%;
+    
+    /* Warning - Amber harvest */
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 90% 15%;
+    
+    /* Info - Sky blue */
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+    
+    /* Sidebar - Deep forest */
+    --sidebar-background: 142 35% 18%;
+    --sidebar-foreground: 40 25% 95%;
+    --sidebar-primary: 42 85% 55%;
+    --sidebar-primary-foreground: 142 35% 12%;
+    --sidebar-accent: 142 30% 25%;
+    --sidebar-accent-foreground: 40 25% 95%;
+    --sidebar-border: 142 25% 25%;
+    --sidebar-ring: 42 85% 55%;
+    
+    --radius: 0.625rem;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(142 45% 28%) 0%, hsl(142 40% 22%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(42 85% 55%) 0%, hsl(38 80% 50%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(40 25% 98%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(142 45% 25%) 0%, hsl(142 35% 18%) 50%, hsl(30 25% 20%) 100%);
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px hsl(30 25% 15% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(30 25% 15% / 0.08), 0 2px 4px -2px hsl(30 25% 15% / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(30 25% 15% / 0.08), 0 4px 6px -4px hsl(30 25% 15% / 0.05);
+    --shadow-glow: 0 0 20px hsl(142 45% 28% / 0.15);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --primary: 142 50% 45%;
+    --primary-foreground: 142 35% 10%;
+    
+    --secondary: 30 20% 18%;
+    --secondary-foreground: 30 20% 90%;
+    
+    --accent: 42 80% 50%;
+    --accent-foreground: 42 90% 10%;
+    
+    --background: 30 20% 8%;
+    --foreground: 40 20% 95%;
+    
+    --card: 30 20% 12%;
+    --card-foreground: 40 20% 95%;
+    
+    --popover: 30 20% 12%;
+    --popover-foreground: 40 20% 95%;
+    
+    --muted: 30 15% 18%;
+    --muted-foreground: 30 15% 60%;
+    
+    --border: 30 15% 22%;
+    --input: 30 15% 22%;
+    --ring: 142 50% 45%;
+    
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --success: 142 60% 45%;
+    --success-foreground: 0 0% 100%;
+    
+    --sidebar-background: 30 20% 6%;
+    --sidebar-foreground: 40 20% 95%;
+    --sidebar-primary: 42 80% 50%;
+    --sidebar-primary-foreground: 30 20% 8%;
+    --sidebar-accent: 30 15% 15%;
+    --sidebar-accent-foreground: 40 20% 95%;
+    --sidebar-border: 30 15% 18%;
+    --sidebar-ring: 42 80% 50%;
   }
 }
 
@@ -100,6 +132,93 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer utilities {
+  .glass-effect {
+    @apply bg-card/80 backdrop-blur-md border border-border/50;
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
+  }
+  
+  .hover-lift {
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .hover-lift:hover {
+    @apply -translate-y-1;
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted/50 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/20 rounded-full transition-colors;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/30;
 }
