@@ -5,6 +5,7 @@ import { Layout } from '@/components/layout/Layout'
 // Páginas de autenticação
 import { Login } from '@/pages/Login'
 import { Signup } from '@/pages/Signup'
+import { ForgotPassword } from '@/pages/ForgotPassword'
 
 // Páginas protegidas
 import Dashboard from '@/pages/Dashboard'
@@ -71,6 +72,16 @@ export function AppRoutes() {
         element={
           <PublicRoute>
             <Signup />
+          </PublicRoute>
+        } 
+      />
+      
+      {/* Esqueci senha */}
+      <Route 
+        path="/esqueci-senha" 
+        element={
+          <PublicRoute>
+            <ForgotPassword />
           </PublicRoute>
         } 
       />
