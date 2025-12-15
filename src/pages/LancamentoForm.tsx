@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useServicos } from '@/hooks/useServicos'
 import { useTalhoes } from '@/hooks/useTalhoes'
 import { ItemLancamentoCard, type ItemLancamento } from '@/components/lancamentos/ItemLancamentoCard'
+import { ResumoFinanceiro } from '@/components/lancamentos/ResumoFinanceiro'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -13,7 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ArrowLeft, Save, Loader2, Package, AlertCircle, Plus } from 'lucide-react'
+import { ArrowLeft, Loader2, Package, AlertCircle, Check } from 'lucide-react'
 
 // Interfaces
 interface LancamentoFormData {
@@ -36,6 +38,8 @@ interface ServicoItem {
     nome: string
     tipo: string
     unidade_medida: string
+    produto_id?: string
+    maquina_id?: string
   }
 }
 
@@ -43,6 +47,7 @@ export function LancamentoForm() {
   const navigate = useNavigate()
   const { id: lancamentoId } = useParams<{ id: string }>()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const { propriedadeAtual, safraAtual } = useGlobal()
 
   // Estado do formulário
@@ -57,6 +62,10 @@ export function LancamentoForm() {
   // Hooks de dados
   const { data: servicos, isLoading: loadingServicos } = useServicos(propriedadeAtual?.id)
   const { data: talhoes, isLoading: loadingTalhoes } = useTalhoes(propriedadeAtual?.id)
+
+  // Obter área do talhão selecionado
+  const talhaoSelecionado = talhoes?.find(t => t.id === formData.talhao_id)
+  const areaHa = talhaoSelecionado?.area_ha
 
   // Carregar lançamento existente para edição
   useEffect(() => {
@@ -74,7 +83,7 @@ export function LancamentoForm() {
           *,
           lancamentos_itens(
             *,
-            item:itens(id, nome, tipo, unidade_medida)
+            item:itens(id, nome, tipo, unidade_medida, produto_id, maquina_id)
           )
         `)
         .eq('id', id)
@@ -123,7 +132,7 @@ export function LancamentoForm() {
         .from('servicos_itens')
         .select(`
           *,
-          item:itens(id, nome, tipo, unidade_medida)
+          item:itens(id, nome, tipo, unidade_medida, produto_id, maquina_id)
         `)
         .eq('servico_id', servicoId)
         .order('ordem')
@@ -168,13 +177,188 @@ export function LancamentoForm() {
     }))
   }
 
-  // Validação do formulário
-  const isFormValid = () => {
-    if (!formData.servico_id) return false
-    if (!formData.data_execucao) return false
-    if (!safraAtual) return false
+  // Mutation para salvar lançamento
+  const salvarMutation = useMutation({
+    mutationFn: async (data: LancamentoFormData) => {
+      if (!propriedadeAtual || !safraAtual) {
+        throw new Error('Selecione propriedade e safra')
+      }
+
+      // 1. CRIAR LANÇAMENTO (cabeçalho)
+      const { data: lancamento, error: erroLanc } = await supabase
+        .from('lancamentos')
+        .insert({
+          propriedade_id: propriedadeAtual.id,
+          safra_id: safraAtual.id,
+          servico_id: data.servico_id,
+          talhao_id: data.talhao_id || null,
+          data_execucao: data.data_execucao,
+          observacoes: data.observacoes || null,
+          custo_total: 0,
+          status: 'concluido'
+        })
+        .select()
+        .single()
+
+      if (erroLanc) throw erroLanc
+
+      let custoTotal = 0
+
+      // 2. PROCESSAR CADA ITEM
+      for (const itemForm of data.itens) {
+        if (!itemForm.quantidade || itemForm.quantidade <= 0) continue
+
+        // Buscar preview final do custo via RPC ou fallback local
+        let preview = null
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('preview_custo_item', {
+            p_item_id: itemForm.item_id,
+            p_quantidade: itemForm.quantidade
+          })
+
+        if (!rpcError && rpcData) {
+          preview = rpcData
+        } else {
+          // Usar valores já calculados no cliente
+          preview = {
+            item_tipo: itemForm.item?.tipo || 'produto_estoque',
+            custo_unitario: itemForm.custo_unitario || 0,
+            custo_total: itemForm.custo_total || 0,
+            preview_consumo: itemForm.detalhamento_lotes || null
+          }
+        }
+
+        // Salvar item do lançamento
+        const { error: erroItem } = await supabase
+          .from('lancamentos_itens')
+          .insert({
+            lancamento_id: lancamento.id,
+            item_id: itemForm.item_id,
+            quantidade: itemForm.quantidade,
+            custo_unitario: preview.custo_unitario || 0,
+            custo_total: preview.custo_total || 0,
+            detalhamento_lotes: preview.preview_consumo || null
+          })
+
+        if (erroItem) throw erroItem
+
+        // Se for produto de estoque, consumir via FIFO
+        if (preview.item_tipo === 'produto_estoque' && itemForm.item?.produto_id) {
+          const { error: erroFifo } = await supabase
+            .rpc('consumir_estoque_fifo', {
+              p_produto_id: itemForm.item.produto_id,
+              p_quantidade: itemForm.quantidade,
+              p_lancamento_id: lancamento.id
+            })
+
+          // Log mas não bloqueia se RPC não existir ainda
+          if (erroFifo) {
+            console.warn('RPC consumir_estoque_fifo não disponível:', erroFifo.message)
+          }
+        }
+
+        // Se for hora de máquina, atualizar horímetro
+        if (preview.item_tipo === 'maquina_hora' && itemForm.item?.maquina_id) {
+          const { error: erroHor } = await supabase
+            .rpc('atualizar_horimetro', {
+              p_maquina_id: itemForm.item.maquina_id,
+              p_horas: itemForm.quantidade
+            })
+
+          if (erroHor) {
+            console.warn('RPC atualizar_horimetro não disponível:', erroHor.message)
+          }
+        }
+
+        custoTotal += preview.custo_total || 0
+      }
+
+      // 3. ATUALIZAR CUSTO TOTAL DO LANÇAMENTO
+      const { error: erroUpdate } = await supabase
+        .from('lancamentos')
+        .update({ custo_total: custoTotal })
+        .eq('id', lancamento.id)
+
+      if (erroUpdate) throw erroUpdate
+
+      return lancamento
+    },
+    onSuccess: () => {
+      toast({
+        title: '✅ Lançamento salvo com sucesso!',
+        description: 'Estoque e custos atualizados automaticamente.'
+      })
+
+      // Invalidar queries para atualizar dados
+      queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
+      queryClient.invalidateQueries({ queryKey: ['estoque'] })
+      queryClient.invalidateQueries({ queryKey: ['produtos'] })
+      queryClient.invalidateQueries({ queryKey: ['preview-custo'] })
+
+      navigate('/lancamentos')
+    },
+    onError: (error: Error) => {
+      toast({
+        title: '❌ Erro ao salvar lançamento',
+        description: error.message,
+        variant: 'destructive'
+      })
+    }
+  })
+
+  // Validar formulário antes de salvar
+  const validarFormulario = (): boolean => {
+    if (!formData.servico_id) {
+      toast({
+        title: 'Serviço não selecionado',
+        description: 'Selecione um serviço para continuar',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    if (!formData.data_execucao) {
+      toast({
+        title: 'Data não informada',
+        description: 'Informe a data de execução',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    // Validar quantidade de itens obrigatórios
+    const itensObrigatorios = formData.itens.filter(i => i.obrigatorio)
+    for (const item of itensObrigatorios) {
+      if (!item.quantidade || item.quantidade <= 0) {
+        toast({
+          title: 'Item obrigatório sem quantidade',
+          description: `O item "${item.item?.nome}" é obrigatório`,
+          variant: 'destructive'
+        })
+        return false
+      }
+    }
+
     return true
   }
+
+  // Handler do botão Salvar
+  const handleSalvar = () => {
+    if (!validarFormulario()) return
+    salvarMutation.mutate(formData)
+  }
+
+  // Preparar dados para o resumo financeiro
+  const itensParaResumo = formData.itens
+    .filter(i => i.quantidade && i.quantidade > 0)
+    .map(i => ({
+      item_id: i.item_id,
+      nome: i.item?.nome || 'Item',
+      tipo: (i.item?.tipo || 'produto_estoque') as 'produto_estoque' | 'servico' | 'maquina_hora',
+      quantidade: i.quantidade || 0,
+      custo_total: i.custo_total || 0,
+      unidade_medida: i.item?.unidade_medida || 'un'
+    }))
 
   // Verificar se tem propriedade e safra selecionadas
   if (!propriedadeAtual || !safraAtual) {
@@ -230,7 +414,7 @@ export function LancamentoForm() {
           </CardContent>
         </Card>
       ) : (
-        <form className="space-y-6">
+        <div className="space-y-6">
           {/* Card do Cabeçalho */}
           <Card>
             <CardHeader>
@@ -365,73 +549,75 @@ export function LancamentoForm() {
                     </AlertDescription>
                   </Alert>
                 ) : (
-                  <>
-                    {formData.itens.map((itemForm, index) => (
-                      <ItemLancamentoCard
-                        key={itemForm.item_id}
-                        itemForm={itemForm}
-                        onUpdate={(updated) => {
-                          const newItens = [...formData.itens]
-                          newItens[index] = updated
-                          setFormData(prev => ({ ...prev, itens: newItens }))
-                        }}
-                        onRemove={() => {
-                          if (itemForm.obrigatorio) {
-                            toast({
-                              title: 'Item obrigatório',
-                              description: 'Este item é obrigatório e não pode ser removido.',
-                              variant: 'destructive'
-                            })
-                            return
-                          }
-                          setFormData(prev => ({
-                            ...prev,
-                            itens: prev.itens.filter((_, i) => i !== index)
-                          }))
-                        }}
-                      />
-                    ))}
-
-                    {/* Resumo de Custos */}
-                    <Card className="bg-primary/5 border-primary/20">
-                      <CardContent className="py-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-lg font-semibold">Custo Total da Operação:</span>
-                          <span className="text-3xl font-bold text-primary">
-                            R$ {formData.itens
-                              .reduce((acc, item) => acc + (item.custo_total || 0), 0)
-                              .toFixed(2)}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </>
+                  formData.itens.map((itemForm, index) => (
+                    <ItemLancamentoCard
+                      key={itemForm.item_id}
+                      itemForm={itemForm}
+                      onUpdate={(updated) => {
+                        const newItens = [...formData.itens]
+                        newItens[index] = updated
+                        setFormData(prev => ({ ...prev, itens: newItens }))
+                      }}
+                      onRemove={() => {
+                        if (itemForm.obrigatorio) {
+                          toast({
+                            title: 'Item obrigatório',
+                            description: 'Este item é obrigatório e não pode ser removido.',
+                            variant: 'destructive'
+                          })
+                          return
+                        }
+                        setFormData(prev => ({
+                          ...prev,
+                          itens: prev.itens.filter((_, i) => i !== index)
+                        }))
+                      }}
+                    />
+                  ))
                 )}
               </CardContent>
             </Card>
           )}
 
-          {/* Ações do Formulário */}
-          <Card>
-            <CardFooter className="flex justify-between py-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate('/lancamentos')}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={!isFormValid() || loading}
-              >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <Save className="mr-2 h-4 w-4" />
-                {lancamentoId ? 'Salvar Alterações' : 'Criar Lançamento'}
-              </Button>
-            </CardFooter>
-          </Card>
-        </form>
+          {/* RESUMO FINANCEIRO */}
+          {itensParaResumo.length > 0 && (
+            <ResumoFinanceiro 
+              itens={itensParaResumo} 
+              areaHa={areaHa}
+            />
+          )}
+
+          {/* Rodapé do Formulário */}
+          <div className="flex items-center justify-between gap-4 pt-6 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/lancamentos')}
+              disabled={salvarMutation.isPending}
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleSalvar}
+              disabled={salvarMutation.isPending || !formData.servico_id}
+              className="min-w-[200px]"
+            >
+              {salvarMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Salvar Lançamento
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   )

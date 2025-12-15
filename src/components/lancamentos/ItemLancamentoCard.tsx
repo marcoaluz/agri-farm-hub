@@ -24,6 +24,8 @@ export interface ItemLancamento {
     nome: string
     tipo: string
     unidade_medida: string
+    produto_id?: string
+    maquina_id?: string
   }
 }
 
