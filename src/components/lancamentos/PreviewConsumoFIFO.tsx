@@ -2,10 +2,10 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Package, Calendar, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { LoteConsumo } from '@/hooks/usePreviewCusto'
+import type { PreviewConsumoLote } from '@/hooks/usePreviewCusto'
 
 interface PreviewConsumoFIFOProps {
-  lotes: LoteConsumo[]
+  lotes: PreviewConsumoLote[]
 }
 
 export function PreviewConsumoFIFO({ lotes }: PreviewConsumoFIFOProps) {
