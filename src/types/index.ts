@@ -1,53 +1,59 @@
-import { Database } from './database.types'
+// Re-export local types for external Supabase project
+export type {
+  Propriedade,
+  Safra,
+  Talhao,
+  Item,
+  Lote,
+  Servico,
+  ServicoItem,
+  Lancamento,
+  LancamentoItem,
+  Maquina,
+  PreviewCustoResponse,
+  PreviewConsumoLote,
+} from './supabase-local'
 
-// Helper types for extracting table types
-export type Tables<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Row']
+// Alias types for compatibility
+export type Produto = {
+  id: string
+  propriedade_id?: string
+  nome: string
+  categoria?: string
+  unidade_medida: string
+  quantidade_minima?: number
+  ativo: boolean
+  created_at: string
+  updated_at: string
+}
 
-export type Inserts<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Insert']
-
-export type Updates<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Update']
-
-// Tipos específicos das tabelas
-export type Propriedade = Tables<'propriedades'>
-export type Safra = Tables<'safras'>
-export type Talhao = Tables<'talhoes'>
-export type Item = Tables<'itens'>
-export type Produto = Tables<'produtos'>
-export type Lote = Tables<'lotes'>
-export type Servico = Tables<'servicos'>
-export type ServicoItem = Tables<'servicos_itens'>
-export type Lancamento = Tables<'lancamentos'>
-export type LancamentoItem = Tables<'lancamentos_itens'>
-export type Maquina = Tables<'maquinas'>
-
-// Tipos para inserção
-export type PropriedadeInsert = Inserts<'propriedades'>
-export type SafraInsert = Inserts<'safras'>
-export type TalhaoInsert = Inserts<'talhoes'>
-export type ItemInsert = Inserts<'itens'>
-export type ProdutoInsert = Inserts<'produtos'>
-export type LoteInsert = Inserts<'lotes'>
-export type ServicoInsert = Inserts<'servicos'>
-export type ServicoItemInsert = Inserts<'servicos_itens'>
-export type LancamentoInsert = Inserts<'lancamentos'>
-export type LancamentoItemInsert = Inserts<'lancamentos_itens'>
-export type MaquinaInsert = Inserts<'maquinas'>
+// Tipos para inserção (simplified)
+export type PropriedadeInsert = Partial<Propriedade> & { nome: string; user_id: string }
+export type SafraInsert = Partial<Safra> & { propriedade_id: string; nome: string }
+export type TalhaoInsert = Partial<Talhao> & { propriedade_id: string; nome: string; area_ha: number }
+export type ItemInsert = Partial<Item> & { nome: string; tipo: string; unidade_medida: string }
+export type ProdutoInsert = Partial<Produto> & { nome: string; unidade_medida: string }
+export type LoteInsert = Partial<Lote> & { produto_id: string; quantidade_inicial: number; custo_unitario: number }
+export type ServicoInsert = Partial<Servico> & { propriedade_id: string; nome: string }
+export type ServicoItemInsert = Partial<ServicoItem> & { servico_id: string; item_id: string }
+export type LancamentoInsert = Partial<Lancamento> & { propriedade_id: string; safra_id: string; servico_id: string }
+export type LancamentoItemInsert = Partial<LancamentoItem> & { lancamento_id: string; item_id: string; quantidade: number }
+export type MaquinaInsert = Partial<Maquina> & { propriedade_id: string; nome: string }
 
 // Tipos para atualização
-export type PropriedadeUpdate = Updates<'propriedades'>
-export type SafraUpdate = Updates<'safras'>
-export type TalhaoUpdate = Updates<'talhoes'>
-export type ItemUpdate = Updates<'itens'>
-export type ProdutoUpdate = Updates<'produtos'>
-export type LoteUpdate = Updates<'lotes'>
-export type ServicoUpdate = Updates<'servicos'>
-export type ServicoItemUpdate = Updates<'servicos_itens'>
-export type LancamentoUpdate = Updates<'lancamentos'>
-export type LancamentoItemUpdate = Updates<'lancamentos_itens'>
-export type MaquinaUpdate = Updates<'maquinas'>
+export type PropriedadeUpdate = Partial<Propriedade>
+export type SafraUpdate = Partial<Safra>
+export type TalhaoUpdate = Partial<Talhao>
+export type ItemUpdate = Partial<Item>
+export type ProdutoUpdate = Partial<Produto>
+export type LoteUpdate = Partial<Lote>
+export type ServicoUpdate = Partial<Servico>
+export type ServicoItemUpdate = Partial<ServicoItem>
+export type LancamentoUpdate = Partial<Lancamento>
+export type LancamentoItemUpdate = Partial<LancamentoItem>
+export type MaquinaUpdate = Partial<Maquina>
+
+import type { Propriedade, Safra, Talhao, Item, Lote, Servico, ServicoItem, Lancamento, LancamentoItem, Maquina } from './supabase-local'
 
 // Tipos com relações
 export interface ItemComCusto extends Item {
