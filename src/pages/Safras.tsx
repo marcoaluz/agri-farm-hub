@@ -18,8 +18,8 @@ import { cn } from "@/lib/utils";
 interface Safra {
   id: string;
   nome: string;
-  ano_inicio: int4;
-  ano_fim: int4;
+  ano_inicio: number;
+  ano_fim: number | null;
   ativa: boolean;
   propriedade_id: string;
   created_at: string;
@@ -177,6 +177,8 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
     },
   });
 
+  const duracao = safra.ano_fim ? safra.ano_fim - safra.ano_inicio : 1;
+
   return (
     <Card className={cn("transition-all", safra.ativa && "border-green-500 bg-green-50 dark:bg-green-950/20")}>
       <CardContent className="p-6">
@@ -194,12 +196,12 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
 
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
-                <p className="text-sm text-muted-foreground">Data Início</p>
-                <p className="font-semibold">{new Date(safra.ano_inicio).toLocaleDateString("pt-BR")}</p>
+                <p className="text-sm text-muted-foreground">Ano Início</p>
+                <p className="font-semibold">{safra.ano_inicio}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Data Fim</p>
-                <p className="font-semibold">{new Date(safra.ano_fim).toLocaleDateString("pt-BR")}</p>
+                <p className="text-sm text-muted-foreground">Ano Fim</p>
+                <p className="font-semibold">{safra.ano_fim || "-"}</p>
               </div>
             </div>
 
@@ -207,7 +209,7 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
             <div className="mt-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                <span>Duração: {calcularDuracao(safra.ano_inicio, safra.ano_fim)}</span>
+                <span>Duração: {duracao} {duracao === 1 ? "ano" : "anos"}</span>
               </div>
             </div>
           </div>
@@ -251,17 +253,6 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
   );
 }
 
-function calcularDuracao(inicio: string, fim: string): string {
-  const diff = new Date(fim).getTime() - new Date(inicio).getTime();
-  const dias = Math.ceil(diff / (1000 * 60 * 60 * 24));
-  const meses = Math.floor(dias / 30);
-
-  if (meses > 0) {
-    return `${meses} ${meses === 1 ? "mês" : "meses"}`;
-  }
-  return `${dias} ${dias === 1 ? "dia" : "dias"}`;
-}
-
 function SafraForm({
   safra,
   propriedadeId,
@@ -274,10 +265,12 @@ function SafraForm({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const currentYear = new Date().getFullYear();
+
   const [formData, setFormData] = useState({
     nome: safra?.nome || "",
-    ano_inicio: safra?.ano_inicio || "",
-    ano_fim: safra?.ano_fim || "",
+    ano_inicio: safra?.ano_inicio || currentYear,
+    ano_fim: safra?.ano_fim || currentYear + 1,
     ativa: safra?.ativa ?? true,
   });
 
@@ -291,17 +284,11 @@ function SafraForm({
     }
 
     if (!formData.ano_inicio) {
-      newErrors.ano_inicio = "Data início é obrigatória";
+      newErrors.ano_inicio = "Ano início é obrigatório";
     }
 
-    if (!formData.ano_fim) {
-      newErrors.ano_fim = "Data fim é obrigatória";
-    }
-
-    if (formData.ano_inicio && formData.ano_fim) {
-      if (new Date(formData.ano_fim) <= new Date(formData.ano_inicio)) {
-        newErrors.ano_fim = "Data fim deve ser posterior à data início";
-      }
+    if (formData.ano_fim && formData.ano_fim < formData.ano_inicio) {
+      newErrors.ano_fim = "Ano fim deve ser maior ou igual ao ano início";
     }
 
     setErrors(newErrors);
@@ -315,13 +302,20 @@ function SafraForm({
         await supabase.from("safras").update({ ativa: false }).eq("propriedade_id", propriedadeId);
       }
 
+      const dataToSave = {
+        nome: formData.nome,
+        ano_inicio: formData.ano_inicio,
+        ano_fim: formData.ano_fim || null,
+        ativa: formData.ativa,
+      };
+
       if (safra) {
-        const { error } = await supabase.from("safras").update(formData).eq("id", safra.id);
+        const { error } = await supabase.from("safras").update(dataToSave).eq("id", safra.id);
 
         if (error) throw error;
       } else {
         const { error } = await supabase.from("safras").insert({
-          ...formData,
+          ...dataToSave,
           propriedade_id: propriedadeId,
         });
 
@@ -368,22 +362,26 @@ function SafraForm({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label>Data Início *</Label>
+            <Label>Ano Início *</Label>
             <Input
-              type="date"
+              type="number"
+              min="2000"
+              max="2100"
               value={formData.ano_inicio}
-              onChange={(e) => setFormData((prev) => ({ ...prev, ano_inicio: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, ano_inicio: parseInt(e.target.value) || currentYear }))}
               className={errors.ano_inicio ? "border-destructive" : ""}
             />
             {errors.ano_inicio && <p className="text-sm text-destructive mt-1">{errors.ano_inicio}</p>}
           </div>
 
           <div>
-            <Label>Data Fim *</Label>
+            <Label>Ano Fim</Label>
             <Input
-              type="date"
-              value={formData.ano_fim}
-              onChange={(e) => setFormData((prev) => ({ ...prev, ano_fim: e.target.value }))}
+              type="number"
+              min="2000"
+              max="2100"
+              value={formData.ano_fim || ""}
+              onChange={(e) => setFormData((prev) => ({ ...prev, ano_fim: parseInt(e.target.value) || null }))}
               className={errors.ano_fim ? "border-destructive" : ""}
             />
             {errors.ano_fim && <p className="text-sm text-destructive mt-1">{errors.ano_fim}</p>}
