@@ -80,51 +80,51 @@ export function Estoque() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Package className="h-8 w-8 text-blue-600" />
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+            <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
             Estoque
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground">
             Gerencie produtos, lotes e custos (FIFO)
           </p>
         </div>
 
-        <Button onClick={() => setDialogEntradaOpen(true)}>
+        <Button onClick={() => setDialogEntradaOpen(true)} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Entrada de Estoque
         </Button>
       </div>
 
       {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Package className="h-6 w-6 text-blue-600" />
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+              <div className="p-2 sm:p-3 bg-blue-100 rounded-lg">
+                <Package className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total de Produtos</p>
-                <p className="text-2xl font-bold">{totalProdutos}</p>
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Total Produtos</p>
+                <p className="text-xl sm:text-2xl font-bold">{totalProdutos}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <DollarSign className="h-6 w-6 text-green-600" />
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+              <div className="p-2 sm:p-3 bg-green-100 rounded-lg">
+                <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Estoque Imobilizado</p>
-                <p className="text-2xl font-bold">
-                  R$ {estoqueTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Imobilizado</p>
+                <p className="text-lg sm:text-2xl font-bold">
+                  R$ {estoqueTotal.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </p>
               </div>
             </div>
@@ -132,28 +132,28 @@ export function Estoque() {
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <AlertTriangle className="h-6 w-6 text-orange-600" />
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+              <div className="p-2 sm:p-3 bg-orange-100 rounded-lg">
+                <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Estoque Baixo</p>
-                <p className="text-2xl font-bold">{produtosBaixos}</p>
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Baixo</p>
+                <p className="text-xl sm:text-2xl font-bold">{produtosBaixos}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-red-100 rounded-lg">
-                <Package className="h-6 w-6 text-red-600" />
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+              <div className="p-2 sm:p-3 bg-red-100 rounded-lg">
+                <Package className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Estoque Zerado</p>
-                <p className="text-2xl font-bold">{produtosZerados}</p>
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Zerado</p>
+                <p className="text-xl sm:text-2xl font-bold">{produtosZerados}</p>
               </div>
             </div>
           </CardContent>

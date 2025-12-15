@@ -80,19 +80,19 @@ export function Maquinas() {
   });
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Máquinas</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Máquinas</h1>
+          <p className="text-sm text-muted-foreground">
             Gerencie equipamentos, horímetro e custos
           </p>
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2" onClick={() => setMaquinaEditando(null)}>
+            <Button className="gap-2 w-full sm:w-auto" onClick={() => setMaquinaEditando(null)}>
               <Plus className="h-4 w-4" />
               Nova Máquina
             </Button>
@@ -110,31 +110,31 @@ export function Maquinas() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
-                <Tractor className="h-5 w-5 text-accent-foreground" />
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-accent">
+                <Tractor className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total de Máquinas</p>
-                <p className="text-2xl font-bold">{totalMaquinas}</p>
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Máquinas</p>
+                <p className="text-xl sm:text-2xl font-bold">{totalMaquinas}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
-                <Gauge className="h-5 w-5 text-accent-foreground" />
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-accent">
+                <Gauge className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Horímetro Total</p>
-                <p className="text-2xl font-bold">
-                  {horimetroTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}h
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Horímetro</p>
+                <p className="text-lg sm:text-2xl font-bold">
+                  {horimetroTotal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}h
                 </p>
               </div>
             </div>
@@ -142,28 +142,28 @@ export function Maquinas() {
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
-                <DollarSign className="h-5 w-5 text-accent-foreground" />
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-accent">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Custo Médio/Hora</p>
-                <p className="text-2xl font-bold">R$ {custoMedioHora.toFixed(2)}</p>
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Custo/h</p>
+                <p className="text-lg sm:text-2xl font-bold">R$ {custoMedioHora.toFixed(0)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
-                <Clock className="h-5 w-5 text-accent-foreground" />
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-accent">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Horas Disponíveis</p>
-                <p className="text-2xl font-bold">∞</p>
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Disponível</p>
+                <p className="text-xl sm:text-2xl font-bold">∞</p>
               </div>
             </div>
           </CardContent>
@@ -171,8 +171,8 @@ export function Maquinas() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Buscar por nome ou modelo..."
           value={busca}
@@ -183,19 +183,19 @@ export function Maquinas() {
 
       {/* Grid */}
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map(i => (
-            <Skeleton key={i} className="h-72 w-full" />
+            <Skeleton key={i} className="h-60 sm:h-72 w-full" />
           ))}
         </div>
       ) : maquinasFiltradas?.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Tractor className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">
+          <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
+            <Tractor className="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg sm:text-xl font-semibold mb-2 text-center">
               {busca ? 'Nenhuma máquina encontrada' : 'Nenhuma máquina cadastrada'}
             </h3>
-            <p className="text-muted-foreground text-center mb-4">
+            <p className="text-sm text-muted-foreground text-center mb-4 px-4">
               {busca ? 'Tente ajustar sua busca' : 'Cadastre sua primeira máquina para controlar horas e custos'}
             </p>
             {!busca && (
@@ -207,10 +207,10 @@ export function Maquinas() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {maquinasFiltradas?.map(maquina => (
             <Card key={maquina.id} className="hover:shadow-lg transition-all">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
