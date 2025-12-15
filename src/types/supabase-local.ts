@@ -120,15 +120,13 @@ export interface Maquina {
   id: string
   propriedade_id: string
   nome: string
-  tipo?: string
-  marca?: string
   modelo?: string
-  ano?: number
-  horimetro_atual?: number
+  ano_fabricacao?: number
+  horimetro_inicial: number
+  horimetro_atual: number
   custo_hora?: number
   ativo: boolean
   created_at: string
-  updated_at: string
 }
 
 export interface PreviewCustoResponse {
