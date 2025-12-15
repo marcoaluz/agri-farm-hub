@@ -263,23 +263,6 @@ function TalhaoCard({ talhao, onEdit }: { talhao: Talhao; onEdit: () => void }) 
           </div>
         )}
 
-        {talhao.status && (
-          <div className="flex items-center gap-2 mb-2 text-sm">
-            <span className="text-muted-foreground">Status:</span>
-            <span
-              className={cn(
-                "font-medium",
-                talhao.status === "plantado" && "text-green-600",
-                talhao.status === "colhido" && "text-blue-600",
-                talhao.status === "em_preparo" && "text-yellow-600",
-              )}
-            >
-              {talhao.status}
-            </span>
-          </div>
-        )}
-
-        {talhao.observacoes && <p className="text-sm text-muted-foreground mt-3 line-clamp-2">{talhao.observacoes}</p>}
       </CardContent>
     </Card>
   );
@@ -301,8 +284,6 @@ function TalhaoForm({
     nome: talhao?.nome || "",
     area_ha: talhao?.area_ha || 0,
     cultura_atual: talhao?.cultura_atual || "",
-    status: talhao?.status || "",
-    observacoes: talhao?.observacoes || "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -399,24 +380,6 @@ function TalhaoForm({
           />
         </div>
 
-        <div>
-          <Label>Status</Label>
-          <Input
-            value={formData.status}
-            onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
-            placeholder="Ex: plantado, colhido, em preparo..."
-          />
-        </div>
-
-        <div>
-          <Label>Observações</Label>
-          <Textarea
-            value={formData.observacoes}
-            onChange={(e) => setFormData((prev) => ({ ...prev, observacoes: e.target.value }))}
-            placeholder="Informações adicionais sobre o talhão..."
-            rows={3}
-          />
-        </div>
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
