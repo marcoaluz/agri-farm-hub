@@ -57,23 +57,25 @@ const recentActivities = [
 
 export default function Dashboard() {
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-          <p className="mt-1 text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
             Visão geral do sistema de gestão agropecuária
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="gap-2">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm">
             <Calendar className="h-4 w-4" />
-            Últimos 30 dias
+            <span className="hidden sm:inline">Últimos 30 dias</span>
+            <span className="sm:hidden">30 dias</span>
           </Button>
-          <Button className="gap-2">
+          <Button size="sm" className="gap-2 text-xs sm:text-sm">
             <TrendingUp className="h-4 w-4" />
-            Exportar Relatório
+            <span className="hidden sm:inline">Exportar Relatório</span>
+            <span className="sm:hidden">Exportar</span>
           </Button>
         </div>
       </div>
@@ -113,7 +115,7 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Row */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Production Chart */}
         <ChartCard
           title="Tendência de Produção"
@@ -125,7 +127,7 @@ export default function Dashboard() {
             </Button>
           }
         >
-          <div className="h-[300px]">
+          <div className="h-[200px] sm:h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={productionData}>
                 <defs>
@@ -170,7 +172,7 @@ export default function Dashboard() {
 
         {/* Species Distribution */}
         <ChartCard title="Distribuição por Espécie" description="Animais ativos por categoria">
-          <div className="h-[300px]">
+          <div className="h-[200px] sm:h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -214,7 +216,7 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Row */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Recent Alerts */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
