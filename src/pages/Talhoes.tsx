@@ -1,26 +1,26 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { useGlobal } from '@/contexts/GlobalContext';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Skeleton } from '@/components/ui/skeleton';
-import { MapPin, Plus, Edit, Trash2, Maximize2, AlertCircle, Search } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { useGlobal } from "@/contexts/GlobalContext";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MapPin, Plus, Edit, Trash2, Maximize2, AlertCircle, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Talhao {
   id: string;
   nome: string;
   area_ha: number;
   cultura_atual?: string;
-  status?: string;
+  /*status?: string;*/
   localizacao?: string;
-  observacoes?: string;
+  /*observacoes?: string;*/
   propriedade_id: string;
   ativo: boolean;
   created_at: string;
@@ -31,27 +31,25 @@ export function Talhoes() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [talhaoEditando, setTalhaoEditando] = useState<Talhao | null>(null);
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = useState("");
 
   const { data: talhoes, isLoading } = useQuery({
-    queryKey: ['talhoes', propriedadeAtual?.id],
+    queryKey: ["talhoes", propriedadeAtual?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('talhoes')
-        .select('*')
-        .eq('propriedade_id', propriedadeAtual?.id)
-        .eq('ativo', true)
-        .order('nome');
+        .from("talhoes")
+        .select("*")
+        .eq("propriedade_id", propriedadeAtual?.id)
+        .eq("ativo", true)
+        .order("nome");
 
       if (error) throw error;
       return data as Talhao[];
     },
-    enabled: !!propriedadeAtual?.id
+    enabled: !!propriedadeAtual?.id,
   });
 
-  const talhoesFiltrados = talhoes?.filter(t =>
-    t.nome.toLowerCase().includes(busca.toLowerCase())
-  );
+  const talhoesFiltrados = talhoes?.filter((t) => t.nome.toLowerCase().includes(busca.toLowerCase()));
 
   const areaTotal = talhoes?.reduce((sum, t) => sum + (t.area_ha || 0), 0) || 0;
 
@@ -80,9 +78,7 @@ export function Talhoes() {
             <MapPin className="h-8 w-8 text-primary" />
             Talhões
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Gerencie as áreas de plantio de {propriedadeAtual.nome}
-          </p>
+          <p className="text-muted-foreground mt-1">Gerencie as áreas de plantio de {propriedadeAtual.nome}</p>
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -144,7 +140,7 @@ export function Talhoes() {
               <div>
                 <p className="text-sm text-muted-foreground">Área Média</p>
                 <p className="text-2xl font-bold">
-                  {talhoes?.length ? (areaTotal / talhoes.length).toFixed(2) : '0.00'} ha
+                  {talhoes?.length ? (areaTotal / talhoes.length).toFixed(2) : "0.00"} ha
                 </p>
               </div>
             </div>
@@ -166,7 +162,7 @@ export function Talhoes() {
       {/* Lista de Talhões */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
+          {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-48 w-full" />
           ))}
         </div>
@@ -175,13 +171,10 @@ export function Talhoes() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <MapPin className="h-16 w-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">
-              {busca ? 'Nenhum talhão encontrado' : 'Nenhum talhão cadastrado'}
+              {busca ? "Nenhum talhão encontrado" : "Nenhum talhão cadastrado"}
             </h3>
             <p className="text-muted-foreground text-center mb-4">
-              {busca 
-                ? 'Tente ajustar sua busca' 
-                : 'Crie seu primeiro talhão para organizar as áreas de plantio'
-              }
+              {busca ? "Tente ajustar sua busca" : "Crie seu primeiro talhão para organizar as áreas de plantio"}
             </p>
             {!busca && (
               <Button onClick={() => setDialogOpen(true)}>
@@ -193,7 +186,7 @@ export function Talhoes() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {talhoesFiltrados?.map(talhao => (
+          {talhoesFiltrados?.map((talhao) => (
             <TalhaoCard
               key={talhao.id}
               talhao={talhao}
@@ -215,23 +208,20 @@ function TalhaoCard({ talhao, onEdit }: { talhao: Talhao; onEdit: () => void }) 
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from('talhoes')
-        .update({ ativo: false })
-        .eq('id', talhao.id);
-      
+      const { error } = await supabase.from("talhoes").update({ ativo: false }).eq("id", talhao.id);
+
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'Talhão removido com sucesso' });
-      queryClient.invalidateQueries({ queryKey: ['talhoes'] });
+      toast({ title: "Talhão removido com sucesso" });
+      queryClient.invalidateQueries({ queryKey: ["talhoes"] });
     },
     onError: () => {
       toast({
-        title: 'Erro ao remover talhão',
-        variant: 'destructive'
+        title: "Erro ao remover talhão",
+        variant: "destructive",
       });
-    }
+    },
   });
 
   return (
@@ -242,9 +232,7 @@ function TalhaoCard({ talhao, onEdit }: { talhao: Talhao; onEdit: () => void }) 
             <h3 className="text-xl font-bold mb-1">{talhao.nome}</h3>
             <div className="flex items-center gap-2 text-sm">
               <Maximize2 className="h-4 w-4 text-muted-foreground" />
-              <span className="font-semibold text-green-600 dark:text-green-400 text-lg">
-                {talhao.area_ha} ha
-              </span>
+              <span className="font-semibold text-green-600 dark:text-green-400 text-lg">{talhao.area_ha} ha</span>
             </div>
           </div>
 
@@ -256,7 +244,7 @@ function TalhaoCard({ talhao, onEdit }: { talhao: Talhao; onEdit: () => void }) 
               variant="ghost"
               size="icon"
               onClick={() => {
-                if (confirm('Tem certeza que deseja remover este talhão?')) {
+                if (confirm("Tem certeza que deseja remover este talhão?")) {
                   deleteMutation.mutate();
                 }
               }}
@@ -278,33 +266,31 @@ function TalhaoCard({ talhao, onEdit }: { talhao: Talhao; onEdit: () => void }) 
         {talhao.status && (
           <div className="flex items-center gap-2 mb-2 text-sm">
             <span className="text-muted-foreground">Status:</span>
-            <span className={cn(
-              "font-medium",
-              talhao.status === 'plantado' && "text-green-600",
-              talhao.status === 'colhido' && "text-blue-600",
-              talhao.status === 'em_preparo' && "text-yellow-600"
-            )}>
+            <span
+              className={cn(
+                "font-medium",
+                talhao.status === "plantado" && "text-green-600",
+                talhao.status === "colhido" && "text-blue-600",
+                talhao.status === "em_preparo" && "text-yellow-600",
+              )}
+            >
               {talhao.status}
             </span>
           </div>
         )}
 
-        {talhao.observacoes && (
-          <p className="text-sm text-muted-foreground mt-3 line-clamp-2">
-            {talhao.observacoes}
-          </p>
-        )}
+        {talhao.observacoes && <p className="text-sm text-muted-foreground mt-3 line-clamp-2">{talhao.observacoes}</p>}
       </CardContent>
     </Card>
   );
 }
 
-function TalhaoForm({ 
-  talhao, 
+function TalhaoForm({
+  talhao,
   propriedadeId,
-  onSuccess 
-}: { 
-  talhao: Talhao | null; 
+  onSuccess,
+}: {
+  talhao: Talhao | null;
   propriedadeId: string;
   onSuccess: () => void;
 }) {
@@ -312,26 +298,26 @@ function TalhaoForm({
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
-    nome: talhao?.nome || '',
+    nome: talhao?.nome || "",
     area_ha: talhao?.area_ha || 0,
-    cultura_atual: talhao?.cultura_atual || '',
-    status: talhao?.status || '',
-    observacoes: talhao?.observacoes || ''
+    cultura_atual: talhao?.cultura_atual || "",
+    status: talhao?.status || "",
+    observacoes: talhao?.observacoes || "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.nome.trim()) {
-      newErrors.nome = 'Nome é obrigatório';
+      newErrors.nome = "Nome é obrigatório";
     }
-    
+
     if (formData.area_ha <= 0) {
-      newErrors.area_ha = 'Área deve ser maior que zero';
+      newErrors.area_ha = "Área deve ser maior que zero";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -339,36 +325,31 @@ function TalhaoForm({
   const mutation = useMutation({
     mutationFn: async () => {
       if (talhao) {
-        const { error } = await supabase
-          .from('talhoes')
-          .update(formData)
-          .eq('id', talhao.id);
-        
+        const { error } = await supabase.from("talhoes").update(formData).eq("id", talhao.id);
+
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('talhoes')
-          .insert({
-            ...formData,
-            propriedade_id: propriedadeId,
-            ativo: true
-          });
-        
+        const { error } = await supabase.from("talhoes").insert({
+          ...formData,
+          propriedade_id: propriedadeId,
+          ativo: true,
+        });
+
         if (error) throw error;
       }
     },
     onSuccess: () => {
-      toast({ title: `Talhão ${talhao ? 'atualizado' : 'criado'} com sucesso` });
-      queryClient.invalidateQueries({ queryKey: ['talhoes'] });
+      toast({ title: `Talhão ${talhao ? "atualizado" : "criado"} com sucesso` });
+      queryClient.invalidateQueries({ queryKey: ["talhoes"] });
       onSuccess();
     },
     onError: (error: Error) => {
       toast({
-        title: 'Erro ao salvar talhão',
+        title: "Erro ao salvar talhão",
         description: error.message,
-        variant: 'destructive'
+        variant: "destructive",
       });
-    }
+    },
   });
 
   const handleSubmit = () => {
@@ -380,7 +361,7 @@ function TalhaoForm({
   return (
     <div className="space-y-4">
       <DialogHeader>
-        <DialogTitle>{talhao ? 'Editar' : 'Novo'} Talhão</DialogTitle>
+        <DialogTitle>{talhao ? "Editar" : "Novo"} Talhão</DialogTitle>
       </DialogHeader>
 
       <div className="space-y-4">
@@ -388,13 +369,11 @@ function TalhaoForm({
           <Label>Nome do Talhão *</Label>
           <Input
             value={formData.nome}
-            onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+            onChange={(e) => setFormData((prev) => ({ ...prev, nome: e.target.value }))}
             placeholder="Ex: Talhão 01, Área Norte, etc."
-            className={errors.nome ? 'border-destructive' : ''}
+            className={errors.nome ? "border-destructive" : ""}
           />
-          {errors.nome && (
-            <p className="text-sm text-destructive mt-1">{errors.nome}</p>
-          )}
+          {errors.nome && <p className="text-sm text-destructive mt-1">{errors.nome}</p>}
         </div>
 
         <div>
@@ -403,21 +382,19 @@ function TalhaoForm({
             type="number"
             step="0.01"
             min="0"
-            value={formData.area_ha || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, area_ha: parseFloat(e.target.value) || 0 }))}
+            value={formData.area_ha || ""}
+            onChange={(e) => setFormData((prev) => ({ ...prev, area_ha: parseFloat(e.target.value) || 0 }))}
             placeholder="0.00"
-            className={errors.area_ha ? 'border-destructive' : ''}
+            className={errors.area_ha ? "border-destructive" : ""}
           />
-          {errors.area_ha && (
-            <p className="text-sm text-destructive mt-1">{errors.area_ha}</p>
-          )}
+          {errors.area_ha && <p className="text-sm text-destructive mt-1">{errors.area_ha}</p>}
         </div>
 
         <div>
           <Label>Cultura Atual</Label>
           <Input
             value={formData.cultura_atual}
-            onChange={(e) => setFormData(prev => ({ ...prev, cultura_atual: e.target.value }))}
+            onChange={(e) => setFormData((prev) => ({ ...prev, cultura_atual: e.target.value }))}
             placeholder="Ex: Soja, Milho, Algodão..."
           />
         </div>
@@ -426,7 +403,7 @@ function TalhaoForm({
           <Label>Status</Label>
           <Input
             value={formData.status}
-            onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+            onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
             placeholder="Ex: plantado, colhido, em preparo..."
           />
         </div>
@@ -435,7 +412,7 @@ function TalhaoForm({
           <Label>Observações</Label>
           <Textarea
             value={formData.observacoes}
-            onChange={(e) => setFormData(prev => ({ ...prev, observacoes: e.target.value }))}
+            onChange={(e) => setFormData((prev) => ({ ...prev, observacoes: e.target.value }))}
             placeholder="Informações adicionais sobre o talhão..."
             rows={3}
           />
@@ -446,11 +423,8 @@ function TalhaoForm({
         <Button variant="outline" onClick={onSuccess}>
           Cancelar
         </Button>
-        <Button
-          onClick={handleSubmit}
-          disabled={mutation.isPending}
-        >
-          {mutation.isPending ? 'Salvando...' : 'Salvar'}
+        <Button onClick={handleSubmit} disabled={mutation.isPending}>
+          {mutation.isPending ? "Salvando..." : "Salvar"}
         </Button>
       </div>
     </div>
