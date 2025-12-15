@@ -5,30 +5,17 @@ import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useServicos } from '@/hooks/useServicos'
 import { useTalhoes } from '@/hooks/useTalhoes'
+import { ItemLancamentoCard, type ItemLancamento } from '@/components/lancamentos/ItemLancamentoCard'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
-import { ArrowLeft, Save, Loader2 } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ArrowLeft, Save, Loader2, Package, AlertCircle, Plus } from 'lucide-react'
 
 // Interfaces
-interface ItemLancamento {
-  item_id: string
-  quantidade: number
-  custo_unitario?: number
-  custo_total?: number
-  detalhamento_lotes?: any
-  obrigatorio?: boolean
-  item?: {
-    id: string
-    nome: string
-    tipo: string
-    unidade_medida: string
-  }
-}
-
 interface LancamentoFormData {
   servico_id: string
   talhao_id?: string
@@ -359,20 +346,67 @@ export function LancamentoForm() {
             </Card>
           )}
 
-          {/* Placeholder para a Parte 2 - Lista de Itens */}
+          {/* SEÇÃO DE ITENS */}
           {formData.servico_id && !loadingItens && (
             <Card>
               <CardHeader>
-                <CardTitle>Itens do Lançamento</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Itens da Operação
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-sm">
-                  {formData.itens.length > 0 
-                    ? `${formData.itens.length} item(ns) carregado(s) do serviço`
-                    : 'Nenhum item vinculado a este serviço'
-                  }
-                </p>
-                {/* A lista detalhada de itens será implementada na Parte 2 */}
+
+              <CardContent className="space-y-4">
+                {formData.itens.length === 0 ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Este serviço não possui itens vinculados. Configure os itens do serviço para pré-carregar automaticamente.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <>
+                    {formData.itens.map((itemForm, index) => (
+                      <ItemLancamentoCard
+                        key={itemForm.item_id}
+                        itemForm={itemForm}
+                        onUpdate={(updated) => {
+                          const newItens = [...formData.itens]
+                          newItens[index] = updated
+                          setFormData(prev => ({ ...prev, itens: newItens }))
+                        }}
+                        onRemove={() => {
+                          if (itemForm.obrigatorio) {
+                            toast({
+                              title: 'Item obrigatório',
+                              description: 'Este item é obrigatório e não pode ser removido.',
+                              variant: 'destructive'
+                            })
+                            return
+                          }
+                          setFormData(prev => ({
+                            ...prev,
+                            itens: prev.itens.filter((_, i) => i !== index)
+                          }))
+                        }}
+                      />
+                    ))}
+
+                    {/* Resumo de Custos */}
+                    <Card className="bg-primary/5 border-primary/20">
+                      <CardContent className="py-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg font-semibold">Custo Total da Operação:</span>
+                          <span className="text-3xl font-bold text-primary">
+                            R$ {formData.itens
+                              .reduce((acc, item) => acc + (item.custo_total || 0), 0)
+                              .toFixed(2)}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
