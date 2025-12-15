@@ -14,7 +14,8 @@ import {
   Home,
   Wheat,
   X,
-  Leaf
+  Leaf,
+  Calendar
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
@@ -33,6 +34,11 @@ const routes = [
     label: 'Propriedades',
     icon: Home,
     href: '/propriedades',
+  },
+  {
+    label: 'Safras',
+    icon: Calendar,
+    href: '/safras',
   },
   {
     label: 'Talhões',

@@ -10,6 +10,7 @@ import { ForgotPassword } from '@/pages/ForgotPassword'
 // Páginas protegidas
 import Dashboard from '@/pages/Dashboard'
 import { Propriedades } from '@/pages/Propriedades'
+import { SafrasPage } from '@/pages/Safras'
 import { Talhoes } from '@/pages/Talhoes'
 import { Estoque } from '@/pages/Estoque'
 import { Itens } from '@/pages/Itens'
@@ -101,6 +102,7 @@ export function AppRoutes() {
       >
         <Route index element={<Dashboard />} />
         <Route path="propriedades" element={<Propriedades />} />
+        <Route path="safras" element={<SafrasPage />} />
         <Route path="talhoes" element={<Talhoes />} />
         <Route path="estoque" element={<Estoque />} />
         <Route path="itens" element={<Itens />} />
