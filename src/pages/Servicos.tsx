@@ -6,15 +6,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Wrench, Edit, Trash2, Search, MapPin, CheckCircle, Package } from 'lucide-react';
+import { ServicoForm } from '@/components/servicos/ServicoForm';
 
 interface Servico {
   id: string;
@@ -27,18 +25,6 @@ interface Servico {
   created_at: string;
   total_itens?: number;
 }
-
-const CATEGORIAS_SERVICO = [
-  'Preparo do Solo',
-  'Plantio',
-  'Adubação',
-  'Aplicação',
-  'Irrigação',
-  'Colheita',
-  'Transporte',
-  'Manutenção',
-  'Outros'
-];
 
 export function Servicos() {
   const { propriedadeAtual } = useGlobal();
@@ -121,7 +107,7 @@ export function Servicos() {
               Novo Serviço
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl">
             <ServicoForm
               servico={servicoEditando}
               onSuccess={() => {
@@ -376,154 +362,6 @@ function ServicoCard({ servico, onEdit }: { servico: Servico; onEdit: () => void
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function ServicoForm({ servico, onSuccess }: { servico: Servico | null; onSuccess: () => void }) {
-  const { propriedadeAtual } = useGlobal();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const [formData, setFormData] = useState({
-    nome: servico?.nome || '',
-    descricao: servico?.descricao || '',
-    categoria: servico?.categoria || '',
-    requer_talhao: servico?.requer_talhao ?? true
-  });
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.nome.trim()) {
-      newErrors.nome = 'Nome é obrigatório';
-    }
-    
-    if (!formData.categoria) {
-      newErrors.categoria = 'Categoria é obrigatória';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      if (!validate()) throw new Error('Dados inválidos');
-
-      const dataToSave = {
-        nome: formData.nome.trim(),
-        descricao: formData.descricao.trim() || null,
-        categoria: formData.categoria,
-        requer_talhao: formData.requer_talhao,
-        propriedade_id: propriedadeAtual?.id
-      };
-
-      if (servico) {
-        const { error } = await supabase
-          .from('servicos')
-          .update(dataToSave)
-          .eq('id', servico.id);
-        
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('servicos')
-          .insert(dataToSave);
-        
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      toast({ title: `Serviço ${servico ? 'atualizado' : 'criado'} com sucesso` });
-      queryClient.invalidateQueries({ queryKey: ['servicos'] });
-      onSuccess();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Erro ao salvar serviço',
-        description: error.message,
-        variant: 'destructive'
-      });
-    }
-  });
-
-  return (
-    <div className="space-y-4">
-      <DialogHeader>
-        <DialogTitle>{servico ? 'Editar' : 'Novo'} Serviço</DialogTitle>
-      </DialogHeader>
-
-      <div className="space-y-4">
-        <div>
-          <Label>Nome do Serviço *</Label>
-          <Input
-            value={formData.nome}
-            onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-            placeholder="Ex: Adubação de Cobertura, Plantio, Colheita"
-            maxLength={200}
-            className={errors.nome ? 'border-destructive' : ''}
-          />
-          {errors.nome && <p className="text-xs text-destructive mt-1">{errors.nome}</p>}
-        </div>
-
-        <div>
-          <Label>Categoria *</Label>
-          <Select 
-            value={formData.categoria} 
-            onValueChange={(value) => setFormData(prev => ({ ...prev, categoria: value }))}
-          >
-            <SelectTrigger className={errors.categoria ? 'border-destructive' : ''}>
-              <SelectValue placeholder="Selecione uma categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIAS_SERVICO.map(cat => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.categoria && <p className="text-xs text-destructive mt-1">{errors.categoria}</p>}
-        </div>
-
-        <div>
-          <Label>Descrição (opcional)</Label>
-          <Textarea
-            value={formData.descricao}
-            onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
-            placeholder="Descreva detalhes sobre este serviço..."
-            rows={3}
-          />
-        </div>
-
-        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-          <div>
-            <Label className="text-base">Requer Talhão</Label>
-            <p className="text-sm text-muted-foreground">
-              Este serviço precisa de um talhão selecionado para ser executado
-            </p>
-          </div>
-          <Switch
-            checked={formData.requer_talhao}
-            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, requer_talhao: checked }))}
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2 pt-4">
-        <Button variant="outline" onClick={onSuccess}>
-          Cancelar
-        </Button>
-        <Button
-          onClick={() => mutation.mutate()}
-          disabled={mutation.isPending}
-        >
-          {mutation.isPending ? 'Salvando...' : 'Salvar'}
-        </Button>
-      </div>
-    </div>
   );
 }
 
