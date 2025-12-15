@@ -11,9 +11,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Package, Search, AlertTriangle, DollarSign, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LotesDialog } from '@/components/estoque/LotesDialog';
 
 interface ProdutoComCusto {
   produto_id: string;
@@ -28,18 +28,6 @@ interface ProdutoComCusto {
   total_lotes: number;
 }
 
-interface Lote {
-  id: string;
-  produto_id: string;
-  nota_fiscal?: string;
-  fornecedor?: string;
-  quantidade_original: number;
-  quantidade_disponivel: number;
-  custo_unitario: number;
-  data_entrada: string;
-  data_validade?: string;
-  created_at: string;
-}
 
 interface Produto {
   id: string;
@@ -367,103 +355,6 @@ function ProdutoCard({
   );
 }
 
-function LotesDialog({ produto, onClose }: { produto: ProdutoComCusto; onClose: () => void }) {
-  const { data: lotes, isLoading } = useQuery({
-    queryKey: ['lotes', produto.produto_id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('lotes')
-        .select('*')
-        .eq('produto_id', produto.produto_id)
-        .gt('quantidade_disponivel', 0)
-        .order('data_entrada', { ascending: true });
-
-      if (error) throw error;
-      return data as Lote[];
-    }
-  });
-
-  return (
-    <div className="space-y-4">
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2">
-          <Package className="h-5 w-5" />
-          Lotes FIFO - {produto.nome}
-        </DialogTitle>
-      </DialogHeader>
-
-      <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">Saldo Total</p>
-          <p className="text-xl font-bold">{produto.saldo_atual} {produto.unidade_medida}</p>
-        </div>
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">Custo Médio</p>
-          <p className="text-xl font-bold">R$ {produto.custo_medio?.toFixed(2)}</p>
-        </div>
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">Valor Total</p>
-          <p className="text-xl font-bold">R$ {produto.valor_imobilizado?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-        </div>
-      </div>
-
-      {isLoading ? (
-        <Skeleton className="h-48 w-full" />
-      ) : lotes?.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          Nenhum lote disponível
-        </div>
-      ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ordem FIFO</TableHead>
-                <TableHead>Data Entrada</TableHead>
-                <TableHead>Nota Fiscal</TableHead>
-                <TableHead>Fornecedor</TableHead>
-                <TableHead className="text-right">Qtd. Disponível</TableHead>
-                <TableHead className="text-right">Custo Unit.</TableHead>
-                <TableHead className="text-right">Subtotal</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lotes?.map((lote, index) => (
-                <TableRow key={lote.id}>
-                  <TableCell>
-                    <Badge variant={index === 0 ? 'default' : 'outline'}>
-                      {index + 1}º
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(lote.data_entrada).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell>{lote.nota_fiscal || '-'}</TableCell>
-                  <TableCell>{lote.fornecedor || '-'}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    {lote.quantidade_disponivel.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    R$ {lote.custo_unitario.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    R$ {(lote.quantidade_disponivel * lote.custo_unitario).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={onClose}>
-          Fechar
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 function EntradaEstoqueForm({ onSuccess }: { onSuccess: () => void }) {
   const { propriedadeAtual } = useGlobal();
