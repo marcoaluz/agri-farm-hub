@@ -15,6 +15,7 @@ import { Estoque } from '@/pages/Estoque'
 import { Itens } from '@/pages/Itens'
 import { Servicos } from '@/pages/Servicos'
 import { Lancamentos } from '@/pages/Lancamentos'
+import { LancamentoForm } from '@/pages/LancamentoForm'
 import { Maquinas } from '@/pages/Maquinas'
 import { Financeiro } from '@/pages/Financeiro'
 import { Relatorios } from '@/pages/Relatorios'
@@ -105,6 +106,8 @@ export function AppRoutes() {
         <Route path="itens" element={<Itens />} />
         <Route path="servicos" element={<Servicos />} />
         <Route path="lancamentos" element={<Lancamentos />} />
+        <Route path="lancamentos/novo" element={<LancamentoForm />} />
+        <Route path="lancamentos/:id" element={<LancamentoForm />} />
         <Route path="maquinas" element={<Maquinas />} />
         <Route path="financeiro" element={<Financeiro />} />
         <Route path="relatorios" element={<Relatorios />} />
