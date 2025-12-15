@@ -14,11 +14,10 @@ interface Maquina {
   propriedade_id: string;
   nome: string;
   modelo?: string;
-  fabricante?: string;
   ano_fabricacao?: number;
-  placa?: string;
+  horimetro_inicial: number;
   horimetro_atual: number;
-  custo_hora: number;
+  custo_hora?: number;
   ativo: boolean;
   created_at: string;
 }
@@ -36,11 +35,10 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
   const [formData, setFormData] = useState({
     nome: '',
     modelo: '',
-    fabricante: '',
     ano_fabricacao: '',
-    placa: '',
+    horimetro_inicial: 0,
     horimetro_atual: 0,
-    custo_hora: 0
+    custo_hora: ''
   });
 
   useEffect(() => {
@@ -48,11 +46,10 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
       setFormData({
         nome: maquina.nome,
         modelo: maquina.modelo || '',
-        fabricante: maquina.fabricante || '',
         ano_fabricacao: maquina.ano_fabricacao?.toString() || '',
-        placa: maquina.placa || '',
+        horimetro_inicial: maquina.horimetro_inicial,
         horimetro_atual: maquina.horimetro_atual,
-        custo_hora: maquina.custo_hora
+        custo_hora: maquina.custo_hora?.toString() || ''
       });
     }
   }, [maquina]);
@@ -63,11 +60,10 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
         propriedade_id: propriedadeAtual?.id,
         nome: formData.nome,
         modelo: formData.modelo || null,
-        fabricante: formData.fabricante || null,
         ano_fabricacao: formData.ano_fabricacao ? parseInt(formData.ano_fabricacao) : null,
-        placa: formData.placa || null,
+        horimetro_inicial: formData.horimetro_inicial,
         horimetro_atual: formData.horimetro_atual,
-        custo_hora: formData.custo_hora
+        custo_hora: formData.custo_hora ? parseFloat(formData.custo_hora) : null
       };
 
       if (maquina) {
@@ -122,26 +118,14 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label>Fabricante</Label>
-            <Input
-              value={formData.fabricante}
-              onChange={(e) => setFormData(prev => ({ ...prev, fabricante: e.target.value }))}
-              placeholder="Ex: John Deere"
-              maxLength={200}
-            />
-          </div>
-          <div>
             <Label>Modelo</Label>
             <Input
               value={formData.modelo}
               onChange={(e) => setFormData(prev => ({ ...prev, modelo: e.target.value }))}
               placeholder="Ex: 6145J"
-              maxLength={200}
+              maxLength={100}
             />
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Ano de Fabricação</Label>
             <Input
@@ -153,18 +137,23 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
               max={new Date().getFullYear() + 1}
             />
           </div>
-          <div>
-            <Label>Placa</Label>
-            <Input
-              value={formData.placa}
-              onChange={(e) => setFormData(prev => ({ ...prev, placa: e.target.value.toUpperCase() }))}
-              placeholder="Ex: ABC1D23"
-              maxLength={20}
-            />
-          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label>Horímetro Inicial (h)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.horimetro_inicial || ''}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                horimetro_inicial: parseFloat(e.target.value) || 0 
+              }))}
+              placeholder="0.00"
+            />
+          </div>
           <div>
             <Label>Horímetro Atual (h)</Label>
             <Input
@@ -179,20 +168,18 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
               placeholder="0.00"
             />
           </div>
-          <div>
-            <Label>Custo por Hora (R$)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.custo_hora || ''}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                custo_hora: parseFloat(e.target.value) || 0 
-              }))}
-              placeholder="0.00"
-            />
-          </div>
+        </div>
+
+        <div>
+          <Label>Custo por Hora (R$)</Label>
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.custo_hora}
+            onChange={(e) => setFormData(prev => ({ ...prev, custo_hora: e.target.value }))}
+            placeholder="0.00"
+          />
         </div>
       </div>
 

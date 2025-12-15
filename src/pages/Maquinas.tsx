@@ -18,11 +18,10 @@ interface Maquina {
   propriedade_id: string;
   nome: string;
   modelo?: string;
-  fabricante?: string;
   ano_fabricacao?: number;
-  placa?: string;
+  horimetro_inicial: number;
   horimetro_atual: number;
-  custo_hora: number;
+  custo_hora?: number;
   ativo: boolean;
   created_at: string;
 }
@@ -53,14 +52,13 @@ export function Maquinas() {
 
   const maquinasFiltradas = maquinas?.filter(m =>
     m.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    m.modelo?.toLowerCase().includes(busca.toLowerCase()) ||
-    m.fabricante?.toLowerCase().includes(busca.toLowerCase()) ||
-    m.placa?.toLowerCase().includes(busca.toLowerCase())
+    m.modelo?.toLowerCase().includes(busca.toLowerCase())
   );
 
   const totalMaquinas = maquinas?.length || 0;
-  const custoMedioHora = maquinas?.length 
-    ? maquinas.reduce((sum, m) => sum + m.custo_hora, 0) / maquinas.length
+  const maquinasComCusto = maquinas?.filter(m => m.custo_hora != null) || [];
+  const custoMedioHora = maquinasComCusto.length 
+    ? maquinasComCusto.reduce((sum, m) => sum + (m.custo_hora || 0), 0) / maquinasComCusto.length
     : 0;
   const horimetroTotal = maquinas?.reduce((sum, m) => sum + m.horimetro_atual, 0) || 0;
 
@@ -176,7 +174,7 @@ export function Maquinas() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar por nome, modelo, fabricante ou placa..."
+          placeholder="Buscar por nome ou modelo..."
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           className="pl-9"
@@ -220,24 +218,17 @@ export function Maquinas() {
                     </div>
                     <div>
                       <h3 className="text-lg font-bold">{maquina.nome}</h3>
-                      {maquina.fabricante && (
-                        <p className="text-sm text-muted-foreground">{maquina.fabricante}</p>
+                      {maquina.modelo && (
+                        <p className="text-sm text-muted-foreground">{maquina.modelo}</p>
                       )}
                     </div>
                   </div>
                   <Badge variant="default" className="bg-success">Ativo</Badge>
                 </div>
 
-                {maquina.modelo && (
-                  <p className="text-sm font-medium mb-2">{maquina.modelo}</p>
-                )}
-
                 <div className="flex flex-wrap gap-2 mb-4">
                   {maquina.ano_fabricacao && (
                     <Badge variant="outline">{maquina.ano_fabricacao}</Badge>
-                  )}
-                  {maquina.placa && (
-                    <Badge variant="outline" className="font-mono">{maquina.placa}</Badge>
                   )}
                 </div>
 
@@ -250,9 +241,17 @@ export function Maquinas() {
                       {maquina.horimetro_atual.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}h
                     </span>
                   </div>
+                  {maquina.horimetro_inicial > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Horímetro Inicial</span>
+                      <span className="font-medium">{maquina.horimetro_inicial.toLocaleString('pt-BR')}h</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Custo/Hora</span>
-                    <span className="font-medium">R$ {maquina.custo_hora.toFixed(2)}</span>
+                    <span className="font-medium">
+                      {maquina.custo_hora != null ? `R$ ${maquina.custo_hora.toFixed(2)}` : 'Não definido'}
+                    </span>
                   </div>
                 </div>
 
