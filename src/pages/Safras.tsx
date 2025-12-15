@@ -18,8 +18,8 @@ import { cn } from "@/lib/utils";
 interface Safra {
   id: string;
   nome: string;
-  ano_inicio: string;
-  ano_fim: string;
+  ano_inicio: int4;
+  ano_fim: int4;
   ativa: boolean;
   propriedade_id: string;
   created_at: string;
