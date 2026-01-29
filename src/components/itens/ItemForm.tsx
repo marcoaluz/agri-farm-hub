@@ -83,28 +83,30 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
   const tipoSelecionado = watch('tipo') as ItemTipo
   const maquinaId = watch('maquina_id')
 
-  // Reset form quando item muda
+  // Reset form quando dialog abre ou item muda
   useEffect(() => {
-    if (item) {
-      reset({
-        nome: item.nome,
-        tipo: item.tipo,
-        categoria: item.categoria || '',
-        unidade_medida: item.unidade_medida,
-        produto_id: item.produto_id || undefined,
-        maquina_id: item.maquina_id || undefined,
-        custo_padrao: item.custo_padrao || undefined,
-      })
-    } else {
-      reset({
-        nome: '',
-        tipo: 'produto_estoque',
-        categoria: '',
-        unidade_medida: '',
-        custo_padrao: undefined,
-      })
+    if (open) {
+      if (item) {
+        reset({
+          nome: item.nome,
+          tipo: item.tipo,
+          categoria: item.categoria || '',
+          unidade_medida: item.unidade_medida,
+          produto_id: item.produto_id || undefined,
+          maquina_id: item.maquina_id || undefined,
+          custo_padrao: item.custo_padrao || undefined,
+        })
+      } else {
+        reset({
+          nome: '',
+          tipo: 'produto_estoque',
+          categoria: '',
+          unidade_medida: 'kg',
+          custo_padrao: undefined,
+        })
+      }
     }
-  }, [item, reset])
+  }, [open, item, reset])
 
   // Auto preencher custo quando seleciona máquina
   useEffect(() => {
@@ -116,14 +118,15 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
     }
   }, [maquinaId, maquinas, tipoSelecionado, setValue])
 
-  // Reset campos dependentes quando tipo muda
-  useEffect(() => {
+  // Handler para mudança de tipo
+  const handleTipoChange = (value: ItemTipo) => {
+    setValue('tipo', value)
     setValue('categoria', '')
-    setValue('unidade_medida', tipoSelecionado === 'maquina_hora' ? 'hora' : '')
+    setValue('unidade_medida', value === 'maquina_hora' ? 'hora' : '')
     setValue('produto_id', undefined)
     setValue('maquina_id', undefined)
     setValue('custo_padrao', undefined)
-  }, [tipoSelecionado, setValue])
+  }
 
   const onSubmit = async (data: ItemFormData) => {
     if (!propriedadeAtual) return
@@ -182,7 +185,7 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
             <Label htmlFor="tipo">Tipo *</Label>
             <Select
               value={tipoSelecionado}
-              onValueChange={(value) => setValue('tipo', value as ItemTipo)}
+              onValueChange={(value) => handleTipoChange(value as ItemTipo)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o tipo" />
