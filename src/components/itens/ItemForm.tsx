@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -58,32 +58,27 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
   const { propriedadeAtual } = useGlobal()
   const createItem = useCreateItem()
   const updateItem = useUpdateItem()
+  const [formReady, setFormReady] = useState(false)
   
   const { data: produtos = [] } = useProdutosParaVincular(propriedadeAtual?.id)
   const { data: maquinas = [] } = useMaquinasParaVincular(propriedadeAtual?.id)
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    reset,
-    formState: { errors, isSubmitting }
-  } = useForm<ItemFormData>({
+  const form = useForm<ItemFormData>({
     resolver: zodResolver(itemSchema),
     defaultValues: {
       nome: '',
       tipo: 'produto_estoque',
       categoria: '',
-      unidade_medida: '',
+      unidade_medida: 'kg',
       custo_padrao: undefined,
     }
   })
 
-  const tipoSelecionado = watch('tipo') as ItemTipo
-  const maquinaId = watch('maquina_id')
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = form
 
-  // Reset form quando dialog abre ou item muda
+  const tipoSelecionado = watch('tipo') as ItemTipo
+
+  // Inicializa form quando dialog abre
   useEffect(() => {
     if (open) {
       if (item) {
@@ -105,10 +100,14 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
           custo_padrao: undefined,
         })
       }
+      setFormReady(true)
+    } else {
+      setFormReady(false)
     }
   }, [open, item, reset])
 
   // Auto preencher custo quando seleciona máquina
+  const maquinaId = watch('maquina_id')
   useEffect(() => {
     if (maquinaId && tipoSelecionado === 'maquina_hora') {
       const maquina = maquinas.find(m => m.id === maquinaId)
@@ -118,11 +117,10 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
     }
   }, [maquinaId, maquinas, tipoSelecionado, setValue])
 
-  // Handler para mudança de tipo
   const handleTipoChange = (value: ItemTipo) => {
     setValue('tipo', value)
     setValue('categoria', '')
-    setValue('unidade_medida', value === 'maquina_hora' ? 'hora' : '')
+    setValue('unidade_medida', value === 'maquina_hora' ? 'hora' : 'kg')
     setValue('produto_id', undefined)
     setValue('maquina_id', undefined)
     setValue('custo_padrao', undefined)
@@ -165,172 +163,171 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Nome */}
-          <div className="space-y-1.5">
-            <Label htmlFor="nome">Nome *</Label>
-            <Input
-              id="nome"
-              {...register('nome')}
-              placeholder="Ex: Ureia 46%"
-              maxLength={255}
-            />
-            {errors.nome && (
-              <p className="text-xs text-destructive">{errors.nome.message}</p>
-            )}
-          </div>
-
-          {/* Tipo */}
-          <div className="space-y-1.5">
-            <Label htmlFor="tipo">Tipo *</Label>
-            <Select
-              value={tipoSelecionado}
-              onValueChange={(value) => handleTipoChange(value as ItemTipo)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="produto_estoque">📦 Produto de Estoque</SelectItem>
-                <SelectItem value="servico">⚙️ Serviço</SelectItem>
-                <SelectItem value="maquina_hora">🚜 Hora de Máquina</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.tipo && (
-              <p className="text-xs text-destructive">{errors.tipo.message}</p>
-            )}
-          </div>
-
-          {/* Categoria */}
-          <div className="space-y-1.5">
-            <Label htmlFor="categoria">Categoria</Label>
-            <Select
-              value={watch('categoria') || ''}
-              onValueChange={(value) => setValue('categoria', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a categoria (opcional)" />
-              </SelectTrigger>
-              <SelectContent>
-                {categoriasPorTipo[tipoSelecionado]?.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.categoria && (
-              <p className="text-xs text-destructive">{errors.categoria.message}</p>
-            )}
-          </div>
-
-          {/* Unidade de Medida */}
-          <div className="space-y-1.5">
-            <Label htmlFor="unidade_medida">Unidade de Medida *</Label>
-            <Select
-              value={watch('unidade_medida')}
-              onValueChange={(value) => setValue('unidade_medida', value)}
-              disabled={tipoSelecionado === 'maquina_hora'}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a unidade" />
-              </SelectTrigger>
-              <SelectContent>
-                {unidadesPorTipo[tipoSelecionado]?.map((unidade) => (
-                  <SelectItem key={unidade} value={unidade}>{unidade}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.unidade_medida && (
-              <p className="text-xs text-destructive">{errors.unidade_medida.message}</p>
-            )}
-          </div>
-
-          {/* Vínculo com Produto (apenas para produto_estoque) */}
-          {tipoSelecionado === 'produto_estoque' && (
+        {formReady && (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Nome */}
             <div className="space-y-1.5">
-              <Label htmlFor="produto_id">Vincular Produto (opcional)</Label>
-              <Select
-                value={watch('produto_id') || ''}
-                onValueChange={(value) => setValue('produto_id', value || undefined)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um produto" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
-                  {produtos.map((produto) => (
-                    <SelectItem key={produto.id} value={produto.id}>
-                      {produto.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Vínculo com Máquina (apenas para maquina_hora) */}
-          {tipoSelecionado === 'maquina_hora' && (
-            <div className="space-y-1.5">
-              <Label htmlFor="maquina_id">Vincular Máquina (opcional)</Label>
-              <Select
-                value={watch('maquina_id') || ''}
-                onValueChange={(value) => setValue('maquina_id', value || undefined)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma máquina" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
-                  {maquinas.map((maquina) => (
-                    <SelectItem key={maquina.id} value={maquina.id}>
-                      {maquina.nome} {maquina.custo_hora ? `(R$ ${maquina.custo_hora}/h)` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Custo Padrão (para serviço e máquina) */}
-          {(tipoSelecionado === 'servico' || tipoSelecionado === 'maquina_hora') && (
-            <div className="space-y-1.5">
-              <Label htmlFor="custo_padrao">
-                {tipoSelecionado === 'maquina_hora' ? 'Custo por Hora (R$)' : 'Custo Padrão (R$)'}
-              </Label>
+              <Label htmlFor="nome">Nome *</Label>
               <Input
-                id="custo_padrao"
-                type="number"
-                step="0.01"
-                min="0"
-                {...register('custo_padrao', { valueAsNumber: true })}
-                placeholder="0,00"
+                id="nome"
+                {...register('nome')}
+                placeholder="Ex: Ureia 46%"
+                maxLength={255}
               />
-              {errors.custo_padrao && (
-                <p className="text-xs text-destructive">{errors.custo_padrao.message}</p>
+              {errors.nome && (
+                <p className="text-xs text-destructive">{errors.nome.message}</p>
               )}
             </div>
-          )}
 
-          <DialogFooter className="gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isPending}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                item ? 'Salvar Alterações' : 'Cadastrar'
+            {/* Tipo */}
+            <div className="space-y-1.5">
+              <Label htmlFor="tipo">Tipo *</Label>
+              <Select
+                value={tipoSelecionado}
+                onValueChange={(value) => handleTipoChange(value as ItemTipo)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="produto_estoque">📦 Produto de Estoque</SelectItem>
+                  <SelectItem value="servico">⚙️ Serviço</SelectItem>
+                  <SelectItem value="maquina_hora">🚜 Hora de Máquina</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.tipo && (
+                <p className="text-xs text-destructive">{errors.tipo.message}</p>
               )}
-            </Button>
-          </DialogFooter>
-        </form>
+            </div>
+
+            {/* Categoria */}
+            <div className="space-y-1.5">
+              <Label htmlFor="categoria">Categoria</Label>
+              <Select
+                value={watch('categoria') || ''}
+                onValueChange={(value) => setValue('categoria', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a categoria (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoriasPorTipo[tipoSelecionado]?.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Unidade de Medida */}
+            <div className="space-y-1.5">
+              <Label htmlFor="unidade_medida">Unidade de Medida *</Label>
+              <Select
+                value={watch('unidade_medida') || ''}
+                onValueChange={(value) => setValue('unidade_medida', value)}
+                disabled={tipoSelecionado === 'maquina_hora'}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a unidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unidadesPorTipo[tipoSelecionado]?.map((unidade) => (
+                    <SelectItem key={unidade} value={unidade}>{unidade}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.unidade_medida && (
+                <p className="text-xs text-destructive">{errors.unidade_medida.message}</p>
+              )}
+            </div>
+
+            {/* Vínculo com Produto (apenas para produto_estoque) */}
+            {tipoSelecionado === 'produto_estoque' && produtos.length > 0 && (
+              <div className="space-y-1.5">
+                <Label htmlFor="produto_id">Vincular Produto (opcional)</Label>
+                <Select
+                  value={watch('produto_id') || ''}
+                  onValueChange={(value) => setValue('produto_id', value || undefined)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um produto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {produtos.map((produto) => (
+                      <SelectItem key={produto.id} value={produto.id}>
+                        {produto.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Vínculo com Máquina (apenas para maquina_hora) */}
+            {tipoSelecionado === 'maquina_hora' && maquinas.length > 0 && (
+              <div className="space-y-1.5">
+                <Label htmlFor="maquina_id">Vincular Máquina (opcional)</Label>
+                <Select
+                  value={watch('maquina_id') || ''}
+                  onValueChange={(value) => setValue('maquina_id', value || undefined)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma máquina" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhuma</SelectItem>
+                    {maquinas.map((maquina) => (
+                      <SelectItem key={maquina.id} value={maquina.id}>
+                        {maquina.nome} {maquina.custo_hora ? `(R$ ${maquina.custo_hora}/h)` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Custo Padrão (para serviço e máquina) */}
+            {(tipoSelecionado === 'servico' || tipoSelecionado === 'maquina_hora') && (
+              <div className="space-y-1.5">
+                <Label htmlFor="custo_padrao">
+                  {tipoSelecionado === 'maquina_hora' ? 'Custo por Hora (R$)' : 'Custo Padrão (R$)'}
+                </Label>
+                <Input
+                  id="custo_padrao"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...register('custo_padrao', { valueAsNumber: true })}
+                  placeholder="0,00"
+                />
+                {errors.custo_padrao && (
+                  <p className="text-xs text-destructive">{errors.custo_padrao.message}</p>
+                )}
+              </div>
+            )}
+
+            <DialogFooter className="gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  item ? 'Salvar Alterações' : 'Cadastrar'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   )
