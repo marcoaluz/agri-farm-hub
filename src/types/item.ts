@@ -44,6 +44,20 @@ export interface CreateItemDTO {
   descricao?: string
 }
 
-export interface UpdateItemDTO extends Partial<CreateItemDTO> {
+export interface UpdateItemDTO extends Partial<Omit<CreateItemDTO, 'unidade_medida'>> {
+  unidade_medida?: string
   ativo?: boolean
+}
+
+// Helper type for form data where unidade_medida is string
+export interface ItemFormPayload {
+  propriedade_id: string
+  nome: string
+  tipo: ItemTipo
+  categoria: string
+  unidade_medida: string
+  descricao?: string
+  produto_id?: string
+  maquina_id?: string
+  custo_padrao?: number
 }
