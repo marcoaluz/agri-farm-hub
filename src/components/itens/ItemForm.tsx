@@ -6,7 +6,6 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -26,11 +25,10 @@ import { useCreateItem, useUpdateItem, useProdutosParaVincular, useMaquinasParaV
 import type { ItemComCusto, ItemTipo, ItemUnidade, ItemFormPayload } from '@/types/item'
 
 const itemSchema = z.object({
-  nome: z.string().min(1, 'Nome é obrigatório').max(200, 'Nome deve ter no máximo 200 caracteres'),
+  nome: z.string().min(1, 'Nome é obrigatório').max(255, 'Nome deve ter no máximo 255 caracteres'),
   tipo: z.enum(['produto_estoque', 'servico', 'maquina_hora'], { required_error: 'Tipo é obrigatório' }),
-  categoria: z.string().min(1, 'Categoria é obrigatória'),
+  categoria: z.string().max(100, 'Categoria deve ter no máximo 100 caracteres').optional(),
   unidade_medida: z.string().min(1, 'Unidade é obrigatória'),
-  descricao: z.string().max(500, 'Descrição deve ter no máximo 500 caracteres').optional(),
   produto_id: z.string().optional(),
   maquina_id: z.string().optional(),
   custo_padrao: z.number().min(0, 'Custo deve ser positivo').optional(),
@@ -78,7 +76,6 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
       tipo: 'produto_estoque',
       categoria: '',
       unidade_medida: '',
-      descricao: '',
       custo_padrao: undefined,
     }
   })
@@ -92,9 +89,8 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
       reset({
         nome: item.nome,
         tipo: item.tipo,
-        categoria: item.categoria,
+        categoria: item.categoria || '',
         unidade_medida: item.unidade_medida,
-        descricao: item.descricao || '',
         produto_id: item.produto_id || undefined,
         maquina_id: item.maquina_id || undefined,
         custo_padrao: item.custo_padrao || undefined,
@@ -105,7 +101,6 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
         tipo: 'produto_estoque',
         categoria: '',
         unidade_medida: '',
-        descricao: '',
         custo_padrao: undefined,
       })
     }
@@ -137,12 +132,11 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
       propriedade_id: propriedadeAtual.id,
       nome: data.nome.trim(),
       tipo: data.tipo,
-      categoria: data.categoria,
+      categoria: data.categoria?.trim() || null,
       unidade_medida: data.unidade_medida,
-      descricao: data.descricao?.trim() || undefined,
-      produto_id: data.tipo === 'produto_estoque' ? data.produto_id : undefined,
-      maquina_id: data.tipo === 'maquina_hora' ? data.maquina_id : undefined,
-      custo_padrao: data.custo_padrao,
+      produto_id: data.tipo === 'produto_estoque' ? data.produto_id || null : null,
+      maquina_id: data.tipo === 'maquina_hora' ? data.maquina_id || null : null,
+      custo_padrao: data.custo_padrao || null,
     }
 
     try {
@@ -176,7 +170,7 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
               id="nome"
               {...register('nome')}
               placeholder="Ex: Ureia 46%"
-              maxLength={200}
+              maxLength={255}
             />
             {errors.nome && (
               <p className="text-xs text-destructive">{errors.nome.message}</p>
@@ -206,13 +200,13 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
 
           {/* Categoria */}
           <div className="space-y-1.5">
-            <Label htmlFor="categoria">Categoria *</Label>
+            <Label htmlFor="categoria">Categoria</Label>
             <Select
-              value={watch('categoria')}
+              value={watch('categoria') || ''}
               onValueChange={(value) => setValue('categoria', value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selecione a categoria" />
+                <SelectValue placeholder="Selecione a categoria (opcional)" />
               </SelectTrigger>
               <SelectContent>
                 {categoriasPorTipo[tipoSelecionado]?.map((cat) => (
@@ -312,21 +306,6 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
               )}
             </div>
           )}
-
-          {/* Descrição */}
-          <div className="space-y-1.5">
-            <Label htmlFor="descricao">Descrição (opcional)</Label>
-            <Textarea
-              id="descricao"
-              {...register('descricao')}
-              placeholder="Observações sobre o item..."
-              maxLength={500}
-              rows={3}
-            />
-            {errors.descricao && (
-              <p className="text-xs text-destructive">{errors.descricao.message}</p>
-            )}
-          </div>
 
           <DialogFooter className="gap-2 pt-4">
             <Button

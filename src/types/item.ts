@@ -12,18 +12,16 @@ export interface Item {
   propriedade_id: string
   nome: string
   tipo: ItemTipo
-  categoria: string
+  categoria?: string | null
   unidade_medida: ItemUnidade
   
   // Vínculos opcionais
-  produto_id?: string
-  maquina_id?: string
+  produto_id?: string | null
+  maquina_id?: string | null
   
-  custo_padrao?: number
-  descricao?: string
+  custo_padrao?: number | null
   ativo: boolean
   created_at?: string
-  updated_at?: string
 }
 
 export interface ItemComCusto extends Item {
@@ -36,12 +34,11 @@ export interface CreateItemDTO {
   propriedade_id: string
   nome: string
   tipo: ItemTipo
-  categoria: string
+  categoria?: string | null
   unidade_medida: ItemUnidade
-  produto_id?: string
-  maquina_id?: string
-  custo_padrao?: number
-  descricao?: string
+  produto_id?: string | null
+  maquina_id?: string | null
+  custo_padrao?: number | null
 }
 
 export interface UpdateItemDTO extends Partial<Omit<CreateItemDTO, 'unidade_medida'>> {
@@ -54,10 +51,9 @@ export interface ItemFormPayload {
   propriedade_id: string
   nome: string
   tipo: ItemTipo
-  categoria: string
+  categoria?: string | null
   unidade_medida: string
-  descricao?: string
-  produto_id?: string
-  maquina_id?: string
-  custo_padrao?: number
+  produto_id?: string | null
+  maquina_id?: string | null
+  custo_padrao?: number | null
 }
