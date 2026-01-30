@@ -38,14 +38,20 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   });
 
   // Buscar produtos
-  const { data: produtos } = useQuery({
+  const {
+    data: produtos = [],
+    isLoading: produtosLoading,
+    error: produtosError,
+  } = useQuery({
     queryKey: ['produtos', propriedadeAtual?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('produtos')
         .select('*')
         .eq('propriedade_id', propriedadeAtual?.id)
-        .eq('ativo', true)
+        // Alguns bancos deixam `ativo` como NULL mesmo com default true.
+        // Tratar NULL como ativo para não “sumir” produto do select.
+        .or('ativo.is.null,ativo.eq.true')
         .order('nome');
 
       if (error) throw error;
@@ -55,7 +61,7 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   });
 
   // Produto selecionado
-  const produtoSelecionado = produtos?.find(p => p.id === formData.produto_id);
+  const produtoSelecionado = produtos.find(p => p.id === formData.produto_id);
 
   // Calcular valor total do lote
   const valorTotal = formData.quantidade * formData.custo_unitario;
@@ -118,6 +124,30 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
         </AlertDescription>
       </Alert>
 
+      {!propriedadeAtual && (
+        <Alert>
+          <AlertDescription>
+            Selecione uma propriedade no topo para carregar os produtos.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {produtosError && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            Erro ao carregar produtos: {(produtosError as Error).message}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!produtosLoading && !produtosError && !!propriedadeAtual?.id && produtos.length === 0 && (
+        <Alert>
+          <AlertDescription>
+            Nenhum produto encontrado para esta propriedade. Cadastre um produto para poder dar entrada no estoque.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="space-y-4">
         {/* Produto */}
         <div>
@@ -127,14 +157,31 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
             onValueChange={(value) => setFormData(prev => ({ ...prev, produto_id: value }))}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Selecione o produto" />
+              <SelectValue placeholder={produtosLoading ? 'Carregando produtos...' : 'Selecione o produto'} />
             </SelectTrigger>
             <SelectContent>
-              {produtos?.map(produto => (
-                <SelectItem key={produto.id} value={produto.id}>
-                  {produto.nome} ({produto.categoria})
+              {produtosLoading ? (
+                <SelectItem value="__loading" disabled>
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Carregando...
+                  </span>
                 </SelectItem>
-              ))}
+              ) : produtosError ? (
+                <SelectItem value="__error" disabled>
+                  Erro ao carregar produtos
+                </SelectItem>
+              ) : produtos.length === 0 ? (
+                <SelectItem value="__empty" disabled>
+                  Nenhum produto cadastrado
+                </SelectItem>
+              ) : (
+                produtos.map(produto => (
+                  <SelectItem key={produto.id} value={produto.id}>
+                    {produto.nome} ({produto.categoria})
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
