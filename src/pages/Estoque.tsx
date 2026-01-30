@@ -9,10 +9,12 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Package, Search, AlertTriangle, DollarSign } from 'lucide-react';
+import { Plus, Package, Search, AlertTriangle, DollarSign, PackagePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LotesDialog } from '@/components/estoque/LotesDialog';
 import { EntradaEstoqueForm } from '@/components/estoque/EntradaEstoqueForm';
+import { ProdutoForm } from '@/components/estoque/ProdutoForm';
+
 interface ProdutoComCusto {
   produto_id: string;
   propriedade_id: string;
@@ -34,7 +36,7 @@ export function Estoque() {
   const [produtoSelecionado, setProdutoSelecionado] = useState<ProdutoComCusto | null>(null);
   const [dialogLotesOpen, setDialogLotesOpen] = useState(false);
   const [dialogEntradaOpen, setDialogEntradaOpen] = useState(false);
-
+  const [dialogProdutoOpen, setDialogProdutoOpen] = useState(false);
   const { data: produtos, isLoading } = useQuery({
     queryKey: ['produtos-custos', propriedadeAtual?.id],
     queryFn: async () => {
@@ -93,10 +95,20 @@ export function Estoque() {
           </p>
         </div>
 
-        <Button onClick={() => setDialogEntradaOpen(true)} className="w-full sm:w-auto">
-          <Plus className="h-4 w-4 mr-2" />
-          Entrada de Estoque
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button 
+            variant="outline" 
+            onClick={() => setDialogProdutoOpen(true)} 
+            className="w-full sm:w-auto"
+          >
+            <PackagePlus className="h-4 w-4 mr-2" />
+            Novo Produto
+          </Button>
+          <Button onClick={() => setDialogEntradaOpen(true)} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            Entrada de Estoque
+          </Button>
+        </div>
       </div>
 
       {/* Cards de Estatísticas */}
@@ -242,6 +254,15 @@ export function Estoque() {
         <DialogContent className="max-w-lg">
           <EntradaEstoqueForm
             onSuccess={() => setDialogEntradaOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Cadastro de Produto */}
+      <Dialog open={dialogProdutoOpen} onOpenChange={setDialogProdutoOpen}>
+        <DialogContent className="max-w-md">
+          <ProdutoForm
+            onSuccess={() => setDialogProdutoOpen(false)}
           />
         </DialogContent>
       </Dialog>
