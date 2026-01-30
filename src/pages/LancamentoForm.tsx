@@ -1,21 +1,34 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
-import { useServicos } from '@/hooks/useServicos'
 import { useTalhoes } from '@/hooks/useTalhoes'
 import { ItemLancamentoCard, type ItemLancamento } from '@/components/lancamentos/ItemLancamentoCard'
-import { ResumoFinanceiro } from '@/components/lancamentos/ResumoFinanceiro'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ArrowLeft, Loader2, Package, AlertCircle, Check } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
+import { 
+  ArrowLeft, 
+  Loader2, 
+  Package, 
+  AlertCircle, 
+  Check,
+  DollarSign,
+  TrendingUp,
+  ChevronRight,
+  Calendar,
+  MapPin,
+  Users,
+  Wrench
+} from 'lucide-react'
+import type { Servico } from '@/types'
 
 // Interfaces
 interface LancamentoFormData {
@@ -58,14 +71,32 @@ export function LancamentoForm() {
   })
   const [loading, setLoading] = useState(false)
   const [loadingItens, setLoadingItens] = useState(false)
+  const [validandoEstoque, setValidandoEstoque] = useState(false)
 
-  // Hooks de dados
-  const { data: servicos, isLoading: loadingServicos } = useServicos(propriedadeAtual?.id)
+  // Hooks de dados - buscar serviços com tipo correto
+  const { data: servicos, isLoading: loadingServicos } = useQuery({
+    queryKey: ['servicos', propriedadeAtual?.id],
+    queryFn: async () => {
+      if (!propriedadeAtual?.id) return []
+      const { data, error } = await supabase
+        .from('servicos')
+        .select('*')
+        .eq('propriedade_id', propriedadeAtual.id)
+        .eq('ativo', true)
+        .order('nome')
+      if (error) throw error
+      return data as Servico[]
+    },
+    enabled: !!propriedadeAtual?.id
+  })
   const { data: talhoes, isLoading: loadingTalhoes } = useTalhoes(propriedadeAtual?.id)
 
   // Obter área do talhão selecionado
   const talhaoSelecionado = talhoes?.find(t => t.id === formData.talhao_id)
   const areaHa = talhaoSelecionado?.area_ha
+  
+  // Obter serviço selecionado
+  const servicoSelecionado = servicos?.find(s => s.id === formData.servico_id)
 
   // Carregar lançamento existente para edição
   useEffect(() => {
@@ -177,6 +208,43 @@ export function LancamentoForm() {
     }))
   }
 
+  // Calcular resumo financeiro em tempo real
+  const resumoFinanceiro = useMemo(() => {
+    const itensValidos = formData.itens.filter(i => i.quantidade && i.quantidade > 0)
+    
+    const totalProdutos = itensValidos
+      .filter(i => i.item?.tipo === 'produto_estoque')
+      .reduce((sum, i) => sum + (i.custo_total || 0), 0)
+    
+    const totalServicos = itensValidos
+      .filter(i => i.item?.tipo === 'servico')
+      .reduce((sum, i) => sum + (i.custo_total || 0), 0)
+    
+    const totalMaquinas = itensValidos
+      .filter(i => i.item?.tipo === 'maquina_hora')
+      .reduce((sum, i) => sum + (i.custo_total || 0), 0)
+    
+    const custoTotal = totalProdutos + totalServicos + totalMaquinas
+    const custoPorHa = areaHa && areaHa > 0 ? custoTotal / areaHa : null
+    
+    // Verificar se tem item com estoque insuficiente
+    const temEstoqueInsuficiente = itensValidos.some(
+      i => i.item?.tipo === 'produto_estoque' && 
+           i.detalhamento_lotes === null && 
+           i.quantidade > 0
+    )
+    
+    return {
+      totalItens: itensValidos.length,
+      custoTotal,
+      custoPorHa,
+      totalProdutos,
+      totalServicos,
+      totalMaquinas,
+      temEstoqueInsuficiente
+    }
+  }, [formData.itens, areaHa])
+
   // Mutation para salvar lançamento
   const salvarMutation = useMutation({
     mutationFn: async (data: LancamentoFormData) => {
@@ -184,7 +252,65 @@ export function LancamentoForm() {
         throw new Error('Selecione propriedade e safra')
       }
 
-      // 1. CRIAR LANÇAMENTO (cabeçalho)
+      setValidandoEstoque(true)
+
+      // ETAPA 1: VALIDAR E CALCULAR CUSTOS FINAIS
+      const itensComCusto = []
+      let custoTotal = 0
+
+      for (const itemForm of data.itens) {
+        if (!itemForm.quantidade || itemForm.quantidade <= 0) continue
+
+        // Buscar preview final do custo via RPC
+        const { data: preview, error: rpcError } = await supabase
+          .rpc('preview_custo_item', {
+            p_item_id: itemForm.item_id,
+            p_quantidade: itemForm.quantidade
+          })
+
+        if (rpcError) {
+          console.warn('RPC preview_custo_item falhou:', rpcError.message)
+          // Usar valores do form como fallback
+        }
+
+        const custoFinal = preview || {
+          item_tipo: itemForm.item?.tipo || 'produto_estoque',
+          custo_unitario: itemForm.custo_unitario || 0,
+          custo_total: itemForm.custo_total || 0,
+          preview_consumo: itemForm.detalhamento_lotes || null,
+          estoque_suficiente: true
+        }
+
+        // Validar estoque
+        if (custoFinal.item_tipo === 'produto_estoque' && !custoFinal.estoque_suficiente) {
+          throw new Error(`Estoque insuficiente de "${itemForm.item?.nome}". Faltam ${custoFinal.quantidade_faltante?.toFixed(2)} ${itemForm.item?.unidade_medida}`)
+        }
+
+        itensComCusto.push({
+          item_id: itemForm.item_id,
+          quantidade: itemForm.quantidade,
+          custo_unitario: custoFinal.custo_unitario || 0,
+          custo_total: custoFinal.custo_total || 0,
+          detalhamento_lotes: custoFinal.preview_consumo || null,
+          item: itemForm.item
+        })
+
+        custoTotal += custoFinal.custo_total || 0
+      }
+
+      setValidandoEstoque(false)
+
+      // Confirmação para custos altos
+      if (custoTotal > 10000) {
+        const confirmar = window.confirm(
+          `⚠️ Atenção!\n\nO custo total deste lançamento é R$ ${custoTotal.toFixed(2)}.\n\nDeseja continuar?`
+        )
+        if (!confirmar) {
+          throw new Error('Operação cancelada pelo usuário')
+        }
+      }
+
+      // ETAPA 2: CRIAR LANÇAMENTO (cabeçalho)
       const { data: lancamento, error: erroLanc } = await supabase
         .from('lancamentos')
         .insert({
@@ -194,7 +320,7 @@ export function LancamentoForm() {
           talhao_id: data.talhao_id || null,
           data_execucao: data.data_execucao,
           observacoes: data.observacoes || null,
-          custo_total: 0,
+          custo_total: custoTotal,
           status: 'concluido'
         })
         .select()
@@ -202,84 +328,56 @@ export function LancamentoForm() {
 
       if (erroLanc) throw erroLanc
 
-      let custoTotal = 0
-
-      // 2. PROCESSAR CADA ITEM
-      for (const itemForm of data.itens) {
-        if (!itemForm.quantidade || itemForm.quantidade <= 0) continue
-
-        // Buscar preview final do custo via RPC ou fallback local
-        let preview = null
-        const { data: rpcData, error: rpcError } = await supabase
-          .rpc('preview_custo_item', {
-            p_item_id: itemForm.item_id,
-            p_quantidade: itemForm.quantidade
-          })
-
-        if (!rpcError && rpcData) {
-          preview = rpcData
-        } else {
-          // Usar valores já calculados no cliente
-          preview = {
-            item_tipo: itemForm.item?.tipo || 'produto_estoque',
-            custo_unitario: itemForm.custo_unitario || 0,
-            custo_total: itemForm.custo_total || 0,
-            preview_consumo: itemForm.detalhamento_lotes || null
-          }
-        }
-
-        // Salvar item do lançamento
-        const { error: erroItem } = await supabase
-          .from('lancamentos_itens')
-          .insert({
+      // ETAPA 3: CRIAR ITENS DO LANÇAMENTO
+      const { error: erroItens } = await supabase
+        .from('lancamentos_itens')
+        .insert(
+          itensComCusto.map(item => ({
             lancamento_id: lancamento.id,
-            item_id: itemForm.item_id,
-            quantidade: itemForm.quantidade,
-            custo_unitario: preview.custo_unitario || 0,
-            custo_total: preview.custo_total || 0,
-            detalhamento_lotes: preview.preview_consumo || null
-          })
+            item_id: item.item_id,
+            quantidade: item.quantidade,
+            custo_unitario: item.custo_unitario,
+            custo_total: item.custo_total,
+            detalhamento_lotes: item.detalhamento_lotes
+          }))
+        )
 
-        if (erroItem) throw erroItem
+      if (erroItens) throw erroItens
 
-        // Se for produto de estoque, consumir via FIFO
-        if (preview.item_tipo === 'produto_estoque' && itemForm.item?.produto_id) {
-          const { error: erroFifo } = await supabase
-            .rpc('consumir_estoque_fifo', {
-              p_produto_id: itemForm.item.produto_id,
-              p_quantidade: itemForm.quantidade,
-              p_lancamento_id: lancamento.id
-            })
+      // ETAPA 4: CONSUMIR LOTES FIFO (para produtos de estoque)
+      for (const item of itensComCusto) {
+        if (item.item?.tipo === 'produto_estoque' && item.detalhamento_lotes && item.detalhamento_lotes.length > 0) {
+          for (const loteConsumo of item.detalhamento_lotes) {
+            // Buscar quantidade atual do lote
+            const { data: loteAtual } = await supabase
+              .from('lotes')
+              .select('quantidade_disponivel')
+              .eq('id', loteConsumo.lote_id)
+              .single()
 
-          // Log mas não bloqueia se RPC não existir ainda
-          if (erroFifo) {
-            console.warn('RPC consumir_estoque_fifo não disponível:', erroFifo.message)
+            if (loteAtual) {
+              const novaQtd = Math.max(0, loteAtual.quantidade_disponivel - loteConsumo.quantidade_consumida)
+              
+              await supabase
+                .from('lotes')
+                .update({ quantidade_disponivel: novaQtd })
+                .eq('id', loteConsumo.lote_id)
+            }
           }
         }
 
-        // Se for hora de máquina, atualizar horímetro
-        if (preview.item_tipo === 'maquina_hora' && itemForm.item?.maquina_id) {
-          const { error: erroHor } = await supabase
-            .rpc('atualizar_horimetro', {
-              p_maquina_id: itemForm.item.maquina_id,
-              p_horas: itemForm.quantidade
+        // Se for hora de máquina, tentar atualizar horímetro
+        if (item.item?.tipo === 'maquina_hora' && item.item?.maquina_id) {
+          try {
+            await supabase.rpc('atualizar_horimetro', {
+              p_maquina_id: item.item.maquina_id,
+              p_horas: item.quantidade
             })
-
-          if (erroHor) {
-            console.warn('RPC atualizar_horimetro não disponível:', erroHor.message)
+          } catch (e) {
+            console.warn('RPC atualizar_horimetro não disponível')
           }
         }
-
-        custoTotal += preview.custo_total || 0
       }
-
-      // 3. ATUALIZAR CUSTO TOTAL DO LANÇAMENTO
-      const { error: erroUpdate } = await supabase
-        .from('lancamentos')
-        .update({ custo_total: custoTotal })
-        .eq('id', lancamento.id)
-
-      if (erroUpdate) throw erroUpdate
 
       return lancamento
     },
@@ -294,10 +392,12 @@ export function LancamentoForm() {
       queryClient.invalidateQueries({ queryKey: ['estoque'] })
       queryClient.invalidateQueries({ queryKey: ['produtos'] })
       queryClient.invalidateQueries({ queryKey: ['preview-custo'] })
+      queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
 
       navigate('/lancamentos')
     },
     onError: (error: Error) => {
+      setValidandoEstoque(false)
       toast({
         title: '❌ Erro ao salvar lançamento',
         description: error.message,
@@ -339,6 +439,17 @@ export function LancamentoForm() {
       }
     }
 
+    // Verificar se ao menos um item tem quantidade
+    const temItemComQtd = formData.itens.some(i => i.quantidade && i.quantidade > 0)
+    if (!temItemComQtd) {
+      toast({
+        title: 'Nenhum item com quantidade',
+        description: 'Informe a quantidade de pelo menos um item',
+        variant: 'destructive'
+      })
+      return false
+    }
+
     return true
   }
 
@@ -347,18 +458,6 @@ export function LancamentoForm() {
     if (!validarFormulario()) return
     salvarMutation.mutate(formData)
   }
-
-  // Preparar dados para o resumo financeiro
-  const itensParaResumo = formData.itens
-    .filter(i => i.quantidade && i.quantidade > 0)
-    .map(i => ({
-      item_id: i.item_id,
-      nome: i.item?.nome || 'Item',
-      tipo: (i.item?.tipo || 'produto_estoque') as 'produto_estoque' | 'servico' | 'maquina_hora',
-      quantidade: i.quantidade || 0,
-      custo_total: i.custo_total || 0,
-      unidade_medida: i.item?.unidade_medida || 'un'
-    }))
 
   // Verificar se tem propriedade e safra selecionadas
   if (!propriedadeAtual || !safraAtual) {
@@ -385,6 +484,17 @@ export function LancamentoForm() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1 text-sm text-muted-foreground">
+        <Link to="/" className="hover:text-foreground transition-colors">Dashboard</Link>
+        <ChevronRight className="h-4 w-4" />
+        <Link to="/lancamentos" className="hover:text-foreground transition-colors">Lançamentos</Link>
+        <ChevronRight className="h-4 w-4" />
+        <span className="text-foreground font-medium">
+          {lancamentoId ? 'Editar' : 'Novo'} Lançamento
+        </span>
+      </nav>
+
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button 
@@ -414,208 +524,337 @@ export function LancamentoForm() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {/* Card do Cabeçalho */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações da Operação</CardTitle>
-            </CardHeader>
-
-            <CardContent className="space-y-6">
-              {/* Grid para campos lado a lado em telas maiores */}
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* DATA */}
-                <div className="space-y-2">
-                  <Label htmlFor="data_execucao">Data da Execução *</Label>
-                  <Input
-                    id="data_execucao"
-                    type="date"
-                    value={formData.data_execucao}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      data_execucao: e.target.value
-                    }))}
-                    required
-                    className="w-full"
-                  />
-                </div>
-
-                {/* SERVIÇO */}
-                <div className="space-y-2">
-                  <Label htmlFor="servico">Serviço *</Label>
-                  <Select
-                    value={formData.servico_id}
-                    onValueChange={handleServicoChange}
-                    disabled={loadingServicos}
-                  >
-                    <SelectTrigger id="servico">
-                      <SelectValue placeholder={
-                        loadingServicos 
-                          ? "Carregando serviços..." 
-                          : "Selecione o serviço"
-                      } />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {servicos?.map((servico) => (
-                        <SelectItem key={servico.id} value={servico.id}>
-                          {servico.nome}
-                        </SelectItem>
-                      ))}
-                      {(!servicos || servicos.length === 0) && !loadingServicos && (
-                        <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                          Nenhum serviço cadastrado
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* TALHÃO */}
-              <div className="space-y-2">
-                <Label htmlFor="talhao">Talhão (opcional)</Label>
-                <Select
-                  value={formData.talhao_id || 'none'}
-                  onValueChange={handleTalhaoChange}
-                  disabled={loadingTalhoes}
-                >
-                  <SelectTrigger id="talhao">
-                    <SelectValue placeholder={
-                      loadingTalhoes 
-                        ? "Carregando talhões..." 
-                        : "Selecione o talhão"
-                    } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sem talhão específico</SelectItem>
-                    {talhoes?.map((talhao) => (
-                      <SelectItem key={talhao.id} value={talhao.id}>
-                        {talhao.nome} ({talhao.area_ha} ha)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Vincule a um talhão para rastrear custos por área
-                </p>
-              </div>
-
-              {/* OBSERVAÇÕES */}
-              <div className="space-y-2">
-                <Label htmlFor="observacoes">Observações</Label>
-                <Textarea
-                  id="observacoes"
-                  value={formData.observacoes || ''}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    observacoes: e.target.value
-                  }))}
-                  placeholder="Observações sobre esta operação..."
-                  rows={3}
-                  className="resize-none"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Indicador de carregamento de itens */}
-          {loadingItens && (
-            <Card>
-              <CardContent className="py-8">
-                <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Carregando itens do serviço...</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* SEÇÃO DE ITENS */}
-          {formData.servico_id && !loadingItens && (
+        /* Layout em 2 colunas */
+        <div className="grid gap-6 lg:grid-cols-[1fr,400px]">
+          {/* Coluna Esquerda: Formulário */}
+          <div className="space-y-6">
+            {/* Card do Cabeçalho */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Itens da Operação
+                  <Calendar className="h-5 w-5" />
+                  Informações da Operação
                 </CardTitle>
               </CardHeader>
 
-              <CardContent className="space-y-4">
-                {formData.itens.length === 0 ? (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Este serviço não possui itens vinculados. Configure os itens do serviço para pré-carregar automaticamente.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  formData.itens.map((itemForm, index) => (
-                    <ItemLancamentoCard
-                      key={itemForm.item_id}
-                      itemForm={itemForm}
-                      onUpdate={(updated) => {
-                        const newItens = [...formData.itens]
-                        newItens[index] = updated
-                        setFormData(prev => ({ ...prev, itens: newItens }))
-                      }}
-                      onRemove={() => {
-                        if (itemForm.obrigatorio) {
-                          toast({
-                            title: 'Item obrigatório',
-                            description: 'Este item é obrigatório e não pode ser removido.',
-                            variant: 'destructive'
-                          })
-                          return
-                        }
-                        setFormData(prev => ({
-                          ...prev,
-                          itens: prev.itens.filter((_, i) => i !== index)
-                        }))
-                      }}
+              <CardContent className="space-y-6">
+                {/* Grid para campos lado a lado */}
+                <div className="grid gap-6 sm:grid-cols-2">
+                  {/* DATA */}
+                  <div className="space-y-2">
+                    <Label htmlFor="data_execucao">Data da Execução *</Label>
+                    <Input
+                      id="data_execucao"
+                      type="date"
+                      value={formData.data_execucao}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        data_execucao: e.target.value
+                      }))}
+                      required
+                      className="w-full"
                     />
-                  ))
-                )}
+                  </div>
+
+                  {/* SERVIÇO */}
+                  <div className="space-y-2">
+                    <Label htmlFor="servico">Serviço *</Label>
+                    <Select
+                      value={formData.servico_id}
+                      onValueChange={handleServicoChange}
+                      disabled={loadingServicos}
+                    >
+                      <SelectTrigger id="servico">
+                        <SelectValue placeholder={
+                          loadingServicos 
+                            ? "Carregando serviços..." 
+                            : "Selecione o serviço"
+                        } />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {servicos?.map((servico) => (
+                          <SelectItem key={servico.id} value={servico.id}>
+                            {servico.nome}
+                          </SelectItem>
+                        ))}
+                        {(!servicos || servicos.length === 0) && !loadingServicos && (
+                          <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                            Nenhum serviço cadastrado
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* TALHÃO */}
+                <div className="space-y-2">
+                  <Label htmlFor="talhao" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Talhão {servicoSelecionado?.requer_talhao ? '*' : '(opcional)'}
+                  </Label>
+                  <Select
+                    value={formData.talhao_id || 'none'}
+                    onValueChange={handleTalhaoChange}
+                    disabled={loadingTalhoes}
+                  >
+                    <SelectTrigger id="talhao">
+                      <SelectValue placeholder={
+                        loadingTalhoes 
+                          ? "Carregando talhões..." 
+                          : "Selecione o talhão"
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem talhão específico</SelectItem>
+                      {talhoes?.map((talhao) => (
+                        <SelectItem key={talhao.id} value={talhao.id}>
+                          {talhao.nome} ({talhao.area_ha} ha)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Vincule a um talhão para rastrear custos por área
+                  </p>
+                </div>
+
+                {/* OBSERVAÇÕES */}
+                <div className="space-y-2">
+                  <Label htmlFor="observacoes">Observações</Label>
+                  <Textarea
+                    id="observacoes"
+                    value={formData.observacoes || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      observacoes: e.target.value.slice(0, 500)
+                    }))}
+                    placeholder="Observações sobre esta operação..."
+                    rows={3}
+                    className="resize-none"
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">
+                    {formData.observacoes?.length || 0}/500
+                  </p>
+                </div>
               </CardContent>
             </Card>
-          )}
 
-          {/* RESUMO FINANCEIRO */}
-          {itensParaResumo.length > 0 && (
-            <ResumoFinanceiro 
-              itens={itensParaResumo} 
-              areaHa={areaHa}
-            />
-          )}
+            {/* Indicador de carregamento de itens */}
+            {loadingItens && (
+              <Card>
+                <CardContent className="py-8">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Carregando itens do serviço...</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-          {/* Rodapé do Formulário */}
-          <div className="flex items-center justify-between gap-4 pt-6 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/lancamentos')}
-              disabled={salvarMutation.isPending}
-            >
-              Cancelar
-            </Button>
+            {/* SEÇÃO DE ITENS */}
+            {formData.servico_id && !loadingItens && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Itens da Operação
+                  </CardTitle>
+                </CardHeader>
 
-            <Button
-              type="button"
-              onClick={handleSalvar}
-              disabled={salvarMutation.isPending || !formData.servico_id}
-              className="min-w-[200px]"
-            >
-              {salvarMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4 mr-2" />
-                  Salvar Lançamento
-                </>
-              )}
-            </Button>
+                <CardContent className="space-y-4">
+                  {formData.itens.length === 0 ? (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Este serviço não possui itens vinculados. Configure os itens do serviço para pré-carregar automaticamente.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    formData.itens.map((itemForm, index) => (
+                      <ItemLancamentoCard
+                        key={itemForm.item_id}
+                        itemForm={itemForm}
+                        onUpdate={(updated) => {
+                          const newItens = [...formData.itens]
+                          newItens[index] = updated
+                          setFormData(prev => ({ ...prev, itens: newItens }))
+                        }}
+                        onRemove={() => {
+                          if (itemForm.obrigatorio) {
+                            toast({
+                              title: 'Item obrigatório',
+                              description: 'Este item é obrigatório e não pode ser removido.',
+                              variant: 'destructive'
+                            })
+                            return
+                          }
+                          setFormData(prev => ({
+                            ...prev,
+                            itens: prev.itens.filter((_, i) => i !== index)
+                          }))
+                        }}
+                      />
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Botões - Mobile */}
+            <div className="lg:hidden flex flex-col gap-3 pt-4 border-t">
+              <Button
+                type="button"
+                onClick={handleSalvar}
+                disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id}
+                className="w-full"
+                size="lg"
+              >
+                {salvarMutation.isPending || validandoEstoque ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {validandoEstoque ? 'Validando estoque...' : 'Salvando...'}
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Salvar Lançamento
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/lancamentos')}
+                disabled={salvarMutation.isPending}
+                className="w-full"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+
+          {/* Coluna Direita: Resumo Financeiro (Sticky) */}
+          <div className="hidden lg:block">
+            <div className="sticky top-6 space-y-6">
+              {/* Card de Resumo Financeiro */}
+              <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                    Resumo Financeiro
+                  </CardTitle>
+                </CardHeader>
+
+                <CardContent className="space-y-6">
+                  {resumoFinanceiro.totalItens === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Adicione quantidades aos itens para ver o resumo de custos
+                    </p>
+                  ) : (
+                    <>
+                      {/* Totais por Tipo */}
+                      {resumoFinanceiro.totalProdutos > 0 && (
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Package className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm">Produtos</span>
+                          </div>
+                          <span className="font-semibold text-blue-700">
+                            R$ {resumoFinanceiro.totalProdutos.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {resumoFinanceiro.totalServicos > 0 && (
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-purple-600" />
+                            <span className="text-sm">Serviços</span>
+                          </div>
+                          <span className="font-semibold text-purple-700">
+                            R$ {resumoFinanceiro.totalServicos.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {resumoFinanceiro.totalMaquinas > 0 && (
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Wrench className="h-4 w-4 text-orange-600" />
+                            <span className="text-sm">Máquinas</span>
+                          </div>
+                          <span className="font-semibold text-orange-700">
+                            R$ {resumoFinanceiro.totalMaquinas.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
+                      <Separator />
+
+                      {/* Total Geral */}
+                      <div className="bg-primary text-primary-foreground p-4 rounded-lg -mx-6 -mb-6">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-bold">💰 CUSTO TOTAL:</span>
+                          <span className="text-2xl font-bold">
+                            R$ {resumoFinanceiro.custoTotal.toFixed(2)}
+                          </span>
+                        </div>
+
+                        {resumoFinanceiro.custoPorHa !== null && (
+                          <div className="flex justify-between items-center text-sm opacity-90">
+                            <div className="flex items-center gap-1">
+                              <TrendingUp className="h-4 w-4" />
+                              <span>Custo por hectare:</span>
+                            </div>
+                            <span className="font-semibold">
+                              R$ {resumoFinanceiro.custoPorHa.toFixed(2)}/ha
+                            </span>
+                          </div>
+                        )}
+
+                        <p className="text-xs opacity-75 mt-2">
+                          {resumoFinanceiro.totalItens} {resumoFinanceiro.totalItens === 1 ? 'item' : 'itens'} com quantidade
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Botões - Desktop */}
+              <div className="flex flex-col gap-3">
+                <Button
+                  type="button"
+                  onClick={handleSalvar}
+                  disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id}
+                  className="w-full"
+                  size="lg"
+                >
+                  {salvarMutation.isPending || validandoEstoque ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {validandoEstoque ? 'Validando estoque...' : 'Salvando...'}
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Salvar Lançamento
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate('/lancamentos')}
+                  disabled={salvarMutation.isPending}
+                  className="w-full"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}
