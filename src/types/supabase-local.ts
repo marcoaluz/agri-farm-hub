@@ -40,30 +40,29 @@ export interface Talhao {
 
 export interface Item {
   id: string
-  propriedade_id?: string
+  propriedade_id: string
   nome: string
-  descricao?: string
   tipo: 'produto_estoque' | 'servico' | 'maquina_hora'
+  categoria?: string
   unidade_medida: string
-  custo_unitario?: number
-  quantidade_estoque?: number
   produto_id?: string
   maquina_id?: string
+  custo_padrao?: number
   ativo: boolean
   created_at: string
-  updated_at: string
 }
 
 export interface Lote {
   id: string
+  propriedade_id: string
   produto_id: string
   nota_fiscal?: string
-  data_entrada: string
-  quantidade_inicial: number
-  quantidade_atual: number
-  custo_unitario: number
   fornecedor?: string
-  observacoes?: string
+  quantidade_original: number
+  quantidade_disponivel: number
+  custo_unitario: number
+  data_entrada: string
+  data_validade?: string
   created_at: string
 }
 

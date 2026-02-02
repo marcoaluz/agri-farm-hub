@@ -74,18 +74,37 @@ export function usePreviewCusto(itemId: string | undefined, quantidade: number) 
 
 // Função de fallback para calcular preview localmente
 async function calcularPreviewLocal(itemId: string, quantidade: number): Promise<PreviewResponse | null> {
-  // Buscar item para verificar tipo
+  // Buscar item para verificar tipo e dados relacionados
   const { data: item } = await supabase
     .from('itens')
-    .select('tipo, custo_unitario')
+    .select('tipo, custo_padrao, produto_id, maquina_id')
     .eq('id', itemId)
     .maybeSingle()
 
   if (!item) return null
 
-  // Se não for produto de estoque, usar custo unitário direto
+  // Se não for produto de estoque, usar custo padrão direto
   if (item.tipo !== 'produto_estoque') {
-    const custoUnitario = item.custo_unitario || 0
+    // Se for maquina_hora, buscar custo da máquina
+    if (item.tipo === 'maquina_hora' && item.maquina_id) {
+      const { data: maquina } = await supabase
+        .from('maquinas')
+        .select('custo_hora')
+        .eq('id', item.maquina_id)
+        .maybeSingle()
+      
+      const custoUnitario = maquina?.custo_hora || item.custo_padrao || 0
+      return {
+        item_tipo: 'maquina_hora',
+        custo_unitario: custoUnitario,
+        custo_total: custoUnitario * quantidade,
+        estoque_disponivel: Infinity,
+        estoque_suficiente: true
+      }
+    }
+    
+    // Serviço terceiro
+    const custoUnitario = item.custo_padrao || 0
     return {
       item_tipo: item.tipo as PreviewResponse['item_tipo'],
       custo_unitario: custoUnitario,
@@ -95,11 +114,24 @@ async function calcularPreviewLocal(itemId: string, quantidade: number): Promise
     }
   }
 
+  // Se for produto de estoque, precisa do produto_id para buscar lotes
+  if (!item.produto_id) {
+    return {
+      item_tipo: 'produto_estoque',
+      custo_unitario: item.custo_padrao || 0,
+      custo_total: (item.custo_padrao || 0) * quantidade,
+      estoque_disponivel: 0,
+      estoque_suficiente: false,
+      quantidade_faltante: quantidade
+    }
+  }
+
   // Buscar lotes disponíveis usando FIFO (ordenados por data de entrada)
+  // IMPORTANTE: lotes usa produto_id, não item_id
   const { data: lotes, error } = await supabase
     .from('lotes')
-    .select('id, codigo, nota_fiscal, quantidade_disponivel, custo_unitario, data_entrada')
-    .eq('item_id', itemId)
+    .select('id, nota_fiscal, quantidade_disponivel, custo_unitario, data_entrada')
+    .eq('produto_id', item.produto_id)
     .gt('quantidade_disponivel', 0)
     .order('data_entrada', { ascending: true })
 
@@ -124,8 +156,8 @@ async function calcularPreviewLocal(itemId: string, quantidade: number): Promise
 
     previewConsumo.push({
       lote_id: lote.id,
-      lote_codigo: lote.codigo,
-      nota_fiscal: lote.nota_fiscal,
+      lote_codigo: lote.id.substring(0, 8), // Usar parte do UUID como código
+      nota_fiscal: lote.nota_fiscal || undefined,
       quantidade_consumida: quantidadeConsumida,
       custo_unitario: lote.custo_unitario,
       custo_parcial: custoParcial,

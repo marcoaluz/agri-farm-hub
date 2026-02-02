@@ -311,6 +311,7 @@ export function LancamentoForm() {
       }
 
       // ETAPA 2: CRIAR LANÇAMENTO (cabeçalho)
+      // Nota: schema real não tem campo 'status', apenas os campos básicos
       const { data: lancamento, error: erroLanc } = await supabase
         .from('lancamentos')
         .insert({
@@ -320,8 +321,7 @@ export function LancamentoForm() {
           talhao_id: data.talhao_id || null,
           data_execucao: data.data_execucao,
           observacoes: data.observacoes || null,
-          custo_total: custoTotal,
-          status: 'concluido'
+          custo_total: custoTotal
         })
         .select()
         .single()

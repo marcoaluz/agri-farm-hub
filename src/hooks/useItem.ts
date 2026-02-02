@@ -3,12 +3,14 @@ import { supabase } from '@/lib/supabase'
 
 export interface Item {
   id: string
+  propriedade_id: string
   nome: string
-  descricao?: string
   tipo: 'produto_estoque' | 'servico' | 'maquina_hora'
+  categoria?: string
   unidade_medida: string
-  custo_unitario?: number
-  quantidade_estoque?: number
+  produto_id?: string
+  maquina_id?: string
+  custo_padrao?: number
   ativo: boolean
 }
 
