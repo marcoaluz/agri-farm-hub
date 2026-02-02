@@ -111,9 +111,9 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
                 {tipoConfig.label}
               </Badge>
             </div>
-            {item?.descricao && (
+            {item?.categoria && (
               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                {item.descricao}
+                Categoria: {item.categoria}
               </p>
             )}
           </div>
@@ -149,7 +149,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
               <div className="flex justify-between">
                 <span>Custo unitário:</span>
                 <strong className="text-primary">
-                  R$ {(preview?.custo_unitario || item?.custo_unitario || 0).toFixed(2)} / {itemData.unidade_medida}
+                  R$ {(preview?.custo_unitario || item?.custo_padrao || 0).toFixed(2)} / {itemData.unidade_medida}
                 </strong>
               </div>
             </div>
