@@ -21,33 +21,31 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { useGlobal } from '@/contexts/GlobalContext'
-import { useAuth } from '@/contexts/AuthContext'
-import { useLancamentos, useSolicitarEdicao, useSolicitarExclusao } from '@/hooks/useLancamentos'
-import { SolicitacaoDialog } from '@/components/lancamentos/SolicitacaoDialog'
+import { useLancamentos, useExcluirLancamento } from '@/hooks/useLancamentos'
 import { Lancamento } from '@/types/supabase-local'
 
 export function Lancamentos() {
   const navigate = useNavigate()
   const { safraAtual, propriedadeAtual } = useGlobal()
-  const { user } = useAuth()
   const { data: lancamentos, isLoading } = useLancamentos(safraAtual?.id)
-  const solicitarEdicao = useSolicitarEdicao()
-  const solicitarExclusao = useSolicitarExclusao()
+  const excluirLancamento = useExcluirLancamento()
 
   const [searchTerm, setSearchTerm] = useState('')
-  const [dialogState, setDialogState] = useState<{
-    open: boolean
-    tipo: 'edicao' | 'exclusao'
-    lancamento: Lancamento | null
-  }>({
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; lancamento: Lancamento | null }>({
     open: false,
-    tipo: 'edicao',
     lancamento: null
   })
-
-  // Verificar se o usuário atual é o proprietário
-  const isProprietario = propriedadeAtual?.user_id === user?.id
 
   // Filtrar lançamentos pelo termo de busca
   const filteredLancamentos = lancamentos?.filter(lanc => {
@@ -78,38 +76,14 @@ export function Lancamentos() {
     navigate(`/lancamentos/${id}`)
   }
 
-  const handleSolicitarEdicao = (lancamento: Lancamento) => {
-    if (isProprietario) {
-      // Proprietário pode editar diretamente
-      navigate(`/lancamentos/${lancamento.id}`)
-    } else {
-      // Outros usuários precisam solicitar aprovação
-      setDialogState({ open: true, tipo: 'edicao', lancamento })
-    }
+  const handleEditar = (id: string) => {
+    navigate(`/lancamentos/${id}`)
   }
 
-  const handleSolicitarExclusao = (lancamento: Lancamento) => {
-    setDialogState({ open: true, tipo: 'exclusao', lancamento })
-  }
-
-  const handleConfirmSolicitacao = async (motivo: string) => {
-    if (!dialogState.lancamento || !user) return
-
-    if (dialogState.tipo === 'edicao') {
-      await solicitarEdicao.mutateAsync({
-        lancamentoId: dialogState.lancamento.id,
-        motivo,
-        usuarioId: user.id
-      })
-    } else {
-      await solicitarExclusao.mutateAsync({
-        lancamentoId: dialogState.lancamento.id,
-        motivo,
-        usuarioId: user.id
-      })
-    }
-
-    setDialogState({ open: false, tipo: 'edicao', lancamento: null })
+  const handleExcluir = async () => {
+    if (!deleteDialog.lancamento) return
+    await excluirLancamento.mutateAsync(deleteDialog.lancamento.id)
+    setDeleteDialog({ open: false, lancamento: null })
   }
 
   const formatDate = (dateStr: string) => {
@@ -243,7 +217,6 @@ export function Lancamentos() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              // Loading skeletons
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
@@ -293,22 +266,22 @@ export function Lancamentos() {
                           <span className="sr-only">Ações</span>
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className="bg-popover">
                         <DropdownMenuItem onClick={() => handleVerDetalhes(lancamento.id)}>
                           <Eye className="mr-2 h-4 w-4" />
                           Ver Detalhes
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSolicitarEdicao(lancamento)}>
+                        <DropdownMenuItem onClick={() => handleEditar(lancamento.id)}>
                           <Edit className="mr-2 h-4 w-4" />
-                          {isProprietario ? 'Editar' : 'Solicitar Edição'}
+                          Editar
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
-                          onClick={() => handleSolicitarExclusao(lancamento)}
+                          onClick={() => setDeleteDialog({ open: true, lancamento })}
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          {isProprietario ? 'Excluir' : 'Solicitar Exclusão'}
+                          Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -320,21 +293,29 @@ export function Lancamentos() {
         </Table>
       </Card>
 
-      {/* Dialog de Solicitação */}
-      {dialogState.lancamento && (
-        <SolicitacaoDialog
-          open={dialogState.open}
-          onOpenChange={(open) => setDialogState(prev => ({ ...prev, open }))}
-          tipo={dialogState.tipo}
-          lancamentoInfo={{
-            servico: dialogState.lancamento.servico?.nome || 'Serviço',
-            data: formatDate(dialogState.lancamento.data_execucao),
-            custo: dialogState.lancamento.custo_total || 0
-          }}
-          onConfirm={handleConfirmSolicitacao}
-          isLoading={solicitarEdicao.isPending || solicitarExclusao.isPending}
-        />
-      )}
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, lancamento: null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o lançamento "{deleteDialog.lancamento?.servico?.nome}" 
+              de {deleteDialog.lancamento?.data_execucao ? formatDate(deleteDialog.lancamento.data_execucao) : ''}?
+              <br /><br />
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleExcluir}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {excluirLancamento.isPending ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
