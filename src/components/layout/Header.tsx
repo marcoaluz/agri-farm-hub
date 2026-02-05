@@ -107,7 +107,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                   Propriedade
                 </label>
                 <Select
-                  value={propriedadeAtual?.id || ''}
+                  value={propriedadeAtual?.id}
                   onValueChange={(value) => {
                     const prop = propriedades.find(p => p.id === value)
                     if (prop) setPropriedadeAtual(prop)
@@ -137,7 +137,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                   Ano Safra
                 </label>
                 <Select
-                  value={safraAtual?.id || ''}
+                  value={safraAtual?.id}
                   onValueChange={(value) => {
                     const safra = safras.find(s => s.id === value)
                     if (safra) setSafraAtual(safra)
@@ -185,7 +185,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Seletor Desktop de Propriedade */}
         <div className="hidden sm:flex items-center gap-2">
           <Select
-            value={propriedadeAtual?.id || ''}
+            value={propriedadeAtual?.id}
             onValueChange={(value) => {
               const prop = propriedades.find(p => p.id === value)
               if (prop) setPropriedadeAtual(prop)
@@ -211,7 +211,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Seletor Desktop de Safra */}
         <div className="hidden sm:flex items-center gap-2">
           <Select
-            value={safraAtual?.id || ''}
+            value={safraAtual?.id}
             onValueChange={(value) => {
               const safra = safras.find(s => s.id === value)
               if (safra) setSafraAtual(safra)
