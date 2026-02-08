@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Plus, Search, Filter, Calendar, MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -31,12 +31,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { ContextDebug } from '@/components/debug/ContextDebug'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useLancamentos, useExcluirLancamento } from '@/hooks/useLancamentos'
 import { Lancamento } from '@/types/supabase-local'
 
 export function Lancamentos() {
   const navigate = useNavigate()
+  const routerLocation = useLocation()
+  const debugEnabled = useMemo(() => {
+    if (!import.meta.env.DEV) return false
+    return new URLSearchParams(routerLocation.search).has('debug')
+  }, [routerLocation.search])
+
   const { safraAtual, propriedadeAtual } = useGlobal()
   const { data: lancamentos, isLoading } = useLancamentos(safraAtual?.id)
   const excluirLancamento = useExcluirLancamento()
@@ -46,6 +53,7 @@ export function Lancamentos() {
     open: false,
     lancamento: null
   })
+
 
   // Filtrar lançamentos pelo termo de busca
   const filteredLancamentos = lancamentos?.filter(lanc => {
@@ -115,6 +123,13 @@ export function Lancamentos() {
           Novo Lançamento
         </Button>
       </div>
+
+      <ContextDebug
+        enabled={debugEnabled}
+        propriedadeAtual={propriedadeAtual}
+        safraAtual={safraAtual}
+        novoLancamentoDisabled={!safraAtual}
+      />
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4">
