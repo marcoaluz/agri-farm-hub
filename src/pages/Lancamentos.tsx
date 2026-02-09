@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Search, Filter, Calendar, MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react'
+import { Plus, Search, Filter, Calendar, MoreHorizontal, Edit, Trash2, Eye, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -312,21 +312,40 @@ export function Lancamentos() {
       <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, lancamento: null })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o lançamento "{deleteDialog.lancamento?.servico?.nome}" 
-              de {deleteDialog.lancamento?.data_execucao ? formatDate(deleteDialog.lancamento.data_execucao) : ''}?
-              <br /><br />
-              Esta ação não pode ser desfeita.
+            <AlertDialogTitle>⚠️ Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Tem certeza que deseja excluir o lançamento{' '}
+                  <strong>"{deleteDialog.lancamento?.servico?.nome}"</strong>
+                  {deleteDialog.lancamento?.data_execucao
+                    ? ` de ${formatDate(deleteDialog.lancamento.data_execucao)}`
+                    : ''}?
+                </p>
+                <p className="font-medium text-foreground">⚠️ Esta ação irá:</p>
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  <li>Excluir permanentemente o lançamento</li>
+                  <li>Restaurar o estoque dos produtos consumidos</li>
+                  <li>Não pode ser desfeita</li>
+                </ul>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={excluirLancamento.isPending}>Cancelar</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleExcluir}
+              disabled={excluirLancamento.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {excluirLancamento.isPending ? 'Excluindo...' : 'Excluir'}
+              {excluirLancamento.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Sim, Excluir'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
