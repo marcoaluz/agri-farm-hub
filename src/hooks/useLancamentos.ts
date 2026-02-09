@@ -196,7 +196,9 @@ export function useExcluirLancamento() {
 
   return useMutation({
     mutationFn: async (lancamentoId: string) => {
-      // 1. Buscar os itens do lançamento com detalhamento de lotes
+      console.log('🗑️ Iniciando exclusão do lançamento:', lancamentoId)
+
+      // ETAPA 1: BUSCAR ITENS DO LANÇAMENTO
       const { data: itensLancamento, error: fetchError } = await supabase
         .from('lancamentos_itens')
         .select(`
@@ -208,63 +210,92 @@ export function useExcluirLancamento() {
         `)
         .eq('lancamento_id', lancamentoId)
 
-      if (fetchError) throw fetchError
+      if (fetchError) {
+        console.error('❌ Erro ao buscar itens:', fetchError)
+        throw fetchError
+      }
 
-      // 2. Restaurar estoque nos lotes para cada item de produto_estoque
+      console.log('📦 Itens encontrados:', itensLancamento?.length)
+
+      // ETAPA 2: RESTAURAR ESTOQUE NOS LOTES
       for (const itemLanc of itensLancamento || []) {
         const item = itemLanc.item as any
-        
-        // Só restaura estoque se for produto_estoque
-        if (item?.tipo !== 'produto_estoque') continue
 
-        // Se tem detalhamento de lotes, restaurar quantidade em cada lote
+        if (item?.tipo !== 'produto_estoque') {
+          console.log(`⏭️ Item ${itemLanc.item_id} não é produto_estoque, pulando...`)
+          continue
+        }
+
         const detalhamento = itemLanc.detalhamento_lotes as any[]
-        
-        if (detalhamento && Array.isArray(detalhamento)) {
-          for (const lote of detalhamento) {
-            const quantidadeConsumida = lote.quantidade_consumida || lote.quantidade || 0
-            
-            if (quantidadeConsumida > 0 && lote.lote_id) {
-              // Buscar quantidade atual do lote
-              const { data: loteAtual } = await supabase
-                .from('lotes')
-                .select('quantidade_disponivel')
-                .eq('id', lote.lote_id)
-                .single()
 
-              if (loteAtual) {
-                // Restaurar quantidade
-                const novaQuantidade = (loteAtual.quantidade_disponivel || 0) + quantidadeConsumida
-                
-                const { error: updateError } = await supabase
-                  .from('lotes')
-                  .update({ quantidade_disponivel: novaQuantidade })
-                  .eq('id', lote.lote_id)
+        if (!detalhamento || !Array.isArray(detalhamento)) {
+          console.warn(`⚠️ Item ${itemLanc.item_id} sem detalhamento de lotes`)
+          continue
+        }
 
-                if (updateError) {
-                  console.error('Erro ao restaurar lote:', lote.lote_id, updateError)
-                }
-              }
-            }
+        console.log(`🔄 Restaurando ${detalhamento.length} lotes do item ${itemLanc.item_id}`)
+
+        for (const lote of detalhamento) {
+          const quantidadeConsumida = lote.quantidade_consumida || lote.quantidade || 0
+
+          if (quantidadeConsumida <= 0 || !lote.lote_id) {
+            console.warn('⚠️ Lote inválido:', lote)
+            continue
           }
+
+          const { data: loteAtual, error: loteError } = await supabase
+            .from('lotes')
+            .select('quantidade_disponivel')
+            .eq('id', lote.lote_id)
+            .single()
+
+          if (loteError || !loteAtual) {
+            console.error('❌ Erro ao buscar lote:', lote.lote_id, loteError)
+            continue
+          }
+
+          const novaQuantidade = (loteAtual.quantidade_disponivel || 0) + quantidadeConsumida
+          console.log(`📈 Lote ${lote.lote_id}: ${loteAtual.quantidade_disponivel} + ${quantidadeConsumida} = ${novaQuantidade}`)
+
+          const { error: updateError } = await supabase
+            .from('lotes')
+            .update({ quantidade_disponivel: novaQuantidade })
+            .eq('id', lote.lote_id)
+
+          if (updateError) {
+            console.error('❌ Erro ao restaurar lote:', lote.lote_id, updateError)
+            throw updateError
+          }
+
+          console.log(`✅ Lote ${lote.lote_id} restaurado com sucesso!`)
         }
       }
 
-      // 3. Excluir os itens do lançamento
+      // ETAPA 3: EXCLUIR ITENS DO LANÇAMENTO
+      console.log('🗑️ Excluindo itens do lançamento...')
       const { error: itensError } = await supabase
         .from('lancamentos_itens')
         .delete()
         .eq('lancamento_id', lancamentoId)
 
-      if (itensError) throw itensError
+      if (itensError) {
+        console.error('❌ Erro ao excluir itens:', itensError)
+        throw itensError
+      }
 
-      // 4. Excluir o lançamento
+      // ETAPA 4: EXCLUIR O LANÇAMENTO
+      console.log('🗑️ Excluindo lançamento...')
       const { error } = await supabase
         .from('lancamentos')
         .delete()
         .eq('id', lancamentoId)
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Erro ao excluir lançamento:', error)
+        throw error
+      }
+
+      console.log('✅ Lançamento excluído com sucesso!')
       return { success: true }
     },
     onSuccess: () => {
@@ -272,11 +303,11 @@ export function useExcluirLancamento() {
       queryClient.invalidateQueries({ queryKey: ['lotes'] })
       queryClient.invalidateQueries({ queryKey: ['produtos'] })
       queryClient.invalidateQueries({ queryKey: ['preview-custo'] })
-      toast.success('Lançamento excluído e estoque restaurado com sucesso')
+      toast.success('Lançamento excluído e estoque restaurado com sucesso!')
     },
     onError: (error) => {
-      console.error('Erro ao excluir lançamento:', error)
-      toast.error('Erro ao excluir lançamento')
+      console.error('❌ Erro ao excluir lançamento:', error)
+      toast.error('Erro ao excluir lançamento. Tente novamente.')
     }
   })
 }
