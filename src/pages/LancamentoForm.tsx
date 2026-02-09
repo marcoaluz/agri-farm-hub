@@ -228,10 +228,13 @@ export function LancamentoForm() {
     const custoPorHa = areaHa && areaHa > 0 ? custoTotal / areaHa : null
     
     // Verificar se tem item com estoque insuficiente
+    // Um item produto_estoque sem detalhamento_lotes ou com detalhamento vazio
+    // quando tem quantidade > 0 indica estoque insuficiente
     const temEstoqueInsuficiente = itensValidos.some(
       i => i.item?.tipo === 'produto_estoque' && 
-           i.detalhamento_lotes === null && 
-           i.quantidade > 0
+           i.quantidade > 0 &&
+           (i.detalhamento_lotes === null || 
+            (Array.isArray(i.detalhamento_lotes) && i.detalhamento_lotes.length === 0))
     )
     
     return {
@@ -445,6 +448,16 @@ export function LancamentoForm() {
       toast({
         title: 'Nenhum item com quantidade',
         description: 'Informe a quantidade de pelo menos um item',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    // Verificar estoque insuficiente
+    if (resumoFinanceiro.temEstoqueInsuficiente) {
+      toast({
+        title: 'Estoque insuficiente',
+        description: 'Um ou mais produtos possuem quantidade maior que o estoque disponível. Ajuste as quantidades antes de salvar.',
         variant: 'destructive'
       })
       return false
@@ -707,7 +720,7 @@ export function LancamentoForm() {
               <Button
                 type="button"
                 onClick={handleSalvar}
-                disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id}
+                disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente}
                 className="w-full"
                 size="lg"
               >
@@ -828,7 +841,7 @@ export function LancamentoForm() {
                 <Button
                   type="button"
                   onClick={handleSalvar}
-                  disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id}
+                  disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente}
                   className="w-full"
                   size="lg"
                 >
