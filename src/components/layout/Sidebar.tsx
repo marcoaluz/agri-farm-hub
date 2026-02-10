@@ -15,7 +15,8 @@ import {
   Wheat,
   X,
   Leaf,
-  Calendar
+  Calendar,
+  ShieldCheck
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
@@ -79,6 +80,11 @@ const routes = [
     label: 'Relatórios',
     icon: BarChart3,
     href: '/relatorios',
+  },
+  {
+    label: 'Auditoria',
+    icon: ShieldCheck,
+    href: '/auditoria',
   },
   {
     label: 'Configurações',
