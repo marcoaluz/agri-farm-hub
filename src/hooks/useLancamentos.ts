@@ -305,9 +305,12 @@ export function useExcluirLancamento() {
       queryClient.invalidateQueries({ queryKey: ['preview-custo'] })
       toast.success('Lançamento excluído e estoque restaurado com sucesso!')
     },
-    onError: (error) => {
-      console.error('❌ Erro ao excluir lançamento:', error)
-      toast.error('Erro ao excluir lançamento. Tente novamente.')
+    onError: (error: any) => {
+      console.error('❌ Erro ao excluir lançamento:', JSON.stringify(error, null, 2))
+      console.error('❌ Mensagem:', error?.message)
+      console.error('❌ Detalhes:', error?.details)
+      console.error('❌ Código:', error?.code)
+      toast.error(`Erro ao excluir: ${error?.message || 'Tente novamente'}`)
     }
   })
 }
