@@ -283,7 +283,19 @@ export function useExcluirLancamento() {
         throw itensError
       }
 
-      // ETAPA 4: EXCLUIR O LANÇAMENTO
+      // ETAPA 4: EXCLUIR HISTÓRICO DO LANÇAMENTO
+      console.log('🗑️ Excluindo histórico do lançamento...')
+      const { error: historicoError } = await supabase
+        .from('lancamentos_historico')
+        .delete()
+        .eq('lancamento_id', lancamentoId)
+
+      if (historicoError) {
+        console.error('❌ Erro ao excluir histórico:', historicoError)
+        throw historicoError
+      }
+
+      // ETAPA 5: EXCLUIR O LANÇAMENTO
       console.log('🗑️ Excluindo lançamento...')
       const { error } = await supabase
         .from('lancamentos')
