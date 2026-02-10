@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import {
   Dialog,
   DialogContent,
@@ -9,21 +7,11 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import { Clock, User, Edit, Trash2, Plus, Loader2 } from 'lucide-react'
+import { Clock, User, Edit, Trash2, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-
-interface HistoricoItem {
-  id: string
-  tipo_alteracao: 'INSERT' | 'UPDATE' | 'DELETE'
-  alterado_em: string
-  usuario_email: string
-  usuario_nome: string
-  dados_anteriores: any
-  dados_novos: any
-  motivo?: string
-}
+import { useHistoricoLancamento, HistoricoAuditoria } from '@/hooks/useHistorico'
 
 interface HistoricoDialogProps {
   open: boolean
@@ -38,41 +26,13 @@ export function HistoricoDialog({
   lancamentoId,
   titulo = "Histórico de Alterações"
 }: HistoricoDialogProps) {
-  const [historico, setHistorico] = useState<HistoricoItem[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (open && lancamentoId) {
-      carregarHistorico()
-    }
-  }, [open, lancamentoId])
-
-  async function carregarHistorico() {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const { data, error: fetchError } = await supabase
-        .from('lancamentos_historico')
-        .select('*')
-        .eq('lancamento_id', lancamentoId)
-        .order('alterado_em', { ascending: false })
-
-      if (fetchError) throw fetchError
-
-      setHistorico(data || [])
-    } catch (err: any) {
-      console.error('Erro ao carregar histórico:', err)
-      setError(err.message || 'Erro ao carregar histórico')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: historico = [], isLoading: loading, error: queryError } = useHistoricoLancamento(
+    open ? lancamentoId : null
+  )
+  const error = queryError?.message || null
 
   function getIconeTipo(tipo: string) {
     switch (tipo) {
-      case 'INSERT': return <Plus className="h-4 w-4" />
       case 'UPDATE': return <Edit className="h-4 w-4" />
       case 'DELETE': return <Trash2 className="h-4 w-4" />
       default: return <Edit className="h-4 w-4" />
@@ -81,7 +41,6 @@ export function HistoricoDialog({
 
   function getBadgeVariant(tipo: string): 'default' | 'secondary' | 'destructive' | 'outline' {
     switch (tipo) {
-      case 'INSERT': return 'default'
       case 'UPDATE': return 'secondary'
       case 'DELETE': return 'destructive'
       default: return 'outline'
@@ -90,7 +49,6 @@ export function HistoricoDialog({
 
   function getTipoLabel(tipo: string) {
     switch (tipo) {
-      case 'INSERT': return 'Criado'
       case 'UPDATE': return 'Editado'
       case 'DELETE': return 'Excluído'
       default: return tipo
@@ -119,7 +77,7 @@ export function HistoricoDialog({
     return String(valor)
   }
 
-  function renderDiferencas(item: HistoricoItem) {
+  function renderDiferencas(item: HistoricoAuditoria) {
     if (item.tipo_alteracao === 'INSERT') {
       return <p className="text-sm text-muted-foreground">Registro criado</p>
     }
