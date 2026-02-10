@@ -21,6 +21,7 @@ import { Maquinas } from '@/pages/Maquinas'
 import { Financeiro } from '@/pages/Financeiro'
 import { Relatorios } from '@/pages/Relatorios'
 import { Configuracoes } from '@/pages/Configuracoes'
+import Auditoria from '@/pages/Auditoria'
 import NotFound from '@/pages/NotFound'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -113,6 +114,7 @@ export function AppRoutes() {
         <Route path="maquinas" element={<Maquinas />} />
         <Route path="financeiro" element={<Financeiro />} />
         <Route path="relatorios" element={<Relatorios />} />
+        <Route path="auditoria" element={<Auditoria />} />
         <Route path="configuracoes" element={<Configuracoes />} />
       </Route>
 
