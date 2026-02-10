@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Search, Filter, Calendar, MoreHorizontal, Edit, Trash2, Eye, Loader2 } from 'lucide-react'
+import { Plus, Search, Filter, Calendar, MoreHorizontal, Edit, Trash2, Eye, Loader2, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { ContextDebug } from '@/components/debug/ContextDebug'
+import { HistoricoDialog } from '@/components/auditoria/HistoricoDialog'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useLancamentos, useExcluirLancamento } from '@/hooks/useLancamentos'
 import { Lancamento } from '@/types/supabase-local'
@@ -52,6 +53,10 @@ export function Lancamentos() {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; lancamento: Lancamento | null }>({
     open: false,
     lancamento: null
+  })
+  const [historicoDialog, setHistoricoDialog] = useState<{ open: boolean; lancamentoId: string }>({
+    open: false,
+    lancamentoId: ''
   })
 
 
@@ -290,6 +295,10 @@ export function Lancamentos() {
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setHistoricoDialog({ open: true, lancamentoId: lancamento.id })}>
+                          <History className="mr-2 h-4 w-4" />
+                          Histórico
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           onClick={() => setDeleteDialog({ open: true, lancamento })}
@@ -350,6 +359,12 @@ export function Lancamentos() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <HistoricoDialog
+        open={historicoDialog.open}
+        onOpenChange={(open) => setHistoricoDialog({ open, lancamentoId: '' })}
+        lancamentoId={historicoDialog.lancamentoId}
+      />
     </div>
   )
 }
