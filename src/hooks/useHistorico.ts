@@ -88,3 +88,45 @@ export function useEstatisticasAuditoria(propriedadeId?: string) {
     }
   })
 }
+
+/**
+ * Extrai informações resumidas do lançamento a partir do JSON
+ */
+export function extrairInfoLancamento(dados: any) {
+  if (!dados) return null
+  
+  return {
+    servico_id: dados.servico_id,
+    talhao_id: dados.talhao_id,
+    data_execucao: dados.data_execucao,
+    custo_total: dados.custo_total,
+    observacoes: dados.observacoes,
+    propriedade_id: dados.propriedade_id
+  }
+}
+
+/**
+ * Formata valor monetário
+ */
+export function formatarMoeda(valor: number | string | null): string {
+  if (valor === null || valor === undefined) return 'R$ 0,00'
+  const numero = typeof valor === 'string' ? parseFloat(valor) : valor
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(numero)
+}
+
+/**
+ * Compara dois objetos e retorna campos alterados
+ */
+export function obterCamposAlterados(anterior: any, novo: any): string[] {
+  if (!anterior || !novo) return []
+  
+  const camposIgnorados = ['updated_at', 'editado_em', 'editado_por']
+  
+  return Object.keys(novo).filter(key => {
+    if (camposIgnorados.includes(key)) return false
+    return JSON.stringify(anterior[key]) !== JSON.stringify(novo[key])
+  })
+}
