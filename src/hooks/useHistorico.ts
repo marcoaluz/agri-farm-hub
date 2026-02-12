@@ -24,10 +24,9 @@ export function useHistoricoLancamento(lancamentoId: string | null) {
       if (!lancamentoId) return []
 
       const { data, error } = await supabase
-        .from('lancamentos_historico')
+        .from('vw_lancamentos_historico_completo')
         .select('*')
         .eq('lancamento_id', lancamentoId)
-        .in('tipo_alteracao', ['UPDATE', 'DELETE'])
         .order('alterado_em', { ascending: false })
 
       if (error) throw error
@@ -42,14 +41,13 @@ export function useHistoricoGeral(propriedadeId?: string) {
     queryKey: ['historico-geral', propriedadeId],
     queryFn: async () => {
       let query = supabase
-        .from('lancamentos_historico')
+        .from('vw_lancamentos_historico_completo')
         .select('*')
-        .in('tipo_alteracao', ['UPDATE', 'DELETE'])
         .order('alterado_em', { ascending: false })
         .limit(100)
 
       if (propriedadeId) {
-        query = query.eq('propriedade_id', propriedadeId)
+        query = query.or(`propriedade_id.eq.${propriedadeId},dados_anteriores->>propriedade_id.eq.${propriedadeId}`)
       }
 
       const { data, error } = await query
