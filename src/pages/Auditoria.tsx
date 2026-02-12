@@ -1,6 +1,7 @@
 import { useHistoricoGeral, useEstatisticasAuditoria } from '@/hooks/useHistorico'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { DetalhesAlteracao } from '@/components/auditoria/DetalhesAlteracao'
+import { DialogDetalhesCompletos } from '@/components/auditoria/DialogDetalhesCompletos'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -151,6 +152,7 @@ export default function Auditoria() {
                   </TableCell>
                   <TableCell>
                     <DetalhesAlteracao item={item} />
+                    <DialogDetalhesCompletos item={item} />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground italic max-w-[200px] truncate">
                     {item.motivo || '-'}
