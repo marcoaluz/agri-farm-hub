@@ -1,5 +1,6 @@
-import { useHistoricoGeral, useEstatisticasAuditoria, HistoricoAuditoria } from '@/hooks/useHistorico'
+import { useHistoricoGeral, useEstatisticasAuditoria } from '@/hooks/useHistorico'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { DetalhesAlteracao } from '@/components/auditoria/DetalhesAlteracao'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -31,35 +32,8 @@ function getTipoLabel(tipo: string) {
   }
 }
 
-function formatarValor(valor: any): string {
-  if (valor === null || valor === undefined) return '-'
-  if (typeof valor === 'boolean') return valor ? 'Sim' : 'Não'
-  if (typeof valor === 'number') return valor.toLocaleString('pt-BR')
-  if (typeof valor === 'string' && valor.match(/^\d{4}-\d{2}-\d{2}/)) {
-    return format(new Date(valor), 'dd/MM/yyyy', { locale: ptBR })
-  }
-  return String(valor)
-}
 
-function ResumoDiferencas({ item }: { item: HistoricoAuditoria }) {
-  if (item.tipo_alteracao === 'DELETE') {
-    return <span className="text-muted-foreground italic">Registro excluído</span>
-  }
 
-  if (item.tipo_alteracao === 'UPDATE' && item.dados_anteriores && item.dados_novos) {
-    const campos = Object.keys(item.dados_novos).filter(key =>
-      JSON.stringify(item.dados_anteriores[key]) !== JSON.stringify(item.dados_novos[key])
-    )
-    if (campos.length === 0) return <span className="text-muted-foreground">Sem alterações</span>
-    return (
-      <span className="text-sm">
-        {campos.length} campo{campos.length > 1 ? 's' : ''} alterado{campos.length > 1 ? 's' : ''}
-      </span>
-    )
-  }
-
-  return null
-}
 
 export default function Auditoria() {
   const { propriedadeAtual } = useGlobal()
@@ -140,7 +114,7 @@ export default function Auditoria() {
               <TableHead>Data/Hora</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Usuário</TableHead>
-              <TableHead>Resumo</TableHead>
+              <TableHead>Detalhes</TableHead>
               <TableHead>Motivo</TableHead>
             </TableRow>
           </TableHeader>
@@ -176,7 +150,7 @@ export default function Auditoria() {
                     {item.usuario_nome || item.usuario_email || item.alterado_por || 'Sistema'}
                   </TableCell>
                   <TableCell>
-                    <ResumoDiferencas item={item} />
+                    <DetalhesAlteracao item={item} />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground italic max-w-[200px] truncate">
                     {item.motivo || '-'}
