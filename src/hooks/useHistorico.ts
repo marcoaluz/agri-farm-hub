@@ -15,6 +15,8 @@ export interface HistoricoAuditoria {
   servico_nome?: string
   talhao_nome?: string
   propriedade_nome?: string
+  propriedade_id?: string
+  safra_id?: string
 }
 
 export function useHistoricoLancamento(lancamentoId: string | null) {
@@ -36,9 +38,9 @@ export function useHistoricoLancamento(lancamentoId: string | null) {
   })
 }
 
-export function useHistoricoGeral(propriedadeId?: string) {
+export function useHistoricoGeral(propriedadeId?: string, safraId?: string) {
   return useQuery({
-    queryKey: ['historico-geral', propriedadeId],
+    queryKey: ['historico-geral', propriedadeId, safraId],
     queryFn: async () => {
       let query = supabase
         .from('vw_lancamentos_historico_completo')
@@ -47,7 +49,11 @@ export function useHistoricoGeral(propriedadeId?: string) {
         .limit(100)
 
       if (propriedadeId) {
-        query = query.or(`propriedade_id.eq.${propriedadeId},dados_anteriores->>propriedade_id.eq.${propriedadeId}`)
+        query = query.eq('propriedade_id', propriedadeId)
+      }
+
+      if (safraId) {
+        query = query.eq('safra_id', safraId)
       }
 
       const { data, error } = await query
@@ -57,16 +63,20 @@ export function useHistoricoGeral(propriedadeId?: string) {
   })
 }
 
-export function useEstatisticasAuditoria(propriedadeId?: string) {
+export function useEstatisticasAuditoria(propriedadeId?: string, safraId?: string) {
   return useQuery({
-    queryKey: ['estatisticas-auditoria', propriedadeId],
+    queryKey: ['estatisticas-auditoria', propriedadeId, safraId],
     queryFn: async () => {
       let query = supabase
         .from('vw_lancamentos_historico_completo')
-        .select('tipo_alteracao, alterado_em, propriedade_id')
+        .select('tipo_alteracao, alterado_em, propriedade_id, safra_id')
 
       if (propriedadeId) {
         query = query.eq('propriedade_id', propriedadeId)
+      }
+
+      if (safraId) {
+        query = query.eq('safra_id', safraId)
       }
 
       const { data, error } = await query
