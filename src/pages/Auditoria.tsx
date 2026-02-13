@@ -37,9 +37,9 @@ function getTipoLabel(tipo: string) {
 
 
 export default function Auditoria() {
-  const { propriedadeAtual } = useGlobal()
-  const { data: historico, isLoading } = useHistoricoGeral(propriedadeAtual?.id)
-  const { data: stats } = useEstatisticasAuditoria(propriedadeAtual?.id)
+  const { propriedadeAtual, safraAtual } = useGlobal()
+  const { data: historico, isLoading } = useHistoricoGeral(propriedadeAtual?.id, safraAtual?.id)
+  const { data: stats } = useEstatisticasAuditoria(propriedadeAtual?.id, safraAtual?.id)
 
   return (
     <div className="space-y-6 animate-fade-in">
