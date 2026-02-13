@@ -1,4 +1,4 @@
-import { HistoricoAuditoria } from '@/hooks/useHistorico'
+import { HistoricoAuditoria, formatarMoeda } from '@/hooks/useHistorico'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -15,10 +15,15 @@ const NOMES_CAMPOS: Record<string, string> = {
   'ativo': 'Status'
 }
 
-function formatarValor(valor: any): string {
+function formatarValor(valor: any, campo?: string): string {
   if (valor === null || valor === undefined) return '-'
+
+  if (campo === 'custo_total' && typeof valor === 'number') {
+    return formatarMoeda(valor)
+  }
+
   if (typeof valor === 'boolean') return valor ? 'Sim' : 'Não'
-  if (typeof valor === 'number') return valor.toLocaleString('pt-BR')
+
   if (typeof valor === 'string' && valor.match(/^\d{4}-\d{2}-\d{2}/)) {
     try {
       return format(new Date(valor), 'dd/MM/yyyy', { locale: ptBR })
@@ -26,6 +31,14 @@ function formatarValor(valor: any): string {
       return valor
     }
   }
+
+  if (typeof valor === 'number') return valor.toLocaleString('pt-BR')
+
+  // Se for UUID (serviço/talhão), truncar
+  if (typeof valor === 'string' && valor.match(/^[0-9a-f]{8}-[0-9a-f]{4}/)) {
+    return valor.substring(0, 8) + '...'
+  }
+
   return String(valor)
 }
 
@@ -47,20 +60,17 @@ export function DetalhesAlteracao({ item }: DetalhesAlteracaoProps) {
           )}
           {dados.custo_total && (
             <div>
-              💰 Custo: {new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-              }).format(Number(dados.custo_total))}
+              💰 Custo: {formatarMoeda(Number(dados.custo_total))}
             </div>
           )}
-          {dados.servico_id && (
-            <div className="text-xs text-muted-foreground">
-              🔧 Serviço ID: {dados.servico_id.substring(0, 8)}...
+          {item.servico_nome && (
+            <div>
+              🔧 Serviço: {item.servico_nome}
             </div>
           )}
-          {dados.talhao_id && (
-            <div className="text-xs text-muted-foreground">
-              🌾 Talhão ID: {dados.talhao_id.substring(0, 8)}...
+          {item.talhao_nome && (
+            <div>
+              🌾 Talhão: {item.talhao_nome}
             </div>
           )}
           {dados.observacoes && (
@@ -75,9 +85,12 @@ export function DetalhesAlteracao({ item }: DetalhesAlteracaoProps) {
 
   // UPDATE: Mostrar campos alterados
   if (item.tipo_alteracao === 'UPDATE' && item.dados_anteriores && item.dados_novos) {
-    const campos = Object.keys(item.dados_novos).filter(key =>
-      JSON.stringify(item.dados_anteriores[key]) !== JSON.stringify(item.dados_novos[key])
-    )
+    const camposIgnorados = ['updated_at', 'editado_em', 'editado_por', 'created_at', 'id']
+
+    const campos = Object.keys(item.dados_novos).filter(key => {
+      if (camposIgnorados.includes(key)) return false
+      return JSON.stringify(item.dados_anteriores[key]) !== JSON.stringify(item.dados_novos[key])
+    })
 
     if (campos.length === 0) {
       return (
@@ -100,10 +113,10 @@ export function DetalhesAlteracao({ item }: DetalhesAlteracaoProps) {
               </span>
               <div className="ml-2 space-y-0.5">
                 <div className="text-muted-foreground">
-                  De: {formatarValor(item.dados_anteriores[campo])}
+                  De: {formatarValor(item.dados_anteriores[campo], campo)}
                 </div>
                 <div className="text-foreground">
-                  Para: {formatarValor(item.dados_novos[campo])}
+                  Para: {formatarValor(item.dados_novos[campo], campo)}
                 </div>
               </div>
             </div>
