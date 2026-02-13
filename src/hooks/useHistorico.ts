@@ -62,17 +62,21 @@ export function useEstatisticasAuditoria(propriedadeId?: string) {
     queryKey: ['estatisticas-auditoria', propriedadeId],
     queryFn: async () => {
       let query = supabase
-        .from('lancamentos_historico')
-        .select('tipo_alteracao, alterado_em')
+        .from('vw_lancamentos_historico_completo')
+        .select('tipo_alteracao, alterado_em, propriedade_id')
 
       if (propriedadeId) {
         query = query.eq('propriedade_id', propriedadeId)
       }
 
       const { data, error } = await query
-      if (error) throw error
+      if (error) {
+        console.error('Erro ao buscar estatísticas:', error)
+        throw error
+      }
 
       const total = data?.length || 0
+      const insercoes = data?.filter(d => d.tipo_alteracao === 'INSERT').length || 0
       const edicoes = data?.filter(d => d.tipo_alteracao === 'UPDATE').length || 0
       const exclusoes = data?.filter(d => d.tipo_alteracao === 'DELETE').length || 0
 
@@ -82,7 +86,7 @@ export function useEstatisticasAuditoria(propriedadeId?: string) {
         new Date(d.alterado_em) > ontem
       ).length || 0
 
-      return { total, edicoes, exclusoes, ultimas24h }
+      return { total, insercoes, edicoes, exclusoes, ultimas24h }
     }
   })
 }
