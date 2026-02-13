@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Search, Filter, Calendar, MoreHorizontal, Edit, Trash2, Eye, Loader2, History } from 'lucide-react'
+import { Plus, Search, Filter, Calendar, MoreHorizontal, Edit, Trash2, Eye, Loader2, History, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -33,8 +33,10 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ContextDebug } from '@/components/debug/ContextDebug'
 import { HistoricoDialog } from '@/components/auditoria/HistoricoDialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useLancamentos, useExcluirLancamento } from '@/hooks/useLancamentos'
+import { useSafraFechada } from '@/hooks/useSafraFechamento'
 import { Lancamento } from '@/types/supabase-local'
 
 export function Lancamentos() {
@@ -47,6 +49,7 @@ export function Lancamentos() {
 
   const { safraAtual, propriedadeAtual } = useGlobal()
   const { data: lancamentos, isLoading } = useLancamentos(safraAtual?.id)
+  const { data: safraFechada } = useSafraFechada(safraAtual?.id)
   const excluirLancamento = useExcluirLancamento()
 
   const [searchTerm, setSearchTerm] = useState('')
@@ -123,11 +126,20 @@ export function Lancamentos() {
             }
           </p>
         </div>
-        <Button className="gap-2" onClick={handleNovoLancamento} disabled={!safraAtual}>
+        <Button className="gap-2" onClick={handleNovoLancamento} disabled={!safraAtual || safraFechada}>
           <Plus className="h-4 w-4" />
           Novo Lançamento
         </Button>
       </div>
+
+      {safraFechada && (
+        <Alert>
+          <Lock className="h-4 w-4" />
+          <AlertDescription>
+            Esta safra está fechada. Não é possível criar, editar ou excluir lançamentos.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <ContextDebug
         enabled={debugEnabled}
@@ -291,7 +303,7 @@ export function Lancamentos() {
                           <Eye className="mr-2 h-4 w-4" />
                           Ver Detalhes
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEditar(lancamento.id)}>
+                        <DropdownMenuItem onClick={() => handleEditar(lancamento.id)} disabled={safraFechada}>
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
@@ -303,6 +315,7 @@ export function Lancamentos() {
                         <DropdownMenuItem 
                           onClick={() => setDeleteDialog({ open: true, lancamento })}
                           className="text-destructive focus:text-destructive"
+                          disabled={safraFechada}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Excluir
