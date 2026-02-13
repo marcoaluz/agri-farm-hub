@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, Plus, Edit, Trash2, Check, AlertCircle } from "lucide-react";
+import { Calendar, Plus, Edit, Trash2, Check, AlertCircle, Lock } from "lucide-react";
+import { DialogFecharSafra } from "@/components/safras/DialogFecharSafra";
 import { cn } from "@/lib/utils";
 
 interface Safra {
@@ -23,6 +24,9 @@ interface Safra {
   ativa: boolean;
   propriedade_id: string;
   created_at: string;
+  fechada?: boolean;
+  data_fechamento?: string;
+  fechada_por?: string;
 }
 
 export default function SafrasPage() {
@@ -192,6 +196,12 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
                   ATIVA
                 </Badge>
               )}
+              {safra.fechada && (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                  <Lock className="h-3 w-3 mr-1" />
+                  FECHADA
+                </Badge>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-4">
@@ -212,6 +222,15 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
                 <span>Duração: {duracao} {duracao === 1 ? "ano" : "anos"}</span>
               </div>
             </div>
+
+            {safra.fechada && safra.data_fechamento && (
+              <div className="mt-2">
+                <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                  <Lock className="h-4 w-4" />
+                  <span>Fechada em {new Date(safra.data_fechamento).toLocaleDateString('pt-BR')}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">
@@ -227,7 +246,9 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
               </Button>
             )}
 
-            <Button variant="outline" size="icon" onClick={onEdit}>
+            <DialogFecharSafra safra={safra} />
+
+            <Button variant="outline" size="icon" onClick={onEdit} disabled={safra.fechada}>
               <Edit className="h-4 w-4" />
             </Button>
 
@@ -240,7 +261,7 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
                     deleteMutation.mutate();
                   }
                 }}
-                disabled={deleteMutation.isPending}
+                disabled={deleteMutation.isPending || safra.fechada}
                 className="text-destructive hover:text-destructive"
               >
                 <Trash2 className="h-4 w-4" />
