@@ -252,8 +252,12 @@
 }
 
 /* Prevent horizontal overflow globally */
-html, body, #root {
-  max-width: 100vw;
+html {
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
   overflow-x: hidden;
 }
 
