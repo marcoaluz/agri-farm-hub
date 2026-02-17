@@ -106,7 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut()
-      if (error) throw error
+      // Ignore "Auth session missing" - session already expired
+      if (error && !error.message?.includes('session missing')) throw error
+
+      setUser(null)
+      setSession(null)
 
       toast({
         title: 'Logout realizado',
@@ -121,6 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: authError.message,
         variant: 'destructive',
       })
+      // Still redirect on error
+      navigate('/login')
     }
   }
 
