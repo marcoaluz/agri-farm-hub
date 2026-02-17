@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Search, Filter, Calendar, MoreHorizontal, Edit, Trash2, Eye, Loader2, History, Lock } from 'lucide-react'
+import { Plus, Search, Filter, Calendar, MoreHorizontal, Edit, Trash2, Eye, Loader2, History, Lock, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -31,13 +31,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ContextDebug } from '@/components/debug/ContextDebug'
 import { HistoricoDialog } from '@/components/auditoria/HistoricoDialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useLancamentos, useExcluirLancamento } from '@/hooks/useLancamentos'
 import { useSafraFechada } from '@/hooks/useSafraFechamento'
+import { useTalhoes } from '@/hooks/useTalhoes'
 import { Lancamento } from '@/types/supabase-local'
+import { format, addDays, subDays, isToday, parseISO, isSameDay } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 export function Lancamentos() {
   const navigate = useNavigate()
@@ -50,9 +60,13 @@ export function Lancamentos() {
   const { safraAtual, propriedadeAtual } = useGlobal()
   const { data: lancamentos, isLoading } = useLancamentos(safraAtual?.id)
   const { data: safraFechada } = useSafraFechada(safraAtual?.id)
+  const { data: talhoes } = useTalhoes(propriedadeAtual?.id)
   const excluirLancamento = useExcluirLancamento()
 
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [filterTalhaoId, setFilterTalhaoId] = useState<string>('all')
+  const [showAllDates, setShowAllDates] = useState(false)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; lancamento: Lancamento | null }>({
     open: false,
     lancamento: null
@@ -62,27 +76,45 @@ export function Lancamentos() {
     lancamentoId: ''
   })
 
+  // Filtrar lançamentos
+  const filteredLancamentos = useMemo(() => {
+    if (!lancamentos) return []
 
-  // Filtrar lançamentos pelo termo de busca
-  const filteredLancamentos = lancamentos?.filter(lanc => {
-    const searchLower = searchTerm.toLowerCase()
-    return (
-      lanc.servico?.nome?.toLowerCase().includes(searchLower) ||
-      lanc.talhao?.nome?.toLowerCase().includes(searchLower) ||
-      lanc.observacoes?.toLowerCase().includes(searchLower)
-    )
-  }) || []
+    return lancamentos.filter(lanc => {
+      // Filtro por data
+      if (!showAllDates) {
+        const dataExec = parseISO(lanc.data_execucao)
+        if (!isSameDay(dataExec, selectedDate)) return false
+      }
 
-  // Calcular estatísticas
+      // Filtro por talhão
+      if (filterTalhaoId !== 'all' && lanc.talhao_id !== filterTalhaoId) return false
+
+      // Filtro por texto
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase()
+        const matchTexto =
+          lanc.servico?.nome?.toLowerCase().includes(searchLower) ||
+          lanc.talhao?.nome?.toLowerCase().includes(searchLower) ||
+          lanc.observacoes?.toLowerCase().includes(searchLower)
+        const matchValor = lanc.custo_total?.toString().includes(searchTerm)
+        if (!matchTexto && !matchValor) return false
+      }
+
+      return true
+    })
+  }, [lancamentos, selectedDate, filterTalhaoId, searchTerm, showAllDates])
+
+  // Calcular estatísticas dos lançamentos filtrados
   const stats = {
     total: filteredLancamentos.length,
     custoTotal: filteredLancamentos.reduce((acc, l) => acc + (l.custo_total || 0), 0),
-    esteMes: filteredLancamentos.filter(l => {
-      const dataExec = new Date(l.data_execucao)
-      const hoje = new Date()
-      return dataExec.getMonth() === hoje.getMonth() && dataExec.getFullYear() === hoje.getFullYear()
-    }).length
+    totalSafra: lancamentos?.length || 0
   }
+
+  const handlePrevDay = () => setSelectedDate(prev => subDays(prev, 1))
+  const handleNextDay = () => setSelectedDate(prev => addDays(prev, 1))
+  const handleToday = () => { setSelectedDate(new Date()); setShowAllDates(false) }
 
   const handleNovoLancamento = () => {
     navigate('/lancamentos/novo')
@@ -148,26 +180,72 @@ export function Lancamentos() {
         novoLancamentoDisabled={!safraAtual}
       />
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* Navegação por Data (Período) */}
+      <Card>
+        <CardContent className="py-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={handlePrevDay} className="h-8 w-8">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold text-sm sm:text-base capitalize">
+                  {showAllDates 
+                    ? 'Todos os dias'
+                    : format(selectedDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                  }
+                </span>
+              </div>
+              <Button variant="outline" size="icon" onClick={handleNextDay} className="h-8 w-8">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              {!isToday(selectedDate) && !showAllDates && (
+                <Button variant="outline" size="sm" onClick={handleToday}>
+                  Hoje
+                </Button>
+              )}
+              <Button
+                variant={showAllDates ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowAllDates(!showAllDates)}
+              >
+                {showAllDates ? 'Filtrando todos' : 'Ver todos'}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Stats resumidos */}
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total de Lançamentos
+              {showAllDates ? 'Total de Lançamentos' : 'Lançamentos do Dia'}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
-              <div className="text-2xl font-bold">{stats.total}</div>
+              <div className="text-2xl font-bold">
+                {stats.total}
+                {!showAllDates && (
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    / {stats.totalSafra} na safra
+                  </span>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Custo Total
+              {showAllDates ? 'Custo Total' : 'Custo do Dia'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -197,41 +275,45 @@ export function Lancamentos() {
             )}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Este Mês
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-8 w-12" />
-            ) : (
-              <div className="text-2xl font-bold">{stats.esteMes}</div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-4 flex-wrap">
+      {/* Filtros: Busca + Talhão */}
+      <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input 
-            placeholder="Buscar lançamentos..." 
+            placeholder="Buscar por serviço, talhão, observação ou valor..." 
             className="pl-9"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1 h-8 w-8"
+              onClick={() => setSearchTerm('')}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-        <Button variant="outline" className="gap-2">
-          <Calendar className="h-4 w-4" />
-          Período
-        </Button>
-        <Button variant="outline" className="gap-2">
-          <Filter className="h-4 w-4" />
-          Filtros
-        </Button>
+        <Select value={filterTalhaoId} onValueChange={setFilterTalhaoId}>
+          <SelectTrigger className="w-[200px]">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="Todos os talhões" />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os talhões</SelectItem>
+            {talhoes?.map((talhao) => (
+              <SelectItem key={talhao.id} value={talhao.id}>
+                {talhao.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table */}
@@ -264,9 +346,11 @@ export function Lancamentos() {
                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                   {!safraAtual 
                     ? 'Selecione uma safra para ver os lançamentos'
-                    : searchTerm 
-                      ? 'Nenhum lançamento encontrado para esta busca'
-                      : 'Nenhum lançamento cadastrado nesta safra'
+                    : searchTerm || filterTalhaoId !== 'all'
+                      ? 'Nenhum lançamento encontrado com os filtros aplicados'
+                      : !showAllDates
+                        ? `Nenhum lançamento em ${format(selectedDate, "dd/MM/yyyy")}`
+                        : 'Nenhum lançamento cadastrado nesta safra'
                   }
                 </TableCell>
               </TableRow>
