@@ -216,7 +216,7 @@ export function useExcluirLancamento() {
           item_id,
           quantidade,
           detalhamento_lotes,
-          item:itens(tipo, produto_id)
+          item:itens(tipo, produto_id, maquina_id)
         `)
         .eq('lancamento_id', lancamentoId)
 
@@ -281,6 +281,38 @@ export function useExcluirLancamento() {
         }
       }
 
+      // ETAPA 2.5: REVERTER HORÍMETRO DE MÁQUINAS
+      console.log('⏮️ Revertendo horímetro de máquinas...')
+      for (const itemLanc of itensLancamento || []) {
+        const item = itemLanc.item as any
+        if (item?.tipo === 'maquina_hora' && item?.maquina_id) {
+          console.log(`⏮️ Revertendo ${itemLanc.quantidade}h da máquina ${item.maquina_id}`)
+
+          const { data: maquinaAtual, error: fetchMaqError } = await supabase
+            .from('maquinas')
+            .select('horimetro_atual')
+            .eq('id', item.maquina_id)
+            .single()
+
+          if (fetchMaqError || !maquinaAtual) {
+            console.error(`❌ Erro ao buscar máquina ${item.maquina_id}:`, fetchMaqError)
+            continue
+          }
+
+          const novoHorimetro = (maquinaAtual.horimetro_atual || 0) - itemLanc.quantidade
+          const { error: maquinaError } = await supabase
+            .from('maquinas')
+            .update({ horimetro_atual: novoHorimetro })
+            .eq('id', item.maquina_id)
+
+          if (maquinaError) {
+            console.error(`❌ Erro ao reverter horímetro da máquina ${item.maquina_id}:`, maquinaError)
+          } else {
+            console.log(`✅ Horímetro revertido: ${maquinaAtual.horimetro_atual} → ${novoHorimetro}`)
+          }
+        }
+      }
+
       // ETAPA 3: EXCLUIR ITENS DO LANÇAMENTO
       console.log('🗑️ Excluindo itens do lançamento...')
       const { error: itensError } = await supabase
@@ -325,6 +357,7 @@ export function useExcluirLancamento() {
       queryClient.invalidateQueries({ queryKey: ['lotes'] })
       queryClient.invalidateQueries({ queryKey: ['produtos'] })
       queryClient.invalidateQueries({ queryKey: ['preview-custo'] })
+      queryClient.invalidateQueries({ queryKey: ['maquinas'] })
       toast.success('Lançamento excluído e estoque restaurado com sucesso!')
     },
     onError: (error: any) => {
