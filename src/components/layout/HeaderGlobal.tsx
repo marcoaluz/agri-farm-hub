@@ -51,6 +51,7 @@ type UserProfile = {
   perfil: string
   full_name: string | null
   avatar_url: string | null
+  is_super_admin: boolean | null
 }
 
 const PERFIL_BADGE_VARIANT: Record<string, 'destructive' | 'default' | 'secondary' | 'outline'> = {
@@ -82,12 +83,16 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
     if (!user) return
 
     const fetchProfile = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('user_profiles')
-        .select('perfil, full_name, avatar_url')
+        .select('perfil, full_name, avatar_url, is_super_admin')
         .eq('id', user.id)
         .single()
 
+      if (error) {
+        console.error('Erro ao buscar perfil do usuário:', error)
+        return
+      }
       if (data) setProfile(data as UserProfile)
     }
 
