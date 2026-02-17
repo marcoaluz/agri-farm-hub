@@ -8,10 +8,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Tractor, Edit, Trash2, Search, Clock, DollarSign, Gauge } from 'lucide-react';
+import { Plus, Tractor, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets } from 'lucide-react';
 import { MaquinaForm } from '@/components/maquinas/MaquinaForm';
+import { AbastecimentoForm } from '@/components/maquinas/AbastecimentoForm';
+import { HistoricoAbastecimentos } from '@/components/maquinas/HistoricoAbastecimentos';
 
 interface Maquina {
   id: string;
@@ -33,6 +36,8 @@ export function Maquinas() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [maquinaEditando, setMaquinaEditando] = useState<Maquina | null>(null);
   const [busca, setBusca] = useState('');
+  const [abastecimentoMaquina, setAbastecimentoMaquina] = useState<Maquina | null>(null);
+  const [abastecimentoDialogOpen, setAbastecimentoDialogOpen] = useState(false);
 
   const { data: maquinas, isLoading } = useQuery({
     queryKey: ['maquinas', propriedadeAtual?.id],
@@ -48,6 +53,27 @@ export function Maquinas() {
       return data as Maquina[];
     },
     enabled: !!propriedadeAtual?.id
+  });
+
+  // Diesel consumed this month across all machines
+  const { data: dieselMes } = useQuery({
+    queryKey: ['abastecimentos-stats', propriedadeAtual?.id],
+    queryFn: async () => {
+      const now = new Date();
+      const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const maquinaIds = maquinas?.map(m => m.id) || [];
+      if (!maquinaIds.length) return 0;
+
+      const { data, error } = await supabase
+        .from('abastecimentos' as any)
+        .select('quantidade_litros')
+        .in('maquina_id', maquinaIds)
+        .gte('data', start);
+
+      if (error) throw error;
+      return (data as any[])?.reduce((s: number, r: any) => s + (r.quantidade_litros || 0), 0) || 0;
+    },
+    enabled: !!maquinas?.length
   });
 
   const maquinasFiltradas = maquinas?.filter(m =>
@@ -159,11 +185,13 @@ export function Maquinas() {
           <CardContent className="p-3 sm:pt-6 sm:p-6">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
               <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-accent">
-                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
+                <Droplets className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
               <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm text-muted-foreground">Disponível</p>
-                <p className="text-xl sm:text-2xl font-bold">∞</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Diesel/mês</p>
+                <p className="text-xl sm:text-2xl font-bold">
+                  {(dieselMes ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}L
+                </p>
               </div>
             </div>
           </CardContent>
@@ -180,6 +208,21 @@ export function Maquinas() {
           className="pl-9"
         />
       </div>
+
+      {/* Abastecimento Dialog */}
+      <Dialog open={abastecimentoDialogOpen} onOpenChange={setAbastecimentoDialogOpen}>
+        <DialogContent className="max-w-lg">
+          {abastecimentoMaquina && (
+            <AbastecimentoForm
+              maquina={abastecimentoMaquina}
+              onSuccess={() => {
+                setAbastecimentoDialogOpen(false);
+                setAbastecimentoMaquina(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Grid */}
       {isLoading ? (
@@ -261,12 +304,34 @@ export function Maquinas() {
                     size="sm"
                     className="flex-1"
                     onClick={() => {
+                      setAbastecimentoMaquina(maquina);
+                      setAbastecimentoDialogOpen(true);
+                    }}
+                  >
+                    <Fuel className="h-4 w-4 mr-1" />
+                    Abastecer
+                  </Button>
+
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <History className="h-4 w-4" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+                      <HistoricoAbastecimentos maquina={maquina} />
+                    </SheetContent>
+                  </Sheet>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
                       setMaquinaEditando(maquina);
                       setDialogOpen(true);
                     }}
                   >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Editar
+                    <Edit className="h-4 w-4" />
                   </Button>
 
                   <AlertDialog>
