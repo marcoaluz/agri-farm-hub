@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Layout } from '@/components/layout/Layout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { SafraProvider } from '@/contexts/SafraContext'
 
 // Páginas de autenticação
 import { LoginPage } from '@/pages/auth/Login'
@@ -98,7 +99,9 @@ export function AppRoutes() {
         path="/"
         element={
            <ProtectedRoute>
-            <Layout />
+            <SafraProvider>
+              <Layout />
+            </SafraProvider>
           </ProtectedRoute>
         }
       >
