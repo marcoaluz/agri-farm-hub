@@ -258,7 +258,7 @@ export default function Auditoria() {
       </Card>
 
       {/* Tabela */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>
             {dataFiltro
@@ -267,6 +267,7 @@ export default function Auditoria() {
             }
           </CardTitle>
         </CardHeader>
+        <div className="overflow-x-auto w-full">
         <Table>
           <TableHeader>
             <TableRow>
@@ -325,6 +326,7 @@ export default function Auditoria() {
             )}
           </TableBody>
         </Table>
+        </div>
       </Card>
     </div>
   )

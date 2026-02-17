@@ -13,8 +13,10 @@ export function Layout() {
       <div className="flex">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         
-        <main className="flex-1 p-3 sm:p-6 animate-fade-in">
-          <Outlet />
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+          <div className="p-3 sm:p-6 max-w-full animate-fade-in">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

@@ -474,7 +474,7 @@ export function LancamentoForm() {
   // Verificar se tem propriedade e safra selecionadas
   if (!propriedadeAtual || !safraAtual) {
     return (
-      <div className="container mx-auto py-6">
+      <div className="w-full max-w-full py-6">
         <Card>
           <CardContent className="py-12">
             <div className="text-center text-muted-foreground">
@@ -495,7 +495,7 @@ export function LancamentoForm() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="w-full max-w-full py-6 space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-sm text-muted-foreground">
         <Link to="/" className="hover:text-foreground transition-colors">Dashboard</Link>
