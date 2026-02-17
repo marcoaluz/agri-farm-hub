@@ -246,13 +246,13 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
                 <Label htmlFor="produto_id">Vincular Produto (opcional)</Label>
                 <Select
                   value={watch('produto_id') || ''}
-                  onValueChange={(value) => setValue('produto_id', value || undefined)}
+                  onValueChange={(value) => setValue('produto_id', value === 'none' ? undefined : value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um produto" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {produtos.map((produto) => (
                       <SelectItem key={produto.id} value={produto.id}>
                         {produto.nome}
@@ -269,13 +269,13 @@ export function ItemForm({ item, open, onOpenChange }: ItemFormProps) {
                 <Label htmlFor="maquina_id">Vincular Máquina (opcional)</Label>
                 <Select
                   value={watch('maquina_id') || ''}
-                  onValueChange={(value) => setValue('maquina_id', value || undefined)}
+                  onValueChange={(value) => setValue('maquina_id', value === 'none' ? undefined : value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione uma máquina" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma</SelectItem>
+                    <SelectItem value="none">Nenhuma</SelectItem>
                     {maquinas.map((maquina) => (
                       <SelectItem key={maquina.id} value={maquina.id}>
                         {maquina.nome} {maquina.custo_hora ? `(R$ ${maquina.custo_hora}/h)` : ''}
