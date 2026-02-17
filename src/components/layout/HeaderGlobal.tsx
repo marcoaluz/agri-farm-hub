@@ -385,12 +385,22 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
               {isAdmin && (
                 <>
                   <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                    Administração
+                  </DropdownMenuLabel>
                   <DropdownMenuItem
                     onClick={() => navigate('/admin')}
                     className="cursor-pointer text-destructive focus:text-destructive"
                   >
                     <Shield className="mr-2 h-4 w-4" />
                     Painel Admin
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate('/admin/usuarios')}
+                    className="cursor-pointer text-destructive focus:text-destructive"
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    Gestão de Usuários
                   </DropdownMenuItem>
                 </>
               )}
