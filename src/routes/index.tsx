@@ -5,6 +5,7 @@ import { Layout } from '@/components/layout/Layout'
 // Páginas de autenticação
 import { Login } from '@/pages/Login'
 import { Signup } from '@/pages/Signup'
+import { Cadastro } from '@/pages/Cadastro'
 import { ForgotPassword } from '@/pages/ForgotPassword'
 
 // Páginas protegidas
@@ -75,6 +76,14 @@ export function AppRoutes() {
         element={
           <PublicRoute>
             <Signup />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/cadastro" 
+        element={
+          <PublicRoute>
+            <Cadastro />
           </PublicRoute>
         } 
       />
