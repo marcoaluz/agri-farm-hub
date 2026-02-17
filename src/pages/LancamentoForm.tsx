@@ -305,9 +305,12 @@ export function LancamentoForm() {
 
       // Confirmação para custos altos
       if (custoTotal > 10000) {
-        const confirmar = window.confirm(
-          `⚠️ Atenção!\n\nO custo total deste lançamento é R$ ${custoTotal.toFixed(2)}.\n\nDeseja continuar?`
-        )
+        const confirmar = await new Promise<boolean>((resolve) => {
+          const confirmed = window.confirm(
+            `Atenção!\n\nO custo total deste lançamento é R$ ${custoTotal.toFixed(2)}.\n\nDeseja continuar?`
+          )
+          resolve(confirmed)
+        })
         if (!confirmar) {
           throw new Error('Operação cancelada pelo usuário')
         }

@@ -6,6 +6,16 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -141,6 +151,8 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("safras").delete().eq("id", safra.id);
@@ -256,11 +268,7 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => {
-                  if (confirm("Tem certeza que deseja excluir esta safra?")) {
-                    deleteMutation.mutate();
-                  }
-                }}
+                onClick={() => setDeleteDialogOpen(true)}
                 disabled={deleteMutation.isPending || safra.fechada}
                 className="text-destructive hover:text-destructive"
               >
@@ -270,6 +278,29 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
           </div>
         </div>
       </CardContent>
+
+      {/* Dialog de confirmação de exclusão */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá excluir a safra <strong>"{safra.nome}"</strong> permanentemente. 
+              Ela não poderá ser recuperada.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Remover"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
