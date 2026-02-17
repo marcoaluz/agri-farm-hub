@@ -14,16 +14,12 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  UserCog,
-  Briefcase,
-  Wrench,
-  BookOpen,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+
 import {
   Card,
   CardContent,
@@ -51,7 +47,7 @@ const cadastroSchema = z.object({
     .regex(/[a-z]/, 'Deve conter pelo menos uma minúscula')
     .regex(/[0-9]/, 'Deve conter pelo menos um número'),
   confirmPassword: z.string().min(1, 'Confirmação obrigatória'),
-  perfil: z.enum(['proprietario', 'gerente', 'operador', 'consultor']),
+  
   acceptTerms: z.boolean().refine(val => val === true, 'Você deve aceitar os termos'),
 }).refine(data => data.password === data.confirmPassword, {
   message: 'As senhas não coincidem',
@@ -74,12 +70,6 @@ function getPasswordStrength(password: string) {
   return { strength: 3 as const, label: 'Forte', color: 'bg-success' }
 }
 
-const perfis = [
-  { value: 'proprietario' as const, label: 'Proprietário', description: 'Acesso completo ao sistema', icon: UserCog },
-  { value: 'gerente' as const, label: 'Gerente', description: 'Gerenciamento de operações', icon: Briefcase },
-  { value: 'operador' as const, label: 'Operador', description: 'Lançamento de operações', icon: Wrench },
-  { value: 'consultor' as const, label: 'Consultor', description: 'Acesso somente leitura', icon: BookOpen },
-]
 
 const sideFeatures = [
   { title: 'Controle total de custos', description: 'Sistema FIFO para gestão precisa' },
@@ -104,15 +94,13 @@ export function CadastroPage() {
       email: '',
       password: '',
       confirmPassword: '',
-      perfil: 'operador',
+      
       acceptTerms: false,
     },
   })
 
   const password = form.watch('password')
   const strength = password ? getPasswordStrength(password) : null
-  const selectedPerfil = form.watch('perfil')
-
   async function onSubmit(data: CadastroFormValues) {
     try {
       setIsLoading(true)
@@ -330,51 +318,6 @@ export function CadastroPage() {
                     )}
                   />
 
-                  {/* Perfil de Acesso */}
-                  <FormField
-                    control={form.control}
-                    name="perfil"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Perfil de Acesso</FormLabel>
-                        <FormControl>
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            className="grid grid-cols-1 md:grid-cols-2 gap-2"
-                          >
-                            {perfis.map(perfil => {
-                              const isSelected = selectedPerfil === perfil.value
-                              const Icon = perfil.icon
-                              return (
-                                <label
-                                  key={perfil.value}
-                                  className={cn(
-                                    'relative flex items-center gap-3 rounded-lg border-2 p-3 cursor-pointer transition-all',
-                                    isSelected
-                                      ? 'border-primary bg-primary/5'
-                                      : 'border-border hover:border-primary/50'
-                                  )}
-                                >
-                                  <RadioGroupItem value={perfil.value} className="sr-only" />
-                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                                    <Icon className="h-5 w-5" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <span className="font-medium text-sm text-foreground">{perfil.label}</span>
-                                    <p className="text-xs text-muted-foreground">{perfil.description}</p>
-                                  </div>
-                                  {isSelected && <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />}
-                                </label>
-                              )
-                            })}
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
                   {/* Termos */}
                   <FormField
                     control={form.control}
@@ -410,6 +353,14 @@ export function CadastroPage() {
                       'Criar conta'
                     )}
                   </Button>
+
+                  {/* Nota informativa */}
+                  <div className="text-center text-sm text-muted-foreground bg-muted rounded-lg p-3 border border-border">
+                    <span>
+                      Após o cadastro, o administrador irá definir
+                      suas permissões de acesso ao sistema.
+                    </span>
+                  </div>
 
                   {/* Separador */}
                   <div className="relative my-4">
