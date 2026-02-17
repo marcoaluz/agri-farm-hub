@@ -4,9 +4,8 @@ import { Layout } from '@/components/layout/Layout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
 // Páginas de autenticação
-import { Login } from '@/pages/Login'
-import { Signup } from '@/pages/Signup'
-import { Cadastro } from '@/pages/Cadastro'
+import { LoginPage } from '@/pages/auth/Login'
+import { CadastroPage } from '@/pages/auth/Cadastro'
 import { ForgotPassword } from '@/pages/ForgotPassword'
 
 // Páginas protegidas
@@ -52,7 +51,7 @@ export function AppRoutes() {
         path="/login" 
         element={
           <PublicRoute>
-            <Login />
+            <LoginPage />
           </PublicRoute>
         } 
       />
@@ -60,7 +59,7 @@ export function AppRoutes() {
         path="/signup" 
         element={
           <PublicRoute>
-            <Signup />
+            <CadastroPage />
           </PublicRoute>
         } 
       />
@@ -68,7 +67,7 @@ export function AppRoutes() {
         path="/cadastro" 
         element={
           <PublicRoute>
-            <Cadastro />
+            <CadastroPage />
           </PublicRoute>
         } 
       />
