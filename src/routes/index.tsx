@@ -23,6 +23,7 @@ import { Financeiro } from '@/pages/Financeiro'
 import { Relatorios } from '@/pages/Relatorios'
 import { Configuracoes } from '@/pages/Configuracoes'
 import Auditoria from '@/pages/Auditoria'
+import AdminDashboard from '@/pages/admin/Dashboard'
 import NotFound from '@/pages/NotFound'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -125,6 +126,7 @@ export function AppRoutes() {
         <Route path="relatorios" element={<Relatorios />} />
         <Route path="auditoria" element={<Auditoria />} />
         <Route path="configuracoes" element={<Configuracoes />} />
+        <Route path="admin" element={<AdminDashboard />} />
       </Route>
 
       {/* Página não encontrada */}
