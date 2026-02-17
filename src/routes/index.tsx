@@ -6,7 +6,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 // Páginas de autenticação
 import { LoginPage } from '@/pages/auth/Login'
 import { CadastroPage } from '@/pages/auth/Cadastro'
-import { ForgotPassword } from '@/pages/ForgotPassword'
+import { RecuperarSenhaPage } from '@/pages/auth/RecuperarSenha'
 
 // Páginas protegidas
 import Dashboard from '@/pages/Dashboard'
@@ -77,9 +77,9 @@ export function AppRoutes() {
         path="/esqueci-senha" 
         element={
           <PublicRoute>
-            <ForgotPassword />
+            <RecuperarSenhaPage />
           </PublicRoute>
-        } 
+        }
       />
       
       {/* Redirect /auth to /login */}
