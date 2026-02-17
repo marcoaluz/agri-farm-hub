@@ -6,6 +6,16 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -206,6 +216,8 @@ function TalhaoCard({ talhao, onEdit }: { talhao: Talhao; onEdit: () => void }) 
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("talhoes").update({ ativo: false }).eq("id", talhao.id);
@@ -243,11 +255,7 @@ function TalhaoCard({ talhao, onEdit }: { talhao: Talhao; onEdit: () => void }) 
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => {
-                if (confirm("Tem certeza que deseja remover este talhão?")) {
-                  deleteMutation.mutate();
-                }
-              }}
+              onClick={() => setDeleteDialogOpen(true)}
               disabled={deleteMutation.isPending}
               className="text-destructive hover:text-destructive"
             >
@@ -264,6 +272,28 @@ function TalhaoCard({ talhao, onEdit }: { talhao: Talhao; onEdit: () => void }) 
         )}
 
       </CardContent>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá desativar o talhão <strong>"{talhao.nome}"</strong>. 
+              Ele não será excluído permanentemente e pode ser reativado posteriormente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Removendo..." : "Remover"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
