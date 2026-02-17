@@ -31,7 +31,10 @@ const itemSchema = z.object({
   unidade_medida: z.string().min(1, 'Unidade é obrigatória'),
   produto_id: z.string().optional(),
   maquina_id: z.string().optional(),
-  custo_padrao: z.number().min(0, 'Custo deve ser positivo').optional(),
+  custo_padrao: z.preprocess(
+    (val) => (val === '' || val === undefined || val === null ? undefined : Number(val)),
+    z.number().min(0, 'Custo deve ser positivo').optional()
+  ),
 })
 
 type ItemFormData = z.infer<typeof itemSchema>
