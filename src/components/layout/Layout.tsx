@@ -7,7 +7,7 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-background max-w-[100vw] overflow-x-hidden">
+    <div className="min-h-screen bg-background w-full overflow-x-hidden">
       <Header onMenuClick={() => setSidebarOpen(true)} />
       
       <div className="flex w-full overflow-hidden">
