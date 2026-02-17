@@ -49,7 +49,7 @@ interface HeaderGlobalProps {
 
 type UserProfile = {
   perfil: string
-  nome_completo: string | null
+  full_name: string | null
   avatar_url: string | null
 }
 
@@ -84,8 +84,8 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
     const fetchProfile = async () => {
       const { data } = await supabase
         .from('user_profiles')
-        .select('perfil, nome_completo, avatar_url')
-        .eq('user_id', user.id)
+        .select('perfil, full_name, avatar_url')
+        .eq('id', user.id)
         .single()
 
       if (data) setProfile(data as UserProfile)
@@ -104,7 +104,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
   const isAdmin = profile?.perfil === 'admin'
 
   const displayName =
-    profile?.nome_completo ||
+    profile?.full_name ||
     user?.user_metadata?.name ||
     user?.email?.split('@')[0] ||
     'Usuário'
@@ -113,8 +113,8 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
     displayName.length > 15 ? displayName.slice(0, 15) + '…' : displayName
 
   const getUserInitials = () => {
-    if (profile?.nome_completo) {
-      const parts = profile.nome_completo.split(' ')
+    if (profile?.full_name) {
+      const parts = profile.full_name.split(' ')
       return (parts[0]?.[0] || '') + (parts[1]?.[0] || '')
     }
     if (user?.email) return user.email.substring(0, 2).toUpperCase()
