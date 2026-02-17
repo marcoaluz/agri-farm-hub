@@ -109,14 +109,18 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       if (!user) return
       const { data, error } = await supabase
         .from('user_profiles' as any)
-        .select('perfil')
+        .select('perfil, is_super_admin')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
+      
       if (error) {
-        console.error('Sidebar - Erro ao verificar admin:', error)
+        console.error('Erro ao verificar admin:', error)
         return
       }
-      setIsAdmin((data as any)?.perfil === 'admin')
+      
+      const perfil = (data as any)?.perfil
+      const isSuperAdmin = (data as any)?.is_super_admin
+      setIsAdmin(perfil === 'admin' || isSuperAdmin === true)
     }
     checkAdmin()
   }, [user])
