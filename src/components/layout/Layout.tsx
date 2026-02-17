@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Header } from './Header'
+import { HeaderGlobal } from './HeaderGlobal'
 import { Sidebar } from './Sidebar'
 import { Outlet } from 'react-router-dom'
 
@@ -8,7 +8,7 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onMenuClick={() => setSidebarOpen(true)} />
+      <HeaderGlobal onMenuClick={() => setSidebarOpen(true)} />
       
       <div className="flex">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
