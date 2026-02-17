@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Info, AlertCircle, Package, Wrench, Truck } from 'lucide-react'
+import { X, Info, AlertCircle, Package, Wrench, Truck, Gauge } from 'lucide-react'
 import { useItem } from '@/hooks/useItem'
 import { usePreviewCusto } from '@/hooks/usePreviewCusto'
 import { PreviewConsumoFIFO } from './PreviewConsumoFIFO'
@@ -87,6 +87,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
   const tipoConfig = getTipoLabel(itemData.tipo)
   const TipoIcon = tipoConfig.icon
   const isProdutoEstoque = itemData.tipo === 'produto_estoque'
+  const isMaquinaHora = itemData.tipo === 'maquina_hora'
   const estoqueInsuficiente = isProdutoEstoque && preview && !preview.estoque_suficiente
 
   return (
@@ -190,6 +191,27 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
             </Alert>
           )}
         </div>
+
+
+        {/* Info Horímetro para maquina_hora */}
+        {isMaquinaHora && item?.maquina && (
+          <div className="rounded-lg border border-orange-200 bg-orange-50/50 dark:border-orange-800/50 dark:bg-orange-950/20 p-3 space-y-1">
+            <div className="flex items-center gap-2 text-sm font-medium text-orange-700 dark:text-orange-400">
+              <Gauge className="h-4 w-4" />
+              Horímetro será atualizado automaticamente
+            </div>
+            <p className="text-xs text-orange-600/80 dark:text-orange-500/80">
+              Máquina: {item.maquina.nome}
+              {item.maquina.modelo ? ` (${item.maquina.modelo})` : ''}
+              {' • '}Horímetro atual: {item.maquina.horimetro_atual?.toFixed(1) ?? '0.0'}h
+              {quantidade > 0 && (
+                <span className="font-semibold">
+                  {' → '}Novo: {((item.maquina.horimetro_atual || 0) + quantidade).toFixed(1)}h
+                </span>
+              )}
+            </p>
+          </div>
+        )}
 
         {/* Preview FIFO (se produto de estoque) */}
         {isProdutoEstoque && quantidade > 0 && (

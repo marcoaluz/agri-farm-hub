@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Search, Filter, Calendar as CalendarIcon, MoreHorizontal, Edit, Trash2, Eye, Loader2, History, Lock, ChevronLeft, ChevronRight, X, Fuel } from 'lucide-react'
+import { Plus, Search, Filter, Calendar as CalendarIcon, MoreHorizontal, Edit, Trash2, Eye, Loader2, History, Lock, ChevronLeft, ChevronRight, X, Fuel, Gauge } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -73,6 +73,10 @@ export function Lancamentos() {
           *,
           servico:servicos(id, nome),
           talhao:talhoes(id, nome),
+          lancamentos_itens(
+            id,
+            item:itens(tipo)
+          ),
           abastecimento:abastecimentos(
             id,
             data,
@@ -428,12 +432,18 @@ export function Lancamentos() {
                 <TableRow key={lancamento.id}>
                   <TableCell>{formatDate(lancamento.data_execucao)}</TableCell>
                   <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {lancamento.servico?.nome || 'Serviço não encontrado'}
                       {lancamento.abastecimento && (
                         <Badge variant="secondary" className="gap-1 text-xs">
                           <Fuel className="h-3 w-3" />
                           Abastecimento
+                        </Badge>
+                      )}
+                      {lancamento.lancamentos_itens?.some((li: any) => li.item?.tipo === 'maquina_hora') && (
+                        <Badge variant="outline" className="gap-1 text-xs border-orange-300 text-orange-700 dark:border-orange-700 dark:text-orange-400">
+                          <Gauge className="h-3 w-3" />
+                          Horímetro
                         </Badge>
                       )}
                     </div>
