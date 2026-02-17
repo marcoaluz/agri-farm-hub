@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Badge } from '@/components/ui/badge'
 import { 
   LayoutDashboard, 
   MapPin, 
@@ -16,9 +18,12 @@ import {
   X,
   Leaf,
   Calendar,
-  ShieldCheck
+  ShieldCheck,
+  Shield,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 interface SidebarProps {
   open: boolean
@@ -95,7 +100,21 @@ const routes = [
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const location = useLocation()
+  const { user } = useAuth()
+  const [isAdmin, setIsAdmin] = useState(false)
 
+  useEffect(() => {
+    async function checkAdmin() {
+      if (!user) return
+      const { data } = await supabase
+        .from('user_profiles' as any)
+        .select('perfil')
+        .eq('id', user.id)
+        .single()
+      setIsAdmin((data as any)?.perfil === 'admin')
+    }
+    checkAdmin()
+  }, [user])
   return (
     <>
       {/* Overlay para mobile */}
@@ -161,6 +180,29 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 </Link>
               )
             })}
+
+            {/* Link Admin */}
+            {isAdmin && (
+              <Link to="/admin" onClick={onClose}>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    'w-full justify-start gap-3 font-medium transition-all duration-200 mt-2',
+                    location.pathname === '/admin'
+                      ? 'bg-destructive/20 text-sidebar-accent-foreground'
+                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                  )}
+                >
+                  <Shield className={cn(
+                    'h-5 w-5 text-destructive',
+                  )} />
+                  Painel Admin
+                  <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0">
+                    ADMIN
+                  </Badge>
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Footer da Sidebar */}
