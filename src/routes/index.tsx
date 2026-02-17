@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Layout } from '@/components/layout/Layout'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
 // Páginas de autenticação
 import { Login } from '@/pages/Login'
@@ -25,23 +26,6 @@ import { Configuracoes } from '@/pages/Configuracoes'
 import Auditoria from '@/pages/Auditoria'
 import AdminDashboard from '@/pages/admin/Dashboard'
 import NotFound from '@/pages/NotFound'
-
-function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
-
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    )
-  }
-
-  return user ? <>{children}</> : <Navigate to="/login" />
-}
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -106,9 +90,9 @@ export function AppRoutes() {
       <Route
         path="/"
         element={
-          <PrivateRoute>
+           <ProtectedRoute>
             <Layout />
-          </PrivateRoute>
+          </ProtectedRoute>
         }
       >
         <Route index element={<Dashboard />} />
