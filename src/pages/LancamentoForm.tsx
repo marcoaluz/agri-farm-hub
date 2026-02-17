@@ -13,6 +13,16 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Separator } from '@/components/ui/separator'
 import { 
   ArrowLeft, 
@@ -72,6 +82,11 @@ export function LancamentoForm() {
   const [loading, setLoading] = useState(false)
   const [loadingItens, setLoadingItens] = useState(false)
   const [validandoEstoque, setValidandoEstoque] = useState(false)
+  const [custoAltoDialog, setCustoAltoDialog] = useState<{
+    open: boolean
+    valor: string
+    resolve: ((value: boolean) => void) | null
+  }>({ open: false, valor: '', resolve: null })
 
   // Hooks de dados - buscar serviços com tipo correto
   const { data: servicos, isLoading: loadingServicos } = useQuery({
@@ -306,11 +321,13 @@ export function LancamentoForm() {
       // Confirmação para custos altos
       if (custoTotal > 10000) {
         const confirmar = await new Promise<boolean>((resolve) => {
-          const confirmed = window.confirm(
-            `Atenção!\n\nO custo total deste lançamento é R$ ${custoTotal.toFixed(2)}.\n\nDeseja continuar?`
-          )
-          resolve(confirmed)
+          setCustoAltoDialog({
+            open: true,
+            valor: custoTotal.toFixed(2),
+            resolve
+          })
         })
+        setCustoAltoDialog({ open: false, valor: '', resolve: null })
         if (!confirmar) {
           throw new Error('Operação cancelada pelo usuário')
         }
@@ -853,6 +870,43 @@ export function LancamentoForm() {
           </div>
         </div>
       )}
+      {/* Dialog de confirmação para custo alto */}
+      <AlertDialog 
+        open={custoAltoDialog.open} 
+        onOpenChange={(open) => {
+          if (!open && custoAltoDialog.resolve) {
+            custoAltoDialog.resolve(false)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+              Atenção — Custo Elevado
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  O custo total deste lançamento é de{' '}
+                  <strong className="text-foreground text-lg">
+                    R$ {custoAltoDialog.valor}
+                  </strong>
+                </p>
+                <p>Deseja confirmar e salvar este lançamento?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => custoAltoDialog.resolve?.(false)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => custoAltoDialog.resolve?.(true)}>
+              Sim, Salvar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
