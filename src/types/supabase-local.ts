@@ -102,6 +102,15 @@ export interface Lancamento {
   servico?: Servico
   talhao?: Talhao
   lancamentos_itens?: LancamentoItem[]
+  abastecimento_id?: string
+  abastecimento_data?: string
+  abastecimento_horimetro?: number
+  combustivel_tipo?: string
+  quantidade_litros?: number
+  posto?: string
+  abastecimento_obs?: string
+  maquina_nome?: string
+  maquina_modelo?: string
 }
 
 export interface LancamentoItem {

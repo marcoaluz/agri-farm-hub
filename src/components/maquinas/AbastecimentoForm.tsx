@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { useGlobal } from '@/contexts/GlobalContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +24,8 @@ interface AbastecimentoFormProps {
 export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { propriedadeAtual, safraAtual } = useGlobal();
+  const { user } = useAuth();
 
   const today = new Date().toISOString().split('T')[0];
   const [data, setData] = useState(today);
@@ -34,7 +38,6 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
 
   const litrosNum = parseFloat(litros) || 0;
   const custoNum = parseFloat(custoTotal) || 0;
-  const custoLitro = litrosNum > 0 ? custoNum / litrosNum : 0;
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -46,7 +49,8 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
         throw new Error(`Horímetro deve ser >= ${maquina.horimetro_atual}`);
       }
 
-      const { error } = await supabase
+      // 1. Inserir abastecimento
+      const { data: abastecimentoData, error } = await supabase
         .from('abastecimentos' as any)
         .insert({
           maquina_id: maquina.id,
@@ -57,10 +61,14 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
           custo_total: custoNum,
           posto: posto || null,
           observacoes: observacoes || null,
-        });
+        })
+        .select('id')
+        .single();
       if (error) throw error;
 
-      // Update horimetro if new value is higher
+      const abastecimentoId = (abastecimentoData as any).id;
+
+      // 2. Update horimetro if new value is higher
       if (horimetroNum > maquina.horimetro_atual) {
         const { error: updateError } = await supabase
           .from('maquinas' as any)
@@ -68,6 +76,52 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
           .eq('id', maquina.id);
         if (updateError) console.error('Erro ao atualizar horímetro:', updateError);
       }
+
+      // 3. Criar lançamento vinculado (se houver safra ativa)
+      if (!propriedadeAtual?.id) return;
+
+      const { data: safraAtiva } = await supabase
+        .from('safras')
+        .select('id')
+        .eq('propriedade_id', propriedadeAtual.id)
+        .eq('ativa', true)
+        .maybeSingle();
+
+      if (!safraAtiva) {
+        toast({
+          title: 'Abastecimento registrado!',
+          description: 'Atenção: Sem safra ativa. O lançamento não foi criado.',
+        });
+        return;
+      }
+
+      // 4. Buscar ou criar serviço "Abastecimento - [nome da máquina]"
+      const { data: servicoId, error: servicoError } = await supabase
+        .rpc('get_or_create_servico_abastecimento', {
+          p_propriedade_id: propriedadeAtual.id,
+          p_maquina_nome: maquina.nome
+        });
+
+      if (servicoError) throw servicoError;
+
+      // 5. Criar lançamento vinculado
+      const obsLancamento = `Abastecimento: ${litrosNum}L ${combustivel} - Horímetro: ${horimetroNum}h${posto ? ` - Posto: ${posto}` : ''}${observacoes ? `\n${observacoes}` : ''}`;
+
+      const { error: lancError } = await supabase
+        .from('lancamentos')
+        .insert({
+          propriedade_id: propriedadeAtual.id,
+          safra_id: safraAtiva.id,
+          servico_id: servicoId,
+          talhao_id: null,
+          data_execucao: data,
+          custo_total: custoNum,
+          observacoes: obsLancamento,
+          abastecimento_id: abastecimentoId,
+          criado_por: user?.id || null,
+        } as any);
+
+      if (lancError) throw lancError;
     },
     onSuccess: () => {
       toast({
@@ -76,6 +130,7 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
       queryClient.invalidateQueries({ queryKey: ['abastecimentos'] });
       queryClient.invalidateQueries({ queryKey: ['maquinas'] });
       queryClient.invalidateQueries({ queryKey: ['abastecimentos-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
       onSuccess();
     },
     onError: (err: any) => {

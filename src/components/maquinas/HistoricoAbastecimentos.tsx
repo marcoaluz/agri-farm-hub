@@ -46,6 +46,13 @@ export function HistoricoAbastecimentos({ maquina }: HistoricoAbastecimentosProp
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      // Excluir lançamento vinculado primeiro (abastecimento_id = SET NULL, então deletar manualmente)
+      const { error: lancError } = await supabase
+        .from('lancamentos')
+        .delete()
+        .eq('abastecimento_id', id as any);
+      if (lancError) console.error('Erro ao excluir lançamento vinculado:', lancError);
+
       const { error } = await supabase.from('abastecimentos' as any).delete().eq('id', id);
       if (error) throw error;
     },
@@ -53,6 +60,7 @@ export function HistoricoAbastecimentos({ maquina }: HistoricoAbastecimentosProp
       toast({ title: 'Abastecimento excluído' });
       queryClient.invalidateQueries({ queryKey: ['abastecimentos'] });
       queryClient.invalidateQueries({ queryKey: ['abastecimentos-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
     },
     onError: () => {
       toast({ title: 'Erro ao excluir', variant: 'destructive' });
@@ -146,7 +154,7 @@ export function HistoricoAbastecimentos({ maquina }: HistoricoAbastecimentosProp
                       <AlertDialogHeader>
                         <AlertDialogTitle>Excluir abastecimento?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          {fmtDate(a.data)} — {a.quantidade_litros}L de {a.combustivel_tipo}
+                          {fmtDate(a.data)} — {a.quantidade_litros}L de {a.combustivel_tipo}. O lançamento vinculado também será excluído.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
