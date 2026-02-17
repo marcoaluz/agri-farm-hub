@@ -63,6 +63,9 @@ export function SafraProvider({ children }: { children: ReactNode }) {
     useState<Safra | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Cache de safras por propriedade para troca instantânea
+  const [safrasCache, setSafrasCache] = useState<Map<string, Safra[]>>(new Map())
+
   /* ---------- carregar propriedades -------------------------------- */
   const recarregarPropriedades = useCallback(async () => {
     if (!user) {
@@ -119,22 +122,54 @@ export function SafraProvider({ children }: { children: ReactNode }) {
 
       setPropriedades(todas)
 
-      // Restaurar seleção do localStorage
+      // Pré-carregar safras de TODAS as propriedades em paralelo
       if (todas.length > 0) {
+        const safrasPromises = todas.map(async (prop) => {
+          const { data } = await supabase
+            .from('safras')
+            .select('id, nome, ano_inicio, ano_fim, ativa, propriedade_id')
+            .eq('propriedade_id', prop.id)
+            .order('ano_inicio', { ascending: false })
+          return { propId: prop.id, safras: (data || []) as Safra[] }
+        })
+
+        const resultados = await Promise.all(safrasPromises)
+        const novoCache = new Map<string, Safra[]>()
+        for (const r of resultados) {
+          novoCache.set(r.propId, r.safras)
+        }
+        setSafrasCache(novoCache)
+
+        // Restaurar seleção do localStorage
         const savedId = localStorage.getItem(STORAGE_PROP_KEY)
         const restaurada = todas.find((p) => p.id === savedId) || todas[0]
         setPropriedadeSelecionadaState(restaurada)
+
+        // Já aplicar safras da propriedade restaurada do cache
+        const safrasDaProp = novoCache.get(restaurada.id) || []
+        setSafras(safrasDaProp)
+        if (safrasDaProp.length > 0) {
+          const savedSafraId = localStorage.getItem(STORAGE_SAFRA_KEY)
+          const safraRestaurada =
+            safrasDaProp.find((s) => s.id === savedSafraId) ||
+            safrasDaProp.find((s) => s.ativa) ||
+            safrasDaProp[0]
+          setSafraSelecionadaState(safraRestaurada)
+          localStorage.setItem(STORAGE_SAFRA_KEY, safraRestaurada.id)
+        } else {
+          setSafraSelecionadaState(null)
+        }
       } else {
         setPropriedadeSelecionadaState(null)
-        setLoading(false)
       }
     } catch (error) {
       console.error('Erro ao carregar propriedades:', error)
+    } finally {
       setLoading(false)
     }
   }, [user])
 
-  /* ---------- carregar safras -------------------------------------- */
+  /* ---------- carregar safras (para refresh manual) ----------------- */
   const recarregarSafras = useCallback(
     async (propriedadeId: string) => {
       try {
@@ -148,6 +183,13 @@ export function SafraProvider({ children }: { children: ReactNode }) {
 
         const lista = (data || []) as Safra[]
         setSafras(lista)
+
+        // Atualizar cache
+        setSafrasCache((prev) => {
+          const next = new Map(prev)
+          next.set(propriedadeId, lista)
+          return next
+        })
 
         if (lista.length > 0) {
           const savedId = localStorage.getItem(STORAGE_SAFRA_KEY)
@@ -163,8 +205,6 @@ export function SafraProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('Erro ao carregar safras:', error)
-      } finally {
-        setLoading(false)
       }
     },
     [],
@@ -179,18 +219,10 @@ export function SafraProvider({ children }: { children: ReactNode }) {
       setPropriedadeSelecionadaState(null)
       setSafras([])
       setSafraSelecionadaState(null)
+      setSafrasCache(new Map())
       setLoading(false)
     }
   }, [user, recarregarPropriedades])
-
-  useEffect(() => {
-    if (propriedadeSelecionada) {
-      recarregarSafras(propriedadeSelecionada.id)
-    } else {
-      setSafras([])
-      setSafraSelecionadaState(null)
-    }
-  }, [propriedadeSelecionada, recarregarSafras])
 
   /* ---------- setters públicos ------------------------------------- */
   const setPropriedadeSelecionada = useCallback(
@@ -198,14 +230,37 @@ export function SafraProvider({ children }: { children: ReactNode }) {
       setPropriedadeSelecionadaState(p)
       if (p) {
         localStorage.setItem(STORAGE_PROP_KEY, p.id)
+        // Aplicar safras do cache instantaneamente (sem fetch)
+        const cached = safrasCache.get(p.id)
+        if (cached) {
+          setSafras(cached)
+          if (cached.length > 0) {
+            const savedId = localStorage.getItem(STORAGE_SAFRA_KEY)
+            const safraToSelect =
+              cached.find((s) => s.id === savedId) ||
+              cached.find((s) => s.ativa) ||
+              cached[0]
+            setSafraSelecionadaState(safraToSelect)
+            localStorage.setItem(STORAGE_SAFRA_KEY, safraToSelect.id)
+          } else {
+            setSafraSelecionadaState(null)
+            localStorage.removeItem(STORAGE_SAFRA_KEY)
+          }
+        } else {
+          // Sem cache: buscar do servidor
+          setSafras([])
+          setSafraSelecionadaState(null)
+          localStorage.removeItem(STORAGE_SAFRA_KEY)
+          recarregarSafras(p.id)
+        }
       } else {
         localStorage.removeItem(STORAGE_PROP_KEY)
+        setSafras([])
+        setSafraSelecionadaState(null)
+        localStorage.removeItem(STORAGE_SAFRA_KEY)
       }
-      // Limpar safra ao trocar propriedade
-      setSafraSelecionadaState(null)
-      localStorage.removeItem(STORAGE_SAFRA_KEY)
     },
-    [],
+    [safrasCache, recarregarSafras],
   )
 
   const setSafraSelecionada = useCallback((s: Safra | null) => {
