@@ -107,11 +107,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   useEffect(() => {
     async function checkAdmin() {
       if (!user) return
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('user_profiles' as any)
         .select('perfil')
         .eq('id', user.id)
         .single()
+      if (error) {
+        console.error('Sidebar - Erro ao verificar admin:', error)
+        return
+      }
       setIsAdmin((data as any)?.perfil === 'admin')
     }
     checkAdmin()
