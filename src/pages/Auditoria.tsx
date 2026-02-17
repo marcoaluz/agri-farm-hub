@@ -67,13 +67,17 @@ export default function Auditoria() {
   const [calendarOpen, setCalendarOpen] = useState(false)
 
   // Dias que têm atividade (para marcar no calendário)
+  // Dias que têm atividade de auditoria (baseado em QUANDO a ação ocorreu)
   const diasComAtividade = useMemo(() => {
     if (!historico) return []
     const dias = new Set<string>()
     historico.forEach(item => {
-      dias.add(format(new Date(item.alterado_em), 'yyyy-MM-dd'))
+      // SEMPRE usar alterado_em (data/hora da ação de auditoria)
+      const dataAcao = new Date(item.alterado_em)
+      dias.add(format(dataAcao, 'yyyy-MM-dd'))
     })
-    return Array.from(dias).map(d => new Date(d))
+    // Adicionar T12:00:00 para evitar problemas de fuso horário
+    return Array.from(dias).map(d => new Date(d + 'T12:00:00'))
   }, [historico])
 
   // Filtrar histórico
