@@ -12,6 +12,12 @@ export interface Item {
   maquina_id?: string
   custo_padrao?: number
   ativo: boolean
+  maquina?: {
+    id: string
+    nome: string
+    modelo?: string
+    horimetro_atual: number
+  } | null
 }
 
 export function useItem(itemId: string | undefined) {
@@ -22,7 +28,10 @@ export function useItem(itemId: string | undefined) {
 
       const { data, error } = await supabase
         .from('itens')
-        .select('*')
+        .select(`
+          *,
+          maquina:maquinas(id, nome, modelo, horimetro_atual)
+        `)
         .eq('id', itemId)
         .maybeSingle()
 

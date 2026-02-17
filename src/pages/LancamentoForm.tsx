@@ -36,7 +36,9 @@ import {
   Calendar,
   MapPin,
   Users,
-  Wrench
+  Wrench,
+  Gauge,
+  AlertTriangle
 } from 'lucide-react'
 import type { Servico } from '@/types'
 
@@ -404,11 +406,31 @@ export function LancamentoForm() {
 
       return lancamento
     },
-    onSuccess: () => {
-      toast({
-        title: '✅ Lançamento salvo com sucesso!',
-        description: 'Estoque e custos atualizados automaticamente.'
-      })
+    onSuccess: (_data, variables) => {
+      // Verificar se houve atualização de horímetro
+      const maquinasAtualizadas = variables.itens
+        .filter(i => i.item?.tipo === 'maquina_hora' && i.quantidade > 0)
+        .map(i => `${i.item?.nome}: +${i.quantidade}h`)
+
+      if (maquinasAtualizadas.length > 0) {
+        toast({
+          title: '✅ Lançamento salvo com sucesso!',
+          description: (
+            <div className="space-y-1 mt-1">
+              <p className="text-sm">Estoque e custos atualizados automaticamente.</p>
+              <p className="text-sm font-medium">⚙️ Horímetros atualizados:</p>
+              {maquinasAtualizadas.map((texto, i) => (
+                <p key={i} className="text-sm text-muted-foreground">• {texto}</p>
+              ))}
+            </div>
+          )
+        })
+      } else {
+        toast({
+          title: '✅ Lançamento salvo com sucesso!',
+          description: 'Estoque e custos atualizados automaticamente.'
+        })
+      }
 
       // Invalidar queries para atualizar dados
       queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
@@ -416,6 +438,7 @@ export function LancamentoForm() {
       queryClient.invalidateQueries({ queryKey: ['produtos'] })
       queryClient.invalidateQueries({ queryKey: ['preview-custo'] })
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
+      queryClient.invalidateQueries({ queryKey: ['maquinas'] })
 
       navigate('/lancamentos')
     },
@@ -536,7 +559,17 @@ export function LancamentoForm() {
           </CardContent>
         </Card>
       ) : (
-        /* Layout em 2 colunas */
+        <>
+        {/* Warning de edição com horímetro */}
+        {lancamentoId && formData.itens.some(i => i.item?.tipo === 'maquina_hora') && (
+          <Alert className="border-amber-300 bg-amber-50/50 dark:border-amber-700/50 dark:bg-amber-950/20 mb-6">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-amber-700 dark:text-amber-400">
+              Este lançamento atualizou o horímetro de máquinas. Ao editar, os valores serão ajustados automaticamente.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid gap-6 lg:grid-cols-[1fr,400px]">
           {/* Coluna Esquerda: Formulário */}
           <div className="space-y-6">
@@ -869,6 +902,7 @@ export function LancamentoForm() {
             </div>
           </div>
         </div>
+        </>
       )}
       {/* Dialog de confirmação para custo alto */}
       <AlertDialog 
