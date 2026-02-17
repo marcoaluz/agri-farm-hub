@@ -357,8 +357,8 @@ export function CadastroPage() {
                   {/* Nota informativa */}
                   <div className="text-center text-sm text-muted-foreground bg-muted rounded-lg p-3 border border-border">
                     <span>
-                      Após o cadastro, o administrador irá definir
-                      suas permissões de acesso ao sistema.
+                      Sua conta será criada com acesso de <strong>consulta</strong>.
+                      O administrador poderá ajustar suas permissões posteriormente.
                     </span>
                   </div>
 
