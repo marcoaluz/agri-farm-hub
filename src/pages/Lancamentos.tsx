@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Search, Filter, Calendar, MoreHorizontal, Edit, Trash2, Eye, Loader2, History, Lock, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Plus, Search, Filter, Calendar as CalendarIcon, MoreHorizontal, Edit, Trash2, Eye, Loader2, History, Lock, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import {
   Table,
   TableBody,
@@ -112,9 +115,19 @@ export function Lancamentos() {
     totalSafra: lancamentos?.length || 0
   }
 
-  const handlePrevDay = () => setSelectedDate(prev => subDays(prev, 1))
-  const handleNextDay = () => setSelectedDate(prev => addDays(prev, 1))
+  const handlePrevDay = () => { setSelectedDate(prev => subDays(prev, 1)); setShowAllDates(false) }
+  const handleNextDay = () => { setSelectedDate(prev => addDays(prev, 1)); setShowAllDates(false) }
   const handleToday = () => { setSelectedDate(new Date()); setShowAllDates(false) }
+
+  // Dias que possuem lançamentos (para destacar no calendário)
+  const diasComLancamento = useMemo(() => {
+    if (!lancamentos) return new Set<string>()
+    const dias = new Set<string>()
+    lancamentos.forEach(l => {
+      dias.add(format(parseISO(l.data_execucao), 'yyyy-MM-dd'))
+    })
+    return dias
+  }, [lancamentos])
 
   const handleNovoLancamento = () => {
     navigate('/lancamentos/novo')
@@ -183,20 +196,45 @@ export function Lancamentos() {
       {/* Navegação por Data (Período) */}
       <Card>
         <CardContent className="py-3">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={handlePrevDay} className="h-8 w-8">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="font-semibold text-sm sm:text-base capitalize">
-                  {showAllDates 
-                    ? 'Todos os dias'
-                    : format(selectedDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-                  }
-                </span>
-              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" className="flex items-center gap-2 px-2 h-auto py-1">
+                    <CalendarIcon className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-sm sm:text-base capitalize">
+                      {showAllDates 
+                        ? 'Todos os dias'
+                        : format(selectedDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                      }
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      if (date) {
+                        setSelectedDate(date)
+                        setShowAllDates(false)
+                      }
+                    }}
+                    initialFocus
+                    locale={ptBR}
+                    modifiers={{
+                      hasLancamento: (date) => diasComLancamento.has(format(date, 'yyyy-MM-dd'))
+                    }}
+                    modifiersClassNames={{
+                      hasLancamento: 'ring-2 ring-primary ring-offset-1'
+                    }}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
               <Button variant="outline" size="icon" onClick={handleNextDay} className="h-8 w-8">
                 <ChevronRight className="h-4 w-4" />
               </Button>
