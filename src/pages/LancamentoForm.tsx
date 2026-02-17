@@ -429,29 +429,8 @@ export function LancamentoForm() {
       return false
     }
 
-    // Validar quantidade de itens obrigatórios
-    const itensObrigatorios = formData.itens.filter(i => i.obrigatorio)
-    for (const item of itensObrigatorios) {
-      if (!item.quantidade || item.quantidade <= 0) {
-        toast({
-          title: 'Item obrigatório sem quantidade',
-          description: `O item "${item.item?.nome}" é obrigatório`,
-          variant: 'destructive'
-        })
-        return false
-      }
-    }
-
-    // Verificar se ao menos um item tem quantidade
-    const temItemComQtd = formData.itens.some(i => i.quantidade && i.quantidade > 0)
-    if (!temItemComQtd) {
-      toast({
-        title: 'Nenhum item com quantidade',
-        description: 'Informe a quantidade de pelo menos um item',
-        variant: 'destructive'
-      })
-      return false
-    }
+    // Validar quantidade de itens obrigatórios (apenas aviso, não bloqueia)
+    // Itens com quantidade 0 ou vazia serão salvos sem consumo
 
     // Verificar estoque insuficiente
     if (resumoFinanceiro.temEstoqueInsuficiente) {
