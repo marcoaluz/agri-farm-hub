@@ -44,11 +44,12 @@ import {
 import { ContextDebug } from '@/components/debug/ContextDebug'
 import { HistoricoDialog } from '@/components/auditoria/HistoricoDialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
-import { useLancamentos, useExcluirLancamento } from '@/hooks/useLancamentos'
+import { useExcluirLancamento } from '@/hooks/useLancamentos'
 import { useSafraFechada } from '@/hooks/useSafraFechamento'
 import { useTalhoes } from '@/hooks/useTalhoes'
-import { Lancamento } from '@/types/supabase-local'
 import { format, addDays, subDays, isToday, parseISO, isSameDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -61,7 +62,36 @@ export function Lancamentos() {
   }, [routerLocation.search])
 
   const { safraAtual, propriedadeAtual } = useGlobal()
-  const { data: lancamentos, isLoading } = useLancamentos(safraAtual?.id)
+  const { data: lancamentos, isLoading } = useQuery({
+    queryKey: ['lancamentos', safraAtual?.id],
+    queryFn: async () => {
+      if (!safraAtual?.id) return []
+
+      const { data, error } = await supabase
+        .from('lancamentos')
+        .select(`
+          *,
+          servico:servicos(id, nome),
+          talhao:talhoes(id, nome),
+          abastecimento:abastecimentos(
+            id,
+            data,
+            horimetro,
+            combustivel_tipo,
+            quantidade_litros,
+            posto,
+            observacoes,
+            maquina:maquinas(nome, modelo)
+          )
+        `)
+        .eq('safra_id', safraAtual.id)
+        .order('data_execucao', { ascending: false })
+
+      if (error) throw error
+      return data as any[]
+    },
+    enabled: !!safraAtual?.id
+  })
   const { data: safraFechada } = useSafraFechada(safraAtual?.id)
   const { data: talhoes } = useTalhoes(propriedadeAtual?.id)
   const excluirLancamento = useExcluirLancamento()
@@ -70,7 +100,7 @@ export function Lancamentos() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [filterTalhaoId, setFilterTalhaoId] = useState<string>('all')
   const [showAllDates, setShowAllDates] = useState(false)
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; lancamento: Lancamento | null }>({
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; lancamento: any | null }>({
     open: false,
     lancamento: null
   })
@@ -400,7 +430,7 @@ export function Lancamentos() {
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       {lancamento.servico?.nome || 'Serviço não encontrado'}
-                      {lancamento.abastecimento_id && (
+                      {lancamento.abastecimento && (
                         <Badge variant="secondary" className="gap-1 text-xs">
                           <Fuel className="h-3 w-3" />
                           Abastecimento
@@ -416,8 +446,8 @@ export function Lancamentos() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {lancamento.abastecimento_id
-                      ? `${lancamento.quantidade_litros || 0}L ${lancamento.combustivel_tipo || ''}`
+                    {lancamento.abastecimento
+                      ? `${lancamento.abastecimento?.quantidade_litros || 0}L ${lancamento.abastecimento?.combustivel_tipo || ''}`
                       : `${lancamento.lancamentos_itens?.length || 0} ${(lancamento.lancamentos_itens?.length || 0) === 1 ? 'item' : 'itens'}`
                     }
                   </TableCell>
@@ -437,9 +467,9 @@ export function Lancamentos() {
                           <Eye className="mr-2 h-4 w-4" />
                           Ver Detalhes
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEditar(lancamento.id)} disabled={safraFechada || !!lancamento.abastecimento_id}>
+                        <DropdownMenuItem onClick={() => handleEditar(lancamento.id)} disabled={safraFechada || !!lancamento.abastecimento}>
                           <Edit className="mr-2 h-4 w-4" />
-                          {lancamento.abastecimento_id ? 'Edição bloqueada' : 'Editar'}
+                          {lancamento.abastecimento ? 'Edição bloqueada' : 'Editar'}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setHistoricoDialog({ open: true, lancamentoId: lancamento.id })}>
                           <History className="mr-2 h-4 w-4" />
@@ -449,10 +479,10 @@ export function Lancamentos() {
                         <DropdownMenuItem 
                           onClick={() => setDeleteDialog({ open: true, lancamento })}
                           className="text-destructive focus:text-destructive"
-                          disabled={safraFechada || !!lancamento.abastecimento_id}
+                          disabled={safraFechada || !!lancamento.abastecimento}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          {lancamento.abastecimento_id ? 'Excluir via Máquinas' : 'Excluir'}
+                          {lancamento.abastecimento ? 'Excluir via Máquinas' : 'Excluir'}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

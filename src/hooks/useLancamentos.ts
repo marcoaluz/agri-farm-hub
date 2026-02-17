@@ -9,41 +9,32 @@ export function useLancamentos(safraId?: string) {
     queryFn: async () => {
       if (!safraId) return []
 
-      // Buscar da view para incluir dados de abastecimento
-      const { data: viewData, error: viewError } = await supabase
-        .from('vw_lancamentos_com_abastecimento' as any)
-        .select('*')
+      const { data, error } = await supabase
+        .from('lancamentos')
+        .select(`
+          *,
+          servico:servicos(id, nome),
+          talhao:talhoes(id, nome),
+          lancamentos_itens(
+            *,
+            item:itens(*)
+          ),
+          abastecimento:abastecimentos(
+            id,
+            data,
+            horimetro,
+            combustivel_tipo,
+            quantidade_litros,
+            posto,
+            observacoes,
+            maquina:maquinas(nome, modelo)
+          )
+        `)
         .eq('safra_id', safraId)
         .order('data_execucao', { ascending: false })
 
-      if (viewError) {
-        // Fallback para tabela direta se view não existir
-        console.warn('View não disponível, usando tabela direta:', viewError.message)
-        const { data, error } = await supabase
-          .from('lancamentos')
-          .select(`
-            *,
-            servico:servicos(*),
-            talhao:talhoes(*),
-            lancamentos_itens(
-              *,
-              item:itens(*)
-            )
-          `)
-          .eq('safra_id', safraId)
-          .order('data_execucao', { ascending: false })
-
-        if (error) throw error
-        return data as Lancamento[]
-      }
-
-      // View retorna dados flat, mapear para estrutura esperada
-      return (viewData as any[]).map((row: any) => ({
-        ...row,
-        servico: row.servico_nome ? { id: row.servico_id, nome: row.servico_nome } : undefined,
-        talhao: row.talhao_nome ? { id: row.talhao_id, nome: row.talhao_nome } : undefined,
-        lancamentos_itens: row.total_itens ? Array(row.total_itens).fill({}) : [],
-      })) as Lancamento[]
+      if (error) throw error
+      return data as any[]
     },
     enabled: !!safraId,
   })
