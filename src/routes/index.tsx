@@ -72,9 +72,17 @@ export function AppRoutes() {
         } 
       />
       
-      {/* Esqueci senha */}
+      {/* Recuperar senha */}
       <Route 
         path="/esqueci-senha" 
+        element={
+          <PublicRoute>
+            <RecuperarSenhaPage />
+          </PublicRoute>
+        }
+      />
+      <Route 
+        path="/recuperar-senha" 
         element={
           <PublicRoute>
             <RecuperarSenhaPage />
