@@ -65,7 +65,7 @@ export function Talhoes() {
 
   if (!propriedadeAtual) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="w-full max-w-full p-6">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <AlertCircle className="h-16 w-16 text-muted-foreground mb-4" />
@@ -80,7 +80,7 @@ export function Talhoes() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="w-full max-w-full space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

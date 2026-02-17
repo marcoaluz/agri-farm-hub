@@ -67,7 +67,7 @@ export function Estoque() {
 
   if (!propriedadeAtual) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="w-full max-w-full p-6">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Package className="h-16 w-16 text-muted-foreground mb-4" />

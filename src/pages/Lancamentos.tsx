@@ -355,7 +355,8 @@ export function Lancamentos() {
       </div>
 
       {/* Table */}
-      <Card>
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto w-full">
         <Table>
           <TableHeader>
             <TableRow>
@@ -450,6 +451,7 @@ export function Lancamentos() {
             )}
           </TableBody>
         </Table>
+        </div>
       </Card>
 
       {/* Delete Confirmation Dialog */}
