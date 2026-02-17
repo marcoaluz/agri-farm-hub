@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Search, Filter, Calendar as CalendarIcon, MoreHorizontal, Edit, Trash2, Eye, Loader2, History, Lock, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Plus, Search, Filter, Calendar as CalendarIcon, MoreHorizontal, Edit, Trash2, Eye, Loader2, History, Lock, ChevronLeft, ChevronRight, X, Fuel } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -398,7 +398,15 @@ export function Lancamentos() {
                 <TableRow key={lancamento.id}>
                   <TableCell>{formatDate(lancamento.data_execucao)}</TableCell>
                   <TableCell className="font-medium">
-                    {lancamento.servico?.nome || 'Serviço não encontrado'}
+                    <div className="flex items-center gap-2">
+                      {lancamento.servico?.nome || 'Serviço não encontrado'}
+                      {lancamento.abastecimento_id && (
+                        <Badge variant="secondary" className="gap-1 text-xs">
+                          <Fuel className="h-3 w-3" />
+                          Abastecimento
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {lancamento.talhao ? (
@@ -408,7 +416,10 @@ export function Lancamentos() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {lancamento.lancamentos_itens?.length || 0} {(lancamento.lancamentos_itens?.length || 0) === 1 ? 'item' : 'itens'}
+                    {lancamento.abastecimento_id
+                      ? `${lancamento.quantidade_litros || 0}L ${lancamento.combustivel_tipo || ''}`
+                      : `${lancamento.lancamentos_itens?.length || 0} ${(lancamento.lancamentos_itens?.length || 0) === 1 ? 'item' : 'itens'}`
+                    }
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(lancamento.custo_total || 0)}
@@ -426,9 +437,9 @@ export function Lancamentos() {
                           <Eye className="mr-2 h-4 w-4" />
                           Ver Detalhes
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEditar(lancamento.id)} disabled={safraFechada}>
+                        <DropdownMenuItem onClick={() => handleEditar(lancamento.id)} disabled={safraFechada || !!lancamento.abastecimento_id}>
                           <Edit className="mr-2 h-4 w-4" />
-                          Editar
+                          {lancamento.abastecimento_id ? 'Edição bloqueada' : 'Editar'}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setHistoricoDialog({ open: true, lancamentoId: lancamento.id })}>
                           <History className="mr-2 h-4 w-4" />
@@ -438,10 +449,10 @@ export function Lancamentos() {
                         <DropdownMenuItem 
                           onClick={() => setDeleteDialog({ open: true, lancamento })}
                           className="text-destructive focus:text-destructive"
-                          disabled={safraFechada}
+                          disabled={safraFechada || !!lancamento.abastecimento_id}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Excluir
+                          {lancamento.abastecimento_id ? 'Excluir via Máquinas' : 'Excluir'}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
