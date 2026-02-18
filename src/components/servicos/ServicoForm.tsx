@@ -14,46 +14,49 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Plus, Trash2, GripVertical, Info, Package, Wrench, Tractor } from 'lucide-react';
+import { Loader2, Trash2, Info, Package, Wrench, Truck, Plus } from 'lucide-react';
 
-interface Servico {
+interface ServicoData {
   id?: string;
   nome: string;
   descricao?: string;
   categoria: string;
   requer_talhao: boolean;
-}
-
-interface Item {
-  id: string;
-  nome: string;
-  tipo: 'produto_estoque' | 'servico' | 'maquina_hora';
-  unidade_medida: string;
+  tipo_servico: 'simples' | 'composto';
+  custo_padrao?: number;
+  unidade_medida?: string;
 }
 
 interface ItemVinculado {
-  item_id: string;
-  item?: Item;
+  tipo_ref: 'produto' | 'maquina' | 'servico_simples';
+  produto_id?: string;
+  maquina_id?: string;
+  servico_ref_id?: string;
+  nome: string;
+  unidade: string;
+  custo_info?: number;
   obrigatorio: boolean;
   quantidade_sugerida?: number;
   ordem: number;
 }
 
 interface ServicoFormProps {
-  servico: Servico | null;
+  servico: any | null;
   onSuccess: () => void;
 }
 
 const CATEGORIAS_SERVICO = [
-  'Preparo do Solo',
-  'Plantio',
-  'Adubação',
-  'Aplicação',
-  'Irrigação',
-  'Colheita',
-  'Transporte',
-  'Manutenção',
-  'Outros'
+  'Preparo do Solo', 'Plantio', 'Adubação', 'Aplicação',
+  'Irrigação', 'Colheita', 'Transporte', 'Manutenção', 'Outros'
+];
+
+const UNIDADES_SIMPLES = [
+  { value: 'hora', label: 'Hora' },
+  { value: 'dia', label: 'Dia' },
+  { value: 'diaria', label: 'Diária' },
+  { value: 'servico', label: 'Serviço' },
+  { value: 'ha', label: 'Hectare (ha)' },
+  { value: 'km', label: 'Quilômetro (km)' },
 ];
 
 export function ServicoForm({ servico, onSuccess }: ServicoFormProps) {
@@ -61,168 +64,245 @@ export function ServicoForm({ servico, onSuccess }: ServicoFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState<Servico>({
+  const [formData, setFormData] = useState<ServicoData>({
     nome: servico?.nome || '',
     descricao: servico?.descricao || '',
     categoria: servico?.categoria || '',
-    requer_talhao: servico?.requer_talhao ?? true
+    requer_talhao: servico?.requer_talhao ?? true,
+    tipo_servico: servico?.tipo_servico || 'composto',
+    custo_padrao: servico?.custo_padrao || undefined,
+    unidade_medida: servico?.unidade_medida || '',
   });
 
   const [itensVinculados, setItensVinculados] = useState<ItemVinculado[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [addingType, setAddingType] = useState<'produto' | 'maquina' | 'servico_simples' | null>(null);
 
-  // Buscar todos os itens disponíveis
-  const { data: itensDisponiveis } = useQuery({
-    queryKey: ['itens', propriedadeAtual?.id],
+  const propriedadeId = propriedadeAtual?.id;
+
+  // Buscar produtos
+  const { data: produtos } = useQuery({
+    queryKey: ['produtos-para-servico', propriedadeId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('itens')
-        .select('id, nome, tipo, unidade_medida')
-        .eq('propriedade_id', propriedadeAtual?.id)
+        .from('produtos')
+        .select('id, nome, unidade')
+        .eq('propriedade_id', propriedadeId)
+        .eq('ativo', true)
+        .order('nome');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!propriedadeId && formData.tipo_servico === 'composto',
+  });
+
+  // Buscar máquinas
+  const { data: maquinas } = useQuery({
+    queryKey: ['maquinas-para-servico', propriedadeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('maquinas')
+        .select('id, nome, custo_hora')
+        .eq('propriedade_id', propriedadeId)
+        .eq('ativo', true)
+        .order('nome');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!propriedadeId && formData.tipo_servico === 'composto',
+  });
+
+  // Buscar serviços simples
+  const { data: servicosSimples } = useQuery({
+    queryKey: ['servicos-simples-para-servico', propriedadeId, servico?.id],
+    queryFn: async () => {
+      let query = supabase
+        .from('servicos')
+        .select('id, nome, custo_padrao, unidade_medida')
+        .eq('propriedade_id', propriedadeId)
+        .eq('tipo_servico', 'simples')
         .eq('ativo', true)
         .order('nome');
 
+      // Excluir o próprio serviço se editando
+      if (servico?.id) {
+        query = query.neq('id', servico.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      return data as Item[];
+      return data || [];
     },
-    enabled: !!propriedadeAtual?.id
+    enabled: !!propriedadeId && formData.tipo_servico === 'composto',
   });
 
-  // Buscar itens já vinculados (se editando)
+  // Carregar itens vinculados ao editar
   useEffect(() => {
     if (servico?.id) {
-      const fetchItensVinculados = async () => {
+      const fetchItens = async () => {
         const { data, error } = await supabase
           .from('servicos_itens')
           .select(`
-            item_id,
-            obrigatorio,
-            quantidade_sugerida,
-            ordem,
-            item:itens(id, nome, tipo, unidade_medida)
+            tipo_ref, produto_id, maquina_id, servico_ref_id,
+            obrigatorio, quantidade_sugerida, ordem,
+            produto:produtos(id, nome, unidade),
+            maquina:maquinas(id, nome, custo_hora),
+            servico_ref:servicos(id, nome, custo_padrao, unidade_medida)
           `)
           .eq('servico_id', servico.id)
           .order('ordem');
 
         if (!error && data) {
-          setItensVinculados(data.map((si: any) => ({
-            item_id: si.item_id,
-            item: si.item,
-            obrigatorio: si.obrigatorio,
-            quantidade_sugerida: si.quantidade_sugerida,
-            ordem: si.ordem
-          })));
+          setItensVinculados(data.map((si: any) => {
+            let nome = '';
+            let unidade = '';
+            let custo_info: number | undefined;
+
+            if (si.tipo_ref === 'produto' && si.produto) {
+              nome = si.produto.nome;
+              unidade = si.produto.unidade || '';
+            } else if (si.tipo_ref === 'maquina' && si.maquina) {
+              nome = si.maquina.nome;
+              unidade = 'hora';
+              custo_info = si.maquina.custo_hora;
+            } else if (si.tipo_ref === 'servico_simples' && si.servico_ref) {
+              nome = si.servico_ref.nome;
+              unidade = si.servico_ref.unidade_medida || '';
+              custo_info = si.servico_ref.custo_padrao;
+            }
+
+            return {
+              tipo_ref: si.tipo_ref || 'produto',
+              produto_id: si.produto_id,
+              maquina_id: si.maquina_id,
+              servico_ref_id: si.servico_ref_id,
+              nome,
+              unidade,
+              custo_info,
+              obrigatorio: si.obrigatorio,
+              quantidade_sugerida: si.quantidade_sugerida,
+              ordem: si.ordem,
+            };
+          }));
         }
       };
-      fetchItensVinculados();
+      fetchItens();
     }
   }, [servico?.id]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    
-    if (!formData.nome.trim()) {
-      newErrors.nome = 'Nome é obrigatório';
-    } else if (formData.nome.length > 200) {
-      newErrors.nome = 'Nome deve ter no máximo 200 caracteres';
+    if (!formData.nome.trim()) newErrors.nome = 'Nome é obrigatório';
+    if (!formData.categoria) newErrors.categoria = 'Categoria é obrigatória';
+    if (formData.tipo_servico === 'simples') {
+      if (!formData.custo_padrao || formData.custo_padrao <= 0) {
+        newErrors.custo_padrao = 'Custo padrão é obrigatório';
+      }
+      if (!formData.unidade_medida) {
+        newErrors.unidade_medida = 'Unidade de medida é obrigatória';
+      }
     }
-    
-    if (!formData.categoria) {
-      newErrors.categoria = 'Categoria é obrigatória';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Mutation para salvar
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!validate()) throw new Error('Dados inválidos');
 
       let servicoId = servico?.id;
 
+      const payload: any = {
+        nome: formData.nome.trim(),
+        descricao: formData.descricao?.trim() || null,
+        categoria: formData.categoria,
+        requer_talhao: formData.requer_talhao,
+        tipo_servico: formData.tipo_servico,
+        custo_padrao: formData.tipo_servico === 'simples' ? formData.custo_padrao : null,
+        unidade_medida: formData.tipo_servico === 'simples' ? formData.unidade_medida : null,
+      };
+
       if (servico?.id) {
         const { error } = await supabase
           .from('servicos')
-          .update({
-            nome: formData.nome.trim(),
-            descricao: formData.descricao?.trim() || null,
-            categoria: formData.categoria,
-            requer_talhao: formData.requer_talhao
-          })
+          .update(payload)
           .eq('id', servico.id);
-        
         if (error) throw error;
       } else {
         const { data, error } = await supabase
           .from('servicos')
-          .insert({
-            nome: formData.nome.trim(),
-            descricao: formData.descricao?.trim() || null,
-            categoria: formData.categoria,
-            requer_talhao: formData.requer_talhao,
-            propriedade_id: propriedadeAtual?.id
-          })
+          .insert({ ...payload, propriedade_id: propriedadeId })
           .select()
           .single();
-        
         if (error) throw error;
         servicoId = data.id;
       }
 
-      // Remover itens antigos
+      // Gerenciar itens vinculados (apenas para composto)
       if (servico?.id) {
-        await supabase
-          .from('servicos_itens')
-          .delete()
-          .eq('servico_id', servico.id);
+        await supabase.from('servicos_itens').delete().eq('servico_id', servico.id);
       }
 
-      // Inserir novos itens vinculados
-      if (itensVinculados.length > 0 && servicoId) {
+      if (formData.tipo_servico === 'composto' && itensVinculados.length > 0 && servicoId) {
         const { error: erroItens } = await supabase
           .from('servicos_itens')
           .insert(
             itensVinculados.map((iv, index) => ({
               servico_id: servicoId,
-              item_id: iv.item_id,
+              tipo_ref: iv.tipo_ref,
+              produto_id: iv.tipo_ref === 'produto' ? iv.produto_id : null,
+              maquina_id: iv.tipo_ref === 'maquina' ? iv.maquina_id : null,
+              servico_ref_id: iv.tipo_ref === 'servico_simples' ? iv.servico_ref_id : null,
+              item_id: null,
               obrigatorio: iv.obrigatorio,
               quantidade_sugerida: iv.quantidade_sugerida || null,
-              ordem: index
+              ordem: index,
             }))
           );
-
         if (erroItens) throw erroItens;
       }
     },
     onSuccess: () => {
-      toast({ 
-        title: `Serviço ${servico ? 'atualizado' : 'criado'} com sucesso` 
-      });
+      toast({ title: `Serviço ${servico ? 'atualizado' : 'criado'} com sucesso` });
       queryClient.invalidateQueries({ queryKey: ['servicos'] });
       onSuccess();
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Erro ao salvar serviço',
-        description: error.message,
-        variant: 'destructive'
-      });
-    }
+      toast({ title: 'Erro ao salvar serviço', description: error.message, variant: 'destructive' });
+    },
   });
 
-  const adicionarItem = (itemId: string) => {
-    const item = itensDisponiveis?.find(i => i.id === itemId);
-    if (!item) return;
-
+  const adicionarProduto = (produtoId: string) => {
+    const p = produtos?.find(x => x.id === produtoId);
+    if (!p) return;
     setItensVinculados(prev => [...prev, {
-      item_id: itemId,
-      item,
-      obrigatorio: false,
-      quantidade_sugerida: undefined,
-      ordem: prev.length
+      tipo_ref: 'produto', produto_id: produtoId,
+      nome: p.nome, unidade: p.unidade || '', obrigatorio: false,
+      quantidade_sugerida: undefined, ordem: prev.length,
     }]);
+    setAddingType(null);
+  };
+
+  const adicionarMaquina = (maquinaId: string) => {
+    const m = maquinas?.find(x => x.id === maquinaId);
+    if (!m) return;
+    setItensVinculados(prev => [...prev, {
+      tipo_ref: 'maquina', maquina_id: maquinaId,
+      nome: m.nome, unidade: 'hora', custo_info: m.custo_hora,
+      obrigatorio: false, quantidade_sugerida: undefined, ordem: prev.length,
+    }]);
+    setAddingType(null);
+  };
+
+  const adicionarServicoSimples = (sId: string) => {
+    const s = servicosSimples?.find(x => x.id === sId);
+    if (!s) return;
+    setItensVinculados(prev => [...prev, {
+      tipo_ref: 'servico_simples', servico_ref_id: sId,
+      nome: s.nome, unidade: s.unidade_medida || '', custo_info: s.custo_padrao,
+      obrigatorio: false, quantidade_sugerida: undefined, ordem: prev.length,
+    }]);
+    setAddingType(null);
   };
 
   const removerItem = (index: number) => {
@@ -237,31 +317,32 @@ export function ServicoForm({ servico, onSuccess }: ServicoFormProps) {
     });
   };
 
-  const itensParaAdicionar = itensDisponiveis?.filter(
-    item => !itensVinculados.some(iv => iv.item_id === item.id)
-  );
-
-  const getTipoIcon = (tipo: string) => {
+  const getRefIcon = (tipo: string) => {
     switch (tipo) {
-      case 'produto_estoque':
-        return <Package className="h-4 w-4 text-blue-600" />;
-      case 'servico':
-        return <Wrench className="h-4 w-4 text-purple-600" />;
-      case 'maquina_hora':
-        return <Tractor className="h-4 w-4 text-orange-600" />;
-      default:
-        return null;
+      case 'produto': return <Package className="h-4 w-4 text-blue-600" />;
+      case 'maquina': return <Truck className="h-4 w-4 text-orange-600" />;
+      case 'servico_simples': return <Wrench className="h-4 w-4 text-purple-600" />;
+      default: return null;
     }
   };
 
-  const getTipoLabel = (tipo: string) => {
+  const getRefLabel = (tipo: string) => {
     const labels: Record<string, string> = {
-      'produto_estoque': 'Produto',
-      'servico': 'Serviço',
-      'maquina_hora': 'Máquina'
+      'produto': 'Produto', 'maquina': 'Máquina', 'servico_simples': 'Serviço',
     };
     return labels[tipo] || tipo;
   };
+
+  // Filtrar itens já adicionados
+  const produtosDisponiveis = produtos?.filter(
+    p => !itensVinculados.some(iv => iv.tipo_ref === 'produto' && iv.produto_id === p.id)
+  );
+  const maquinasDisponiveis = maquinas?.filter(
+    m => !itensVinculados.some(iv => iv.tipo_ref === 'maquina' && iv.maquina_id === m.id)
+  );
+  const servicosSimplesDisponiveis = servicosSimples?.filter(
+    s => !itensVinculados.some(iv => iv.tipo_ref === 'servico_simples' && iv.servico_ref_id === s.id)
+  );
 
   return (
     <div className="space-y-6 max-h-[80vh] overflow-y-auto pr-2">
@@ -280,7 +361,7 @@ export function ServicoForm({ servico, onSuccess }: ServicoFormProps) {
             <Input
               value={formData.nome}
               onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-              placeholder="Ex: Adubação de Cobertura, Plantio, Colheita"
+              placeholder="Ex: Adubação de Cobertura, Diária de Trabalho"
               maxLength={200}
               className={errors.nome ? 'border-destructive' : ''}
             />
@@ -289,8 +370,8 @@ export function ServicoForm({ servico, onSuccess }: ServicoFormProps) {
 
           <div>
             <Label>Categoria *</Label>
-            <Select 
-              value={formData.categoria} 
+            <Select
+              value={formData.categoria}
               onValueChange={(value) => setFormData(prev => ({ ...prev, categoria: value }))}
             >
               <SelectTrigger className={errors.categoria ? 'border-destructive' : ''}>
@@ -298,13 +379,29 @@ export function ServicoForm({ servico, onSuccess }: ServicoFormProps) {
               </SelectTrigger>
               <SelectContent>
                 {CATEGORIAS_SERVICO.map(cat => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {errors.categoria && <p className="text-xs text-destructive mt-1">{errors.categoria}</p>}
+          </div>
+
+          <div>
+            <Label>Tipo de Serviço *</Label>
+            <Select
+              value={formData.tipo_servico}
+              onValueChange={(value: 'simples' | 'composto') =>
+                setFormData(prev => ({ ...prev, tipo_servico: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="simples">Simples (custo direto)</SelectItem>
+                <SelectItem value="composto">Composto (com itens vinculados)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
@@ -326,7 +423,7 @@ export function ServicoForm({ servico, onSuccess }: ServicoFormProps) {
             </div>
             <Switch
               checked={formData.requer_talhao}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setFormData(prev => ({ ...prev, requer_talhao: checked }))
               }
             />
@@ -334,135 +431,256 @@ export function ServicoForm({ servico, onSuccess }: ServicoFormProps) {
         </CardContent>
       </Card>
 
-      {/* Itens Vinculados */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Itens do Serviço</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Defina quais itens podem ser usados neste serviço
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {itensVinculados.length === 0 ? (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                Nenhum item vinculado. Adicione itens que podem ser usados neste serviço.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <div className="space-y-2">
-              {itensVinculados.map((itemVinc, index) => (
-                <Card key={index} className="border">
-                  <CardContent className="p-3">
-                    <div className="flex items-start gap-2">
-                      <div className="pt-1">
-                        <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
-                      </div>
-
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {getTipoIcon(itemVinc.item?.tipo || '')}
-                            <span className="font-medium text-sm">{itemVinc.item?.nome}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {getTipoLabel(itemVinc.item?.tipo || '')}
-                            </Badge>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removerItem(index)}
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                          <div className="flex-1">
-                            <Label className="text-xs">
-                              Qtd. Sugerida ({itemVinc.item?.unidade_medida})
-                            </Label>
-                            <Input
-                              type="number"
-                              step="0.001"
-                              min="0"
-                              value={itemVinc.quantidade_sugerida || ''}
-                              onChange={(e) => atualizarItem(index, {
-                                quantidade_sugerida: parseFloat(e.target.value) || undefined
-                              })}
-                              placeholder="Opcional"
-                              className="h-8 text-sm"
-                            />
-                          </div>
-
-                          <div className="flex items-center gap-2 pt-5">
-                            <Switch
-                              checked={itemVinc.obrigatorio}
-                              onCheckedChange={(checked) => 
-                                atualizarItem(index, { obrigatorio: checked })
-                              }
-                            />
-                            <Label className="text-xs">Obrigatório</Label>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+      {/* Campos de Serviço Simples */}
+      {formData.tipo_servico === 'simples' && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Custo do Serviço</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Custo Padrão (R$) *</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.custo_padrao || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev, custo_padrao: parseFloat(e.target.value) || undefined,
+                }))}
+                placeholder="Ex: 150.00"
+                className={errors.custo_padrao ? 'border-destructive' : ''}
+              />
+              {errors.custo_padrao && <p className="text-xs text-destructive mt-1">{errors.custo_padrao}</p>}
             </div>
-          )}
 
-          <Separator />
+            <div>
+              <Label>Unidade de Medida *</Label>
+              <Select
+                value={formData.unidade_medida || ''}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, unidade_medida: value }))}
+              >
+                <SelectTrigger className={errors.unidade_medida ? 'border-destructive' : ''}>
+                  <SelectValue placeholder="Selecione a unidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {UNIDADES_SIMPLES.map(u => (
+                    <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.unidade_medida && <p className="text-xs text-destructive mt-1">{errors.unidade_medida}</p>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          <div>
-            <Label className="text-sm">Adicionar Item</Label>
-            <Select onValueChange={adicionarItem} value="">
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um item para adicionar" />
-              </SelectTrigger>
-              <SelectContent>
-                {itensParaAdicionar?.length === 0 ? (
-                  <div className="p-3 text-sm text-muted-foreground text-center">
-                    {itensDisponiveis?.length === 0 
-                      ? 'Nenhum item cadastrado'
-                      : 'Todos os itens já foram adicionados'}
-                  </div>
-                ) : (
-                  itensParaAdicionar?.map(item => (
-                    <SelectItem key={item.id} value={item.id}>
-                      <div className="flex items-center gap-2">
-                        {getTipoIcon(item.tipo)}
-                        <span>{item.nome}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({item.unidade_medida})
-                        </span>
+      {/* Itens Vinculados (apenas composto) */}
+      {formData.tipo_servico === 'composto' && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Itens do Serviço</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Defina produtos, máquinas e serviços usados nesta operação
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {itensVinculados.length === 0 ? (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Nenhum item vinculado. Use os botões abaixo para adicionar.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="space-y-2">
+                {itensVinculados.map((iv, index) => (
+                  <Card key={index} className="border">
+                    <CardContent className="p-3">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {getRefIcon(iv.tipo_ref)}
+                              <span className="font-medium text-sm">{iv.nome}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {getRefLabel(iv.tipo_ref)}
+                              </Badge>
+                            </div>
+                            <Button
+                              variant="ghost" size="icon"
+                              onClick={() => removerItem(index)}
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+
+                          {iv.custo_info != null && (
+                            <p className="text-xs text-muted-foreground">
+                              Custo: R$ {iv.custo_info.toFixed(2)}/{iv.unidade}
+                            </p>
+                          )}
+
+                          <div className="flex items-center gap-4">
+                            <div className="flex-1">
+                              <Label className="text-xs">
+                                Qtd. Sugerida ({iv.unidade})
+                              </Label>
+                              <Input
+                                type="number" step="0.001" min="0"
+                                value={iv.quantidade_sugerida || ''}
+                                onChange={(e) => atualizarItem(index, {
+                                  quantidade_sugerida: parseFloat(e.target.value) || undefined,
+                                })}
+                                placeholder="Opcional"
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 pt-5">
+                              <Switch
+                                checked={iv.obrigatorio}
+                                onCheckedChange={(checked) =>
+                                  atualizarItem(index, { obrigatorio: checked })
+                                }
+                              />
+                              <Label className="text-xs">Obrigatório</Label>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            <Separator />
+
+            {/* Botões para adicionar */}
+            <div>
+              <Label className="text-sm mb-2 block">Adicionar ao Serviço</Label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button" variant="outline" size="sm"
+                  onClick={() => setAddingType(addingType === 'produto' ? null : 'produto')}
+                  className={addingType === 'produto' ? 'ring-2 ring-ring' : ''}
+                >
+                  <Package className="h-4 w-4 mr-1" />
+                  + Produto do Estoque
+                </Button>
+                <Button
+                  type="button" variant="outline" size="sm"
+                  onClick={() => setAddingType(addingType === 'maquina' ? null : 'maquina')}
+                  className={addingType === 'maquina' ? 'ring-2 ring-ring' : ''}
+                >
+                  <Truck className="h-4 w-4 mr-1" />
+                  + Máquina
+                </Button>
+                <Button
+                  type="button" variant="outline" size="sm"
+                  onClick={() => setAddingType(addingType === 'servico_simples' ? null : 'servico_simples')}
+                  className={addingType === 'servico_simples' ? 'ring-2 ring-ring' : ''}
+                >
+                  <Wrench className="h-4 w-4 mr-1" />
+                  + Serviço Simples
+                </Button>
+              </div>
+            </div>
+
+            {/* Select dinâmico baseado no tipo */}
+            {addingType === 'produto' && (
+              <Select onValueChange={adicionarProduto} value="">
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um produto..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(!produtosDisponiveis || produtosDisponiveis.length === 0) ? (
+                    <div className="p-3 text-sm text-muted-foreground text-center">
+                      Nenhum produto disponível
+                    </div>
+                  ) : (
+                    produtosDisponiveis.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <div className="flex items-center gap-2">
+                          <Package className="h-3 w-3" />
+                          <span>{p.nome}</span>
+                          <span className="text-xs text-muted-foreground">({p.unidade})</span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+
+            {addingType === 'maquina' && (
+              <Select onValueChange={adicionarMaquina} value="">
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma máquina..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(!maquinasDisponiveis || maquinasDisponiveis.length === 0) ? (
+                    <div className="p-3 text-sm text-muted-foreground text-center">
+                      Nenhuma máquina disponível
+                    </div>
+                  ) : (
+                    maquinasDisponiveis.map(m => (
+                      <SelectItem key={m.id} value={m.id}>
+                        <div className="flex items-center gap-2">
+                          <Truck className="h-3 w-3" />
+                          <span>{m.nome}</span>
+                          {m.custo_hora && (
+                            <span className="text-xs text-muted-foreground">
+                              (R$ {m.custo_hora}/h)
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+
+            {addingType === 'servico_simples' && (
+              <Select onValueChange={adicionarServicoSimples} value="">
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um serviço simples..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(!servicosSimplesDisponiveis || servicosSimplesDisponiveis.length === 0) ? (
+                    <div className="p-3 text-sm text-muted-foreground text-center">
+                      Nenhum serviço simples disponível
+                    </div>
+                  ) : (
+                    servicosSimplesDisponiveis.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        <div className="flex items-center gap-2">
+                          <Wrench className="h-3 w-3" />
+                          <span>{s.nome}</span>
+                          {s.custo_padrao && (
+                            <span className="text-xs text-muted-foreground">
+                              (R$ {s.custo_padrao}/{s.unidade_medida})
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Botões */}
       <div className="flex justify-end gap-2 sticky bottom-0 bg-background pt-2 pb-1">
-        <Button variant="outline" onClick={onSuccess}>
-          Cancelar
-        </Button>
-        <Button
-          onClick={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending}
-        >
+        <Button variant="outline" onClick={onSuccess}>Cancelar</Button>
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Salvando...
-            </>
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</>
           ) : (
             'Salvar Serviço'
           )}
