@@ -358,6 +358,7 @@ export function useExcluirLancamento() {
       queryClient.invalidateQueries({ queryKey: ['produtos'] })
       queryClient.invalidateQueries({ queryKey: ['preview-custo'] })
       queryClient.invalidateQueries({ queryKey: ['maquinas'] })
+      queryClient.invalidateQueries({ queryKey: ['maquinas-status'] })
       toast.success('Lançamento excluído e estoque restaurado com sucesso!')
     },
     onError: (error: any) => {
