@@ -81,6 +81,7 @@ export function LancamentoForm() {
     data_execucao: new Date().toISOString().split('T')[0],
     itens: []
   })
+  const [dadosOriginais, setDadosOriginais] = useState<LancamentoFormData | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingItens, setLoadingItens] = useState(false)
   const [validandoEstoque, setValidandoEstoque] = useState(false)
@@ -140,7 +141,7 @@ export function LancamentoForm() {
       if (error) throw error
 
       if (data) {
-        setFormData({
+        const loaded: LancamentoFormData = {
           servico_id: data.servico_id,
           talhao_id: data.talhao_id || undefined,
           data_execucao: data.data_execucao,
@@ -153,7 +154,9 @@ export function LancamentoForm() {
             detalhamento_lotes: li.detalhamento_lotes,
             item: li.item
           })) || []
-        })
+        }
+        setFormData(loaded)
+        setDadosOriginais(structuredClone(loaded))
       }
     } catch (error) {
       console.error('Erro ao carregar lançamento:', error)
@@ -265,6 +268,27 @@ export function LancamentoForm() {
     }
   }, [formData.itens, areaHa])
 
+  // Detectar se houve mudança real (para modo edição)
+  const temAlteracaoReal = useMemo(() => {
+    if (!dadosOriginais || !lancamentoId) return true // novo lançamento sempre pode salvar
+
+    if (formData.data_execucao !== dadosOriginais.data_execucao) return true
+    if (formData.servico_id !== dadosOriginais.servico_id) return true
+    if (formData.talhao_id !== dadosOriginais.talhao_id) return true
+    if (formData.observacoes !== dadosOriginais.observacoes) return true
+
+    if (formData.itens.length !== dadosOriginais.itens.length) return true
+    for (let i = 0; i < formData.itens.length; i++) {
+      const atual = formData.itens[i]
+      const original = dadosOriginais.itens[i]
+      if (!original) return true
+      if (atual.item_id !== original.item_id) return true
+      if (Number(atual.quantidade) !== Number(original.quantidade)) return true
+    }
+
+    return false
+  }, [formData, dadosOriginais, lancamentoId])
+
   // Mutation para salvar lançamento
   const salvarMutation = useMutation({
     mutationFn: async (data: LancamentoFormData) => {
@@ -281,7 +305,6 @@ export function LancamentoForm() {
       for (const itemForm of data.itens) {
         if (!itemForm.quantidade || itemForm.quantidade <= 0) continue
 
-        // Buscar preview final do custo via RPC
         const { data: preview, error: rpcError } = await supabase
           .rpc('preview_custo_item', {
             p_item_id: itemForm.item_id,
@@ -290,7 +313,6 @@ export function LancamentoForm() {
 
         if (rpcError) {
           console.warn('RPC preview_custo_item falhou:', rpcError.message)
-          // Usar valores do form como fallback
         }
 
         const custoFinal = preview || {
@@ -301,7 +323,6 @@ export function LancamentoForm() {
           estoque_suficiente: true
         }
 
-        // Validar estoque
         if (custoFinal.item_tipo === 'produto_estoque' && !custoFinal.estoque_suficiente) {
           throw new Error(`Estoque insuficiente de "${itemForm.item?.nome}". Faltam ${custoFinal.quantidade_faltante?.toFixed(2)} ${itemForm.item?.unidade_medida}`)
         }
@@ -335,76 +356,112 @@ export function LancamentoForm() {
         }
       }
 
-      // ETAPA 2: CRIAR LANÇAMENTO (cabeçalho)
-      // Nota: schema real não tem campo 'status', apenas os campos básicos
-      const { data: lancamento, error: erroLanc } = await supabase
-        .from('lancamentos')
-        .insert({
-          propriedade_id: propriedadeAtual.id,
-          safra_id: safraAtual.id,
-          servico_id: data.servico_id,
-          talhao_id: data.talhao_id || null,
-          data_execucao: data.data_execucao,
-          observacoes: data.observacoes || null,
-          custo_total: custoTotal
-        })
-        .select()
-        .single()
+      if (lancamentoId) {
+        // ========== MODO EDIÇÃO: UPDATE ==========
+        const userId = (await supabase.auth.getUser()).data.user?.id
 
-      if (erroLanc) throw erroLanc
+        const { error: erroLanc } = await supabase
+          .from('lancamentos')
+          .update({
+            servico_id: data.servico_id,
+            talhao_id: data.talhao_id || null,
+            data_execucao: data.data_execucao,
+            observacoes: data.observacoes || null,
+            custo_total: custoTotal,
+            editado_por: userId,
+            editado_em: new Date().toISOString(),
+          })
+          .eq('id', lancamentoId)
 
-      // ETAPA 3: CRIAR ITENS DO LANÇAMENTO
-      const { error: erroItens } = await supabase
-        .from('lancamentos_itens')
-        .insert(
-          itensComCusto.map(item => ({
-            lancamento_id: lancamento.id,
-            item_id: item.item_id,
-            quantidade: item.quantidade,
-            custo_unitario: item.custo_unitario,
-            custo_total: item.custo_total,
-            detalhamento_lotes: item.detalhamento_lotes
-          }))
-        )
+        if (erroLanc) throw erroLanc
 
-      if (erroItens) throw erroItens
+        // Deletar itens antigos e reinserir
+        await supabase.from('lancamentos_itens').delete().eq('lancamento_id', lancamentoId)
 
-      // ETAPA 4: CONSUMIR LOTES FIFO (para produtos de estoque)
-      for (const item of itensComCusto) {
-        if (item.item?.tipo === 'produto_estoque' && item.detalhamento_lotes && item.detalhamento_lotes.length > 0) {
-          for (const loteConsumo of item.detalhamento_lotes) {
-            // Buscar quantidade atual do lote
-            const { data: loteAtual } = await supabase
-              .from('lotes')
-              .select('quantidade_disponivel')
-              .eq('id', loteConsumo.lote_id)
-              .single()
+        if (itensComCusto.length > 0) {
+          const { error: erroItens } = await supabase
+            .from('lancamentos_itens')
+            .insert(
+              itensComCusto.map(item => ({
+                lancamento_id: lancamentoId,
+                item_id: item.item_id,
+                quantidade: item.quantidade,
+                custo_unitario: item.custo_unitario,
+                custo_total: item.custo_total,
+                detalhamento_lotes: item.detalhamento_lotes
+              }))
+            )
+          if (erroItens) throw erroItens
+        }
 
-            if (loteAtual) {
-              const novaQtd = Math.max(0, loteAtual.quantidade_disponivel - loteConsumo.quantidade_consumida)
-              
-              await supabase
+        return { id: lancamentoId }
+      } else {
+        // ========== MODO CRIAÇÃO: INSERT ==========
+        const { data: lancamento, error: erroLanc } = await supabase
+          .from('lancamentos')
+          .insert({
+            propriedade_id: propriedadeAtual.id,
+            safra_id: safraAtual.id,
+            servico_id: data.servico_id,
+            talhao_id: data.talhao_id || null,
+            data_execucao: data.data_execucao,
+            observacoes: data.observacoes || null,
+            custo_total: custoTotal
+          })
+          .select()
+          .single()
+
+        if (erroLanc) throw erroLanc
+
+        const { error: erroItens } = await supabase
+          .from('lancamentos_itens')
+          .insert(
+            itensComCusto.map(item => ({
+              lancamento_id: lancamento.id,
+              item_id: item.item_id,
+              quantidade: item.quantidade,
+              custo_unitario: item.custo_unitario,
+              custo_total: item.custo_total,
+              detalhamento_lotes: item.detalhamento_lotes
+            }))
+          )
+
+        if (erroItens) throw erroItens
+
+        // CONSUMIR LOTES FIFO (para produtos de estoque)
+        for (const item of itensComCusto) {
+          if (item.item?.tipo === 'produto_estoque' && item.detalhamento_lotes && item.detalhamento_lotes.length > 0) {
+            for (const loteConsumo of item.detalhamento_lotes) {
+              const { data: loteAtual } = await supabase
                 .from('lotes')
-                .update({ quantidade_disponivel: novaQtd })
+                .select('quantidade_disponivel')
                 .eq('id', loteConsumo.lote_id)
+                .single()
+
+              if (loteAtual) {
+                const novaQtd = Math.max(0, loteAtual.quantidade_disponivel - loteConsumo.quantidade_consumida)
+                await supabase
+                  .from('lotes')
+                  .update({ quantidade_disponivel: novaQtd })
+                  .eq('id', loteConsumo.lote_id)
+              }
+            }
+          }
+
+          if (item.item?.tipo === 'maquina_hora' && item.item?.maquina_id) {
+            try {
+              await supabase.rpc('atualizar_horimetro', {
+                p_maquina_id: item.item.maquina_id,
+                p_horas: item.quantidade
+              })
+            } catch (e) {
+              console.warn('RPC atualizar_horimetro não disponível')
             }
           }
         }
 
-        // Se for hora de máquina, tentar atualizar horímetro
-        if (item.item?.tipo === 'maquina_hora' && item.item?.maquina_id) {
-          try {
-            await supabase.rpc('atualizar_horimetro', {
-              p_maquina_id: item.item.maquina_id,
-              p_horas: item.quantidade
-            })
-          } catch (e) {
-            console.warn('RPC atualizar_horimetro não disponível')
-          }
-        }
+        return lancamento
       }
-
-      return lancamento
     },
     onSuccess: (_data, variables) => {
       // Verificar se houve atualização de horímetro
@@ -752,7 +809,7 @@ export function LancamentoForm() {
               <Button
                 type="button"
                 onClick={handleSalvar}
-                disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente}
+                disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente || !temAlteracaoReal}
                 className="w-full"
                 size="lg"
               >
@@ -764,10 +821,15 @@ export function LancamentoForm() {
                 ) : (
                   <>
                     <Check className="h-4 w-4 mr-2" />
-                    Salvar Lançamento
+                    {lancamentoId ? 'Salvar Alterações' : 'Salvar Lançamento'}
                   </>
                 )}
               </Button>
+              {lancamentoId && !temAlteracaoReal && (
+                <p className="text-xs text-muted-foreground text-center mt-1">
+                  Nenhuma alteração detectada
+                </p>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -873,7 +935,7 @@ export function LancamentoForm() {
                 <Button
                   type="button"
                   onClick={handleSalvar}
-                  disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente}
+                  disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente || !temAlteracaoReal}
                   className="w-full"
                   size="lg"
                 >
@@ -885,10 +947,15 @@ export function LancamentoForm() {
                   ) : (
                     <>
                       <Check className="h-4 w-4 mr-2" />
-                      Salvar Lançamento
+                      {lancamentoId ? 'Salvar Alterações' : 'Salvar Lançamento'}
                     </>
                   )}
                 </Button>
+                {lancamentoId && !temAlteracaoReal && (
+                  <p className="text-xs text-muted-foreground text-center mt-1">
+                    Nenhuma alteração detectada
+                  </p>
+                )}
                 <Button
                   type="button"
                   variant="outline"
