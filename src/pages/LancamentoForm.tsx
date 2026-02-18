@@ -357,111 +357,158 @@ export function LancamentoForm() {
       }
 
       if (lancamentoId) {
-        // ========== MODO EDIÇÃO: UPDATE ==========
-        const userId = (await supabase.auth.getUser()).data.user?.id
+  // ========== MODO EDIÇÃO: UPDATE ==========
+  const userId = (await supabase.auth.getUser()).data.user?.id
 
-        const { error: erroLanc } = await supabase
-          .from('lancamentos')
-          .update({
-            servico_id: data.servico_id,
-            talhao_id: data.talhao_id || null,
-            data_execucao: data.data_execucao,
-            observacoes: data.observacoes || null,
-            custo_total: custoTotal,
-            editado_por: userId,
-            editado_em: new Date().toISOString(),
-          })
-          .eq('id', lancamentoId)
+  // PASSO 1: Buscar itens antigos para reverter estoque e horímetro
+  const { data: itensAntigos } = await supabase
+    .from('lancamentos_itens')
+    .select('*, item:itens(id, tipo, maquina_id)')
+    .eq('lancamento_id', lancamentoId)
 
-        if (erroLanc) throw erroLanc
+  // PASSO 2: Reverter consumo de lotes FIFO dos itens antigos
+  if (itensAntigos && itensAntigos.length > 0) {
+    for (const itemAntigo of itensAntigos) {
+      if (
+        itemAntigo.item?.tipo === 'produto_estoque' &&
+        itemAntigo.detalhamento_lotes &&
+        Array.isArray(itemAntigo.detalhamento_lotes) &&
+        itemAntigo.detalhamento_lotes.length > 0
+      ) {
+        for (const loteConsumo of itemAntigo.detalhamento_lotes) {
+          const { data: loteAtual } = await supabase
+            .from('lotes')
+            .select('quantidade_disponivel')
+            .eq('id', loteConsumo.lote_id)
+            .single()
 
-        // Deletar itens antigos e reinserir
-        await supabase.from('lancamentos_itens').delete().eq('lancamento_id', lancamentoId)
-
-        if (itensComCusto.length > 0) {
-          const { error: erroItens } = await supabase
-            .from('lancamentos_itens')
-            .insert(
-              itensComCusto.map(item => ({
-                lancamento_id: lancamentoId,
-                item_id: item.item_id,
-                quantidade: item.quantidade,
-                custo_unitario: item.custo_unitario,
-                custo_total: item.custo_total,
-                detalhamento_lotes: item.detalhamento_lotes
-              }))
-            )
-          if (erroItens) throw erroItens
+          if (loteAtual) {
+            await supabase
+              .from('lotes')
+              .update({
+                quantidade_disponivel: loteAtual.quantidade_disponivel + loteConsumo.quantidade_consumida
+              })
+              .eq('id', loteConsumo.lote_id)
+          }
         }
+      }
 
-        return { id: lancamentoId }
-      } else {
-        // ========== MODO CRIAÇÃO: INSERT ==========
-        const { data: lancamento, error: erroLanc } = await supabase
-          .from('lancamentos')
-          .insert({
-            propriedade_id: propriedadeAtual.id,
-            safra_id: safraAtual.id,
-            servico_id: data.servico_id,
-            talhao_id: data.talhao_id || null,
-            data_execucao: data.data_execucao,
-            observacoes: data.observacoes || null,
-            custo_total: custoTotal
-          })
-          .select()
+      // Reverter horímetro de máquinas
+      if (
+        itemAntigo.item?.tipo === 'maquina_hora' &&
+        itemAntigo.item?.maquina_id &&
+        itemAntigo.quantidade > 0
+      ) {
+        const { data: maquina } = await supabase
+          .from('maquinas')
+          .select('horimetro_atual')
+          .eq('id', itemAntigo.item.maquina_id)
           .single()
 
-        if (erroLanc) throw erroLanc
-
-        const { error: erroItens } = await supabase
-          .from('lancamentos_itens')
-          .insert(
-            itensComCusto.map(item => ({
-              lancamento_id: lancamento.id,
-              item_id: item.item_id,
-              quantidade: item.quantidade,
-              custo_unitario: item.custo_unitario,
-              custo_total: item.custo_total,
-              detalhamento_lotes: item.detalhamento_lotes
-            }))
-          )
-
-        if (erroItens) throw erroItens
-
-        // CONSUMIR LOTES FIFO (para produtos de estoque)
-        for (const item of itensComCusto) {
-          if (item.item?.tipo === 'produto_estoque' && item.detalhamento_lotes && item.detalhamento_lotes.length > 0) {
-            for (const loteConsumo of item.detalhamento_lotes) {
-              const { data: loteAtual } = await supabase
-                .from('lotes')
-                .select('quantidade_disponivel')
-                .eq('id', loteConsumo.lote_id)
-                .single()
-
-              if (loteAtual) {
-                const novaQtd = Math.max(0, loteAtual.quantidade_disponivel - loteConsumo.quantidade_consumida)
-                await supabase
-                  .from('lotes')
-                  .update({ quantidade_disponivel: novaQtd })
-                  .eq('id', loteConsumo.lote_id)
-              }
-            }
-          }
-
-          if (item.item?.tipo === 'maquina_hora' && item.item?.maquina_id) {
-            try {
-              await supabase.rpc('atualizar_horimetro', {
-                p_maquina_id: item.item.maquina_id,
-                p_horas: item.quantidade
-              })
-            } catch (e) {
-              console.warn('RPC atualizar_horimetro não disponível')
-            }
-          }
+        if (maquina) {
+          await supabase
+            .from('maquinas')
+            .update({
+              horimetro_atual: Math.max(0, maquina.horimetro_atual - itemAntigo.quantidade)
+            })
+            .eq('id', itemAntigo.item.maquina_id)
         }
-
-        return lancamento
       }
+    }
+  }
+
+  // PASSO 3: Deletar itens antigos (agora seguro, sem impacto em estoque)
+  const { error: erroDelete } = await supabase
+    .from('lancamentos_itens')
+    .delete()
+    .eq('lancamento_id', lancamentoId)
+
+  if (erroDelete) throw erroDelete
+
+  // PASSO 4: Atualizar cabeçalho do lançamento
+  const { error: erroLanc } = await supabase
+    .from('lancamentos')
+    .update({
+      servico_id: data.servico_id,
+      talhao_id: data.talhao_id || null,
+      data_execucao: data.data_execucao,
+      observacoes: data.observacoes || null,
+      custo_total: custoTotal,
+      editado_por: userId,
+      editado_em: new Date().toISOString(),
+    })
+    .eq('id', lancamentoId)
+
+  if (erroLanc) throw erroLanc
+
+  // PASSO 5: Inserir novos itens
+  if (itensComCusto.length > 0) {
+    const { error: erroItens } = await supabase
+      .from('lancamentos_itens')
+      .insert(
+        itensComCusto.map(item => ({
+          lancamento_id: lancamentoId,
+          item_id: item.item_id,
+          quantidade: item.quantidade,
+          custo_unitario: item.custo_unitario,
+          custo_total: item.custo_total,
+          detalhamento_lotes: item.detalhamento_lotes
+        }))
+      )
+    if (erroItens) throw erroItens
+  }
+
+  // PASSO 6: Aplicar novo consumo de lotes FIFO
+  for (const item of itensComCusto) {
+    if (
+      item.item?.tipo === 'produto_estoque' &&
+      item.detalhamento_lotes &&
+      item.detalhamento_lotes.length > 0
+    ) {
+      for (const loteConsumo of item.detalhamento_lotes) {
+        const { data: loteAtual } = await supabase
+          .from('lotes')
+          .select('quantidade_disponivel')
+          .eq('id', loteConsumo.lote_id)
+          .single()
+
+        if (loteAtual) {
+          await supabase
+            .from('lotes')
+            .update({
+              quantidade_disponivel: Math.max(0, loteAtual.quantidade_disponivel - loteConsumo.quantidade_consumida)
+            })
+            .eq('id', loteConsumo.lote_id)
+        }
+      }
+    }
+
+    // Aplicar novo horímetro
+    if (
+      item.item?.tipo === 'maquina_hora' &&
+      item.item?.maquina_id &&
+      item.quantidade > 0
+    ) {
+      const { data: maquina } = await supabase
+        .from('maquinas')
+        .select('horimetro_atual')
+        .eq('id', item.item.maquina_id)
+        .single()
+
+      if (maquina) {
+        await supabase
+          .from('maquinas')
+          .update({
+            horimetro_atual: maquina.horimetro_atual + item.quantidade
+          })
+          .eq('id', item.item.maquina_id)
+        )
+      }
+    }
+  }
+
+  return { id: lancamentoId }
+}
     },
     onSuccess: (_data, variables) => {
       // Verificar se houve atualização de horímetro
