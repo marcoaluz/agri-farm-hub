@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, Info, AlertCircle, Package, Wrench, Truck, Gauge } from 'lucide-react'
-import { useItem } from '@/hooks/useItem'
-import { usePreviewCusto } from '@/hooks/usePreviewCusto'
+import { usePreviewCustoDireto } from '@/hooks/usePreviewCusto'
 import { PreviewConsumoFIFO } from './PreviewConsumoFIFO'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,12 +12,27 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 export interface ItemLancamento {
-  item_id: string
+  // Novo: referências diretas
+  tipo_ref?: 'produto' | 'maquina' | 'servico_simples'
+  produto_id?: string | null
+  maquina_id?: string | null
+  servico_ref_id?: string | null
+  nome?: string
+  unidade?: string
+  custo_unitario_ref?: number // custo_hora ou custo_padrao direto
+  estoque_disponivel?: number | null
+
+  // Legado (mantido para compatibilidade com dados existentes)
+  item_id?: string
+
+  // Campos comuns
   quantidade: number
   custo_unitario?: number
   custo_total?: number
   detalhamento_lotes?: any
   obrigatorio?: boolean
+
+  // Legado
   item?: {
     id: string
     nome: string
@@ -35,26 +49,43 @@ interface ItemLancamentoCardProps {
   onRemove: () => void
 }
 
-function getTipoLabel(tipo: string) {
+function getTipoConfig(tipoRef?: string, itemTipo?: string) {
+  // Novo sistema
+  if (tipoRef === 'produto') {
+    return { label: 'Produto de Estoque', icon: Package, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' }
+  }
+  if (tipoRef === 'maquina') {
+    return { label: 'Hora de Máquina', icon: Truck, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' }
+  }
+  if (tipoRef === 'servico_simples') {
+    return { label: 'Serviço', icon: Wrench, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' }
+  }
+  // Legado
   const config = {
     'produto_estoque': { label: 'Produto de Estoque', icon: Package, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
     'servico': { label: 'Serviço', icon: Wrench, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' },
     'maquina_hora': { label: 'Hora de Máquina', icon: Truck, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' }
   }
-  return config[tipo as keyof typeof config] || { label: tipo, icon: Package, color: 'bg-gray-100 text-gray-800' }
+  return config[itemTipo as keyof typeof config] || { label: itemTipo || 'Item', icon: Package, color: 'bg-gray-100 text-gray-800' }
 }
 
 export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancamentoCardProps) {
   const [quantidade, setQuantidade] = useState(itemForm.quantidade)
 
-  // Buscar dados do item
-  const { data: item, isLoading: loadingItem } = useItem(itemForm.item_id)
+  const usaRefDireta = !!itemForm.tipo_ref
 
-  // Preview de custo FIFO
-  const { data: preview, isLoading: loadingPreview } = usePreviewCusto(
-    itemForm.item_id,
-    quantidade
+  // Preview de custo direto (novo sistema)
+  const { data: previewDireto, isLoading: loadingPreviewDireto } = usePreviewCustoDireto(
+    usaRefDireta ? itemForm.tipo_ref : undefined,
+    itemForm.produto_id,
+    itemForm.maquina_id,
+    itemForm.servico_ref_id,
+    quantidade,
+    itemForm.custo_unitario_ref
   )
+
+  const preview = previewDireto
+  const loadingPreview = loadingPreviewDireto
 
   // Atualizar form quando quantidade ou preview mudarem
   useEffect(() => {
@@ -64,7 +95,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
         quantidade,
         custo_unitario: preview.custo_unitario,
         custo_total: preview.custo_total,
-        detalhamento_lotes: preview.preview_consumo
+        detalhamento_lotes: preview.preview_consumo || null
       })
     } else if (quantidade === 0) {
       onUpdate({
@@ -77,18 +108,13 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
     }
   }, [quantidade, preview])
 
-  // Usar dados do item do form ou do hook
-  const itemData = item || itemForm.item
-
-  if (loadingItem || !itemData) {
-    return <Skeleton className="h-40 w-full" />
-  }
-
-  const tipoConfig = getTipoLabel(itemData.tipo)
+  const itemNome = itemForm.nome || itemForm.item?.nome || 'Item'
+  const itemUnidade = itemForm.unidade || itemForm.item?.unidade_medida || ''
+  const tipoConfig = getTipoConfig(itemForm.tipo_ref, itemForm.item?.tipo)
   const TipoIcon = tipoConfig.icon
-  const isProdutoEstoque = itemData.tipo === 'produto_estoque'
-  const isMaquinaHora = itemData.tipo === 'maquina_hora'
-  const estoqueInsuficiente = isProdutoEstoque && preview && !preview.estoque_suficiente
+  const isProduto = itemForm.tipo_ref === 'produto' || itemForm.item?.tipo === 'produto_estoque'
+  const isMaquina = itemForm.tipo_ref === 'maquina' || itemForm.item?.tipo === 'maquina_hora'
+  const estoqueInsuficiente = isProduto && preview && !preview.estoque_suficiente
 
   return (
     <Card className={cn(
@@ -101,7 +127,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h4 className="font-semibold text-lg truncate">{itemData.nome}</h4>
+              <h4 className="font-semibold text-lg truncate">{itemNome}</h4>
               {itemForm.obrigatorio && (
                 <Badge variant="destructive" className="text-xs shrink-0">
                   OBRIGATÓRIO
@@ -112,11 +138,6 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
                 {tipoConfig.label}
               </Badge>
             </div>
-            {item?.categoria && (
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                Categoria: {item.categoria}
-              </p>
-            )}
           </div>
 
           {!itemForm.obrigatorio && (
@@ -137,20 +158,20 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
           <Info className="h-4 w-4" />
           <AlertDescription>
             <div className="grid gap-1 text-sm">
-              {isProdutoEstoque && preview && (
+              {isProduto && preview && (
                 <div className="flex justify-between">
                   <span>Estoque disponível:</span>
                   <strong className={cn(
                     estoqueInsuficiente ? "text-yellow-600" : "text-blue-600"
                   )}>
-                    {preview.estoque_disponivel.toFixed(2)} {itemData.unidade_medida}
+                    {(preview.estoque_disponivel ?? 0).toFixed(2)} {itemUnidade}
                   </strong>
                 </div>
               )}
               <div className="flex justify-between">
                 <span>Custo unitário:</span>
                 <strong className="text-primary">
-                  R$ {(preview?.custo_unitario || item?.custo_padrao || 0).toFixed(2)} / {itemData.unidade_medida}
+                  R$ {(preview?.custo_unitario || itemForm.custo_unitario_ref || 0).toFixed(2)} / {itemUnidade}
                 </strong>
               </div>
             </div>
@@ -159,12 +180,12 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
 
         {/* Input de Quantidade */}
         <div className="space-y-2">
-          <Label htmlFor={`quantidade-${itemForm.item_id}`}>
-            Quantidade ({itemData.unidade_medida})
+          <Label htmlFor={`quantidade-${itemForm.produto_id || itemForm.maquina_id || itemForm.servico_ref_id || itemForm.item_id}`}>
+            Quantidade ({itemUnidade})
             {itemForm.obrigatorio && <span className="text-destructive ml-1">*</span>}
           </Label>
           <Input
-            id={`quantidade-${itemForm.item_id}`}
+            id={`quantidade-${itemForm.produto_id || itemForm.maquina_id || itemForm.servico_ref_id || itemForm.item_id}`}
             type="number"
             min="0"
             step="0.01"
@@ -180,41 +201,29 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
             )}
           />
 
-          {/* Validação de Estoque */}
           {estoqueInsuficiente && (
             <Alert variant="destructive" className="py-2">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="text-sm">
                 Quantidade maior que o estoque disponível!
-                Disponível: {preview?.estoque_disponivel.toFixed(2)} {itemData.unidade_medida}
+                Disponível: {(preview?.estoque_disponivel ?? 0).toFixed(2)} {itemUnidade}
               </AlertDescription>
             </Alert>
           )}
         </div>
 
-
-        {/* Info Horímetro para maquina_hora */}
-        {isMaquinaHora && item?.maquina && (
+        {/* Info Horímetro para máquina */}
+        {isMaquina && (
           <div className="rounded-lg border border-orange-200 bg-orange-50/50 dark:border-orange-800/50 dark:bg-orange-950/20 p-3 space-y-1">
             <div className="flex items-center gap-2 text-sm font-medium text-orange-700 dark:text-orange-400">
               <Gauge className="h-4 w-4" />
               Horímetro será atualizado automaticamente
             </div>
-            <p className="text-xs text-orange-600/80 dark:text-orange-500/80">
-              Máquina: {item.maquina.nome}
-              {item.maquina.modelo ? ` (${item.maquina.modelo})` : ''}
-              {' • '}Horímetro atual: {item.maquina.horimetro_atual?.toFixed(1) ?? '0.0'}h
-              {quantidade > 0 && (
-                <span className="font-semibold">
-                  {' → '}Novo: {((item.maquina.horimetro_atual || 0) + quantidade).toFixed(1)}h
-                </span>
-              )}
-            </p>
           </div>
         )}
 
-        {/* Preview FIFO (se produto de estoque) */}
-        {isProdutoEstoque && quantidade > 0 && (
+        {/* Preview FIFO (se produto) */}
+        {isProduto && quantidade > 0 && (
           loadingPreview ? (
             <Skeleton className="h-24 w-full" />
           ) : preview?.preview_consumo && preview.preview_consumo.length > 0 && (

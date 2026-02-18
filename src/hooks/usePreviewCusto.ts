@@ -14,7 +14,7 @@ export interface PreviewConsumoLote {
 }
 
 export interface PreviewResponse {
-  item_tipo: 'produto_estoque' | 'servico' | 'maquina_hora'
+  item_tipo: 'produto_estoque' | 'servico' | 'maquina_hora' | 'produto' | 'maquina' | 'servico_simples'
   custo_total: number
   custo_unitario: number
   
@@ -40,7 +40,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue
 }
 
-// Hook principal
+// Hook legado (mantido para compatibilidade)
 export function usePreviewCusto(itemId: string | undefined, quantidade: number) {
   const debouncedQuantidade = useDebounce(quantidade, 500)
 
@@ -51,30 +51,138 @@ export function usePreviewCusto(itemId: string | undefined, quantidade: number) 
         return null
       }
 
-      // Tentar usar a função RPC se disponível
       const { data: rpcData, error: rpcError } = await supabase.rpc('preview_custo_item', {
         p_item_id: itemId,
         p_quantidade: debouncedQuantidade
       })
 
-      // Se RPC existir e retornar dados, usar
       if (!rpcError && rpcData) {
         return rpcData as PreviewResponse
       }
 
-      // Fallback: calcular no cliente se RPC não existir
       console.log('RPC não disponível, usando cálculo local:', rpcError?.message)
       return calcularPreviewLocal(itemId, debouncedQuantidade)
     },
     enabled: !!itemId && debouncedQuantidade > 0,
-    staleTime: 0, // Sempre buscar atualizado
-    gcTime: 1000 * 60 * 5 // Cache por 5 min
+    staleTime: 0,
+    gcTime: 1000 * 60 * 5
   })
 }
 
-// Função de fallback para calcular preview localmente
+// === NOVO HOOK: Preview por referência direta ===
+export function usePreviewCustoDireto(
+  tipoRef: 'produto' | 'maquina' | 'servico_simples' | undefined,
+  produtoId: string | null | undefined,
+  maquinaId: string | null | undefined,
+  servicoRefId: string | null | undefined,
+  quantidade: number,
+  custoDireto?: number // custo_hora ou custo_padrao já conhecido
+) {
+  const debouncedQuantidade = useDebounce(quantidade, 500)
+
+  return useQuery({
+    queryKey: ['preview-custo-direto', tipoRef, produtoId, maquinaId, servicoRefId, debouncedQuantidade],
+    queryFn: async (): Promise<PreviewResponse | null> => {
+      if (!tipoRef || debouncedQuantidade <= 0) return null
+
+      if (tipoRef === 'produto' && produtoId) {
+        return calcularPreviewProduto(produtoId, debouncedQuantidade)
+      }
+
+      if (tipoRef === 'maquina') {
+        let custoHora = custoDireto || 0
+        if (!custoHora && maquinaId) {
+          const { data } = await supabase
+            .from('maquinas')
+            .select('custo_hora')
+            .eq('id', maquinaId)
+            .single()
+          custoHora = data?.custo_hora || 0
+        }
+        return {
+          item_tipo: 'maquina',
+          custo_unitario: custoHora,
+          custo_total: custoHora * debouncedQuantidade,
+          estoque_suficiente: true
+        }
+      }
+
+      if (tipoRef === 'servico_simples') {
+        let custoPadrao = custoDireto || 0
+        if (!custoPadrao && servicoRefId) {
+          const { data } = await supabase
+            .from('servicos')
+            .select('custo_padrao')
+            .eq('id', servicoRefId)
+            .single()
+          custoPadrao = data?.custo_padrao || 0
+        }
+        return {
+          item_tipo: 'servico_simples',
+          custo_unitario: custoPadrao,
+          custo_total: custoPadrao * debouncedQuantidade,
+          estoque_suficiente: true
+        }
+      }
+
+      return null
+    },
+    enabled: !!tipoRef && debouncedQuantidade > 0,
+    staleTime: 0,
+    gcTime: 1000 * 60 * 5
+  })
+}
+
+// Preview FIFO direto com produto_id
+async function calcularPreviewProduto(produtoId: string, quantidade: number): Promise<PreviewResponse> {
+  const { data: lotes, error } = await supabase
+    .from('lotes')
+    .select('id, nota_fiscal, quantidade_disponivel, custo_unitario, data_entrada')
+    .eq('produto_id', produtoId)
+    .gt('quantidade_disponivel', 0)
+    .order('data_entrada', { ascending: true })
+
+  if (error) throw error
+
+  let quantidadeRestante = quantidade
+  let custoTotal = 0
+  const previewConsumo: PreviewConsumoLote[] = []
+  let estoqueTotal = 0
+
+  for (const lote of lotes || []) {
+    estoqueTotal += lote.quantidade_disponivel
+    if (quantidadeRestante <= 0) continue
+
+    const quantidadeConsumida = Math.min(quantidadeRestante, lote.quantidade_disponivel)
+    const custoParcial = quantidadeConsumida * lote.custo_unitario
+
+    previewConsumo.push({
+      lote_id: lote.id,
+      lote_codigo: lote.id.substring(0, 8),
+      nota_fiscal: lote.nota_fiscal || undefined,
+      quantidade_consumida: quantidadeConsumida,
+      custo_unitario: lote.custo_unitario,
+      custo_parcial: custoParcial,
+      data_entrada: lote.data_entrada
+    })
+
+    custoTotal += custoParcial
+    quantidadeRestante -= quantidadeConsumida
+  }
+
+  return {
+    item_tipo: 'produto',
+    custo_unitario: quantidade > 0 ? custoTotal / quantidade : 0,
+    custo_total: custoTotal,
+    preview_consumo: previewConsumo,
+    estoque_disponivel: estoqueTotal,
+    estoque_suficiente: quantidadeRestante <= 0,
+    quantidade_faltante: quantidadeRestante > 0 ? quantidadeRestante : undefined
+  }
+}
+
+// Função legada de fallback
 async function calcularPreviewLocal(itemId: string, quantidade: number): Promise<PreviewResponse | null> {
-  // Buscar item para verificar tipo e dados relacionados
   const { data: item } = await supabase
     .from('itens')
     .select('tipo, custo_padrao, produto_id, maquina_id')
@@ -83,9 +191,7 @@ async function calcularPreviewLocal(itemId: string, quantidade: number): Promise
 
   if (!item) return null
 
-  // Se não for produto de estoque, usar custo padrão direto
   if (item.tipo !== 'produto_estoque') {
-    // Se for maquina_hora, buscar custo da máquina
     if (item.tipo === 'maquina_hora' && item.maquina_id) {
       const { data: maquina } = await supabase
         .from('maquinas')
@@ -103,7 +209,6 @@ async function calcularPreviewLocal(itemId: string, quantidade: number): Promise
       }
     }
     
-    // Serviço terceiro
     const custoUnitario = item.custo_padrao || 0
     return {
       item_tipo: item.tipo as PreviewResponse['item_tipo'],
@@ -114,7 +219,6 @@ async function calcularPreviewLocal(itemId: string, quantidade: number): Promise
     }
   }
 
-  // Se for produto de estoque, precisa do produto_id para buscar lotes
   if (!item.produto_id) {
     return {
       item_tipo: 'produto_estoque',
@@ -126,55 +230,5 @@ async function calcularPreviewLocal(itemId: string, quantidade: number): Promise
     }
   }
 
-  // Buscar lotes disponíveis usando FIFO (ordenados por data de entrada)
-  // IMPORTANTE: lotes usa produto_id, não item_id
-  const { data: lotes, error } = await supabase
-    .from('lotes')
-    .select('id, nota_fiscal, quantidade_disponivel, custo_unitario, data_entrada')
-    .eq('produto_id', item.produto_id)
-    .gt('quantidade_disponivel', 0)
-    .order('data_entrada', { ascending: true })
-
-  if (error) throw error
-
-  // Calcular preview de consumo FIFO
-  let quantidadeRestante = quantidade
-  let custoTotal = 0
-  const previewConsumo: PreviewConsumoLote[] = []
-  let estoqueTotal = 0
-
-  for (const lote of lotes || []) {
-    estoqueTotal += lote.quantidade_disponivel
-
-    if (quantidadeRestante <= 0) continue
-
-    const quantidadeConsumida = Math.min(
-      quantidadeRestante,
-      lote.quantidade_disponivel
-    )
-    const custoParcial = quantidadeConsumida * lote.custo_unitario
-
-    previewConsumo.push({
-      lote_id: lote.id,
-      lote_codigo: lote.id.substring(0, 8), // Usar parte do UUID como código
-      nota_fiscal: lote.nota_fiscal || undefined,
-      quantidade_consumida: quantidadeConsumida,
-      custo_unitario: lote.custo_unitario,
-      custo_parcial: custoParcial,
-      data_entrada: lote.data_entrada
-    })
-
-    custoTotal += custoParcial
-    quantidadeRestante -= quantidadeConsumida
-  }
-
-  return {
-    item_tipo: 'produto_estoque',
-    custo_unitario: quantidade > 0 ? custoTotal / quantidade : 0,
-    custo_total: custoTotal,
-    preview_consumo: previewConsumo,
-    estoque_disponivel: estoqueTotal,
-    estoque_suficiente: quantidadeRestante <= 0,
-    quantidade_faltante: quantidadeRestante > 0 ? quantidadeRestante : undefined
-  }
+  return calcularPreviewProduto(item.produto_id, quantidade)
 }

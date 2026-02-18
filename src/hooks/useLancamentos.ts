@@ -13,10 +13,13 @@ export function useLancamentos(safraId?: string) {
         .from('lancamentos')
         .select(`
           *,
-          servico:servicos(id, nome),
+          servico:servicos(id, nome, tipo_servico),
           talhao:talhoes(id, nome),
           lancamentos_itens(
             *,
+            produto:produtos(id, nome, unidade),
+            maquina:maquinas(id, nome, custo_hora),
+            servico_ref:servicos(id, nome, custo_padrao, unidade_medida),
             item:itens(*)
           ),
           abastecimento:abastecimentos(
@@ -54,6 +57,9 @@ export function useLancamento(id?: string) {
           talhao:talhoes(*),
           lancamentos_itens(
             *,
+            produto:produtos(id, nome, unidade),
+            maquina:maquinas(id, nome, custo_hora),
+            servico_ref:servicos(id, nome, custo_padrao, unidade_medida),
             item:itens(*)
           )
         `)
@@ -214,6 +220,10 @@ export function useExcluirLancamento() {
         .select(`
           id,
           item_id,
+          tipo_ref,
+          produto_id,
+          maquina_id,
+          servico_ref_id,
           quantidade,
           detalhamento_lotes,
           item:itens(tipo, produto_id, maquina_id)
@@ -230,20 +240,21 @@ export function useExcluirLancamento() {
       // ETAPA 2: RESTAURAR ESTOQUE NOS LOTES
       for (const itemLanc of itensLancamento || []) {
         const item = itemLanc.item as any
+        const isProduto = itemLanc.tipo_ref === 'produto' || item?.tipo === 'produto_estoque'
 
-        if (item?.tipo !== 'produto_estoque') {
-          console.log(`⏭️ Item ${itemLanc.item_id} não é produto_estoque, pulando...`)
+        if (!isProduto) {
+          console.log(`⏭️ Item ${itemLanc.item_id || itemLanc.produto_id} não é produto, pulando...`)
           continue
         }
 
         const detalhamento = itemLanc.detalhamento_lotes as any[]
 
         if (!detalhamento || !Array.isArray(detalhamento)) {
-          console.warn(`⚠️ Item ${itemLanc.item_id} sem detalhamento de lotes`)
+          console.warn(`⚠️ Item ${itemLanc.item_id || itemLanc.produto_id} sem detalhamento de lotes`)
           continue
         }
 
-        console.log(`🔄 Restaurando ${detalhamento.length} lotes do item ${itemLanc.item_id}`)
+        console.log(`🔄 Restaurando ${detalhamento.length} lotes do item ${itemLanc.item_id || itemLanc.produto_id}`)
 
         for (const lote of detalhamento) {
           const quantidadeConsumida = lote.quantidade_consumida || lote.quantidade || 0
@@ -285,17 +296,19 @@ export function useExcluirLancamento() {
       console.log('⏮️ Revertendo horímetro de máquinas...')
       for (const itemLanc of itensLancamento || []) {
         const item = itemLanc.item as any
-        if (item?.tipo === 'maquina_hora' && item?.maquina_id) {
-          console.log(`⏮️ Revertendo ${itemLanc.quantidade}h da máquina ${item.maquina_id}`)
+        const isMaquina = itemLanc.tipo_ref === 'maquina' || item?.tipo === 'maquina_hora'
+        const maqId = itemLanc.maquina_id || item?.maquina_id
+        if (isMaquina && maqId) {
+          console.log(`⏮️ Revertendo ${itemLanc.quantidade}h da máquina ${maqId}`)
 
           const { data: maquinaAtual, error: fetchMaqError } = await supabase
             .from('maquinas')
             .select('horimetro_atual')
-            .eq('id', item.maquina_id)
+            .eq('id', maqId)
             .single()
 
           if (fetchMaqError || !maquinaAtual) {
-            console.error(`❌ Erro ao buscar máquina ${item.maquina_id}:`, fetchMaqError)
+            console.error(`❌ Erro ao buscar máquina ${maqId}:`, fetchMaqError)
             continue
           }
 
@@ -303,10 +316,10 @@ export function useExcluirLancamento() {
           const { error: maquinaError } = await supabase
             .from('maquinas')
             .update({ horimetro_atual: novoHorimetro })
-            .eq('id', item.maquina_id)
+            .eq('id', maqId)
 
           if (maquinaError) {
-            console.error(`❌ Erro ao reverter horímetro da máquina ${item.maquina_id}:`, maquinaError)
+            console.error(`❌ Erro ao reverter horímetro da máquina ${maqId}:`, maquinaError)
           } else {
             console.log(`✅ Horímetro revertido: ${maquinaAtual.horimetro_atual} → ${novoHorimetro}`)
           }
