@@ -21,6 +21,9 @@ interface Servico {
   descricao?: string;
   categoria: string;
   requer_talhao: boolean;
+  tipo_servico?: 'simples' | 'composto';
+  custo_padrao?: number;
+  unidade_medida?: string;
   ativo: boolean;
   created_at: string;
   total_itens?: number;
@@ -291,6 +294,14 @@ function ServicoCard({ servico, onEdit }: { servico: Servico; onEdit: () => void
               <Badge variant="outline" className="text-xs">
                 {servico.categoria}
               </Badge>
+
+              <Badge className={
+                servico.tipo_servico === 'simples'
+                  ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs'
+                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs'
+              }>
+                {servico.tipo_servico === 'simples' ? 'Simples' : 'Composto'}
+              </Badge>
               
               {servico.requer_talhao && (
                 <Badge className="bg-green-100 text-green-700 hover:bg-green-200 text-xs">
@@ -346,15 +357,21 @@ function ServicoCard({ servico, onEdit }: { servico: Servico; onEdit: () => void
           </p>
         )}
 
-        {/* Itens Vinculados */}
-        <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <span className="text-sm font-medium text-blue-900">
-            Itens vinculados
-          </span>
-          <span className="text-lg font-bold text-blue-600">
-            {servico.total_itens || 0}
-          </span>
-        </div>
+        {servico.tipo_servico === 'simples' ? (
+          <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+            <span className="text-sm font-medium text-amber-900">Custo padrão</span>
+            <span className="text-lg font-bold text-amber-600">
+              R$ {servico.custo_padrao?.toFixed(2) || '0.00'}/{servico.unidade_medida}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <span className="text-sm font-medium text-blue-900">Itens vinculados</span>
+            <span className="text-lg font-bold text-blue-600">
+              {servico.total_itens || 0}
+            </span>
+          </div>
+        )}
 
         {/* Data de Criação */}
         <div className="mt-4 pt-4 border-t text-xs text-muted-foreground">
