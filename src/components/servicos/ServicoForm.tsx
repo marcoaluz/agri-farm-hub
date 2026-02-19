@@ -231,7 +231,7 @@ export function ServicoForm({ servico, onSuccess }: ServicoFormProps) {
       } else {
         const { data, error } = await supabase
           .from('servicos')
-          .insert({ ...payload, propriedade_id: propriedadeId })
+          .insert({ ...payload, propriedade_id: propriedadeId, ativo: true })
           .select()
           .single();
         if (error) throw error;
