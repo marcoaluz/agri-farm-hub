@@ -7,7 +7,7 @@ import {
   LayoutDashboard, 
   MapPin, 
   Package, 
-  Briefcase, 
+   
   ClipboardList,
   Tractor,
   DollarSign,
@@ -56,11 +56,6 @@ const routes = [
     label: 'Estoque',
     icon: Package,
     href: '/estoque',
-  },
-  {
-    label: 'Itens',
-    icon: Briefcase,
-    href: '/itens',
   },
   {
     label: 'Serviços',
