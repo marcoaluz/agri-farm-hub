@@ -15,7 +15,7 @@ import { Propriedades } from '@/pages/Propriedades'
 import { SafrasPage } from '@/pages/Safras'
 import { Talhoes } from '@/pages/Talhoes'
 import { Estoque } from '@/pages/Estoque'
-import { Itens } from '@/pages/Itens'
+
 import { Servicos } from '@/pages/Servicos'
 import { Lancamentos } from '@/pages/Lancamentos'
 import { LancamentoForm } from '@/pages/LancamentoForm'
@@ -111,7 +111,7 @@ export function AppRoutes() {
         <Route path="safras" element={<SafrasPage />} />
         <Route path="talhoes" element={<Talhoes />} />
         <Route path="estoque" element={<Estoque />} />
-        <Route path="itens" element={<Itens />} />
+        
         <Route path="servicos" element={<Servicos />} />
         <Route path="lancamentos" element={<Lancamentos />} />
         <Route path="lancamentos/novo" element={<LancamentoForm />} />
