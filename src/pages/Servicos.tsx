@@ -47,7 +47,7 @@ export function Servicos() {
           servicos_itens(count)
         `)
         .eq('propriedade_id', propriedadeAtual?.id)
-        .eq('ativo', true)
+        .or('ativo.is.null,ativo.eq.true')
         .order('nome');
 
       if (error) throw error;
