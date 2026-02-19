@@ -88,7 +88,7 @@ export function ServicoForm({ servico, onSuccess }: ServicoFormProps) {
         .from('produtos')
         .select('id, nome, unidade')
         .eq('propriedade_id', propriedadeId)
-        .eq('ativo', true)
+        .or('ativo.is.null,ativo.eq.true')
         .order('nome');
       if (error) throw error;
       return data || [];
