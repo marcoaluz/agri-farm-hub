@@ -195,7 +195,7 @@ export function ServicoForm({ servico, onSuccess }: ServicoFormProps) {
     if (!formData.nome.trim()) newErrors.nome = 'Nome é obrigatório';
     if (!formData.categoria) newErrors.categoria = 'Categoria é obrigatória';
     if (formData.tipo_servico === 'simples') {
-      if (!formData.custo_padrao || formData.custo_padrao <= 0) {
+      if (formData.custo_padrao === undefined || formData.custo_padrao === null || formData.custo_padrao < 0) {
         newErrors.custo_padrao = 'Custo padrão é obrigatório';
       }
       if (!formData.unidade_medida) {
@@ -444,9 +444,9 @@ export function ServicoForm({ servico, onSuccess }: ServicoFormProps) {
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.custo_padrao || ''}
+                value={formData.custo_padrao !== undefined && formData.custo_padrao !== null ? formData.custo_padrao : ''}
                 onChange={(e) => setFormData(prev => ({
-                  ...prev, custo_padrao: parseFloat(e.target.value) || undefined,
+                  ...prev, custo_padrao: e.target.value === '' ? undefined : parseFloat(e.target.value),
                 }))}
                 placeholder="Ex: 150.00"
                 className={errors.custo_padrao ? 'border-destructive' : ''}
