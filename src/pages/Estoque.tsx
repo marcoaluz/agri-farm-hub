@@ -16,7 +16,7 @@ import { EntradaEstoqueForm } from '@/components/estoque/EntradaEstoqueForm';
 import { ProdutoForm } from '@/components/estoque/ProdutoForm';
 
 interface ProdutoComCusto {
-  produto_id: string;
+  id: string;
   propriedade_id: string;
   nome: string;
   categoria: string;
@@ -47,8 +47,10 @@ export function Estoque() {
         .order('nome');
 
       if (error) throw error;
-      console.log('vw_produtos_custos raw:', JSON.stringify(data?.[0]));
-      return data as ProdutoComCusto[];
+      return (data || []).map((d: any) => ({
+        ...d,
+        id: d.id || d.produto_id,
+      })) as ProdutoComCusto[];
     },
     enabled: !!propriedadeAtual?.id
   });
@@ -227,7 +229,7 @@ export function Estoque() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {produtosFiltrados?.map(produto => (
             <ProdutoCard
-              key={produto.produto_id}
+              key={produto.id}
               produto={produto}
               onVerLotes={() => {
                 setProdutoSelecionado(produto);

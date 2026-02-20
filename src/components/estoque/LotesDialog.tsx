@@ -23,7 +23,7 @@ interface Lote {
 }
 
 interface ProdutoComCusto {
-  produto_id: string;
+  id: string;
   nome: string;
   categoria: string;
   unidade_medida: string;
@@ -40,23 +40,20 @@ interface LotesDialogProps {
 }
 
 export function LotesDialog({ produto, onClose }: LotesDialogProps) {
-  console.log('LotesDialog - produto recebido:', JSON.stringify({ produto_id: produto.produto_id, nome: produto.nome }));
   const { data: lotes, isLoading } = useQuery({
-    queryKey: ['lotes', produto.produto_id],
+    queryKey: ['lotes', produto.id],
     queryFn: async () => {
-      console.log('LotesDialog - querying lotes for produto_id:', produto.produto_id);
       const { data, error } = await supabase
         .from('lotes')
         .select('*')
-        .eq('produto_id', produto.produto_id)
+        .eq('produto_id', produto.id)
         .order('data_entrada', { ascending: true })
         .order('created_at', { ascending: true });
 
-      console.log('LotesDialog - resultado:', { data, error });
       if (error) throw error;
       return data as Lote[];
     },
-    enabled: !!produto.produto_id
+    enabled: !!produto.id
   });
 
   const lotesDisponiveis = lotes?.filter(l => l.quantidade_disponivel > 0) || [];
