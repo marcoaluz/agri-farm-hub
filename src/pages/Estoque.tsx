@@ -47,6 +47,7 @@ export function Estoque() {
         .order('nome');
 
       if (error) throw error;
+      console.log('vw_produtos_custos raw:', JSON.stringify(data?.[0]));
       return data as ProdutoComCusto[];
     },
     enabled: !!propriedadeAtual?.id
