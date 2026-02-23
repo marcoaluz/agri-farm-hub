@@ -35,10 +35,13 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
     custo_unitario: lote.custo_unitario,
     data_entrada: lote.data_entrada,
     data_validade: lote.data_validade || '',
+    quantidade: lote.quantidade_original,
   })
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const diferenca = form.quantidade - lote.quantidade_original
+
       const { error } = await supabase
         .from('lotes')
         .update({
@@ -47,16 +50,50 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
           custo_unitario: form.custo_unitario,
           data_entrada: form.data_entrada,
           data_validade: form.data_validade || null,
+          quantidade_original: form.quantidade,
+          quantidade_disponivel: form.quantidade,
         })
         .eq('id', lote.id)
         .eq('quantidade_disponivel', lote.quantidade_original) // safety check
 
       if (error) throw error
+
+      if (diferenca !== 0) {
+        const { error: updError } = await supabase.rpc('increment_saldo', {
+          p_produto_id: lote.produto_id,
+          p_diferenca: diferenca,
+        }).then(res => {
+          if (res.error) {
+            // Fallback: direct update
+            return supabase
+              .from('produtos')
+              .update({ saldo_atual: (lote.quantidade_original + diferenca) })
+              .eq('id', lote.produto_id)
+          }
+          return res
+        })
+
+        // Fallback if RPC doesn't exist - use raw SQL via update
+        if (updError) {
+          const { data: prod } = await supabase
+            .from('produtos')
+            .select('saldo_atual')
+            .eq('id', lote.produto_id)
+            .single()
+
+          if (prod) {
+            await supabase
+              .from('produtos')
+              .update({ saldo_atual: prod.saldo_atual + diferenca })
+              .eq('id', lote.produto_id)
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lotes'] })
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
-      toast({ title: 'Lote atualizado com sucesso' })
+      toast({ title: 'Lote atualizado com sucesso!' })
       onClose()
     },
     onError: (err: any) => {
@@ -88,6 +125,16 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
           />
         </div>
         <div>
+          <Label className="text-xs">Quantidade ({unidade})</Label>
+          <Input
+            type="number"
+            step="0.001"
+            min="0.001"
+            value={form.quantidade}
+            onChange={e => setForm(f => ({ ...f, quantidade: parseFloat(e.target.value) || 0 }))}
+          />
+        </div>
+        <div>
           <Label className="text-xs">Data de Entrada</Label>
           <Input type="date" value={form.data_entrada} onChange={e => setForm(f => ({ ...f, data_entrada: e.target.value }))} />
         </div>
@@ -97,9 +144,11 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
         </div>
       </div>
 
-      <div className="text-xs text-muted-foreground">
-        Quantidade: <strong>{lote.quantidade_original} {unidade}</strong> (somente leitura)
-      </div>
+      {form.quantidade !== lote.quantidade_original && (
+        <p className="text-xs text-muted-foreground">
+          ⚠️ Alterar a quantidade recalculará o saldo do produto automaticamente
+        </p>
+      )}
 
       <div className="flex gap-2 justify-end">
         <Button variant="outline" size="sm" onClick={onClose} disabled={mutation.isPending}>
