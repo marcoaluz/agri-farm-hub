@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, Link, useLocation } from 'react-router-dom'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase'
@@ -63,10 +63,12 @@ interface ServicoComTipo {
 
 export function LancamentoForm() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { id: lancamentoId } = useParams<{ id: string }>()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { propriedadeAtual, safraAtual } = useGlobal()
+  const fromEstoque = location.state?.fromEstoque === true
 
   // Estado do formulário
   const [formData, setFormData] = useState<LancamentoFormData>({
@@ -784,9 +786,17 @@ export function LancamentoForm() {
         </span>
       </nav>
 
+      {/* Back to Estoque button */}
+      {fromEstoque && (
+        <Button variant="outline" size="sm" onClick={() => navigate('/estoque')} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Voltar ao Estoque
+        </Button>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/lancamentos')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(fromEstoque ? '/estoque' : '/lancamentos')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
