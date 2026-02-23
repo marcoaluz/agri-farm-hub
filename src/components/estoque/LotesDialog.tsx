@@ -35,6 +35,7 @@ interface Lote {
   data_entrada: string
   data_validade?: string
   created_at: string
+  updated_at?: string
 }
 
 interface ProdutoComCusto {
@@ -408,17 +409,24 @@ function LoteCard({
         </div>
 
         {/* Dates */}
-        <div className="flex items-center justify-between text-sm border-t pt-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Entrada: {new Date(lote.data_entrada).toLocaleDateString('pt-BR')}</span>
-          </div>
-          {lote.data_validade && (
+        <div className="flex flex-col gap-1 text-sm border-t pt-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-orange-500" />
-              <span className={cn('font-medium', new Date(lote.data_validade) < hoje ? 'text-red-600' : 'text-orange-600')}>
-                Validade: {new Date(lote.data_validade).toLocaleDateString('pt-BR')}
-              </span>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Entrada: {new Date(lote.data_entrada).toLocaleDateString('pt-BR')}</span>
+            </div>
+            {lote.data_validade && (
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                <span className={cn('font-medium', new Date(lote.data_validade) < hoje ? 'text-red-600' : 'text-orange-600')}>
+                  Validade: {new Date(lote.data_validade).toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+            )}
+          </div>
+          {lote.updated_at && lote.created_at && lote.updated_at !== lote.created_at && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <span className="text-xs">🔄 Atualizado em {new Date(lote.updated_at).toLocaleDateString('pt-BR')} às {new Date(lote.updated_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
             </div>
           )}
         </div>
