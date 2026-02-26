@@ -222,7 +222,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
   /* ---------------------------------------------------------------- */
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-card shadow-sm">
+    <header className="w-full border-b border-border bg-card shadow-sm flex-shrink-0">
       <div className="flex h-14 sm:h-16 items-center px-2 sm:px-4 gap-2 sm:gap-4">
         {/* Menu Mobile */}
         {onMenuClick && (
