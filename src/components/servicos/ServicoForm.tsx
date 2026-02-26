@@ -424,7 +424,7 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
         </Card>
       )}
 
-      <div className="flex justify-end gap-2 sticky bottom-0 bg-background pt-2 pb-1">
+      <div className="flex justify-end gap-3 border-t pt-4 mt-2">
         <Button variant="outline" onClick={onSuccess}>Cancelar</Button>
         <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
           {saveMutation.isPending
