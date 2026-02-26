@@ -8,10 +8,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Wrench, Edit, Trash2, Search, MapPin, CheckCircle, Package } from 'lucide-react';
+import { Plus, Wrench, Edit, Trash2, Search, MapPin, CheckCircle, Package, Loader2 } from 'lucide-react';
 import { ServicoForm } from '@/components/servicos/ServicoForm';
 
 interface Servico {
@@ -35,43 +39,55 @@ export function Servicos() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [servicoEditando, setServicoEditando] = useState<Servico | null>(null);
   const [busca, setBusca] = useState('');
-  const [filtroCategoria, setFiltroCategoria] = useState<string>('todos');
+  const [filtroCategoria, setFiltroCategoria] = useState('todos');
+  const [filtroTipo, setFiltroTipo] = useState('todos');
 
-  const { data: servicos, isLoading } = useQuery({
+  const { data: servicos, isLoading, error } = useQuery({
     queryKey: ['servicos', propriedadeAtual?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('servicos')
-        .select(`
-          *,
-          servicos_itens(count)
-        `)
-        .eq('propriedade_id', propriedadeAtual?.id)
-        .or('ativo.is.null,ativo.eq.true')
+        .select('*')
+        .eq('propriedade_id', propriedadeAtual!.id)
+        .eq('ativo', true)
         .order('nome');
-
       if (error) throw error;
-      
-      return (data as any[]).map(s => ({
-        ...s,
-        total_itens: s.servicos_itens?.[0]?.count || 0
-      })) as Servico[];
+      if (!data?.length) return [];
+
+      // Contagem de itens em query separada (evita falha de schema)
+      const { data: counts } = await supabase
+        .from('servicos_itens')
+        .select('servico_id')
+        .in('servico_id', data.map(s => s.id));
+
+      const countMap: Record<string, number> = {};
+      (counts || []).forEach((r: any) => {
+        countMap[r.servico_id] = (countMap[r.servico_id] || 0) + 1;
+      });
+
+      return data.map(s => ({ ...s, total_itens: countMap[s.id] || 0 })) as Servico[];
     },
-    enabled: !!propriedadeAtual?.id
+    enabled: !!propriedadeAtual?.id,
   });
 
-  const categorias = Array.from(new Set(servicos?.map(s => s.categoria) || []));
+  const categorias = Array.from(new Set((servicos || []).map(s => s.categoria).filter(Boolean)));
 
-  const servicosFiltrados = servicos?.filter(servico => {
-    const matchBusca = servico.nome.toLowerCase().includes(busca.toLowerCase()) ||
-                       servico.descricao?.toLowerCase().includes(busca.toLowerCase());
-    const matchCategoria = filtroCategoria === 'todos' || servico.categoria === filtroCategoria;
-    return matchBusca && matchCategoria;
+  const servicosFiltrados = (servicos || []).filter(s => {
+    const matchBusca = s.nome.toLowerCase().includes(busca.toLowerCase()) ||
+      s.descricao?.toLowerCase().includes(busca.toLowerCase());
+    const matchCat  = filtroCategoria === 'todos' || s.categoria === filtroCategoria;
+    const matchTipo = filtroTipo === 'todos' || (s.tipo_servico || 'composto') === filtroTipo;
+    return matchBusca && matchCat && matchTipo;
   });
 
-  const totalServicos = servicos?.length || 0;
-  const comTalhao = servicos?.filter(s => s.requer_talhao).length || 0;
-  const semTalhao = totalServicos - comTalhao;
+  const stats = {
+    total:    servicos?.length || 0,
+    simples:  (servicos || []).filter(s => s.tipo_servico === 'simples').length,
+    composto: (servicos || []).filter(s => s.tipo_servico === 'composto').length,
+    talhao:   (servicos || []).filter(s => s.requer_talhao).length,
+  };
+
+  const abrirNovo = () => { setServicoEditando(null); setDialogOpen(true); };
 
   if (!propriedadeAtual) {
     return (
@@ -105,7 +121,7 @@ export function Servicos() {
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setServicoEditando(null)}>
+            <Button onClick={abrirNovo}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Serviço
             </Button>
@@ -113,72 +129,42 @@ export function Servicos() {
           <DialogContent className="max-w-2xl">
             <ServicoForm
               servico={servicoEditando}
-              onSuccess={() => {
-                setDialogOpen(false);
-                setServicoEditando(null);
-              }}
+              onSuccess={() => { setDialogOpen(false); setServicoEditando(null); }}
             />
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Cards de Estatísticas */}
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="pt-6 text-destructive">
+            Erro ao carregar: {(error as Error).message}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Wrench className="h-6 w-6 text-blue-600" />
+        {[
+          { label: 'Total',         value: stats.total,    icon: Wrench,      bg: 'bg-blue-100',   fg: 'text-blue-600' },
+          { label: 'Simples',       value: stats.simples,  icon: CheckCircle, bg: 'bg-amber-100',  fg: 'text-amber-600' },
+          { label: 'Compostos',     value: stats.composto, icon: Package,     bg: 'bg-purple-100', fg: 'text-purple-600' },
+          { label: 'Requer Talhão', value: stats.talhao,   icon: MapPin,      bg: 'bg-green-100',  fg: 'text-green-600' },
+        ].map(({ label, value, icon: Icon, bg, fg }) => (
+          <Card key={label}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-lg ${bg}`}>
+                  <Icon className={`h-6 w-6 ${fg}`} />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{label}</p>
+                  <p className="text-2xl font-bold">{value}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total de Serviços</p>
-                <p className="text-2xl font-bold">{totalServicos}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <MapPin className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Requer Talhão</p>
-                <p className="text-2xl font-bold">{comTalhao}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Sem Talhão</p>
-                <p className="text-2xl font-bold">{semTalhao}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <Package className="h-6 w-6 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Categorias</p>
-                <p className="text-2xl font-bold">{categorias.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Filtros */}
@@ -192,45 +178,50 @@ export function Servicos() {
             className="pl-10"
           />
         </div>
-
+        <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+          <SelectTrigger className="w-full md:w-[180px]">
+            <SelectValue placeholder="Tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os tipos</SelectItem>
+            <SelectItem value="simples">Simples</SelectItem>
+            <SelectItem value="composto">Composto</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
           <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todas as categorias</SelectItem>
-            {categorias.map(cat => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
-              </SelectItem>
+            {categorias.map(c => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Lista de Serviços */}
+      {/* Lista */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map(i => (
             <Skeleton key={i} className="h-56 w-full" />
           ))}
         </div>
-      ) : servicosFiltrados?.length === 0 ? (
+      ) : servicosFiltrados.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Wrench className="h-16 w-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">
-              {busca || filtroCategoria !== 'todos'
-                ? 'Nenhum serviço encontrado'
-                : 'Nenhum serviço cadastrado'}
+              {busca || filtroCategoria !== 'todos' || filtroTipo !== 'todos'
+                ? 'Nenhum serviço encontrado' : 'Nenhum serviço cadastrado'}
             </h3>
             <p className="text-muted-foreground text-center mb-4">
-              {busca || filtroCategoria !== 'todos'
-                ? 'Tente ajustar os filtros de busca'
-                : 'Crie seu primeiro serviço para começar a registrar operações'}
+              {busca || filtroCategoria !== 'todos' || filtroTipo !== 'todos'
+                ? 'Tente ajustar os filtros' : 'Crie seu primeiro serviço para começar'}
             </p>
-            {!busca && filtroCategoria === 'todos' && (
-              <Button onClick={() => setDialogOpen(true)}>
+            {!busca && filtroCategoria === 'todos' && filtroTipo === 'todos' && (
+              <Button onClick={abrirNovo}>
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Primeiro Serviço
               </Button>
@@ -239,15 +230,8 @@ export function Servicos() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {servicosFiltrados?.map(servico => (
-            <ServicoCard
-              key={servico.id}
-              servico={servico}
-              onEdit={() => {
-                setServicoEditando(servico);
-                setDialogOpen(true);
-              }}
-            />
+          {servicosFiltrados.map(s => (
+            <ServicoCard key={s.id} servico={s} onEdit={() => { setServicoEditando(s); setDialogOpen(true); }} />
           ))}
         </div>
       )}
@@ -261,24 +245,19 @@ function ServicoCard({ servico, onEdit }: { servico: Servico; onEdit: () => void
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from('servicos')
-        .update({ ativo: false })
-        .eq('id', servico.id);
-      
+      const { error } = await supabase.from('servicos').update({ ativo: false }).eq('id', servico.id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast({ title: 'Serviço removido com sucesso' });
       queryClient.invalidateQueries({ queryKey: ['servicos'] });
     },
-    onError: () => {
-      toast({
-        title: 'Erro ao remover serviço',
-        variant: 'destructive'
-      });
-    }
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao remover', description: err.message, variant: 'destructive' });
+    },
   });
+
+  const isSimples = (servico.tipo_servico || 'composto') === 'simples';
 
   return (
     <Card className="hover:shadow-lg transition-all border-2 border-blue-100">
@@ -286,27 +265,22 @@ function ServicoCard({ servico, onEdit }: { servico: Servico; onEdit: () => void
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h3 className="text-xl font-bold text-foreground mb-2">
-              {servico.nome}
-            </h3>
-            
+            <h3 className="text-xl font-bold text-foreground mb-2">{servico.nome}</h3>
             <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="text-xs">
-                {servico.categoria}
-              </Badge>
-
+              {servico.categoria && (
+                <Badge variant="outline" className="text-xs">{servico.categoria}</Badge>
+              )}
               <Badge className={
-                servico.tipo_servico === 'simples'
+                isSimples
                   ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs'
                   : 'bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs'
               }>
-                {servico.tipo_servico === 'simples' ? 'Simples' : 'Composto'}
+                {isSimples ? 'Simples' : 'Composto'}
               </Badge>
-              
               {servico.requer_talhao && (
                 <Badge className="bg-green-100 text-green-700 hover:bg-green-200 text-xs">
                   <MapPin className="h-3 w-3 mr-1" />
-                  Requer Talhão
+                  Talhão
                 </Badge>
               )}
             </div>
@@ -316,33 +290,29 @@ function ServicoCard({ servico, onEdit }: { servico: Servico; onEdit: () => void
             <Button variant="ghost" size="icon" onClick={onEdit}>
               <Edit className="h-4 w-4" />
             </Button>
-            
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                  {deleteMutation.isPending
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Trash2 className="h-4 w-4" />}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                  <AlertDialogTitle>Remover serviço?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta ação irá desativar o serviço "{servico.nome}". 
-                    Ele não será excluído permanentemente.
+                    O serviço <strong>{servico.nome}</strong> será desativado.
+                    Lançamentos existentes não serão afetados.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => deleteMutation.mutate()}
-                    disabled={deleteMutation.isPending}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    {deleteMutation.isPending ? 'Removendo...' : 'Remover'}
+                    Remover
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -350,30 +320,31 @@ function ServicoCard({ servico, onEdit }: { servico: Servico; onEdit: () => void
           </div>
         </div>
 
-        {/* Descrição */}
         {servico.descricao && (
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-            {servico.descricao}
-          </p>
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{servico.descricao}</p>
         )}
 
-        {servico.tipo_servico === 'simples' ? (
+        {isSimples ? (
           <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
             <span className="text-sm font-medium text-amber-900">Custo padrão</span>
             <span className="text-lg font-bold text-amber-600">
-              R$ {servico.custo_padrao?.toFixed(2) || '0.00'}/{servico.unidade_medida}
+              {servico.custo_padrao != null
+                ? `R$ ${servico.custo_padrao.toFixed(2)}/${servico.unidade_medida || '-'}`
+                : '-'}
             </span>
           </div>
         ) : (
           <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
             <span className="text-sm font-medium text-blue-900">Itens vinculados</span>
             <span className="text-lg font-bold text-blue-600">
-              {servico.total_itens || 0}
+              {servico.total_itens ?? 0}
+              {(servico.total_itens ?? 0) === 0 && (
+                <span className="text-xs font-normal ml-1 text-muted-foreground">(sem itens)</span>
+              )}
             </span>
           </div>
         )}
 
-        {/* Data de Criação */}
         <div className="mt-4 pt-4 border-t text-xs text-muted-foreground">
           Criado em {new Date(servico.created_at).toLocaleDateString('pt-BR')}
         </div>
