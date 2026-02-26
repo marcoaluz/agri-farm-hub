@@ -57,7 +57,7 @@ const recentActivities = [
 
 export default function Dashboard() {
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in">
+    <div className="w-full max-w-full overflow-x-hidden space-y-4 sm:space-y-6 animate-fade-in">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
