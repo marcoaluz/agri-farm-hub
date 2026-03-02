@@ -219,14 +219,12 @@ export function useExcluirLancamento() {
         .from('lancamentos_itens')
         .select(`
           id,
-          item_id,
           tipo_ref,
           produto_id,
           maquina_id,
           servico_ref_id,
           quantidade,
-          detalhamento_lotes,
-          item:itens(tipo, produto_id, maquina_id)
+          detalhamento_lotes
         `)
         .eq('lancamento_id', lancamentoId)
 
@@ -239,22 +237,21 @@ export function useExcluirLancamento() {
 
       // ETAPA 2: RESTAURAR ESTOQUE NOS LOTES
       for (const itemLanc of itensLancamento || []) {
-        const item = itemLanc.item as any
-        const isProduto = itemLanc.tipo_ref === 'produto' || item?.tipo === 'produto_estoque'
+        const isProduto = itemLanc.tipo_ref === 'produto'
 
         if (!isProduto) {
-          console.log(`⏭️ Item ${itemLanc.item_id || itemLanc.produto_id} não é produto, pulando...`)
+          console.log(`⏭️ Item ${itemLanc.produto_id || itemLanc.maquina_id} não é produto, pulando...`)
           continue
         }
 
         const detalhamento = itemLanc.detalhamento_lotes as any[]
 
         if (!detalhamento || !Array.isArray(detalhamento)) {
-          console.warn(`⚠️ Item ${itemLanc.item_id || itemLanc.produto_id} sem detalhamento de lotes`)
+          console.warn(`⚠️ Item ${itemLanc.produto_id} sem detalhamento de lotes`)
           continue
         }
 
-        console.log(`🔄 Restaurando ${detalhamento.length} lotes do item ${itemLanc.item_id || itemLanc.produto_id}`)
+        console.log(`🔄 Restaurando ${detalhamento.length} lotes do produto ${itemLanc.produto_id}`)
 
         for (const lote of detalhamento) {
           const quantidadeConsumida = lote.quantidade_consumida || lote.quantidade || 0
@@ -295,9 +292,8 @@ export function useExcluirLancamento() {
       // ETAPA 2.5: REVERTER HORÍMETRO DE MÁQUINAS
       console.log('⏮️ Revertendo horímetro de máquinas...')
       for (const itemLanc of itensLancamento || []) {
-        const item = itemLanc.item as any
-        const isMaquina = itemLanc.tipo_ref === 'maquina' || item?.tipo === 'maquina_hora'
-        const maqId = itemLanc.maquina_id || item?.maquina_id
+        const isMaquina = itemLanc.tipo_ref === 'maquina'
+        const maqId = itemLanc.maquina_id
         if (isMaquina && maqId) {
           console.log(`⏮️ Revertendo ${itemLanc.quantidade}h da máquina ${maqId}`)
 

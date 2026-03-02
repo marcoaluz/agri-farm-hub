@@ -17,7 +17,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Trash2, Info, Package, Truck } from 'lucide-react';
 
 interface ItemVinculado {
-  item_id: string;        // ID da tabela itens (obrigatório para salvar)
   tipo_ref: 'produto' | 'maquina';
   produto_id?: string;
   maquina_id?: string;
@@ -58,59 +57,64 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
   const [addingType, setAddingType] = useState<'produto' | 'maquina' | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Busca itens do tipo produto_estoque vinculados à propriedade
-  const { data: itensDisponiveis = [] } = useQuery({
-    queryKey: ['itens-propriedade', propriedadeId],
+  // Busca produtos disponíveis para vincular
+  const { data: produtosDisponiveis = [] } = useQuery({
+    queryKey: ['produtos-servico', propriedadeId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('itens')
-        .select(`
-          id, nome, tipo, unidade_medida, custo_padrao,
-          produto_id, maquina_id,
-          produto:produtos(id, nome, unidade_medida),
-          maquina:maquinas(id, nome, custo_hora)
-        `)
+        .from('produtos')
+        .select('id, nome, unidade')
         .eq('propriedade_id', propriedadeId)
-        .or('ativo.is.null,ativo.eq.true')
+        .eq('ativo', true)
         .order('nome')
       if (error) throw error
-      return data as any[]
+      return data as { id: string; nome: string; unidade: string }[]
     },
     enabled: !!propriedadeId && tipoServico === 'composto',
   })
 
-  // Carrega itens ao editar — via tabela itens
+  // Busca máquinas disponíveis para vincular
+  const { data: maquinasDisponiveis = [] } = useQuery({
+    queryKey: ['maquinas-servico', propriedadeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('maquinas')
+        .select('id, nome, custo_hora')
+        .eq('propriedade_id', propriedadeId)
+        .eq('ativo', true)
+        .order('nome')
+      if (error) throw error
+      return data as { id: string; nome: string; custo_hora: number | null }[]
+    },
+    enabled: !!propriedadeId && tipoServico === 'composto',
+  })
+
+  // Carrega itens ao editar — direto de servicos_itens
   useEffect(() => {
     if (!servico?.id) return;
     supabase
       .from('servicos_itens')
       .select(`
+        tipo_ref, produto_id, maquina_id,
         obrigatorio, quantidade_sugerida, ordem,
-        item:itens(id, nome, tipo, unidade_medida, custo_padrao,
-          produto:produtos(nome, unidade_medida),
-          maquina:maquinas(nome, custo_hora)
-        )
+        produto:produtos (id, nome, unidade),
+        maquina:maquinas (id, nome, custo_hora)
       `)
       .eq('servico_id', servico.id)
       .order('ordem')
       .then(({ data }) => {
         if (!data) return;
-        setItens(data.map((si: any) => {
-          const item = si.item;
-          const isProduto = item?.tipo === 'produto_estoque';
-          return {
-            item_id: item?.id,
-            tipo_ref: isProduto ? 'produto' : 'maquina',
-            produto_id: isProduto ? item?.produto_id : undefined,
-            maquina_id: !isProduto ? item?.maquina_id : undefined,
-            nome: item?.nome || '',
-            unidade: isProduto ? (item?.produto?.unidade_medida || item?.unidade_medida || '') : 'hora',
-            custo_info: !isProduto ? item?.maquina?.custo_hora : undefined,
-            obrigatorio: si.obrigatorio,
-            quantidade_sugerida: si.quantidade_sugerida,
-            ordem: si.ordem,
-          } as ItemVinculado;
-        }));
+        setItens(data.map((si: any) => ({
+          tipo_ref: si.tipo_ref,
+          produto_id: si.tipo_ref === 'produto' ? (si.produto?.id || si.produto_id) : undefined,
+          maquina_id: si.tipo_ref === 'maquina' ? (si.maquina?.id || si.maquina_id) : undefined,
+          nome: si.tipo_ref === 'produto' ? (si.produto?.nome || '') : (si.maquina?.nome || ''),
+          unidade: si.tipo_ref === 'produto' ? (si.produto?.unidade || '') : 'hora',
+          custo_info: si.tipo_ref === 'maquina' ? si.maquina?.custo_hora : undefined,
+          obrigatorio: si.obrigatorio,
+          quantidade_sugerida: si.quantidade_sugerida,
+          ordem: si.ordem,
+        } as ItemVinculado)));
       });
   }, [servico?.id]);
 
@@ -157,7 +161,9 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
         const { error } = await supabase.from('servicos_itens').insert(
           itens.map((iv, i) => ({
             servico_id: servicoId,
-            item_id: iv.item_id,
+            tipo_ref: iv.tipo_ref,
+            produto_id: iv.tipo_ref === 'produto' ? iv.produto_id : null,
+            maquina_id: iv.tipo_ref === 'maquina' ? iv.maquina_id : null,
             obrigatorio: iv.obrigatorio,
             quantidade_sugerida: iv.quantidade_sugerida || null,
             ordem: i,
@@ -176,35 +182,35 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
     },
   });
 
-  const adicionadosItemIds = new Set(itens.map(i => i.item_id));
-  const itensProdutos = itensDisponiveis.filter(i => i.tipo === 'produto_estoque' && !adicionadosItemIds.has(i.id));
-  const itensMaquinas = itensDisponiveis.filter(i => i.tipo === 'maquina_hora' && !adicionadosItemIds.has(i.id));
+  // Filtrar já adicionados
+  const adicionadosProdutoIds = new Set(itens.filter(i => i.tipo_ref === 'produto').map(i => i.produto_id));
+  const adicionadosMaquinaIds = new Set(itens.filter(i => i.tipo_ref === 'maquina').map(i => i.maquina_id));
+  const produtosFiltrados = produtosDisponiveis.filter(p => !adicionadosProdutoIds.has(p.id));
+  const maquinasFiltradas = maquinasDisponiveis.filter(m => !adicionadosMaquinaIds.has(m.id));
 
-  const adicionarProduto = (itemId: string) => {
-    const item = itensDisponiveis.find(x => x.id === itemId);
-    if (!item) return;
+  const adicionarProduto = (produtoId: string) => {
+    const produto = produtosDisponiveis.find(x => x.id === produtoId);
+    if (!produto) return;
     setItens(prev => [...prev, {
-      item_id: item.id,
       tipo_ref: 'produto',
-      produto_id: item.produto_id,
-      nome: item.nome,
-      unidade: item.produto?.unidade_medida || item.unidade_medida || '',
+      produto_id: produto.id,
+      nome: produto.nome,
+      unidade: produto.unidade || '',
       obrigatorio: false,
       ordem: prev.length,
     }]);
     setAddingType(null);
   };
 
-  const adicionarMaquina = (itemId: string) => {
-    const item = itensDisponiveis.find(x => x.id === itemId);
-    if (!item) return;
+  const adicionarMaquina = (maquinaId: string) => {
+    const maquina = maquinasDisponiveis.find(x => x.id === maquinaId);
+    if (!maquina) return;
     setItens(prev => [...prev, {
-      item_id: item.id,
       tipo_ref: 'maquina',
-      maquina_id: item.maquina_id,
-      nome: item.nome,
+      maquina_id: maquina.id,
+      nome: maquina.nome,
       unidade: 'hora',
-      custo_info: item.maquina?.custo_hora ?? undefined,
+      custo_info: maquina.custo_hora ?? undefined,
       obrigatorio: false,
       ordem: prev.length,
     }]);
@@ -361,8 +367,8 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
                 className={addingType === 'produto' ? 'ring-2 ring-ring' : ''}>
                 <Package className="h-4 w-4 mr-1" />
                 + Produto do Estoque
-                {itensProdutos.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 text-xs">{itensProdutos.length}</Badge>
+                {produtosFiltrados.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs">{produtosFiltrados.length}</Badge>
                 )}
               </Button>
               <Button type="button" variant="outline" size="sm"
@@ -370,14 +376,14 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
                 className={addingType === 'maquina' ? 'ring-2 ring-ring' : ''}>
                 <Truck className="h-4 w-4 mr-1" />
                 + Máquina
-                {itensMaquinas.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 text-xs">{itensMaquinas.length}</Badge>
+                {maquinasFiltradas.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs">{maquinasFiltradas.length}</Badge>
                 )}
               </Button>
             </div>
 
             {addingType === 'produto' && (
-              itensProdutos.length === 0 ? (
+              produtosFiltrados.length === 0 ? (
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription>Nenhum produto disponível. Cadastre na tela de <strong>Estoque</strong>.</AlertDescription>
@@ -386,9 +392,9 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
                 <Select onValueChange={adicionarProduto} value="">
                   <SelectTrigger><SelectValue placeholder="Selecione um produto..." /></SelectTrigger>
                   <SelectContent>
-                    {itensProdutos.map(p => (
+                    {produtosFiltrados.map(p => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.nome} <span className="text-xs text-muted-foreground ml-1">({p.unidade_medida})</span>
+                        {p.nome} <span className="text-xs text-muted-foreground ml-1">({p.unidade})</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -397,7 +403,7 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
             )}
 
             {addingType === 'maquina' && (
-              itensMaquinas.length === 0 ? (
+              maquinasFiltradas.length === 0 ? (
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription>Nenhuma máquina disponível. Cadastre na tela de <strong>Máquinas</strong>.</AlertDescription>
@@ -406,10 +412,10 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
                 <Select onValueChange={adicionarMaquina} value="">
                   <SelectTrigger><SelectValue placeholder="Selecione uma máquina..." /></SelectTrigger>
                   <SelectContent>
-                    {itensMaquinas.map(m => (
+                    {maquinasFiltradas.map(m => (
                       <SelectItem key={m.id} value={m.id}>
                         {m.nome}
-                        {m.maquina?.custo_hora && <span className="text-xs text-muted-foreground ml-1">(R$ {m.maquina.custo_hora}/h)</span>}
+                        {m.custo_hora && <span className="text-xs text-muted-foreground ml-1">(R$ {m.custo_hora}/h)</span>}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -68,8 +68,7 @@ export function useServicosComItens(servicoId?: string) {
         .select(`
           id, tipo_ref, obrigatorio, quantidade_sugerida, ordem,
           produto:produtos(id, nome, unidade, saldo_atual),
-          maquina:maquinas(id, nome, custo_hora, horimetro_atual),
-          servico_ref:servicos(id, nome, custo_padrao, unidade_medida)
+          maquina:maquinas(id, nome, custo_hora, horimetro_atual)
         `)
         .eq('servico_id', servicoId)
         .order('ordem')
