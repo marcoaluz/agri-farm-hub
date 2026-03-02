@@ -250,45 +250,93 @@ export function LancamentoForm() {
       return
     }
 
-    // Serviço Composto: carregar itens vinculados
+    // Serviço Composto: carregar itens vinculados via tabela itens
     setLoadingItens(true)
     try {
       const { data, error } = await supabase
         .from('servicos_itens')
         .select(`
-          id, tipo_ref, obrigatorio, quantidade_sugerida,
-          produto:produtos(id, nome, unidade, saldo_atual),
-          maquina:maquinas(id, nome, custo_hora, horimetro_atual),
-          servico_ref:servicos(id, nome, custo_padrao, unidade_medida)
+          id,
+          obrigatorio,
+          quantidade_sugerida,
+          ordem,
+          item:itens (
+            id,
+            nome,
+            tipo,
+            unidade_medida,
+            custo_padrao,
+            produto_id,
+            maquina_id,
+            produto:produtos (
+              id,
+              nome,
+              unidade,
+              saldo_atual
+            ),
+            maquina:maquinas (
+              id,
+              nome,
+              custo_hora,
+              horimetro_atual
+            )
+          )
         `)
         .eq('servico_id', servicoId)
         .order('ordem')
 
       if (error) throw error
 
-      const itensFormatados: ItemLancamento[] = ((data as any[]) || []).map(si => ({
-        tipo_ref: si.tipo_ref,
-        produto_id: si.produto?.id || null,
-        maquina_id: si.maquina?.id || null,
-        servico_ref_id: si.servico_ref?.id || null,
-        nome: si.produto?.nome || si.maquina?.nome || si.servico_ref?.nome || '',
-        unidade: si.produto?.unidade || si.servico_ref?.unidade_medida || 'hora',
-        custo_unitario_ref: si.maquina?.custo_hora || si.servico_ref?.custo_padrao || undefined,
-        quantidade: si.quantidade_sugerida || 0,
-        obrigatorio: si.obrigatorio,
-        estoque_disponivel: si.produto?.saldo_atual || null,
-      }))
+      const itensFormatados: ItemLancamento[] = ((data as any[]) || []).map((si: any) => {
+        const item = si.item
+        const tipo = item?.tipo
+        let nome = item?.nome || ''
+        let unidade = item?.unidade_medida || 'unidade'
+        let custo_unitario_ref = 0
+        let produto_id = null
+        let maquina_id = null
+        let estoque_disponivel = null
+        let tipo_ref: ItemLancamento['tipo_ref'] = undefined
+
+        if (tipo === 'produto_estoque') {
+          tipo_ref = 'produto'
+          produto_id = item?.produto_id
+          unidade = item?.produto?.unidade || unidade
+          estoque_disponivel = item?.produto?.saldo_atual || 0
+        } else if (tipo === 'maquina_hora') {
+          tipo_ref = 'maquina'
+          maquina_id = item?.maquina_id
+          custo_unitario_ref = item?.maquina?.custo_hora || 0
+          unidade = 'hora'
+        } else if (tipo === 'servico') {
+          tipo_ref = 'servico_simples'
+          custo_unitario_ref = item?.custo_padrao || 0
+        }
+
+        return {
+          item_id: item?.id,
+          tipo_ref,
+          produto_id,
+          maquina_id,
+          nome,
+          unidade,
+          custo_unitario_ref,
+          quantidade: si.quantidade_sugerida || 0,
+          obrigatorio: si.obrigatorio,
+          estoque_disponivel,
+        } as ItemLancamento
+      })
 
       setFormData(prev => ({
         ...prev,
         servico_id: servicoId,
         itens: itensFormatados
       }))
-    } catch (error) {
-      console.error('Erro ao carregar itens do serviço:', error)
+    } catch (error: any) {
+      console.error('Erro ao carregar itens do serviço:', JSON.stringify(error))
       toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar os itens do serviço.',
+        title: 'Erro ao carregar itens',
+        description: error?.message || 'Erro desconhecido. Ver console.',
         variant: 'destructive'
       })
     } finally {
