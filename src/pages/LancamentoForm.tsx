@@ -620,8 +620,8 @@ export function LancamentoForm() {
       const { data: novoLancamento, error: erroLanc } = await supabase
         .from('lancamentos')
         .insert({
-          propriedade_id: propriedadeAtual,
-          safra_id: safraAtual,
+          propriedade_id: propriedadeAtual.id,
+          safra_id: safraAtual.id,
           servico_id: data.servico_id,
           talhao_id: data.talhao_id || null,
           data_execucao: data.data_execucao,
