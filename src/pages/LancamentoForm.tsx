@@ -111,7 +111,7 @@ export function LancamentoForm() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('produtos')
-        .select('id, nome, unidade, saldo_atual')
+        .select('id, nome, unidade_medida, saldo_atual')
         .eq('propriedade_id', propriedadeAtual?.id)
         .eq('ativo', true)
         .order('nome')
@@ -175,7 +175,7 @@ export function LancamentoForm() {
           *,
           lancamentos_itens(
             *,
-            produto:produtos(id, nome, unidade, saldo_atual),
+            produto:produtos(id, nome, unidade_medida, saldo_atual),
             maquina:maquinas(id, nome, custo_hora, horimetro_atual),
             servico_ref:servicos(id, nome, custo_padrao, unidade_medida)
           )
@@ -197,7 +197,7 @@ export function LancamentoForm() {
             maquina_id: li.maquina_id || null,
             servico_ref_id: li.servico_ref_id || null,
             nome: li.produto?.nome || li.maquina?.nome || li.servico_ref?.nome || '',
-            unidade: li.produto?.unidade || li.servico_ref?.unidade_medida || 'hora',
+            unidade: li.produto?.unidade_medida || li.servico_ref?.unidade_medida || 'hora',
             custo_unitario_ref: li.maquina?.custo_hora || li.servico_ref?.custo_padrao || undefined,
             quantidade: li.quantidade,
             custo_unitario: li.custo_unitario,
@@ -255,12 +255,13 @@ export function LancamentoForm() {
         .from('servicos_itens')
         .select(`
           id,
+          tipo_item,
           tipo_ref,
           obrigatorio,
           quantidade_sugerida,
           ordem,
           produto:produtos (
-            id, nome, unidade, saldo_atual
+            id, nome, unidade_medida, saldo_atual
           ),
           maquina:maquinas (
             id, nome, custo_hora, horimetro_atual
@@ -272,20 +273,20 @@ export function LancamentoForm() {
       if (error) throw error
 
       const itensFormatados: ItemLancamento[] = ((data as any[]) || []).map((si: any) => {
-        if (si.tipo_ref === 'produto') {
+        if (si.tipo_item === 'produto' || si.tipo_ref === 'produto') {
           return {
             tipo_ref: 'produto',
             produto_id: si.produto?.id || null,
             maquina_id: null,
             nome: si.produto?.nome || '',
-            unidade: si.produto?.unidade || 'kg',
+            unidade: si.produto?.unidade_medida || 'kg',
             custo_unitario_ref: 0, // calculado por FIFO
             quantidade: si.quantidade_sugerida || 0,
             obrigatorio: si.obrigatorio,
             estoque_disponivel: si.produto?.saldo_atual || 0,
           } as ItemLancamento
         }
-        if (si.tipo_ref === 'maquina') {
+        if (si.tipo_item === 'maquina' || si.tipo_ref === 'maquina') {
           return {
             tipo_ref: 'maquina',
             produto_id: null,
@@ -347,7 +348,7 @@ export function LancamentoForm() {
         tipo_ref: 'produto',
         produto_id: produto.id,
         nome: produto.nome,
-        unidade: produto.unidade || 'unidade',
+        unidade: produto.unidade_medida || 'unidade',
         quantidade: 0,
         estoque_disponivel: produto.saldo_atual,
       }]
@@ -1026,7 +1027,7 @@ export function LancamentoForm() {
                           <SelectContent>
                             {produtos?.map(p => (
                               <SelectItem key={p.id} value={p.id}>
-                                {p.nome} ({p.unidade}) — Estoque: {p.saldo_atual ?? 0}
+                                {p.nome} ({p.unidade_medida}) — Estoque: {p.saldo_atual ?? 0}
                               </SelectItem>
                             ))}
                             {(!produtos || produtos.length === 0) && (
