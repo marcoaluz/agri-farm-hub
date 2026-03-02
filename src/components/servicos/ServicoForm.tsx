@@ -63,12 +63,12 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
     queryFn: async () => {
       const { data, error } = await supabase
         .from('produtos')
-        .select('id, nome, unidade')
+        .select('id, nome, unidade_medida')
         .eq('propriedade_id', propriedadeId)
         .eq('ativo', true)
         .order('nome')
       if (error) throw error
-      return data as { id: string; nome: string; unidade: string }[]
+      return data as { id: string; nome: string; unidade_medida: string }[]
     },
     enabled: !!propriedadeId && tipoServico === 'composto',
   })
@@ -95,26 +95,29 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
     supabase
       .from('servicos_itens')
       .select(`
-        tipo_ref, produto_id, maquina_id,
+        tipo_item, tipo_ref, produto_id, maquina_id,
         obrigatorio, quantidade_sugerida, ordem,
-        produto:produtos (id, nome, unidade),
+        produto:produtos (id, nome, unidade_medida),
         maquina:maquinas (id, nome, custo_hora)
       `)
       .eq('servico_id', servico.id)
       .order('ordem')
       .then(({ data }) => {
         if (!data) return;
-        setItens(data.map((si: any) => ({
-          tipo_ref: si.tipo_ref,
-          produto_id: si.tipo_ref === 'produto' ? (si.produto?.id || si.produto_id) : undefined,
-          maquina_id: si.tipo_ref === 'maquina' ? (si.maquina?.id || si.maquina_id) : undefined,
-          nome: si.tipo_ref === 'produto' ? (si.produto?.nome || '') : (si.maquina?.nome || ''),
-          unidade: si.tipo_ref === 'produto' ? (si.produto?.unidade || '') : 'hora',
-          custo_info: si.tipo_ref === 'maquina' ? si.maquina?.custo_hora : undefined,
-          obrigatorio: si.obrigatorio,
-          quantidade_sugerida: si.quantidade_sugerida,
-          ordem: si.ordem,
-        } as ItemVinculado)));
+        setItens(data.map((si: any) => {
+          const tipoRef = si.tipo_item || si.tipo_ref;
+          return {
+            tipo_ref: tipoRef,
+            produto_id: tipoRef === 'produto' ? (si.produto?.id || si.produto_id) : undefined,
+            maquina_id: tipoRef === 'maquina' ? (si.maquina?.id || si.maquina_id) : undefined,
+            nome: tipoRef === 'produto' ? (si.produto?.nome || '') : (si.maquina?.nome || ''),
+            unidade: tipoRef === 'produto' ? (si.produto?.unidade_medida || '') : 'hora',
+            custo_info: tipoRef === 'maquina' ? si.maquina?.custo_hora : undefined,
+            obrigatorio: si.obrigatorio,
+            quantidade_sugerida: si.quantidade_sugerida,
+            ordem: si.ordem,
+          } as ItemVinculado;
+        }));
       });
   }, [servico?.id]);
 
@@ -161,6 +164,7 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
         const { error } = await supabase.from('servicos_itens').insert(
           itens.map((iv, i) => ({
             servico_id: servicoId,
+            tipo_item: iv.tipo_ref,
             tipo_ref: iv.tipo_ref,
             produto_id: iv.tipo_ref === 'produto' ? iv.produto_id : null,
             maquina_id: iv.tipo_ref === 'maquina' ? iv.maquina_id : null,
@@ -195,7 +199,7 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
       tipo_ref: 'produto',
       produto_id: produto.id,
       nome: produto.nome,
-      unidade: produto.unidade || '',
+      unidade: produto.unidade_medida || '',
       obrigatorio: false,
       ordem: prev.length,
     }]);
@@ -394,7 +398,7 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
                   <SelectContent>
                     {produtosFiltrados.map(p => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.nome} <span className="text-xs text-muted-foreground ml-1">({p.unidade})</span>
+                        {p.nome} <span className="text-xs text-muted-foreground ml-1">({p.unidade_medida})</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
