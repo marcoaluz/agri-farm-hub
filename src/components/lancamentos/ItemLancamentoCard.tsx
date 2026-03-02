@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { X, Info, AlertCircle, Package, Wrench, Truck, Gauge } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { X, Info, AlertCircle, Package, Wrench, Truck, Gauge, Pencil } from 'lucide-react'
 import { usePreviewCustoDireto } from '@/hooks/usePreviewCusto'
 import { PreviewConsumoFIFO } from './PreviewConsumoFIFO'
 import { Card, CardContent } from '@/components/ui/card'
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 export interface ItemLancamento {
@@ -19,8 +20,12 @@ export interface ItemLancamento {
   servico_ref_id?: string | null
   nome?: string
   unidade?: string
-  custo_unitario_ref?: number // custo_hora ou custo_padrao direto
+  custo_unitario_ref?: number // custo_hora ou custo_padrao direto (nunca mudar)
   estoque_disponivel?: number | null
+
+  // Override de custo por lançamento
+  custo_unitario_override?: number // valor editado pelo usuário neste lançamento
+  custo_personalizado?: boolean    // flag de que foi editado
 
   // Legado (mantido para compatibilidade com dados existentes)
   item_id?: string
@@ -50,7 +55,6 @@ interface ItemLancamentoCardProps {
 }
 
 function getTipoConfig(tipoRef?: string, itemTipo?: string) {
-  // Novo sistema
   if (tipoRef === 'produto') {
     return { label: 'Produto de Estoque', icon: Package, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' }
   }
@@ -60,7 +64,6 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   if (tipoRef === 'servico_simples') {
     return { label: 'Serviço', icon: Wrench, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' }
   }
-  // Legado
   const config = {
     'produto_estoque': { label: 'Produto de Estoque', icon: Package, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
     'servico': { label: 'Serviço', icon: Wrench, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' },
@@ -71,17 +74,26 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
 
 export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancamentoCardProps) {
   const [quantidade, setQuantidade] = useState(itemForm.quantidade)
+  const [editandoCusto, setEditandoCusto] = useState(false)
+  const [custoEditavel, setCustoEditavel] = useState('')
+  const custoInputRef = useRef<HTMLInputElement>(null)
 
   const usaRefDireta = !!itemForm.tipo_ref
+  const isProduto = itemForm.tipo_ref === 'produto' || itemForm.item?.tipo === 'produto_estoque'
 
-  // Preview de custo direto (novo sistema)
+  // Custo efetivo: override se personalizado, senão o padrão
+  const custoEfetivo = itemForm.custo_personalizado && itemForm.custo_unitario_override != null
+    ? itemForm.custo_unitario_override
+    : itemForm.custo_unitario_ref
+
+  // Preview de custo direto (novo sistema) — para produtos usa FIFO, ignora override
   const { data: previewDireto, isLoading: loadingPreviewDireto } = usePreviewCustoDireto(
     usaRefDireta ? itemForm.tipo_ref : undefined,
     itemForm.produto_id,
     itemForm.maquina_id,
     itemForm.servico_ref_id,
     quantidade,
-    itemForm.custo_unitario_ref
+    isProduto ? undefined : custoEfetivo // Para produtos, FIFO calcula o custo; para outros, usa custo efetivo
   )
 
   const preview = previewDireto
@@ -89,13 +101,24 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
 
   // Atualizar form quando quantidade ou preview mudarem
   useEffect(() => {
-    if (preview) {
+    if (isProduto && preview) {
+      // Produto usa FIFO — custo vem do preview, não do override
       onUpdate({
         ...itemForm,
         quantidade,
         custo_unitario: preview.custo_unitario,
         custo_total: preview.custo_total,
         detalhamento_lotes: preview.preview_consumo || null
+      })
+    } else if (preview) {
+      // Máquina/Serviço — usa custo efetivo (pode ser override)
+      const custoFinal = custoEfetivo ?? preview.custo_unitario
+      onUpdate({
+        ...itemForm,
+        quantidade,
+        custo_unitario: custoFinal,
+        custo_total: custoFinal * quantidade,
+        detalhamento_lotes: null
       })
     } else if (quantidade === 0) {
       onUpdate({
@@ -106,15 +129,75 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
         detalhamento_lotes: []
       })
     }
-  }, [quantidade, preview])
+  }, [quantidade, preview, custoEfetivo])
+
+  // Focar no input ao abrir edição
+  useEffect(() => {
+    if (editandoCusto && custoInputRef.current) {
+      custoInputRef.current.focus()
+      custoInputRef.current.select()
+    }
+  }, [editandoCusto])
+
+  const handleIniciarEdicaoCusto = () => {
+    const valorAtual = custoEfetivo ?? preview?.custo_unitario ?? 0
+    setCustoEditavel(valorAtual.toFixed(2))
+    setEditandoCusto(true)
+  }
+
+  const handleConfirmarCusto = () => {
+    const novoValor = parseFloat(custoEditavel)
+    if (isNaN(novoValor) || novoValor < 0) {
+      setEditandoCusto(false)
+      return
+    }
+
+    const custoOriginal = itemForm.custo_unitario_ref ?? 0
+    const isPersonalizado = Math.abs(novoValor - custoOriginal) > 0.001
+
+    onUpdate({
+      ...itemForm,
+      quantidade,
+      custo_unitario_override: isPersonalizado ? novoValor : undefined,
+      custo_personalizado: isPersonalizado,
+      custo_unitario: novoValor,
+      custo_total: novoValor * quantidade,
+    })
+    setEditandoCusto(false)
+  }
+
+  const handleRestaurarCusto = () => {
+    const custoOriginal = itemForm.custo_unitario_ref ?? 0
+    onUpdate({
+      ...itemForm,
+      quantidade,
+      custo_unitario_override: undefined,
+      custo_personalizado: false,
+      custo_unitario: custoOriginal,
+      custo_total: custoOriginal * quantidade,
+    })
+  }
+
+  const handleCustoKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleConfirmarCusto()
+    if (e.key === 'Escape') setEditandoCusto(false)
+  }
 
   const itemNome = itemForm.nome || itemForm.item?.nome || 'Item'
   const itemUnidade = itemForm.unidade || itemForm.item?.unidade_medida || ''
   const tipoConfig = getTipoConfig(itemForm.tipo_ref, itemForm.item?.tipo)
   const TipoIcon = tipoConfig.icon
-  const isProduto = itemForm.tipo_ref === 'produto' || itemForm.item?.tipo === 'produto_estoque'
   const isMaquina = itemForm.tipo_ref === 'maquina' || itemForm.item?.tipo === 'maquina_hora'
   const estoqueInsuficiente = isProduto && preview && !preview.estoque_suficiente
+  const custoExibido = itemForm.custo_personalizado && itemForm.custo_unitario_override != null
+    ? itemForm.custo_unitario_override
+    : (preview?.custo_unitario || itemForm.custo_unitario_ref || 0)
+  const custoTotalExibido = itemForm.custo_personalizado && !isProduto
+    ? (itemForm.custo_unitario_override ?? 0) * quantidade
+    : (preview?.custo_total ?? 0)
+
+  // Para produtos, override de custo não se aplica (FIFO calcula)
+  const permiteOverrideCusto = !isProduto
 
   return (
     <Card className={cn(
@@ -168,11 +251,95 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
                   </strong>
                 </div>
               )}
-              <div className="flex justify-between">
+
+              {/* Custo unitário com edição inline */}
+              <div className="flex justify-between items-center">
                 <span>Custo unitário:</span>
-                <strong className="text-primary">
-                  R$ {(preview?.custo_unitario || itemForm.custo_unitario_ref || 0).toFixed(2)} / {itemUnidade}
-                </strong>
+                <div className="flex items-center gap-1.5">
+                  {editandoCusto ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">R$</span>
+                      <Input
+                        ref={custoInputRef}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={custoEditavel}
+                        onChange={(e) => setCustoEditavel(e.target.value)}
+                        onBlur={handleConfirmarCusto}
+                        onKeyDown={handleCustoKeyDown}
+                        className="w-24 h-7 text-sm font-mono border-amber-400 focus:border-amber-500 focus-visible:ring-amber-400"
+                      />
+                      <span className="text-sm text-muted-foreground">/ {itemUnidade}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <strong className={cn(
+                        "text-primary",
+                        itemForm.custo_personalizado && "text-amber-600 dark:text-amber-400"
+                      )}>
+                        R$ {custoExibido.toFixed(2)} / {itemUnidade}
+                      </strong>
+
+                      {permiteOverrideCusto && !itemForm.custo_personalizado && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                onClick={handleIniciarEdicaoCusto}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Editar custo para este lançamento</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+
+                      {itemForm.custo_personalizado && (
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline" className="text-xs border-amber-400 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30">
+                            <Pencil className="h-3 w-3 mr-1" />
+                            Personalizado
+                          </Badge>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-muted-foreground hover:text-foreground"
+                            onClick={handleRestaurarCusto}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 text-muted-foreground hover:text-foreground"
+                                  onClick={handleIniciarEdicaoCusto}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Editar custo novamente</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </AlertDescription>
@@ -232,11 +399,14 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
         )}
 
         {/* Custo Total do Item */}
-        {quantidade > 0 && preview && (
+        {quantidade > 0 && (custoTotalExibido > 0 || (preview && preview.custo_total > 0)) && (
           <div className="flex justify-between items-center pt-4 border-t">
             <span className="font-semibold">Custo Total do Item:</span>
-            <span className="text-2xl font-bold text-primary">
-              R$ {preview.custo_total.toFixed(2)}
+            <span className={cn(
+              "text-2xl font-bold text-primary",
+              itemForm.custo_personalizado && "text-amber-600 dark:text-amber-400"
+            )}>
+              R$ {(isProduto ? preview?.custo_total ?? 0 : custoTotalExibido).toFixed(2)}
             </span>
           </div>
         )}

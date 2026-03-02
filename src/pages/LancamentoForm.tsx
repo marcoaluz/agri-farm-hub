@@ -430,6 +430,8 @@ export function LancamentoForm() {
       if (atual.maquina_id !== original.maquina_id) return true
       if (atual.servico_ref_id !== original.servico_ref_id) return true
       if (Number(atual.quantidade) !== Number(original.quantidade)) return true
+      if (atual.custo_personalizado !== original.custo_personalizado) return true
+      if (atual.custo_unitario_override !== original.custo_unitario_override) return true
     }
 
     return false
@@ -493,7 +495,7 @@ export function LancamentoForm() {
           custoTotal += custoItem
 
         } else if (itemForm.tipo_ref === 'maquina' && itemForm.maquina_id) {
-          const custoUnitario = itemForm.custo_unitario_ref || itemForm.custo_unitario || 0
+          const custoUnitario = itemForm.custo_unitario_override ?? itemForm.custo_unitario_ref ?? itemForm.custo_unitario ?? 0
           const custoItem = custoUnitario * itemForm.quantidade
           itensComCusto.push({
             ...itemForm,
@@ -503,7 +505,7 @@ export function LancamentoForm() {
           custoTotal += custoItem
 
         } else if (itemForm.tipo_ref === 'servico_simples' && itemForm.servico_ref_id) {
-          const custoUnitario = itemForm.custo_unitario_ref || itemForm.custo_unitario || 0
+          const custoUnitario = itemForm.custo_unitario_override ?? itemForm.custo_unitario_ref ?? itemForm.custo_unitario ?? 0
           const custoItem = custoUnitario * itemForm.quantidade
           itensComCusto.push({
             ...itemForm,
