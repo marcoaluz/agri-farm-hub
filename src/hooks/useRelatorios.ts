@@ -19,9 +19,7 @@ function extrairId(v: any): string {
   return ''
 }
 
-function fromView(viewName: string) {
-  return (supabase as any).from(viewName)
-}
+const db = supabase as any
 
 export function useRelatorioOperacional(
   propriedadeId: string,
@@ -34,7 +32,7 @@ export function useRelatorioOperacional(
   const lancamentos = useQuery({
     queryKey: ['rel-lancamentos', idProp, idSafra, filtros],
     queryFn: async () => {
-      let q = fromView('vw_relatorio_lancamentos')
+      let q = db.from('vw_relatorio_lancamentos')
         .select('*')
         .eq('propriedade_id', idProp)
         .eq('safra_id', idSafra)
@@ -52,7 +50,7 @@ export function useRelatorioOperacional(
   const porTalhao = useQuery({
     queryKey: ['rel-talhao', idProp, idSafra],
     queryFn: async () => {
-      const { data, error } = await fromView('vw_relatorio_por_talhao')
+      const { data, error } = await db.from('vw_relatorio_por_talhao')
         .select('*')
         .eq('propriedade_id', idProp)
         .eq('safra_id', idSafra)
@@ -66,7 +64,7 @@ export function useRelatorioOperacional(
   const porCategoria = useQuery({
     queryKey: ['rel-categoria', idProp, idSafra],
     queryFn: async () => {
-      const { data, error } = await fromView('vw_relatorio_por_categoria')
+      const { data, error } = await db.from('vw_relatorio_por_categoria')
         .select('*')
         .eq('propriedade_id', idProp)
         .eq('safra_id', idSafra)
@@ -80,7 +78,7 @@ export function useRelatorioOperacional(
   const porMes = useQuery({
     queryKey: ['rel-mes', idProp, idSafra],
     queryFn: async () => {
-      const { data, error } = await fromView('vw_custos_por_mes')
+      const { data, error } = await db.from('vw_custos_por_mes')
         .select('*')
         .eq('propriedade_id', idProp)
         .eq('safra_id', idSafra)
@@ -105,7 +103,7 @@ export function useRelatorioFinanceiro(
   const transacoes = useQuery({
     queryKey: ['rel-financeiro', idProp, idSafra, filtros],
     queryFn: async () => {
-      let q = fromView('transacoes')
+      let q = db.from('transacoes')
         .select('*')
         .eq('propriedade_id', idProp)
         .eq('safra_id', idSafra)
@@ -129,7 +127,7 @@ export function useRelatorioFinanceiro(
   const fluxoMensal = useQuery({
     queryKey: ['rel-fluxo-mensal', idProp, idSafra],
     queryFn: async () => {
-      const { data, error } = await fromView('vw_fluxo_caixa_mensal')
+      const { data, error } = await db.from('vw_fluxo_caixa_mensal')
         .select('*')
         .eq('propriedade_id', idProp)
         .eq('safra_id', idSafra)
@@ -157,8 +155,8 @@ export function useRelatorioComparativo(
         safraIds.map(async (sid) => {
           const id = extrairId(sid)
           const [talhaoRes, mesRes] = await Promise.all([
-            fromView('vw_relatorio_por_talhao').select('*').eq('propriedade_id', idProp).eq('safra_id', id),
-            fromView('vw_custos_por_mes').select('*').eq('propriedade_id', idProp).eq('safra_id', id).order('mes', { ascending: true }),
+            db.from('vw_relatorio_por_talhao').select('*').eq('propriedade_id', idProp).eq('safra_id', id),
+            db.from('vw_custos_por_mes').select('*').eq('propriedade_id', idProp).eq('safra_id', id).order('mes', { ascending: true }),
           ])
           const talhoes = (talhaoRes.data || []) as any[]
           const meses = (mesRes.data || []) as any[]
