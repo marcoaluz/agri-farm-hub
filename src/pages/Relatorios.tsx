@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { supabase } from '@/integrations/supabase/client'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { BarChart3, DollarSign, TrendingUp, Wheat, ChevronUp, ChevronDown, Eye, EyeOff, AlertTriangle, ArrowUpDown } from 'lucide-react'
@@ -53,6 +54,30 @@ export function Relatorios() {
   const { propriedadeAtual, safraAtual, safras } = useGlobal()
   const propId = propriedadeAtual?.id || ''
   const safraId = safraAtual?.id || ''
+
+  // ── DIAGNÓSTICO TEMPORÁRIO ──
+  const [diag, setDiag] = useState<any>(null)
+  useEffect(() => {
+    async function runDiag() {
+      const db = supabase as any
+      const { data: session } = await supabase.auth.getSession()
+      const [r1, r2, r3, r4] = await Promise.all([
+        db.from('lancamentos').select('id', { count: 'exact', head: true }),
+        db.from('vw_relatorio_lancamentos').select('id', { count: 'exact', head: true }),
+        db.from('vw_relatorio_por_talhao').select('talhao_id', { count: 'exact', head: true }),
+        db.from('vw_custos_por_mes').select('mes', { count: 'exact', head: true }),
+      ])
+      setDiag({
+        userId: session?.session?.user?.id || 'SEM SESSÃO',
+        lancamentos_count: r1.count, lancamentos_error: r1.error?.message,
+        view_lanc_count: r2.count, view_lanc_error: r2.error?.message,
+        view_talhao_count: r3.count, view_talhao_error: r3.error?.message,
+        view_mes_count: r4.count, view_mes_error: r4.error?.message,
+        propId, safraId,
+      })
+    }
+    runDiag()
+  }, [propId, safraId])
 
   // Operacional filters
   const [filtrosOp, setFiltrosOp] = useState<FiltrosRelatorio>({})
@@ -329,6 +354,21 @@ export function Relatorios() {
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Relatórios</h1>
         <p className="text-muted-foreground">Análises detalhadas e exportações</p>
       </div>
+
+      {diag && (
+        <Card className="border-dashed border-orange-400 bg-orange-50 dark:bg-orange-950/20">
+          <CardContent className="pt-4 space-y-1 text-sm font-mono">
+            <p className="font-bold text-orange-700">🔍 DIAGNÓSTICO (remover após testes)</p>
+            <p>userId: {diag.userId}</p>
+            <p>propId: {diag.propId || 'VAZIO'}</p>
+            <p>safraId: {diag.safraId || 'VAZIO'}</p>
+            <p>lancamentos (tabela direta): {diag.lancamentos_count ?? 'null'} {diag.lancamentos_error && <span className="text-destructive">ERRO: {diag.lancamentos_error}</span>}</p>
+            <p>vw_relatorio_lancamentos: {diag.view_lanc_count ?? 'null'} {diag.view_lanc_error && <span className="text-destructive">ERRO: {diag.view_lanc_error}</span>}</p>
+            <p>vw_relatorio_por_talhao: {diag.view_talhao_count ?? 'null'} {diag.view_talhao_error && <span className="text-destructive">ERRO: {diag.view_talhao_error}</span>}</p>
+            <p>vw_custos_por_mes: {diag.view_mes_count ?? 'null'} {diag.view_mes_error && <span className="text-destructive">ERRO: {diag.view_mes_error}</span>}</p>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="operacional" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
