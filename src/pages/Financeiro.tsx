@@ -81,6 +81,7 @@ export function Financeiro() {
   }
 
   const { data: transacoes = [], isLoading } = useTransacoes(propId, safraId, filtrosAtivos)
+  const { data: todasTransacoes = [] } = useTransacoes(propId, safraId)
   const { data: fluxoMensal = [] } = useFluxoCaixaMensal(propId, safraId)
   const marcarPago = useMarcarPago()
   const deletar = useDeleteTransacao()
@@ -96,7 +97,7 @@ export function Financeiro() {
     const em7dias = format(addDays(new Date(), 7), 'yyyy-MM-dd')
     // Use ALL transactions (no filters) for KPIs
     let totalReceitas = 0, totalDespesas = 0, aVencer = 0
-    transacoes.forEach(t => {
+    todasTransacoes.forEach(t => {
       const st = statusEfetivo(t)
       if (st === 'cancelado') return
       if (t.tipo === 'receita') totalReceitas += t.valor
@@ -107,12 +108,12 @@ export function Financeiro() {
       if (st === 'vencido') aVencer += t.valor
     })
     return { totalReceitas, totalDespesas, saldo: totalReceitas - totalDespesas, aVencer }
-  }, [transacoes])
+  }, [todasTransacoes])
 
-  // Monthly chart data from transacoes
+  // Monthly chart data from all transacoes (unfiltered)
   const chartMensal = useMemo(() => {
     const map: Record<string, { mes: string; receitas: number; despesas: number }> = {}
-    transacoes.forEach(t => {
+    todasTransacoes.forEach(t => {
       if (statusEfetivo(t) === 'cancelado') return
       const m = t.data_vencimento.substring(0, 7) // yyyy-MM
       if (!map[m]) map[m] = { mes: m, receitas: 0, despesas: 0 }
@@ -123,45 +124,48 @@ export function Financeiro() {
       ...d,
       label: format(parseISO(d.mes + '-01'), 'MMM/yy', { locale: ptBR }),
     }))
-  }, [transacoes])
+  }, [todasTransacoes])
 
-  // Pie data
+  // Pie data (unfiltered)
   const pieDespesas = useMemo(() => {
     const map: Record<string, number> = {}
-    transacoes.forEach(t => {
+    todasTransacoes.forEach(t => {
       if (t.tipo !== 'despesa' || statusEfetivo(t) === 'cancelado') return
       map[t.categoria] = (map[t.categoria] || 0) + t.valor
     })
     return Object.entries(map).map(([name, value]) => ({
       name: categoriasLabel[name] || name, value,
     })).sort((a, b) => b.value - a.value)
-  }, [transacoes])
+  }, [todasTransacoes])
 
-  // Próximos vencimentos
+  // Próximos vencimentos (unfiltered)
   const proxVencimentos = useMemo(() => {
     const hoje = new Date().toISOString().split('T')[0]
     const em15 = format(addDays(new Date(), 15), 'yyyy-MM-dd')
-    return transacoes
+    return todasTransacoes
       .filter(t => {
         const st = statusEfetivo(t)
         return (st === 'pendente' || st === 'vencido') && t.data_vencimento <= em15
       })
       .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento))
       .slice(0, 10)
-  }, [transacoes])
+  }, [todasTransacoes])
 
   // Fluxo de caixa acumulado
   const fluxoAcumulado = useMemo(() => {
     let acum = 0
     return (fluxoMensal as any[]).map((m: any) => {
-      const rec = Number(m.receitas || m.total_receitas || 0)
-      const desp = Number(m.despesas || m.total_despesas || 0)
-      acum += rec - desp
+      const rec = Number(m.total_receitas || 0)
+      const desp = Number(m.total_despesas || 0)
+      const saldo_mes = Number(m.saldo_mes || rec - desp)
+      acum += saldo_mes
       return {
-        mes: m.mes ? format(parseISO(m.mes + '-01'), 'MMM/yy', { locale: ptBR }) : m.mes_label || '',
+        mes: m.mes
+          ? format(parseISO(m.mes + '-01'), 'MMM/yy', { locale: ptBR })
+          : '—',
         receitas: rec,
         despesas: desp,
-        saldo_mes: rec - desp,
+        saldo_mes,
         acumulado: acum,
       }
     })
@@ -492,7 +496,7 @@ export function Financeiro() {
       </Tabs>
 
       {/* Dialog Form */}
-      <TransacaoForm open={formOpen} onOpenChange={setFormOpen} transacao={editando} />
+      <TransacaoForm open={formOpen} onOpenChange={(open) => { setFormOpen(open); if (!open) setEditando(null) }} transacao={editando} />
 
       {/* Confirm Delete */}
       <AlertDialog open={!!deletandoId} onOpenChange={() => setDeletandoId(null)}>
