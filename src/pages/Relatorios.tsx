@@ -117,7 +117,7 @@ export function Relatorios() {
   const chartMensalOp = useMemo(() => {
     const porMes = opData.porMes.data || []
     return porMes.map((m: any) => ({
-      mes: m.mes ? format(parseISO(m.mes + '-01'), 'MMM/yy', { locale: ptBR }) : m.mes,
+      mes: m.mes ? format(new Date(m.mes), 'MMM/yy', { locale: ptBR }) : '—',
       custo: Number(m.custo_total_mes || 0),
     }))
   }, [opData.porMes.data])
@@ -730,7 +730,7 @@ export function Relatorios() {
                       const safra = safras.find((s: any) => (typeof s === 'object' ? s.id : s) === r.safra_id)
                       const nome = safra && typeof safra === 'object' ? safra.nome : `Safra ${i + 1}`
                       const colors = ['hsl(142,70%,40%)', 'hsl(200,70%,50%)', 'hsl(40,90%,50%)']
-                      const chartData = (r.meses || []).map((m: any) => ({ mes: m.mes ? format(parseISO(m.mes + '-01'), 'MMM/yy', { locale: ptBR }) : m.mes, custo: Number(m.custo_total_mes || 0) }))
+                      const chartData = (r.meses || []).map((m: any) => ({ mes: m.mes ? format(new Date(m.mes), 'MMM/yy', { locale: ptBR }) : '—', custo: Number(m.custo_total_mes || 0) }))
                       return <Line key={r.safra_id} data={chartData} dataKey="custo" name={nome} stroke={colors[i % 3]} strokeWidth={2} dot={{ r: 3 }} />
                     })}
                   </LineChart>
