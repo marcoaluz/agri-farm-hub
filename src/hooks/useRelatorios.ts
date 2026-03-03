@@ -32,15 +32,15 @@ export function useRelatorioOperacional(
   const lancamentos = useQuery({
     queryKey: ['rel-lancamentos', idProp, idSafra, filtros],
     queryFn: async () => {
-      let q = db.from('vw_relatorio_lancamentos')
-        .select('*')
+      console.log('[REL] queryFn executando', { idProp, idSafra, filtros })
+
+      const { data, error, count } = await db.from('vw_relatorio_lancamentos')
+        .select('*', { count: 'exact' })
         .eq('propriedade_id', idProp)
         .eq('safra_id', idSafra)
-      if (filtros.data_inicio) q = q.gte('data_execucao', filtros.data_inicio)
-      if (filtros.data_fim) q = q.lte('data_execucao', filtros.data_fim)
-      if (filtros.talhao_id) q = q.eq('talhao_id', filtros.talhao_id)
-      if (filtros.categoria) q = q.eq('servico_categoria', filtros.categoria)
-      const { data, error } = await q.order('data_execucao', { ascending: false })
+
+      console.log('[REL] resultado', { data, error, count })
+
       if (error) throw error
       return (data || []) as any[]
     },
