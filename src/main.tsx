@@ -15,6 +15,6 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
-// Cache bust: 2026-03-02T001
+// Cache bust: 2026-03-05T001
 
 createRoot(document.getElementById("root")!).render(<App />);
