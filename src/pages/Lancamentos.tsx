@@ -56,10 +56,6 @@ import { ptBR } from 'date-fns/locale'
 export function Lancamentos() {
   const navigate = useNavigate()
   const routerLocation = useLocation()
-  const debugEnabled = useMemo(() => {
-    if (!import.meta.env.DEV) return false
-    return new URLSearchParams(routerLocation.search).has('debug')
-  }, [routerLocation.search])
 
   const { safraAtual, propriedadeAtual } = useGlobal()
   const { data: lancamentos, isLoading } = useQuery({
