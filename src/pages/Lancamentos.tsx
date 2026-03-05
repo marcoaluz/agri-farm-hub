@@ -41,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ContextDebug } from '@/components/debug/ContextDebug'
+
 import { HistoricoDialog } from '@/components/auditoria/HistoricoDialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useQuery } from '@tanstack/react-query'
