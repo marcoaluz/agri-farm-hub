@@ -216,12 +216,6 @@ export function Lancamentos() {
         </Alert>
       )}
 
-      <ContextDebug
-        enabled={debugEnabled}
-        propriedadeAtual={propriedadeAtual}
-        safraAtual={safraAtual}
-        novoLancamentoDisabled={!safraAtual}
-      />
 
       {/* Navegação por Data (Período) */}
       <Card>
