@@ -55,29 +55,6 @@ export function Relatorios() {
   const propId = propriedadeAtual?.id || ''
   const safraId = safraAtual?.id || ''
 
-  // ── DIAGNÓSTICO TEMPORÁRIO ──
-  const [diag, setDiag] = useState<any>(null)
-  useEffect(() => {
-    async function runDiag() {
-      const db = supabase as any
-      const { data: session } = await supabase.auth.getSession()
-      const [r1, r2, r3, r4] = await Promise.all([
-        db.from('lancamentos').select('id', { count: 'exact', head: true }),
-        db.from('vw_relatorio_lancamentos').select('id', { count: 'exact', head: true }),
-        db.from('vw_relatorio_por_talhao').select('talhao_id', { count: 'exact', head: true }),
-        db.from('vw_custos_por_mes').select('mes', { count: 'exact', head: true }),
-      ])
-      setDiag({
-        userId: session?.session?.user?.id || 'SEM SESSÃO',
-        lancamentos_count: r1.count, lancamentos_error: r1.error?.message,
-        view_lanc_count: r2.count, view_lanc_error: r2.error?.message,
-        view_talhao_count: r3.count, view_talhao_error: r3.error?.message,
-        view_mes_count: r4.count, view_mes_error: r4.error?.message,
-        propId, safraId,
-      })
-    }
-    runDiag()
-  }, [propId, safraId])
 
   // Operacional filters
   const [filtrosOp, setFiltrosOp] = useState<FiltrosRelatorio>({})
