@@ -41,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ContextDebug } from '@/components/debug/ContextDebug'
+
 import { HistoricoDialog } from '@/components/auditoria/HistoricoDialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useQuery } from '@tanstack/react-query'
@@ -56,10 +56,6 @@ import { ptBR } from 'date-fns/locale'
 export function Lancamentos() {
   const navigate = useNavigate()
   const routerLocation = useLocation()
-  const debugEnabled = useMemo(() => {
-    if (!import.meta.env.DEV) return false
-    return new URLSearchParams(routerLocation.search).has('debug')
-  }, [routerLocation.search])
 
   const { safraAtual, propriedadeAtual } = useGlobal()
   const { data: lancamentos, isLoading } = useQuery({
@@ -220,12 +216,6 @@ export function Lancamentos() {
         </Alert>
       )}
 
-      <ContextDebug
-        enabled={debugEnabled}
-        propriedadeAtual={propriedadeAtual}
-        safraAtual={safraAtual}
-        novoLancamentoDisabled={!safraAtual}
-      />
 
       {/* Navegação por Data (Período) */}
       <Card>
