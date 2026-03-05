@@ -332,7 +332,6 @@ export function Relatorios() {
         <p className="text-muted-foreground">Análises detalhadas e exportações</p>
       </div>
 
-      {diag && (
         <Card className="border-dashed border-orange-400 bg-orange-50 dark:bg-orange-950/20">
           <CardContent className="pt-4 space-y-1 text-sm font-mono">
             <p className="font-bold text-orange-700">🔍 DIAGNÓSTICO (remover após testes)</p>
