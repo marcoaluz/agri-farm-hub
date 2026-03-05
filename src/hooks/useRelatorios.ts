@@ -32,17 +32,17 @@ export function useRelatorioOperacional(
   const lancamentos = useQuery({
     queryKey: ['rel-lancamentos', idProp, idSafra, filtros],
     queryFn: async () => {
-      console.log('[REL] queryFn executando', { idProp, idSafra, filtros })
-
-      const { data, error, count } = await db.from('vw_relatorio_lancamentos')
-        .select('*', { count: 'exact' })
-        .eq('propriedade_id', idProp)
-        .eq('safra_id', idSafra)
-
-      console.log('[REL] resultado', { data, error, count })
-
+      const { data, error } = await db.rpc('get_relatorio_lancamentos', {
+        p_propriedade_id: idProp,
+        p_safra_id: idSafra,
+      })
       if (error) throw error
-      return (data || []) as any[]
+      let result = (data || []) as any[]
+      if (filtros.data_inicio) result = result.filter((l: any) => l.data_execucao >= filtros.data_inicio!)
+      if (filtros.data_fim)    result = result.filter((l: any) => l.data_execucao <= filtros.data_fim!)
+      if (filtros.talhao_id)   result = result.filter((l: any) => l.talhao_id === filtros.talhao_id)
+      if (filtros.categoria)   result = result.filter((l: any) => l.servico_categoria === filtros.categoria)
+      return result
     },
     enabled: !!idProp && !!idSafra,
   })
@@ -50,11 +50,10 @@ export function useRelatorioOperacional(
   const porTalhao = useQuery({
     queryKey: ['rel-talhao', idProp, idSafra],
     queryFn: async () => {
-      const { data, error } = await db.from('vw_relatorio_por_talhao')
-        .select('*')
-        .eq('propriedade_id', idProp)
-        .eq('safra_id', idSafra)
-        .order('custo_total', { ascending: false })
+      const { data, error } = await db.rpc('get_relatorio_por_talhao', {
+        p_propriedade_id: idProp,
+        p_safra_id: idSafra,
+      })
       if (error) throw error
       return (data || []) as any[]
     },
@@ -64,11 +63,10 @@ export function useRelatorioOperacional(
   const porCategoria = useQuery({
     queryKey: ['rel-categoria', idProp, idSafra],
     queryFn: async () => {
-      const { data, error } = await db.from('vw_relatorio_por_categoria')
-        .select('*')
-        .eq('propriedade_id', idProp)
-        .eq('safra_id', idSafra)
-        .order('custo_total', { ascending: false })
+      const { data, error } = await db.rpc('get_relatorio_por_categoria', {
+        p_propriedade_id: idProp,
+        p_safra_id: idSafra,
+      })
       if (error) throw error
       return (data || []) as any[]
     },
@@ -78,11 +76,10 @@ export function useRelatorioOperacional(
   const porMes = useQuery({
     queryKey: ['rel-mes', idProp, idSafra],
     queryFn: async () => {
-      const { data, error } = await db.from('vw_custos_por_mes')
-        .select('*')
-        .eq('propriedade_id', idProp)
-        .eq('safra_id', idSafra)
-        .order('mes', { ascending: true })
+      const { data, error } = await db.rpc('get_custos_por_mes', {
+        p_propriedade_id: idProp,
+        p_safra_id: idSafra,
+      })
       if (error) throw error
       return (data || []) as any[]
     },
@@ -127,11 +124,10 @@ export function useRelatorioFinanceiro(
   const fluxoMensal = useQuery({
     queryKey: ['rel-fluxo-mensal', idProp, idSafra],
     queryFn: async () => {
-      const { data, error } = await db.from('vw_fluxo_caixa_mensal')
-        .select('*')
-        .eq('propriedade_id', idProp)
-        .eq('safra_id', idSafra)
-        .order('mes', { ascending: true })
+      const { data, error } = await db.rpc('get_fluxo_caixa_mensal', {
+        p_propriedade_id: idProp,
+        p_safra_id: idSafra,
+      })
       if (error) throw error
       return (data || []) as any[]
     },
@@ -155,15 +151,20 @@ export function useRelatorioComparativo(
         safraIds.map(async (sid) => {
           const id = extrairId(sid)
           const [talhaoRes, mesRes] = await Promise.all([
-            db.from('vw_relatorio_por_talhao').select('*').eq('propriedade_id', idProp).eq('safra_id', id),
-            db.from('vw_custos_por_mes').select('*').eq('propriedade_id', idProp).eq('safra_id', id).order('mes', { ascending: true }),
+            db.rpc('get_relatorio_por_talhao', { p_propriedade_id: idProp, p_safra_id: id }),
+            db.rpc('get_custos_por_mes', { p_propriedade_id: idProp, p_safra_id: id }),
           ])
           const talhoes = (talhaoRes.data || []) as any[]
-          const meses = (mesRes.data || []) as any[]
-          const custoTotal = talhoes.reduce((s: number, t: any) => s + Number(t.custo_total || 0), 0)
-          const areaTotal = talhoes.reduce((s: number, t: any) => s + Number(t.area_ha || 0), 0)
-          const totalLanc = talhoes.reduce((s: number, t: any) => s + Number(t.total_lancamentos || 0), 0)
-          return { safra_id: id, custoTotal, areaTotal, totalLancamentos: totalLanc, custoHa: areaTotal > 0 ? custoTotal / areaTotal : 0, meses, talhoes }
+          const meses   = (mesRes.data   || []) as any[]
+          const custoTotal  = talhoes.reduce((s: number, t: any) => s + Number(t.custo_total || 0), 0)
+          const areaTotal   = talhoes.reduce((s: number, t: any) => s + Number(t.area_ha    || 0), 0)
+          const totalLanc   = talhoes.reduce((s: number, t: any) => s + Number(t.total_lancamentos || 0), 0)
+          return {
+            safra_id: id, custoTotal, areaTotal,
+            totalLancamentos: totalLanc,
+            custoHa: areaTotal > 0 ? custoTotal / areaTotal : 0,
+            meses, talhoes,
+          }
         })
       )
       return results
