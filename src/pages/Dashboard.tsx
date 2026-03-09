@@ -136,6 +136,29 @@ export default function Dashboard() {
     ? [...lancData].sort((a: any, b: any) => (b.data_execucao || '').localeCompare(a.data_execucao || '')).slice(0, 5)
     : []
 
+  // PROBLEMA 1: Formatar datas ISO do eixo X
+  const dadosMes = useMemo(() => {
+    return (custosMes || []).map((item: any) => ({
+      ...item,
+      mesLabel: (() => {
+        try {
+          const dateStr = item.mes || item.month || item.periodo || ''
+          if (dateStr.includes('T') || dateStr.includes('-')) {
+            return format(new Date(dateStr), 'MMM/yy', { locale: ptBR })
+          }
+          return dateStr
+        } catch {
+          return item.mes || item.month || item.periodo || ''
+        }
+      })()
+    }))
+  }, [custosMes])
+
+  // PROBLEMA 2: Calcular total para percentuais na legenda
+  const totalCategoria = useMemo(() => {
+    return (custosCategoria || []).reduce((s: number, c: any) => s + Number(c.custo_total || 0), 0)
+  }, [custosCategoria])
+
   const alertas: { msg: string; tipo: 'high' | 'medium' }[] = []
   if (transVencidas?.length) alertas.push({ msg: `${transVencidas.length} transação(ões) vencida(s)`, tipo: 'high' })
   if (produtosBaixos?.length) alertas.push(...produtosBaixos.map((p: any) => ({ msg: `Estoque baixo: ${p.nome}`, tipo: 'medium' as const })))
