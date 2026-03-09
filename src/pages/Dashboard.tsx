@@ -249,12 +249,12 @@ export default function Dashboard() {
           ) : (
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={custosMes || []}>
+                <BarChart data={dadosMes}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="mes" fontSize={12} tickLine={false} stroke="hsl(var(--muted-foreground))" />
+                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} interval={0} stroke="hsl(var(--muted-foreground))" />
                   <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
                   <Tooltip formatter={(value: number) => [fmt(value), 'Custo']} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                  <Bar dataKey="custo_total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="custo_total" name="Custo" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
