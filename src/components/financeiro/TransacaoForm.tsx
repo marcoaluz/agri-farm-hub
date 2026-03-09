@@ -183,7 +183,9 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       forma_pagamento: data.forma_pagamento || null,
       talhao_id: data.talhao_id || null,
       observacoes: data.observacoes || null,
-    }
+      cultura_id: showCulturaFields ? (data.cultura_id || null) : null,
+      quantidade_produzida: showCulturaFields ? (data.quantidade_produzida || null) : null,
+    } as any
 
     try {
       if (isEditing) {
