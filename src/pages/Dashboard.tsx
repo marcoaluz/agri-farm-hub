@@ -19,6 +19,8 @@ import { ChartCard } from '@/components/common/ChartCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { CardClima } from '@/components/dashboard/CardClima'
 
 const PIE_COLORS = [
