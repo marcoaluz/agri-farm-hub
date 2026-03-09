@@ -286,12 +286,15 @@ export default function Dashboard() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="mt-2 grid grid-cols-2 gap-1.5">
-                {(custosCategoria || []).map((item: any, i: number) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                    <span className="text-xs text-muted-foreground truncate">{item.categoria}</span>
-                  </div>
-                ))}
+                {(custosCategoria || []).map((item: any, i: number) => {
+                  const pct = totalCategoria > 0 ? ((Number(item.custo_total || 0) / totalCategoria) * 100).toFixed(1) : '0.0'
+                  return (
+                    <div key={i} className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span className="text-xs text-muted-foreground truncate">{item.categoria} ({pct}%)</span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
