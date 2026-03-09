@@ -305,7 +305,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                   <FormField control={form.control} name="quantidade_produzida" render={({ field }) => (
                     <FormItem>
                       <FormLabel>{`Quantidade vendida (${unidadeLabel || 'unidades'})`}</FormLabel>
-                      <FormControl><Input type="number" step="0.01" min="0" {...field} placeholder="0" /></FormControl>
+                      <FormControl><Input type="number" step="0.01" min="0" value={field.value ?? ''} onChange={e => field.onChange(e.target.value)} placeholder="0" /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
