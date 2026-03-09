@@ -1,5 +1,8 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { format, parseISO } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -133,6 +136,29 @@ export default function Dashboard() {
     ? [...lancData].sort((a: any, b: any) => (b.data_execucao || '').localeCompare(a.data_execucao || '')).slice(0, 5)
     : []
 
+  // PROBLEMA 1: Formatar datas ISO do eixo X
+  const dadosMes = useMemo(() => {
+    return (custosMes || []).map((item: any) => ({
+      ...item,
+      mesLabel: (() => {
+        try {
+          const dateStr = item.mes || item.month || item.periodo || ''
+          if (dateStr.includes('T') || dateStr.includes('-')) {
+            return format(new Date(dateStr), 'MMM/yy', { locale: ptBR })
+          }
+          return dateStr
+        } catch {
+          return item.mes || item.month || item.periodo || ''
+        }
+      })()
+    }))
+  }, [custosMes])
+
+  // PROBLEMA 2: Calcular total para percentuais na legenda
+  const totalCategoria = useMemo(() => {
+    return (custosCategoria || []).reduce((s: number, c: any) => s + Number(c.custo_total || 0), 0)
+  }, [custosCategoria])
+
   const alertas: { msg: string; tipo: 'high' | 'medium' }[] = []
   if (transVencidas?.length) alertas.push({ msg: `${transVencidas.length} transação(ões) vencida(s)`, tipo: 'high' })
   if (produtosBaixos?.length) alertas.push(...produtosBaixos.map((p: any) => ({ msg: `Estoque baixo: ${p.nome}`, tipo: 'medium' as const })))
@@ -223,12 +249,12 @@ export default function Dashboard() {
           ) : (
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={custosMes || []}>
+                <BarChart data={dadosMes}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="mes" fontSize={12} tickLine={false} stroke="hsl(var(--muted-foreground))" />
+                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} interval={0} stroke="hsl(var(--muted-foreground))" />
                   <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
                   <Tooltip formatter={(value: number) => [fmt(value), 'Custo']} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                  <Bar dataKey="custo_total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="custo_total" name="Custo" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -260,12 +286,15 @@ export default function Dashboard() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="mt-2 grid grid-cols-2 gap-1.5">
-                {(custosCategoria || []).map((item: any, i: number) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                    <span className="text-xs text-muted-foreground truncate">{item.categoria}</span>
-                  </div>
-                ))}
+                {(custosCategoria || []).map((item: any, i: number) => {
+                  const pct = totalCategoria > 0 ? ((Number(item.custo_total || 0) / totalCategoria) * 100).toFixed(1) : '0.0'
+                  return (
+                    <div key={i} className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span className="text-xs text-muted-foreground truncate">{item.categoria} ({pct}%)</span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
