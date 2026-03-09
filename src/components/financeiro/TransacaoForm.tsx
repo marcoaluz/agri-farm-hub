@@ -145,14 +145,22 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         observacoes: transacao.observacoes || '',
         parcelar: false,
         num_parcelas: '' as any,
+        cultura_id: (transacao as any)?.cultura_id || '',
+        quantidade_produzida: (transacao as any)?.quantidade_produzida || ('' as any),
       })
+      if ((transacao as any)?.cultura_id && culturasConfig) {
+        const c = culturasConfig.find((x: any) => x.id === (transacao as any).cultura_id)
+        if (c) setUnidadeLabel(c.unidade_label || '')
+      }
     } else {
       form.reset({
         tipo: 'despesa', descricao: '', categoria: '', valor: '' as any,
         status: 'pendente', data_pagamento: null, fornecedor_cliente: '',
         numero_nf: '', forma_pagamento: '', talhao_id: '', observacoes: '',
         parcelar: false, num_parcelas: '' as any,
+        cultura_id: '', quantidade_produzida: '' as any,
       })
+      setUnidadeLabel('')
     }
   }, [transacao, open])
 
