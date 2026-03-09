@@ -110,7 +110,23 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
 
   const watchStatus = form.watch('status')
   const watchParcelar = form.watch('parcelar')
+  const watchTipo = form.watch('tipo')
+  const watchCategoria = form.watch('categoria')
   const isEditing = !!transacao
+
+  const [unidadeLabel, setUnidadeLabel] = useState('')
+
+  const showCulturaFields = watchTipo === 'receita' && watchCategoria === 'venda_producao'
+
+  const { data: culturasConfig } = useQuery({
+    queryKey: ['culturas-config'],
+    queryFn: async () => {
+      const { data } = await supabase.from('culturas_config')
+        .select('id, nome_exibicao, unidade_label').eq('ativo', true)
+      return data || []
+    },
+    enabled: showCulturaFields,
+  })
 
   useEffect(() => {
     if (transacao) {
