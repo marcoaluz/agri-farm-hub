@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useQuery } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { format } from 'date-fns'
@@ -25,6 +26,7 @@ import {
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useTalhoes } from '@/hooks/useTalhoes'
 import { useCreateTransacao, useUpdateTransacao, type Transacao } from '@/hooks/useTransacoes'
+import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
 const categorias = [
@@ -63,6 +65,8 @@ const schema = z.object({
   observacoes: z.string().optional(),
   parcelar: z.boolean().default(false),
   num_parcelas: z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().min(2).max(48).optional()),
+  cultura_id: z.string().optional(),
+  quantidade_produzida: z.preprocess((v) => (v === '' || v === undefined || v === null ? undefined : Number(v)), z.number().positive().optional()),
 }).refine((d) => {
   if (d.status === 'pago' && !d.data_pagamento) return false
   return true
@@ -108,7 +112,23 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
 
   const watchStatus = form.watch('status')
   const watchParcelar = form.watch('parcelar')
+  const watchTipo = form.watch('tipo')
+  const watchCategoria = form.watch('categoria')
   const isEditing = !!transacao
+
+  const [unidadeLabel, setUnidadeLabel] = useState('')
+
+  const showCulturaFields = watchTipo === 'receita' && watchCategoria === 'venda_producao'
+
+  const { data: culturasConfig } = useQuery({
+    queryKey: ['culturas-config'],
+    queryFn: async () => {
+      const { data } = await supabase.from('culturas_config')
+        .select('id, nome_exibicao, unidade_label').eq('ativo', true)
+      return data || []
+    },
+    enabled: showCulturaFields,
+  })
 
   useEffect(() => {
     if (transacao) {
@@ -127,14 +147,22 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         observacoes: transacao.observacoes || '',
         parcelar: false,
         num_parcelas: '' as any,
+        cultura_id: (transacao as any)?.cultura_id || '',
+        quantidade_produzida: (transacao as any)?.quantidade_produzida || ('' as any),
       })
+      if ((transacao as any)?.cultura_id && culturasConfig) {
+        const c = culturasConfig.find((x: any) => x.id === (transacao as any).cultura_id)
+        if (c) setUnidadeLabel(c.unidade_label || '')
+      }
     } else {
       form.reset({
         tipo: 'despesa', descricao: '', categoria: '', valor: '' as any,
         status: 'pendente', data_pagamento: null, fornecedor_cliente: '',
         numero_nf: '', forma_pagamento: '', talhao_id: '', observacoes: '',
         parcelar: false, num_parcelas: '' as any,
+        cultura_id: '', quantidade_produzida: '' as any,
       })
+      setUnidadeLabel('')
     }
   }, [transacao, open])
 
@@ -157,7 +185,9 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       forma_pagamento: data.forma_pagamento || null,
       talhao_id: data.talhao_id || null,
       observacoes: data.observacoes || null,
-    }
+      cultura_id: showCulturaFields ? (data.cultura_id || null) : null,
+      quantidade_produzida: showCulturaFields ? (data.quantidade_produzida || null) : null,
+    } as any
 
     try {
       if (isEditing) {
@@ -248,6 +278,43 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                 </FormItem>
               )} />
             </div>
+
+            {/* Cultura & Quantidade (venda_producao) */}
+            {showCulturaFields && (
+              <div className="space-y-3 rounded-lg border border-border p-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="cultura_id" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cultura vendida</FormLabel>
+                      <Select value={String(field.value || 'none')} onValueChange={(v) => {
+                        const val = v === 'none' ? '' : v
+                        field.onChange(val)
+                        const c = culturasConfig?.find((x: any) => x.id === val)
+                        setUnidadeLabel(c?.unidade_label || '')
+                      }}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                        <SelectContent className="bg-popover border border-border">
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {culturasConfig?.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.nome_exibicao}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="quantidade_produzida" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{`Quantidade vendida (${unidadeLabel || 'unidades'})`}</FormLabel>
+                      <FormControl><Input type="number" step="0.01" min="0" value={field.value ?? ''} onChange={e => field.onChange(e.target.value)} placeholder="0" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ao salvar, o estoque disponível do talhão será atualizado automaticamente.
+                </p>
+              </div>
+            )}
 
             {/* Status + Data Pagamento */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
