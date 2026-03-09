@@ -262,6 +262,8 @@ export default function Dashboard() {
           )}
         </ChartCard>
 
+        <CardClima />
+
         <ChartCard title="Distribuição por Categoria" description="Custos por tipo de serviço">
           {loadCat ? (
             <Skeleton className="h-[280px] rounded-lg" />
