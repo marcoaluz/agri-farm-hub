@@ -10,6 +10,7 @@ import {
 import {
   ClipboardList, DollarSign, MapPin, TrendingUp, TrendingDown,
   Wheat, CheckCircle, AlertTriangle, ArrowRight,
+  Coffee, Apple, Sprout, Leaf,
 } from 'lucide-react'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { supabase } from '@/lib/supabase'
@@ -18,6 +19,8 @@ import { ChartCard } from '@/components/common/ChartCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { CardClima } from '@/components/dashboard/CardClima'
 
 const PIE_COLORS = [
@@ -109,6 +112,44 @@ export default function Dashboard() {
     },
     enabled: !!propId,
   })
+
+  const { data: producaoSafra, isLoading: loadProd } = useQuery({
+    queryKey: ['dash-producao', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('producoes')
+        .select(`*, cultura:culturas_config(nome_exibicao, unidade_label, icone), talhao:talhoes(nome)`)
+        .eq('propriedade_id', propId)
+        .eq('safra_id', safraId)
+      if (error) throw error
+      return (data || []) as any[]
+    },
+    enabled,
+  })
+
+  const producaoAgrupada = useMemo(() => {
+    if (!producaoSafra?.length) return []
+    const map = new Map<string, { nome: string; unidade: string; icone: string; colhido: number; vendido: number; disponivel: number }>()
+    producaoSafra.forEach((p: any) => {
+      const nome = p.cultura?.nome_exibicao || 'Sem cultura'
+      const existing = map.get(nome)
+      if (existing) {
+        existing.colhido += Number(p.quantidade_colhida || 0)
+        existing.vendido += Number(p.quantidade_vendida || 0)
+        existing.disponivel += Number(p.quantidade_disponivel || 0)
+      } else {
+        map.set(nome, {
+          nome,
+          unidade: p.cultura?.unidade_label || 'un',
+          icone: p.cultura?.icone || '',
+          colhido: Number(p.quantidade_colhida || 0),
+          vendido: Number(p.quantidade_vendida || 0),
+          disponivel: Number(p.quantidade_disponivel || 0),
+        })
+      }
+    })
+    return Array.from(map.values())
+  }, [producaoSafra])
 
   // --- Computed ---
   const totalLanc = lancData?.length ?? 0
@@ -239,6 +280,60 @@ export default function Dashboard() {
               variant={saldo >= 0 ? 'success' : 'warning'}
             />
           </>
+        )}
+      </div>
+
+      {/* Produção da Safra */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-3">Produção da Safra</h2>
+        {loadProd ? (
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
+          </div>
+        ) : producaoAgrupada.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+              <Sprout className="h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground mb-4">Nenhuma colheita registrada nesta safra</p>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/talhoes">Registrar Produção</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {producaoAgrupada.map((item) => {
+              const pct = item.colhido > 0 ? Math.round((item.vendido / item.colhido) * 100) : 0
+              const IconComp = item.icone === 'coffee' ? Coffee : item.icone === 'wheat' ? Wheat : item.icone === 'apple' ? Apple : item.icone === 'sprout' ? Sprout : Leaf
+              return (
+                <Card key={item.nome}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <IconComp className="h-5 w-5 text-primary" />
+                      <Badge variant="secondary">{item.nome}</Badge>
+                    </div>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <p>Colhido: <span className="font-medium text-foreground">{item.colhido.toLocaleString('pt-BR')} {item.unidade}</span></p>
+                      <p>Vendido: <span className="font-medium text-foreground">{item.vendido.toLocaleString('pt-BR')} {item.unidade}</span></p>
+                    </div>
+                    <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-200 hover:bg-emerald-500/20">
+                      Disponível: {item.disponivel.toLocaleString('pt-BR')} {item.unidade}
+                    </Badge>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Vendido</span>
+                        <span>{pct}%</span>
+                      </div>
+                      <Progress
+                        value={pct}
+                        className={`h-2 ${pct > 80 ? '[&>div]:bg-destructive' : pct >= 50 ? '[&>div]:bg-warning' : '[&>div]:bg-success'}`}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
         )}
       </div>
 
