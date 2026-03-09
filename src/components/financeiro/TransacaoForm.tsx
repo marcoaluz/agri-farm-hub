@@ -65,6 +65,8 @@ const schema = z.object({
   observacoes: z.string().optional(),
   parcelar: z.boolean().default(false),
   num_parcelas: z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().min(2).max(48).optional()),
+  cultura_id: z.string().optional(),
+  quantidade_produzida: z.preprocess((v) => (v === '' || v === undefined || v === null ? undefined : Number(v)), z.number().positive().optional()),
 }).refine((d) => {
   if (d.status === 'pago' && !d.data_pagamento) return false
   return true
