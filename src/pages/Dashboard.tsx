@@ -113,6 +113,44 @@ export default function Dashboard() {
     enabled: !!propId,
   })
 
+  const { data: producaoSafra, isLoading: loadProd } = useQuery({
+    queryKey: ['dash-producao', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('producoes')
+        .select(`*, cultura:culturas_config(nome_exibicao, unidade_label, icone), talhao:talhoes(nome)`)
+        .eq('propriedade_id', propId)
+        .eq('safra_id', safraId)
+      if (error) throw error
+      return (data || []) as any[]
+    },
+    enabled,
+  })
+
+  const producaoAgrupada = useMemo(() => {
+    if (!producaoSafra?.length) return []
+    const map = new Map<string, { nome: string; unidade: string; icone: string; colhido: number; vendido: number; disponivel: number }>()
+    producaoSafra.forEach((p: any) => {
+      const nome = p.cultura?.nome_exibicao || 'Sem cultura'
+      const existing = map.get(nome)
+      if (existing) {
+        existing.colhido += Number(p.quantidade_colhida || 0)
+        existing.vendido += Number(p.quantidade_vendida || 0)
+        existing.disponivel += Number(p.quantidade_disponivel || 0)
+      } else {
+        map.set(nome, {
+          nome,
+          unidade: p.cultura?.unidade_label || 'un',
+          icone: p.cultura?.icone || '',
+          colhido: Number(p.quantidade_colhida || 0),
+          vendido: Number(p.quantidade_vendida || 0),
+          disponivel: Number(p.quantidade_disponivel || 0),
+        })
+      }
+    })
+    return Array.from(map.values())
+  }, [producaoSafra])
+
   // --- Computed ---
   const totalLanc = lancData?.length ?? 0
   const custoTotal = lancData?.reduce((s: number, l: any) => s + Number(l.custo_total || 0), 0) ?? 0
