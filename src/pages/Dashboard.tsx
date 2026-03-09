@@ -283,6 +283,60 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* Produção da Safra */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-3">Produção da Safra</h2>
+        {loadProd ? (
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
+          </div>
+        ) : producaoAgrupada.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+              <Sprout className="h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground mb-4">Nenhuma colheita registrada nesta safra</p>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/talhoes">Registrar Produção</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {producaoAgrupada.map((item) => {
+              const pct = item.colhido > 0 ? Math.round((item.vendido / item.colhido) * 100) : 0
+              const IconComp = item.icone === 'coffee' ? Coffee : item.icone === 'wheat' ? Wheat : item.icone === 'apple' ? Apple : item.icone === 'sprout' ? Sprout : Leaf
+              return (
+                <Card key={item.nome}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <IconComp className="h-5 w-5 text-primary" />
+                      <Badge variant="secondary">{item.nome}</Badge>
+                    </div>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <p>Colhido: <span className="font-medium text-foreground">{item.colhido.toLocaleString('pt-BR')} {item.unidade}</span></p>
+                      <p>Vendido: <span className="font-medium text-foreground">{item.vendido.toLocaleString('pt-BR')} {item.unidade}</span></p>
+                    </div>
+                    <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-200 hover:bg-emerald-500/20">
+                      Disponível: {item.disponivel.toLocaleString('pt-BR')} {item.unidade}
+                    </Badge>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Vendido</span>
+                        <span>{pct}%</span>
+                      </div>
+                      <Progress
+                        value={pct}
+                        className={`h-2 ${pct > 80 ? '[&>div]:bg-destructive' : pct >= 50 ? '[&>div]:bg-warning' : '[&>div]:bg-success'}`}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-3">
         <ChartCard title="Investimento por Mês" description="Custos consolidados por mês" className="lg:col-span-2">
