@@ -286,7 +286,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                   <FormField control={form.control} name="cultura_id" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Cultura vendida</FormLabel>
-                      <Select value={field.value || 'none'} onValueChange={(v) => {
+                      <Select value={String(field.value || 'none')} onValueChange={(v) => {
                         const val = v === 'none' ? '' : v
                         field.onChange(val)
                         const c = culturasConfig?.find((x: any) => x.id === val)
