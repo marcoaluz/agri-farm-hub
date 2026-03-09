@@ -277,6 +277,43 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
               )} />
             </div>
 
+            {/* Cultura & Quantidade (venda_producao) */}
+            {showCulturaFields && (
+              <div className="space-y-3 rounded-lg border border-border p-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="cultura_id" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cultura vendida</FormLabel>
+                      <Select value={field.value || 'none'} onValueChange={(v) => {
+                        const val = v === 'none' ? '' : v
+                        field.onChange(val)
+                        const c = culturasConfig?.find((x: any) => x.id === val)
+                        setUnidadeLabel(c?.unidade_label || '')
+                      }}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                        <SelectContent className="bg-popover border border-border">
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {culturasConfig?.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.nome_exibicao}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="quantidade_produzida" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{`Quantidade vendida (${unidadeLabel || 'unidades'})`}</FormLabel>
+                      <FormControl><Input type="number" step="0.01" min="0" {...field} placeholder="0" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ao salvar, o estoque disponível do talhão será atualizado automaticamente.
+                </p>
+              </div>
+            )}
+
             {/* Status + Data Pagamento */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField control={form.control} name="status" render={({ field }) => (

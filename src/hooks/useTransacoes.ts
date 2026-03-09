@@ -23,6 +23,8 @@ export interface Transacao {
   lancamento_id: string | null
   origem: 'manual' | 'lancamento' | 'abastecimento'
   criado_por: string | null
+  cultura_id?: string | null
+  quantidade_produzida?: number | null
   created_at: string
   updated_at: string
   talhao?: { nome: string } | null
