@@ -10,6 +10,7 @@ import {
 import {
   ClipboardList, DollarSign, MapPin, TrendingUp, TrendingDown,
   Wheat, CheckCircle, AlertTriangle, ArrowRight,
+  Coffee, Apple, Sprout, Leaf,
 } from 'lucide-react'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { supabase } from '@/lib/supabase'
