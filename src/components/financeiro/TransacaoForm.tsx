@@ -26,6 +26,7 @@ import {
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useTalhoes } from '@/hooks/useTalhoes'
 import { useCreateTransacao, useUpdateTransacao, type Transacao } from '@/hooks/useTransacoes'
+import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
 const categorias = [
