@@ -7,30 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Plus, Edit, Trash2, Maximize2, AlertCircle, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TalhaoForm } from "@/components/talhoes/TalhaoForm";
+import { CulturasProducao } from "@/components/talhoes/CulturasProducao";
 
 interface Talhao {
   id: string;
   nome: string;
   area_ha: number;
   cultura_atual?: string;
-  /*status?: string;*/
   localizacao?: string;
-  /*observacoes?: string;*/
   propriedade_id: string;
   ativo: boolean;
   created_at: string;
@@ -39,8 +32,8 @@ interface Talhao {
 export function Talhoes() {
   const { propriedadeAtual } = useGlobal();
   const queryClient = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [talhaoEditando, setTalhaoEditando] = useState<Talhao | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [detalheTalhao, setDetalheTalhao] = useState<Talhao | null>(null);
   const [busca, setBusca] = useState("");
 
   const { data: talhoes, isLoading } = useQuery({
@@ -52,7 +45,6 @@ export function Talhoes() {
         .eq("propriedade_id", propriedadeAtual?.id)
         .eq("ativo", true)
         .order("nome");
-
       if (error) throw error;
       return data as Talhao[];
     },
@@ -60,7 +52,6 @@ export function Talhoes() {
   });
 
   const talhoesFiltrados = talhoes?.filter((t) => t.nome.toLowerCase().includes(busca.toLowerCase()));
-
   const areaTotal = talhoes?.reduce((sum, t) => sum + (t.area_ha || 0), 0) || 0;
 
   if (!propriedadeAtual) {
@@ -91,21 +82,18 @@ export function Talhoes() {
           <p className="text-muted-foreground mt-1">Gerencie as áreas de plantio de {propriedadeAtual.nome}</p>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setTalhaoEditando(null)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Talhão
-            </Button>
+            <Button><Plus className="h-4 w-4 mr-2" />Novo Talhão</Button>
           </DialogTrigger>
           <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Novo Talhão</DialogTitle>
+            </DialogHeader>
             <TalhaoForm
-              talhao={talhaoEditando}
+              talhao={null}
               propriedadeId={propriedadeAtual.id}
-              onSuccess={() => {
-                setDialogOpen(false);
-                setTalhaoEditando(null);
-              }}
+              onSuccess={() => setCreateDialogOpen(false)}
             />
           </DialogContent>
         </Dialog>
@@ -116,8 +104,8 @@ export function Talhoes() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 dark:bg-blue-950 rounded-lg">
-                <MapPin className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <MapPin className="h-6 w-6 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total de Talhões</p>
@@ -126,12 +114,11 @@ export function Talhoes() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 dark:bg-green-950 rounded-lg">
-                <Maximize2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+              <div className="p-3 bg-success/10 rounded-lg">
+                <Maximize2 className="h-6 w-6 text-success" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Área Total</p>
@@ -140,12 +127,11 @@ export function Talhoes() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-100 dark:bg-purple-950 rounded-lg">
-                <Maximize2 className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+              <div className="p-3 bg-accent/20 rounded-lg">
+                <Maximize2 className="h-6 w-6 text-accent-foreground" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Área Média</p>
@@ -161,20 +147,13 @@ export function Talhoes() {
       {/* Busca */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar talhão..."
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          className="pl-10"
-        />
+        <Input placeholder="Buscar talhão..." value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-10" />
       </div>
 
       {/* Lista de Talhões */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-48 w-full" />
-          ))}
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-48 w-full" />)}
         </div>
       ) : talhoesFiltrados?.length === 0 ? (
         <Card>
@@ -187,9 +166,8 @@ export function Talhoes() {
               {busca ? "Tente ajustar sua busca" : "Crie seu primeiro talhão para organizar as áreas de plantio"}
             </p>
             {!busca && (
-              <Button onClick={() => setDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Primeiro Talhão
+              <Button onClick={() => setCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />Criar Primeiro Talhão
               </Button>
             )}
           </CardContent>
@@ -200,28 +178,58 @@ export function Talhoes() {
             <TalhaoCard
               key={talhao.id}
               talhao={talhao}
-              onEdit={() => {
-                setTalhaoEditando(talhao);
-                setDialogOpen(true);
-              }}
+              onClick={() => setDetalheTalhao(talhao)}
             />
           ))}
         </div>
       )}
+
+      {/* Dialog de Detalhes com Tabs */}
+      <Dialog open={!!detalheTalhao} onOpenChange={(open) => { if (!open) setDetalheTalhao(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" />
+              {detalheTalhao?.nome}
+            </DialogTitle>
+          </DialogHeader>
+
+          {detalheTalhao && (
+            <Tabs defaultValue="dados" className="w-full">
+              <TabsList className="w-full">
+                <TabsTrigger value="dados" className="flex-1">Dados Gerais</TabsTrigger>
+                <TabsTrigger value="culturas" className="flex-1">Culturas & Produção</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="dados">
+                <TalhaoForm
+                  talhao={detalheTalhao}
+                  propriedadeId={propriedadeAtual.id}
+                  onSuccess={() => setDetalheTalhao(null)}
+                />
+              </TabsContent>
+
+              <TabsContent value="culturas">
+                <CulturasProducao talhao={detalheTalhao} />
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function TalhaoCard({ talhao, onEdit }: { talhao: Talhao; onEdit: () => void }) {
+/* ── TalhaoCard ── */
+
+function TalhaoCard({ talhao, onClick }: { talhao: Talhao; onClick: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("talhoes").update({ ativo: false }).eq("id", talhao.id);
-
       if (error) throw error;
     },
     onSuccess: () => {
@@ -229,32 +237,27 @@ function TalhaoCard({ talhao, onEdit }: { talhao: Talhao; onEdit: () => void }) 
       queryClient.invalidateQueries({ queryKey: ["talhoes"] });
     },
     onError: () => {
-      toast({
-        title: "Erro ao remover talhão",
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao remover talhão", variant: "destructive" });
     },
   });
 
   return (
-    <Card className="hover:shadow-lg transition-all">
+    <Card className="hover:shadow-lg transition-all cursor-pointer" onClick={onClick}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <h3 className="text-xl font-bold mb-1">{talhao.nome}</h3>
             <div className="flex items-center gap-2 text-sm">
               <Maximize2 className="h-4 w-4 text-muted-foreground" />
-              <span className="font-semibold text-green-600 dark:text-green-400 text-lg">{talhao.area_ha} ha</span>
+              <span className="font-semibold text-success text-lg">{talhao.area_ha} ha</span>
             </div>
           </div>
-
-          <div className="flex gap-1">
-            <Button variant="ghost" size="icon" onClick={onEdit}>
+          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="icon" onClick={onClick}>
               <Edit className="h-4 w-4" />
             </Button>
             <Button
-              variant="ghost"
-              size="icon"
+              variant="ghost" size="icon"
               onClick={() => setDeleteDialogOpen(true)}
               disabled={deleteMutation.isPending}
               className="text-destructive hover:text-destructive"
@@ -270,16 +273,14 @@ function TalhaoCard({ talhao, onEdit }: { talhao: Talhao; onEdit: () => void }) 
             <span className="font-medium">{talhao.cultura_atual}</span>
           </div>
         )}
-
       </CardContent>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação irá desativar o talhão <strong>"{talhao.nome}"</strong>. 
-              Ele não será excluído permanentemente e pode ser reativado posteriormente.
+              Esta ação irá desativar o talhão <strong>"{talhao.nome}"</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -295,132 +296,6 @@ function TalhaoCard({ talhao, onEdit }: { talhao: Talhao; onEdit: () => void }) 
         </AlertDialogContent>
       </AlertDialog>
     </Card>
-  );
-}
-
-function TalhaoForm({
-  talhao,
-  propriedadeId,
-  onSuccess,
-}: {
-  talhao: Talhao | null;
-  propriedadeId: string;
-  onSuccess: () => void;
-}) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const [formData, setFormData] = useState({
-    nome: talhao?.nome || "",
-    area_ha: talhao?.area_ha || 0,
-    cultura_atual: talhao?.cultura_atual || "",
-  });
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.nome.trim()) {
-      newErrors.nome = "Nome é obrigatório";
-    }
-
-    if (formData.area_ha <= 0) {
-      newErrors.area_ha = "Área deve ser maior que zero";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      if (talhao) {
-        const { error } = await supabase.from("talhoes").update(formData).eq("id", talhao.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("talhoes").insert({
-          ...formData,
-          propriedade_id: propriedadeId,
-          ativo: true,
-        });
-
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      toast({ title: `Talhão ${talhao ? "atualizado" : "criado"} com sucesso` });
-      queryClient.invalidateQueries({ queryKey: ["talhoes"] });
-      onSuccess();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao salvar talhão",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = () => {
-    if (validateForm()) {
-      mutation.mutate();
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <DialogHeader>
-        <DialogTitle>{talhao ? "Editar" : "Novo"} Talhão</DialogTitle>
-      </DialogHeader>
-
-      <div className="space-y-4">
-        <div>
-          <Label>Nome do Talhão *</Label>
-          <Input
-            value={formData.nome}
-            onChange={(e) => setFormData((prev) => ({ ...prev, nome: e.target.value }))}
-            placeholder="Ex: Talhão 01, Área Norte, etc."
-            className={errors.nome ? "border-destructive" : ""}
-          />
-          {errors.nome && <p className="text-sm text-destructive mt-1">{errors.nome}</p>}
-        </div>
-
-        <div>
-          <Label>Área (hectares) *</Label>
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.area_ha || ""}
-            onChange={(e) => setFormData((prev) => ({ ...prev, area_ha: parseFloat(e.target.value) || 0 }))}
-            placeholder="0.00"
-            className={errors.area_ha ? "border-destructive" : ""}
-          />
-          {errors.area_ha && <p className="text-sm text-destructive mt-1">{errors.area_ha}</p>}
-        </div>
-
-        <div>
-          <Label>Cultura Atual</Label>
-          <Input
-            value={formData.cultura_atual}
-            onChange={(e) => setFormData((prev) => ({ ...prev, cultura_atual: e.target.value }))}
-            placeholder="Ex: Soja, Milho, Algodão..."
-          />
-        </div>
-
-      </div>
-
-      <div className="flex justify-end gap-2 pt-4">
-        <Button variant="outline" onClick={onSuccess}>
-          Cancelar
-        </Button>
-        <Button onClick={handleSubmit} disabled={mutation.isPending}>
-          {mutation.isPending ? "Salvando..." : "Salvar"}
-        </Button>
-      </div>
-    </div>
   );
 }
 
