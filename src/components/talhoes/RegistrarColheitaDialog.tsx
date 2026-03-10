@@ -139,7 +139,7 @@ export function RegistrarColheitaDialog({ open, onOpenChange, talhaoId, culturaI
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button
               onClick={() => mutation.mutate()}
-              disabled={mutation.isPending || !quantidade || Number(quantidade) <= 0}
+              disabled={mutation.isPending || !quantidade || Number(quantidade) <= 0 || !propriedadeAtual?.id || !safraAtual?.id}
             >
               {mutation.isPending ? "Salvando..." : "Registrar Colheita"}
             </Button>
