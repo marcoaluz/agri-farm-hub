@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { useQuery } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -91,6 +91,9 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const createMutation = useCreateTransacao()
   const updateMutation = useUpdateTransacao()
 
+  const [modoValor, setModoValor] = useState<'unidade' | 'total'>('unidade')
+  const [precoUnitario, setPrecoUnitario] = useState<number>(0)
+
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -114,6 +117,8 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const watchParcelar = form.watch('parcelar')
   const watchTipo = form.watch('tipo')
   const watchCategoria = form.watch('categoria')
+  const watchValor = form.watch('valor')
+  const watchQuantidade = form.watch('quantidade_produzida')
   const isEditing = !!transacao
 
   const [unidadeLabel, setUnidadeLabel] = useState('')
@@ -129,6 +134,35 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
     },
     enabled: showCulturaFields,
   })
+
+  const watchCulturaId = form.watch('cultura_id')
+  const nomeCultura = useMemo(() => {
+    if (!culturasConfig || !watchCulturaId) return ''
+    return culturasConfig.find((c: any) => c.id === watchCulturaId)?.nome_exibicao || ''
+  }, [culturasConfig, watchCulturaId])
+
+  // Auto-calculate valor in 'unidade' mode
+  useEffect(() => {
+    if (!showCulturaFields || modoValor !== 'unidade') return
+    const qty = Number(watchQuantidade) || 0
+    if (precoUnitario > 0 && qty > 0) {
+      form.setValue('valor', Math.round(precoUnitario * qty * 100) / 100)
+    }
+  }, [modoValor, precoUnitario, watchQuantidade, showCulturaFields])
+
+  const valorTotal = useMemo(() => {
+    if (!showCulturaFields) return 0
+    const qty = Number(watchQuantidade) || 0
+    if (modoValor === 'unidade') return Math.round(precoUnitario * qty * 100) / 100
+    return Number(watchValor) || 0
+  }, [showCulturaFields, modoValor, precoUnitario, watchQuantidade, watchValor])
+
+  const precoUnitarioCalc = useMemo(() => {
+    if (modoValor !== 'total') return 0
+    const qty = Number(watchQuantidade) || 0
+    if (qty <= 0) return 0
+    return (Number(watchValor) || 0) / qty
+  }, [modoValor, watchValor, watchQuantidade])
 
   useEffect(() => {
     if (transacao) {
@@ -154,6 +188,8 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         const c = culturasConfig.find((x: any) => x.id === (transacao as any).cultura_id)
         if (c) setUnidadeLabel(c.unidade_label || '')
       }
+      setModoValor('total')
+      setPrecoUnitario(0)
     } else {
       form.reset({
         tipo: 'despesa', descricao: '', categoria: '', valor: '' as any,
@@ -163,6 +199,8 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         cultura_id: '', quantidade_produzida: '' as any,
       })
       setUnidadeLabel('')
+      setModoValor('unidade')
+      setPrecoUnitario(0)
     }
   }, [transacao, open])
 
@@ -170,6 +208,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
     const safraId = typeof safraAtual === 'object' ? safraAtual?.id : safraAtual
     if (!propId || !safraId) { toast.error('Selecione propriedade e safra'); return }
 
+    // In 'unidade' mode the form valor is already calculated (price * qty)
     const payload = {
       propriedade_id: propId,
       safra_id: safraId,
@@ -249,36 +288,6 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
               )} />
             </div>
 
-            {/* Valor + Vencimento */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField control={form.control} name="valor" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Valor (R$) *</FormLabel>
-                  <FormControl><Input type="number" step="0.01" min="0" {...field} placeholder="0,00" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="data_vencimento" render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Data Vencimento *</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button variant="outline" className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}>
-                          {field.value ? format(field.value, 'dd/MM/yyyy') : 'Selecione'}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
-
             {/* Cultura & Quantidade (venda_producao) */}
             {showCulturaFields && (
               <div className="space-y-3 rounded-lg border border-border p-3">
@@ -310,11 +319,99 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                     </FormItem>
                   )} />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
+
+                {/* Toggle modo valor */}
+                <div className="flex gap-1 rounded-lg border border-border p-1 bg-muted/50">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={modoValor === 'unidade' ? 'default' : 'ghost'}
+                    className="flex-1 text-xs"
+                    onClick={() => setModoValor('unidade')}
+                  >
+                    💰 Por Unidade
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={modoValor === 'total' ? 'default' : 'ghost'}
+                    className="flex-1 text-xs"
+                    onClick={() => setModoValor('total')}
+                  >
+                    📦 Total
+                  </Button>
+                </div>
+
+                {/* Valor field for venda_producao */}
+                {modoValor === 'unidade' ? (
+                  <div className="space-y-1">
+                    <FormLabel>{`Preço por ${unidadeLabel || 'unidade'} (R$) *`}</FormLabel>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={precoUnitario || ''}
+                      onChange={e => setPrecoUnitario(Number(e.target.value) || 0)}
+                      placeholder="0,00"
+                    />
+                    {precoUnitario > 0 && Number(watchQuantidade) > 0 && (
+                      <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                        Total a receber: R$ {valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <FormField control={form.control} name="valor" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Valor total recebido (R$) *</FormLabel>
+                      <FormControl><Input type="number" step="0.01" min="0" {...field} placeholder="0,00" /></FormControl>
+                      <FormMessage />
+                      {Number(watchQuantidade) > 0 && Number(watchValor) > 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          Preço por {unidadeLabel || 'unidade'}: R$ {precoUnitarioCalc.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                      )}
+                    </FormItem>
+                  )} />
+                )}
+
+                <p className="text-xs text-muted-foreground">
                   Ao salvar, o estoque disponível do talhão será atualizado automaticamente.
                 </p>
               </div>
             )}
+
+            {/* Valor + Vencimento (non venda_producao) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {!showCulturaFields && (
+                <FormField control={form.control} name="valor" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor (R$) *</FormLabel>
+                    <FormControl><Input type="number" step="0.01" min="0" {...field} placeholder="0,00" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
+              <FormField control={form.control} name="data_vencimento" render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Data Vencimento *</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button variant="outline" className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}>
+                          {field.value ? format(field.value, 'dd/MM/yyyy') : 'Selecione'}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
 
             {/* Status + Data Pagamento */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -426,6 +523,19 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                     </FormItem>
                   )} />
                 )}
+              </div>
+            )}
+
+            {/* Resumo da venda */}
+            {showCulturaFields && valorTotal > 0 && nomeCultura && (
+              <div className="rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-3 text-sm">
+                <p className="font-medium text-green-800 dark:text-green-300">Resumo da venda</p>
+                <p className="text-green-700 dark:text-green-400">
+                  {Number(watchQuantidade) || 0} {unidadeLabel || 'unidades'} de {nomeCultura}
+                </p>
+                <p className="text-green-700 dark:text-green-400">
+                  Valor total: <strong>R$ {valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                </p>
               </div>
             )}
 
