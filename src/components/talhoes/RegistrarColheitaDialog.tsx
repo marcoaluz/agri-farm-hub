@@ -49,6 +49,7 @@ export function RegistrarColheitaDialog({ open, onOpenChange, talhaoId, culturaI
         .from("producoes")
         .upsert(
           {
+            propriedade_id: propriedadeAtual!.id,
             talhao_id: talhaoId,
             safra_id: safraAtual!.id,
             cultura_id: culturaItem.cultura_id,
