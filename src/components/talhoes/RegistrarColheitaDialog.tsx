@@ -28,7 +28,7 @@ interface RegistrarColheitaDialogProps {
 }
 
 export function RegistrarColheitaDialog({ open, onOpenChange, talhaoId, culturaItem }: RegistrarColheitaDialogProps) {
-  const { safraAtual } = useGlobal();
+  const { safraAtual, propriedadeAtual } = useGlobal();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
