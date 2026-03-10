@@ -43,13 +43,17 @@ export function RegistrarColheitaDialog({ open, onOpenChange, talhaoId, culturaI
 
   const mutation = useMutation({
     mutationFn: async () => {
+      if (!propriedadeAtual?.id || !safraAtual?.id) {
+        throw new Error('Propriedade ou safra não selecionada');
+      }
+
       const novaQuantidade = colhidoAtual + Number(quantidade);
 
       const { error } = await supabase
         .from("producoes")
         .upsert(
           {
-            propriedade_id: propriedadeAtual!.id,
+            propriedade_id: propriedadeAtual.id,
             talhao_id: talhaoId,
             safra_id: safraAtual!.id,
             cultura_id: culturaItem.cultura_id,
@@ -135,7 +139,7 @@ export function RegistrarColheitaDialog({ open, onOpenChange, talhaoId, culturaI
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button
               onClick={() => mutation.mutate()}
-              disabled={mutation.isPending || !quantidade || Number(quantidade) <= 0}
+              disabled={mutation.isPending || !quantidade || Number(quantidade) <= 0 || !propriedadeAtual?.id || !safraAtual?.id}
             >
               {mutation.isPending ? "Salvando..." : "Registrar Colheita"}
             </Button>
