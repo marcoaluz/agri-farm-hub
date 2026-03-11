@@ -137,9 +137,15 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
         <h3 className="text-sm font-medium text-muted-foreground">
           Culturas na safra {safraAtual.nome}
         </h3>
-        <Button size="sm" onClick={() => { setEditingCultura(null); setAddDialogOpen(true); }}>
-          <Plus className="h-4 w-4 mr-1" /> Adicionar Cultura
-        </Button>
+        {todasCadastradas ? (
+          <p className="text-sm text-muted-foreground text-center py-2">
+            Todas as culturas disponíveis já foram cadastradas neste talhão para esta safra.
+          </p>
+        ) : (
+          <Button size="sm" onClick={() => { setEditingCultura(null); setAddDialogOpen(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> Adicionar Cultura
+          </Button>
+        )}
       </div>
 
       {(!culturasTalhao || culturasTalhao.length === 0) ? (
