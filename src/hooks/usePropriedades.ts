@@ -9,6 +9,8 @@ interface PropriedadeFormData {
   area_total?: number | null
   localizacao?: string
   responsavel?: string
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export function usePropriedades() {
@@ -40,6 +42,8 @@ export function usePropriedades() {
           area_total: propriedade.area_total ?? null,
           localizacao: propriedade.localizacao || null,
           responsavel: propriedade.responsavel || null,
+          latitude: propriedade.latitude ?? null,
+          longitude: propriedade.longitude ?? null,
           user_id: user!.id,
         })
         .select()
@@ -79,6 +83,8 @@ export function usePropriedades() {
           area_total: updates.area_total ?? null,
           localizacao: updates.localizacao || null,
           responsavel: updates.responsavel || null,
+          latitude: updates.latitude ?? null,
+          longitude: updates.longitude ?? null,
         })
         .eq('id', id)
         .select()

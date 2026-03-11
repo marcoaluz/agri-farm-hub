@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2 } from 'lucide-react'
+import { Loader2, MapPin } from 'lucide-react'
 
 const propriedadeSchema = z.object({
   nome: z.string().trim().min(3, 'Nome deve ter no mínimo 3 caracteres').max(255, 'Nome muito longo'),
@@ -34,6 +34,8 @@ const propriedadeSchema = z.object({
     .optional(),
   localizacao: z.string().trim().max(500, 'Localização muito longa').optional().or(z.literal('')),
   responsavel: z.string().trim().max(255, 'Nome muito longo').optional().or(z.literal('')),
+  latitude: z.coerce.number().min(-90, 'Latitude inválida').max(90, 'Latitude inválida').nullable().optional(),
+  longitude: z.coerce.number().min(-180, 'Longitude inválida').max(180, 'Longitude inválida').nullable().optional(),
 })
 
 type PropriedadeFormValues = z.infer<typeof propriedadeSchema>
@@ -60,10 +62,11 @@ export function PropriedadeForm({
       area_total: null,
       localizacao: '',
       responsavel: '',
+      latitude: null,
+      longitude: null,
     },
   })
 
-  // Reset form when propriedade changes or dialog opens/closes
   useEffect(() => {
     if (open) {
       if (propriedade) {
@@ -72,6 +75,8 @@ export function PropriedadeForm({
           area_total: propriedade.area_total,
           localizacao: propriedade.localizacao || '',
           responsavel: propriedade.responsavel || '',
+          latitude: propriedade.latitude ?? null,
+          longitude: propriedade.longitude ?? null,
         })
       } else {
         form.reset({
@@ -79,6 +84,8 @@ export function PropriedadeForm({
           area_total: null,
           localizacao: '',
           responsavel: '',
+          latitude: null,
+          longitude: null,
         })
       }
     }
@@ -181,6 +188,78 @@ export function PropriedadeForm({
                 </FormItem>
               )}
             />
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <FormLabel>Coordenadas GPS</FormLabel>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (!navigator.geolocation) return
+                    navigator.geolocation.getCurrentPosition(
+                      (pos) => {
+                        form.setValue('latitude', Number(pos.coords.latitude.toFixed(6)))
+                        form.setValue('longitude', Number(pos.coords.longitude.toFixed(6)))
+                      },
+                      () => {},
+                      { timeout: 8000 }
+                    )
+                  }}
+                >
+                  <MapPin className="h-3 w-3 mr-1" />
+                  Usar minha localização
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="latitude"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">Latitude</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.000001"
+                          placeholder="-20.537000"
+                          {...field}
+                          value={field.value ?? ''}
+                          onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="longitude"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">Longitude</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.000001"
+                          placeholder="-47.401000"
+                          {...field}
+                          value={field.value ?? ''}
+                          onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Necessário para exibir a previsão do tempo no Dashboard.
+                Clique em "Usar minha localização" se estiver na propriedade,
+                ou consulte o Google Maps: clique com botão direito no local → copie as coordenadas.
+              </p>
+            </div>
 
             <DialogFooter className="gap-2 sm:gap-0">
               <Button
