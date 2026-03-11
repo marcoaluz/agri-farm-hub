@@ -41,7 +41,7 @@ const PRODUTIVIDADE: Record<string, { por_ha: number | null; por_planta: number 
   outras: { por_ha: null, por_planta: null, unidade: null },
 };
 
-export function AdicionarCulturaForm({ talhao, culturaExistente, onSuccess }: AdicionarCulturaFormProps) {
+export function AdicionarCulturaForm({ talhao, culturaExistente, culturasJaCadastradas = new Set(), onSuccess }: AdicionarCulturaFormProps) {
   const { safraAtual, propriedadeAtual } = useGlobal();
   const { toast } = useToast();
   const queryClient = useQueryClient();
