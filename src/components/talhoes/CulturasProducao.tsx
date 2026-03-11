@@ -240,6 +240,7 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
           <AdicionarCulturaForm
             talhao={talhao}
             culturaExistente={editingCultura}
+            culturasJaCadastradas={culturasJaCadastradas}
             onSuccess={() => {
               setAddDialogOpen(false);
               setEditingCultura(null);
