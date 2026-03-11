@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useGlobal } from "@/contexts/GlobalContext";
@@ -14,12 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 
 interface Talhao {
   id: string;
@@ -37,28 +32,34 @@ interface AdicionarCulturaFormProps {
   onSuccess: () => void;
 }
 
+const PRODUTIVIDADE: Record<string, { por_ha: number | null; por_planta: number | null; unidade: string | null }> = {
+  cafe: { por_ha: 30, por_planta: 0.003, unidade: "Sacas (60kg)" },
+  abacate: { por_ha: 800, por_planta: 2.5, unidade: "Caixas (22kg)" },
+  soja: { por_ha: 55, por_planta: null, unidade: "Sacas (60kg)" },
+  milho: { por_ha: 100, por_planta: null, unidade: "Sacas (60kg)" },
+  outras: { por_ha: null, por_planta: null, unidade: null },
+};
+
 export function AdicionarCulturaForm({ talhao, culturaExistente, onSuccess }: AdicionarCulturaFormProps) {
   const { safraAtual, propriedadeAtual } = useGlobal();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isEditing = !!culturaExistente;
 
-  const [form, setForm] = useState({
-    cultura_id: culturaExistente?.cultura_id || "",
-    area_plantada_ha: culturaExistente?.area_plantada_ha || "",
-    total_plantas: culturaExistente?.total_plantas || "",
-    producao_estimada: culturaExistente?.producao_estimada || "",
-    preco: culturaExistente?.preco_unitario_estimado || "",
-    data_plantio: culturaExistente?.data_plantio ? new Date(culturaExistente.data_plantio) : undefined as Date | undefined,
-    data_colheita_estimada: culturaExistente?.data_colheita_estimada ? new Date(culturaExistente.data_colheita_estimada) : undefined as Date | undefined,
-    observacoes: culturaExistente?.observacoes || "",
-  });
+  const [culturaId, setCulturaId] = useState(culturaExistente?.cultura_id || "");
+  const [areaHa, setAreaHa] = useState<string>(culturaExistente?.area_plantada_ha?.toString() || "");
+  const [totalPlantas, setTotalPlantas] = useState<string>(culturaExistente?.total_plantas?.toString() || "");
+  const [producaoEstimada, setProducaoEstimada] = useState<string>(culturaExistente?.producao_estimada?.toString() || "");
+  const [observacoes, setObservacoes] = useState(culturaExistente?.observacoes || "");
+  const [calculoAutomatico, setCalculoAutomatico] = useState(false);
+  const [editouManualmente, setEditouManualmente] = useState(false);
 
   const { data: culturasConfig } = useQuery({
     queryKey: ["culturas-config"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("culturas_config")
-        .select("id, nome_exibicao, unidade_label, icone")
+        .select("id, nome, nome_exibicao, unidade_label, icone")
         .eq("ativo", true)
         .order("nome_exibicao");
       if (error) throw error;
@@ -66,26 +67,54 @@ export function AdicionarCulturaForm({ talhao, culturaExistente, onSuccess }: Ad
     },
   });
 
-  const culturaSelecionada = culturasConfig?.find((c: any) => c.id === form.cultura_id);
+  const culturaSelecionada = culturasConfig?.find((c: any) => c.id === culturaId);
+  const culturaNome = culturaSelecionada?.nome?.toLowerCase() || "";
   const unidadeLabel = culturaSelecionada?.unidade_label || "unidades";
+
+  // Auto-calculate production estimate
+  useEffect(() => {
+    if (editouManualmente) return;
+    const config = PRODUTIVIDADE[culturaNome] || PRODUTIVIDADE["outras"];
+    if (!config) return;
+
+    const area = Number(areaHa) || 0;
+    const plantas = Number(totalPlantas) || 0;
+    const estimativas: number[] = [];
+
+    if (area > 0 && config.por_ha) {
+      estimativas.push(area * config.por_ha);
+    }
+    if (plantas > 0 && config.por_planta) {
+      estimativas.push(plantas * config.por_planta);
+    }
+
+    if (estimativas.length > 0) {
+      const media = estimativas.reduce((a, b) => a + b, 0) / estimativas.length;
+      setProducaoEstimada(Number(media.toFixed(1)).toString());
+      setCalculoAutomatico(true);
+    } else {
+      setCalculoAutomatico(false);
+    }
+  }, [areaHa, totalPlantas, culturaNome, editouManualmente]);
 
   const mutation = useMutation({
     mutationFn: async () => {
+      if (!propriedadeAtual?.id || !safraAtual?.id) {
+        throw new Error("Propriedade ou safra não selecionada");
+      }
+
       const payload = {
-        propriedade_id: propriedadeAtual!.id,
-        safra_id: safraAtual!.id,
+        propriedade_id: propriedadeAtual.id,
+        safra_id: safraAtual.id,
         talhao_id: talhao.id,
-        cultura_id: form.cultura_id,
-        area_plantada_ha: form.area_plantada_ha ? Number(form.area_plantada_ha) : null,
-        total_plantas: form.total_plantas ? Number(form.total_plantas) : null,
-        producao_estimada: form.producao_estimada ? Number(form.producao_estimada) : null,
-        preco_unitario_estimado: form.preco ? Number(form.preco) : null,
-        data_plantio: form.data_plantio ? format(form.data_plantio, "yyyy-MM-dd") : null,
-        data_colheita_estimada: form.data_colheita_estimada ? format(form.data_colheita_estimada, "yyyy-MM-dd") : null,
-        observacoes: form.observacoes || null,
+        cultura_id: culturaId,
+        area_plantada_ha: areaHa ? Number(areaHa) : null,
+        total_plantas: totalPlantas ? Number(totalPlantas) : null,
+        producao_estimada: producaoEstimada ? Number(producaoEstimada) : null,
+        observacoes: observacoes || null,
       };
 
-      if (culturaExistente) {
+      if (isEditing) {
         const { error } = await supabase
           .from("talhao_culturas")
           .update(payload)
@@ -95,21 +124,19 @@ export function AdicionarCulturaForm({ talhao, culturaExistente, onSuccess }: Ad
         const { error } = await supabase.from("talhao_culturas").insert(payload);
         if (error) throw error;
 
-        // Create producao record
         await supabase.from("producoes").upsert(
           {
-            propriedade_id: propriedadeAtual!.id,
-            safra_id: safraAtual!.id,
+            propriedade_id: propriedadeAtual.id,
+            safra_id: safraAtual.id,
             talhao_id: talhao.id,
-            cultura_id: form.cultura_id,
-            preco_unitario_estimado: form.preco ? Number(form.preco) : null,
+            cultura_id: culturaId,
           },
           { onConflict: "talhao_id,safra_id,cultura_id", ignoreDuplicates: true }
         );
       }
     },
     onSuccess: () => {
-      toast({ title: `Cultura ${culturaExistente ? "atualizada" : "adicionada"} com sucesso` });
+      toast({ title: `Cultura ${isEditing ? "atualizada" : "adicionada"} com sucesso` });
       queryClient.invalidateQueries({ queryKey: ["talhao-culturas"] });
       onSuccess();
     },
@@ -119,128 +146,101 @@ export function AdicionarCulturaForm({ talhao, culturaExistente, onSuccess }: Ad
   });
 
   const handleSubmit = () => {
-    if (!form.cultura_id) {
+    if (!culturaId) {
       toast({ title: "Selecione uma cultura", variant: "destructive" });
       return;
     }
     mutation.mutate();
   };
 
+  const hasProductivityData = PRODUTIVIDADE[culturaNome] && PRODUTIVIDADE[culturaNome].por_ha !== null;
+
   return (
     <div className="space-y-4">
+      {/* Cultura */}
       <div>
         <Label>Cultura *</Label>
-        <Select value={form.cultura_id} onValueChange={(v) => setForm((p) => ({ ...p, cultura_id: v }))}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione a cultura" />
-          </SelectTrigger>
-          <SelectContent>
-            {culturasConfig?.map((c: any) => (
-              <SelectItem key={c.id} value={c.id}>{c.nome_exibicao}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {isEditing ? (
+          <p className="text-sm font-medium mt-1 px-3 py-2 rounded-md bg-muted">
+            {culturaSelecionada?.nome_exibicao || "Cultura"}
+          </p>
+        ) : (
+          <Select value={culturaId} onValueChange={(v) => { setCulturaId(v); setEditouManualmente(false); }}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione a cultura" />
+            </SelectTrigger>
+            <SelectContent>
+              {culturasConfig?.map((c: any) => (
+                <SelectItem key={c.id} value={c.id}>{c.nome_exibicao}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
+      {/* Safra (read-only when editing) */}
+      {isEditing && safraAtual && (
+        <div>
+          <Label>Safra</Label>
+          <p className="text-sm font-medium mt-1 px-3 py-2 rounded-md bg-muted">
+            {safraAtual.nome}
+          </p>
+        </div>
+      )}
+
+      {/* Área e Plantas */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label>Área plantada (ha)</Label>
           <Input
             type="number"
             step="0.01"
-            value={form.area_plantada_ha}
-            onChange={(e) => setForm((p) => ({ ...p, area_plantada_ha: e.target.value }))}
+            value={areaHa}
+            onChange={(e) => { setAreaHa(e.target.value); setEditouManualmente(false); }}
             placeholder="0.00"
           />
         </div>
         <div>
-          <Label>Total de plantas</Label>
+          <Label>Total de plantas/pés</Label>
           <Input
             type="number"
-            value={form.total_plantas}
-            onChange={(e) => setForm((p) => ({ ...p, total_plantas: e.target.value }))}
+            value={totalPlantas}
+            onChange={(e) => { setTotalPlantas(e.target.value); setEditouManualmente(false); }}
             placeholder="Opcional"
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label>Produção estimada ({unidadeLabel})</Label>
-          <Input
-            type="number"
-            step="0.01"
-            value={form.producao_estimada}
-            onChange={(e) => setForm((p) => ({ ...p, producao_estimada: e.target.value }))}
-            placeholder="0.00"
-          />
-        </div>
-        <div>
-          <Label>Preço por {unidadeLabel} (R$)</Label>
-          <Input
-            type="number"
-            step="0.01"
-            value={form.preco}
-            onChange={(e) => setForm((p) => ({ ...p, preco: e.target.value }))}
-            placeholder="0.00"
-          />
-        </div>
+      {/* Produção estimada */}
+      <div>
+        <Label>Produção estimada ({unidadeLabel})</Label>
+        <Input
+          type="number"
+          step="0.1"
+          value={producaoEstimada}
+          onChange={(e) => {
+            setProducaoEstimada(e.target.value);
+            setEditouManualmente(true);
+            setCalculoAutomatico(false);
+          }}
+          placeholder={hasProductivityData ? "Calculado automaticamente" : "Informe manualmente"}
+        />
+        {calculoAutomatico && !editouManualmente && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Calculado automaticamente com base na média nacional (Embrapa/Conab). Você pode ajustar manualmente.
+          </p>
+        )}
+        {editouManualmente && (
+          <p className="text-xs text-muted-foreground mt-1">Estimativa personalizada</p>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label>Data do plantio</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn("w-full justify-start text-left font-normal", !form.data_plantio && "text-muted-foreground")}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {form.data_plantio ? format(form.data_plantio, "dd/MM/yyyy") : "Selecionar"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={form.data_plantio}
-                onSelect={(d) => setForm((p) => ({ ...p, data_plantio: d }))}
-                locale={ptBR}
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div>
-          <Label>Previsão de colheita</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn("w-full justify-start text-left font-normal", !form.data_colheita_estimada && "text-muted-foreground")}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {form.data_colheita_estimada ? format(form.data_colheita_estimada, "dd/MM/yyyy") : "Selecionar"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={form.data_colheita_estimada}
-                onSelect={(d) => setForm((p) => ({ ...p, data_colheita_estimada: d }))}
-                locale={ptBR}
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
-
+      {/* Observações */}
       <div>
         <Label>Observações</Label>
         <Textarea
-          value={form.observacoes}
-          onChange={(e) => setForm((p) => ({ ...p, observacoes: e.target.value }))}
+          value={observacoes}
+          onChange={(e) => setObservacoes(e.target.value)}
           placeholder="Observações opcionais..."
           rows={3}
         />
@@ -248,7 +248,7 @@ export function AdicionarCulturaForm({ talhao, culturaExistente, onSuccess }: Ad
 
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onSuccess}>Cancelar</Button>
-        <Button onClick={handleSubmit} disabled={mutation.isPending}>
+        <Button onClick={handleSubmit} disabled={mutation.isPending || !propriedadeAtual?.id || !safraAtual?.id}>
           {mutation.isPending ? "Salvando..." : "Salvar"}
         </Button>
       </div>

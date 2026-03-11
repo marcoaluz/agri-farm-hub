@@ -147,6 +147,9 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
                       <Badge className={CORES_CULTURA[corIdx]}>
                         {cultura?.nome_exibicao || "Cultura"}
                       </Badge>
+                      <span className="block text-xs text-muted-foreground">
+                        {safraAtual.nome}
+                      </span>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-2">
                         {item.total_plantas && (
                           <span>{item.total_plantas.toLocaleString("pt-BR")} plantas/pés</span>
@@ -156,9 +159,6 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
                         )}
                         {item.producao_estimada && (
                           <span>Estimativa: {item.producao_estimada.toLocaleString("pt-BR")} {unidade}</span>
-                        )}
-                        {item.data_colheita_estimada && (
-                          <span>Colheita: {format(new Date(item.data_colheita_estimada), "dd/MM/yyyy")}</span>
                         )}
                       </div>
                     </div>
