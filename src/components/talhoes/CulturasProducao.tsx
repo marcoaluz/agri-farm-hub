@@ -74,6 +74,28 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
     enabled: !!talhao.id && !!safraAtual?.id,
   });
 
+  const { data: culturasDisponiveis } = useQuery({
+    queryKey: ["culturas-config-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("culturas_config")
+        .select("id")
+        .eq("ativo", true);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const culturasJaCadastradas = useMemo(
+    () => new Set((culturasTalhao || []).map((c: any) => c.cultura_id)),
+    [culturasTalhao]
+  );
+
+  const todasCadastradas = useMemo(() => {
+    if (!culturasDisponiveis || culturasDisponiveis.length === 0) return false;
+    return culturasDisponiveis.every((c) => culturasJaCadastradas.has(c.id));
+  }, [culturasDisponiveis, culturasJaCadastradas]);
+
   const deleteMutation = useMutation({
     mutationFn: async (culturaId: string) => {
       const { error } = await supabase
