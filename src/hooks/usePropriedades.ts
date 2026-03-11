@@ -40,6 +40,8 @@ export function usePropriedades() {
           area_total: propriedade.area_total ?? null,
           localizacao: propriedade.localizacao || null,
           responsavel: propriedade.responsavel || null,
+          latitude: propriedade.latitude ?? null,
+          longitude: propriedade.longitude ?? null,
           user_id: user!.id,
         })
         .select()
