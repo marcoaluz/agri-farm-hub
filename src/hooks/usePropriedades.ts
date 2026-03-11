@@ -9,6 +9,8 @@ interface PropriedadeFormData {
   area_total?: number | null
   localizacao?: string
   responsavel?: string
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export function usePropriedades() {
