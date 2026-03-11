@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useGlobal } from "@/contexts/GlobalContext";
@@ -74,6 +74,28 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
     enabled: !!talhao.id && !!safraAtual?.id,
   });
 
+  const { data: culturasDisponiveis } = useQuery({
+    queryKey: ["culturas-config-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("culturas_config")
+        .select("id")
+        .eq("ativo", true);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const culturasJaCadastradas = useMemo(
+    () => new Set((culturasTalhao || []).map((c: any) => c.cultura_id)),
+    [culturasTalhao]
+  );
+
+  const todasCadastradas = useMemo(() => {
+    if (!culturasDisponiveis || culturasDisponiveis.length === 0) return false;
+    return culturasDisponiveis.every((c) => culturasJaCadastradas.has(c.id));
+  }, [culturasDisponiveis, culturasJaCadastradas]);
+
   const deleteMutation = useMutation({
     mutationFn: async (culturaId: string) => {
       const { error } = await supabase
@@ -115,9 +137,15 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
         <h3 className="text-sm font-medium text-muted-foreground">
           Culturas na safra {safraAtual.nome}
         </h3>
-        <Button size="sm" onClick={() => { setEditingCultura(null); setAddDialogOpen(true); }}>
-          <Plus className="h-4 w-4 mr-1" /> Adicionar Cultura
-        </Button>
+        {todasCadastradas ? (
+          <p className="text-sm text-muted-foreground text-center py-2">
+            Todas as culturas disponíveis já foram cadastradas neste talhão para esta safra.
+          </p>
+        ) : (
+          <Button size="sm" onClick={() => { setEditingCultura(null); setAddDialogOpen(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> Adicionar Cultura
+          </Button>
+        )}
       </div>
 
       {(!culturasTalhao || culturasTalhao.length === 0) ? (
@@ -126,9 +154,15 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
             <Sprout className="h-12 w-12 text-muted-foreground mb-3" />
             <p className="font-medium mb-1">Nenhuma cultura cadastrada</p>
             <p className="text-sm text-muted-foreground mb-3">Adicione culturas para acompanhar a produção deste talhão</p>
-            <Button size="sm" variant="outline" onClick={() => { setEditingCultura(null); setAddDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" /> Adicionar Cultura
-            </Button>
+            {todasCadastradas ? (
+              <p className="text-sm text-muted-foreground">
+                Todas as culturas disponíveis já foram cadastradas neste talhão para esta safra.
+              </p>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => { setEditingCultura(null); setAddDialogOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" /> Adicionar Cultura
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -206,6 +240,7 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
           <AdicionarCulturaForm
             talhao={talhao}
             culturaExistente={editingCultura}
+            culturasJaCadastradas={culturasJaCadastradas}
             onSuccess={() => {
               setAddDialogOpen(false);
               setEditingCultura(null);

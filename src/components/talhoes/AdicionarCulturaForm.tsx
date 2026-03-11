@@ -29,6 +29,7 @@ interface Talhao {
 interface AdicionarCulturaFormProps {
   talhao: Talhao;
   culturaExistente?: any;
+  culturasJaCadastradas?: Set<string>;
   onSuccess: () => void;
 }
 
@@ -40,7 +41,7 @@ const PRODUTIVIDADE: Record<string, { por_ha: number | null; por_planta: number 
   outras: { por_ha: null, por_planta: null, unidade: null },
 };
 
-export function AdicionarCulturaForm({ talhao, culturaExistente, onSuccess }: AdicionarCulturaFormProps) {
+export function AdicionarCulturaForm({ talhao, culturaExistente, culturasJaCadastradas = new Set(), onSuccess }: AdicionarCulturaFormProps) {
   const { safraAtual, propriedadeAtual } = useGlobal();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -141,7 +142,17 @@ export function AdicionarCulturaForm({ talhao, culturaExistente, onSuccess }: Ad
       onSuccess();
     },
     onError: (error: Error) => {
-      toast({ title: "Erro ao salvar cultura", description: error.message, variant: "destructive" });
+      let mensagem = error.message;
+      if (
+        error.message.includes("duplicate key") ||
+        error.message.includes("unique constraint") ||
+        error.message.includes("talhao_culturas_talhao_id_safra_id_cultura_id_key")
+      ) {
+        mensagem =
+          "Esta cultura já está cadastrada neste talhão para a safra atual. " +
+          "Use o botão Editar para atualizar os dados existentes.";
+      }
+      toast({ title: "Erro ao salvar cultura", description: mensagem, variant: "destructive" });
     },
   });
 
@@ -171,7 +182,9 @@ export function AdicionarCulturaForm({ talhao, culturaExistente, onSuccess }: Ad
             </SelectTrigger>
             <SelectContent>
               {culturasConfig?.map((c: any) => (
-                <SelectItem key={c.id} value={c.id}>{c.nome_exibicao}</SelectItem>
+                <SelectItem key={c.id} value={c.id} disabled={culturasJaCadastradas.has(c.id)}>
+                  {c.nome_exibicao}{culturasJaCadastradas.has(c.id) ? " (já cadastrada)" : ""}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
