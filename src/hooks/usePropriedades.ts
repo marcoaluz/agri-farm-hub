@@ -81,6 +81,8 @@ export function usePropriedades() {
           area_total: updates.area_total ?? null,
           localizacao: updates.localizacao || null,
           responsavel: updates.responsavel || null,
+          latitude: updates.latitude ?? null,
+          longitude: updates.longitude ?? null,
         })
         .eq('id', id)
         .select()

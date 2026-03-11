@@ -8,6 +8,8 @@ export interface Propriedade {
   area_total?: number
   localizacao?: string
   responsavel?: string
+  latitude?: number | null
+  longitude?: number | null
   ativo: boolean
   created_at: string
   updated_at: string
