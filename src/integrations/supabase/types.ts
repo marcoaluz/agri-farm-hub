@@ -20,7 +20,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_dashboard_consolidado: {
+        Args: { p_propriedade_id?: string; p_safra_id?: string }
+        Returns: {
+          area_operada_ha: number
+          custo_total: number
+          despesas_pagas: number
+          propriedade_id: string
+          propriedade_nome: string
+          receitas_pagas: number
+          saldo: number
+          total_lancamentos: number
+        }[]
+      }
+      get_estoque_producao: {
+        Args: { p_propriedade_id?: string }
+        Returns: {
+          cultura_id: string
+          cultura_nome: string
+          icone: string
+          propriedade_id: string
+          propriedade_nome: string
+          saldo_disponivel: number
+          total_entradas: number
+          total_saidas: number
+          unidade_label: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
