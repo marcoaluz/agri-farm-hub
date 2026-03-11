@@ -142,7 +142,17 @@ export function AdicionarCulturaForm({ talhao, culturaExistente, culturasJaCadas
       onSuccess();
     },
     onError: (error: Error) => {
-      toast({ title: "Erro ao salvar cultura", description: error.message, variant: "destructive" });
+      let mensagem = error.message;
+      if (
+        error.message.includes("duplicate key") ||
+        error.message.includes("unique constraint") ||
+        error.message.includes("talhao_culturas_talhao_id_safra_id_cultura_id_key")
+      ) {
+        mensagem =
+          "Esta cultura já está cadastrada neste talhão para a safra atual. " +
+          "Use o botão Editar para atualizar os dados existentes.";
+      }
+      toast({ title: "Erro ao salvar cultura", description: mensagem, variant: "destructive" });
     },
   });
 
