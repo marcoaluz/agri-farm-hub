@@ -377,7 +377,7 @@ export default function Dashboard() {
               )}
             </ChartCard>
 
-            <CardClima />
+            <CardClima propriedades={isConsolidado ? propriedades : undefined} />
 
             <ChartCard title="Distribuição por Categoria" description="Custos por tipo de serviço" className="lg:col-span-3">
               {loadCat ? (
