@@ -29,6 +29,7 @@ interface Talhao {
 interface AdicionarCulturaFormProps {
   talhao: Talhao;
   culturaExistente?: any;
+  culturasJaCadastradas?: Set<string>;
   onSuccess: () => void;
 }
 
