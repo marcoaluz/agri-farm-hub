@@ -154,9 +154,15 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
             <Sprout className="h-12 w-12 text-muted-foreground mb-3" />
             <p className="font-medium mb-1">Nenhuma cultura cadastrada</p>
             <p className="text-sm text-muted-foreground mb-3">Adicione culturas para acompanhar a produção deste talhão</p>
-            <Button size="sm" variant="outline" onClick={() => { setEditingCultura(null); setAddDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" /> Adicionar Cultura
-            </Button>
+            {todasCadastradas ? (
+              <p className="text-sm text-muted-foreground">
+                Todas as culturas disponíveis já foram cadastradas neste talhão para esta safra.
+              </p>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => { setEditingCultura(null); setAddDialogOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" /> Adicionar Cultura
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
