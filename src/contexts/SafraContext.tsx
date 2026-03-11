@@ -105,7 +105,7 @@ export function SafraProvider({ children }: { children: ReactNode }) {
         const ids = compartilhadas.map((c) => c.propriedade_id)
         const { data: detalhes } = await supabase
           .from('propriedades')
-          .select('id, nome, area_total, localizacao, ativo')
+          .select('id, nome, area_total, localizacao, ativo, latitude, longitude')
           .in('id', ids)
           .eq('ativo', true)
           .order('nome')
