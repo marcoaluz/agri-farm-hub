@@ -100,12 +100,8 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
     fetchProfile()
   }, [user])
 
-  // Auto-selecionar se só tiver 1 propriedade
-  useEffect(() => {
-    if (propriedades.length === 1 && !propriedadeSelecionada) {
-      setPropriedadeSelecionada(propriedades[0])
-    }
-  }, [propriedades, propriedadeSelecionada, setPropriedadeSelecionada])
+  // Removido: auto-seleção quando só tem 1 propriedade
+  // Agora o primeiro acesso sempre começa em "Visão Geral"
 
   const isAdmin = profile?.perfil === 'admin'
 
