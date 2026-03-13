@@ -123,6 +123,8 @@ export function AppRoutes() {
         <Route path="relatorios" element={<Relatorios />} />
         <Route path="auditoria" element={<Auditoria />} />
         <Route path="configuracoes" element={<Configuracoes />} />
+        <Route path="perfil" element={<Perfil />} />
+        <Route path="notificacoes" element={<Notificacoes />} />
         <Route path="admin" element={<AdminDashboard />} />
         <Route path="admin/usuarios" element={<GestaoUsuarios />} />
       </Route>
