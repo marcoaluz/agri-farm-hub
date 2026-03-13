@@ -206,7 +206,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
           <Wheat className="h-4 w-4 shrink-0 text-muted-foreground" />
           <SelectValue
             placeholder={
-              !propriedadeSelecionada ? 'Selecione propriedade' : 'Selecionar safra'
+              !propriedadeSelecionada ? 'Todas as safras' : 'Selecionar safra'
             }
           />
         </div>
