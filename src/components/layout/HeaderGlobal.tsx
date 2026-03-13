@@ -272,7 +272,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
             >
               <div className="flex flex-col items-start truncate">
                 <span className="font-medium truncate max-w-[140px]">
-                  {propriedadeSelecionada?.nome || 'Selecionar'}
+                  {propriedadeSelecionada?.nome || 'Visão Geral'}
                 </span>
                 {safraSelecionada && (
                   <span className="text-[10px] text-muted-foreground truncate">
