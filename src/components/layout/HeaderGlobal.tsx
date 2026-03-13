@@ -41,6 +41,7 @@ import {
   LogOut,
   Shield,
   Menu,
+  LayoutDashboard,
 } from 'lucide-react'
 
 interface HeaderGlobalProps {

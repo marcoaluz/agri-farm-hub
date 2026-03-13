@@ -144,22 +144,33 @@ export function SafraProvider({ children }: { children: ReactNode }) {
 
         // Restaurar seleção do localStorage
         const savedId = localStorage.getItem(STORAGE_PROP_KEY)
-        const restaurada = todas.find((p) => p.id === savedId) || todas[0]
-        setPropriedadeSelecionadaState(restaurada)
+        if (savedId) {
+          const restaurada = todas.find((p) => p.id === savedId)
+          if (restaurada) {
+            setPropriedadeSelecionadaState(restaurada)
 
-        // Já aplicar safras da propriedade restaurada do cache
-        const safrasDaProp = novoCache.get(restaurada.id) || []
-        setSafras(safrasDaProp)
-        if (safrasDaProp.length > 0) {
-          const savedSafraId = localStorage.getItem(STORAGE_SAFRA_KEY)
-          const safraRestaurada =
-            safrasDaProp.find((s) => s.id === savedSafraId) ||
-            safrasDaProp.find((s) => s.ativa) ||
-            safrasDaProp[0]
-          setSafraSelecionadaState(safraRestaurada)
-          localStorage.setItem(STORAGE_SAFRA_KEY, safraRestaurada.id)
+            // Já aplicar safras da propriedade restaurada do cache
+            const safrasDaProp = novoCache.get(restaurada.id) || []
+            setSafras(safrasDaProp)
+            if (safrasDaProp.length > 0) {
+              const savedSafraId = localStorage.getItem(STORAGE_SAFRA_KEY)
+              const safraRestaurada =
+                safrasDaProp.find((s) => s.id === savedSafraId) ||
+                safrasDaProp.find((s) => s.ativa) ||
+                safrasDaProp[0]
+              setSafraSelecionadaState(safraRestaurada)
+              localStorage.setItem(STORAGE_SAFRA_KEY, safraRestaurada.id)
+            } else {
+              setSafraSelecionadaState(null)
+            }
+          } else {
+            // savedId não encontrado nas propriedades
+            setPropriedadeSelecionadaState(null)
+            localStorage.removeItem(STORAGE_PROP_KEY)
+          }
         } else {
-          setSafraSelecionadaState(null)
+          // Primeiro acesso: sem seleção = visão geral consolidada
+          setPropriedadeSelecionadaState(null)
         }
       } else {
         setPropriedadeSelecionadaState(null)
