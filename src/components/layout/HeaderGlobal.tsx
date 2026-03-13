@@ -41,6 +41,7 @@ import {
   LogOut,
   Shield,
   Menu,
+  LayoutDashboard,
 } from 'lucide-react'
 
 interface HeaderGlobalProps {
@@ -99,12 +100,8 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
     fetchProfile()
   }, [user])
 
-  // Auto-selecionar se só tiver 1 propriedade
-  useEffect(() => {
-    if (propriedades.length === 1 && !propriedadeSelecionada) {
-      setPropriedadeSelecionada(propriedades[0])
-    }
-  }, [propriedades, propriedadeSelecionada, setPropriedadeSelecionada])
+  // Removido: auto-seleção quando só tem 1 propriedade
+  // Agora o primeiro acesso sempre começa em "Visão Geral"
 
   const isAdmin = profile?.perfil === 'admin'
 
@@ -136,20 +133,39 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
 
   const renderPropriedadeSelect = (className?: string) => (
     <Select
-      value={propriedadeSelecionada?.id ?? undefined}
+      value={propriedadeSelecionada?.id ?? '__todas__'}
       onValueChange={(value) => {
-        const prop = propriedades.find((p) => p.id === value)
-        if (prop) setPropriedadeSelecionada(prop)
+        if (value === '__todas__') {
+          setPropriedadeSelecionada(null)
+        } else {
+          const prop = propriedades.find((p) => p.id === value)
+          if (prop) setPropriedadeSelecionada(prop)
+        }
       }}
-      disabled={propriedades.length <= 1}
     >
       <SelectTrigger className={className ?? 'min-w-[180px] max-w-[260px] bg-card'}>
         <div className="flex items-center gap-2 truncate">
-          <Home className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <SelectValue placeholder="Selecionar propriedade" />
+          {propriedadeSelecionada ? (
+            <>
+              <Home className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">{propriedadeSelecionada.nome}</span>
+            </>
+          ) : (
+            <>
+              <LayoutDashboard className="h-3.5 w-3.5 shrink-0 text-success" />
+              <span className="font-medium text-success">Visão Geral</span>
+            </>
+          )}
         </div>
       </SelectTrigger>
       <SelectContent className="bg-popover border border-border z-[60]">
+        <SelectItem value="__todas__">
+          <div className="flex items-center gap-2">
+            <LayoutDashboard className="h-3.5 w-3.5 text-success" />
+            <span className="font-medium">Visão Geral</span>
+            <span className="text-xs text-muted-foreground ml-1">todas as propriedades</span>
+          </div>
+        </SelectItem>
         {propriedades.length === 0 ? (
           <div className="p-2">
             <Button
@@ -186,7 +202,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
           <Wheat className="h-4 w-4 shrink-0 text-muted-foreground" />
           <SelectValue
             placeholder={
-              !propriedadeSelecionada ? 'Selecione propriedade' : 'Selecionar safra'
+              !propriedadeSelecionada ? 'Todas as safras' : 'Selecionar safra'
             }
           />
         </div>
@@ -256,7 +272,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
             >
               <div className="flex flex-col items-start truncate">
                 <span className="font-medium truncate max-w-[140px]">
-                  {propriedadeSelecionada?.nome || 'Selecionar'}
+                  {propriedadeSelecionada?.nome || 'Visão Geral'}
                 </span>
                 {safraSelecionada && (
                   <span className="text-[10px] text-muted-foreground truncate">
