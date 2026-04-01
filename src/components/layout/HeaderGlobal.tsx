@@ -105,6 +105,23 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
 
   const isAdmin = profile?.perfil === 'admin'
 
+  // Buscar notificações não lidas (apenas admin)
+  useEffect(() => {
+    if (!isAdmin) return
+
+    const fetchNotificacoes = async () => {
+      const { count } = await supabase
+        .from('admin_notificacoes')
+        .select('id', { count: 'exact', head: true })
+        .eq('lida', false)
+      if (count !== null) setNotificacoesCount(count)
+    }
+
+    fetchNotificacoes()
+    const interval = setInterval(fetchNotificacoes, 30000)
+    return () => clearInterval(interval)
+  }, [isAdmin])
+
   const displayName =
     profile?.full_name ||
     user?.user_metadata?.name ||
