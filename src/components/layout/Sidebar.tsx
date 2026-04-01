@@ -7,7 +7,6 @@ import {
   LayoutDashboard, 
   MapPin, 
   Package, 
-   
   ClipboardList,
   Tractor,
   DollarSign,
@@ -32,72 +31,25 @@ interface SidebarProps {
 }
 
 const routes = [
-  {
-    label: 'Dashboard',
-    icon: LayoutDashboard,
-    href: '/',
-  },
-  {
-    label: 'Propriedades',
-    icon: Home,
-    href: '/propriedades',
-  },
-  {
-    label: 'Safras',
-    icon: Calendar,
-    href: '/safras',
-  },
-  {
-    label: 'Talhões',
-    icon: MapPin,
-    href: '/talhoes',
-  },
-  {
-    label: 'Estoque',
-    icon: Package,
-    href: '/estoque',
-  },
-  {
-    label: 'Serviços',
-    icon: Wheat,
-    href: '/servicos',
-  },
-  {
-    label: 'Lançamentos',
-    icon: ClipboardList,
-    href: '/lancamentos',
-  },
-  {
-    label: 'Máquinas',
-    icon: Tractor,
-    href: '/maquinas',
-  },
-  {
-    label: 'Financeiro',
-    icon: DollarSign,
-    href: '/financeiro',
-  },
-  {
-    label: 'Relatórios',
-    icon: BarChart3,
-    href: '/relatorios',
-  },
-  {
-    label: 'Auditoria',
-    icon: ShieldCheck,
-    href: '/auditoria',
-  },
-  {
-    label: 'Configurações',
-    icon: Settings,
-    href: '/configuracoes',
-  },
+  { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
+  { label: 'Propriedades', icon: Home, href: '/propriedades' },
+  { label: 'Safras', icon: Calendar, href: '/safras' },
+  { label: 'Talhões', icon: MapPin, href: '/talhoes' },
+  { label: 'Estoque', icon: Package, href: '/estoque' },
+  { label: 'Serviços', icon: Wheat, href: '/servicos' },
+  { label: 'Lançamentos', icon: ClipboardList, href: '/lancamentos' },
+  { label: 'Máquinas', icon: Tractor, href: '/maquinas' },
+  { label: 'Financeiro', icon: DollarSign, href: '/financeiro' },
+  { label: 'Relatórios', icon: BarChart3, href: '/relatorios' },
+  { label: 'Auditoria', icon: ShieldCheck, href: '/auditoria' },
+  { label: 'Configurações', icon: Settings, href: '/configuracoes' },
 ]
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const location = useLocation()
   const { user } = useAuth()
   const [isAdmin, setIsAdmin] = useState(false)
+  const [pendentesCount, setPendentesCount] = useState(0)
 
   useEffect(() => {
     async function checkAdmin() {
@@ -119,6 +71,26 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     }
     checkAdmin()
   }, [user])
+
+  // Fetch pending users count
+  useEffect(() => {
+    if (!isAdmin) return
+
+    async function fetchPendentes() {
+      const { count, error } = await supabase
+        .from('user_profiles' as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pendente')
+      if (!error && count !== null) {
+        setPendentesCount(count)
+      }
+    }
+
+    fetchPendentes()
+    const interval = setInterval(fetchPendentes, 60000)
+    return () => clearInterval(interval)
+  }, [isAdmin])
+
   return (
     <>
       {/* Overlay para mobile */}
@@ -217,6 +189,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   >
                     <Users className="h-5 w-5 text-destructive" />
                     Gestão Usuários
+                    {pendentesCount > 0 && (
+                      <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0 h-5 min-w-[20px] flex items-center justify-center">
+                        {pendentesCount}
+                      </Badge>
+                    )}
                   </Button>
                 </Link>
               </>
