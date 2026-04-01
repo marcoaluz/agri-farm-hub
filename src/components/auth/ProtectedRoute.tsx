@@ -2,13 +2,14 @@ import { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
+import AguardandoAprovacao from '@/pages/AguardandoAprovacao'
 
 interface ProtectedRouteProps {
   children: ReactNode
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth()
+  const { user, loading, userStatus } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -24,6 +25,14 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  if (userStatus === 'pendente') {
+    return <AguardandoAprovacao />
+  }
+
+  if (userStatus === 'inativo') {
+    return <Navigate to="/login" state={{ message: 'Conta desativada' }} replace />
   }
 
   return <>{children}</>
