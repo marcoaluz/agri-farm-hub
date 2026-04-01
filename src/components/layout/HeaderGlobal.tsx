@@ -77,7 +77,24 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
   const navigate = useNavigate()
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [notificacoesCount] = useState(0)
+  const [notificacoesCount, setNotificacoesCount] = useState(0)
+
+  // Buscar notificações não lidas (apenas admin)
+  useEffect(() => {
+    if (!isAdmin) return
+
+    const fetchNotificacoes = async () => {
+      const { count } = await supabase
+        .from('admin_notificacoes')
+        .select('id', { count: 'exact', head: true })
+        .eq('lida', false)
+      if (count !== null) setNotificacoesCount(count)
+    }
+
+    fetchNotificacoes()
+    const interval = setInterval(fetchNotificacoes, 30000)
+    return () => clearInterval(interval)
+  }, [isAdmin])
 
   // Buscar perfil do usuário
   useEffect(() => {
