@@ -7,7 +7,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   Users, Search, MoreVertical, Crown, Shield,
-  Edit, Trash2, UserCheck, UserX, UserPlus, Loader2,
+  Edit, Trash2, UserCheck, UserX, UserPlus, Loader2, Clock,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -26,14 +26,20 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface UserProfile {
   id: string
   email: string | null
   nome: string | null
   perfil: string
+  status?: string | null
   ultimo_acesso: string | null
   confirmado: boolean
   criado_em: string
@@ -76,6 +82,17 @@ export default function GestaoUsuarios() {
   const [novoPerfilSelecionado, setNovoPerfilSelecionado] = useState('')
   const [salvando, setSalvando] = useState(false)
 
+  // Approval dialog
+  const [usuarioAprovando, setUsuarioAprovando] = useState<UserProfile | null>(null)
+  const [papelAprovacao, setPapelAprovacao] = useState('consultor')
+  const [aprovando, setAprovando] = useState(false)
+
+  // Reject dialog
+  const [usuarioRejeitando, setUsuarioRejeitando] = useState<UserProfile | null>(null)
+  const [rejeitando, setRejeitando] = useState(false)
+
+  const [activeTab, setActiveTab] = useState('pendentes')
+
   // Admin check
   useEffect(() => {
     async function checkAdmin() {
@@ -97,14 +114,12 @@ export default function GestaoUsuarios() {
   async function fetchUsuarios() {
     setLoading(true)
     try {
-      // Try the admin view first
       const { data, error } = await supabase
         .from('vw_all_users_admin' as any)
         .select('*')
         .order('criado_em', { ascending: false })
 
       if (error) {
-        // Fallback to user_profiles
         const { data: fallback, error: err2 } = await supabase
           .from('user_profiles' as any)
           .select('*')
@@ -125,16 +140,33 @@ export default function GestaoUsuarios() {
     fetchUsuarios()
   }, [])
 
-  // Filtered list
+  // Mark pending notifications as read when opening Pendentes tab
+  useEffect(() => {
+    if (activeTab === 'pendentes') {
+      supabase
+        .from('admin_notificacoes' as any)
+        .update({ lida: true } as any)
+        .eq('tipo', 'novo_cadastro')
+        .eq('lida', false)
+        .then(() => {})
+    }
+  }, [activeTab])
+
+  // Pending users
+  const usuariosPendentes = useMemo(() => {
+    return usuarios.filter(u => u.status === 'pendente')
+  }, [usuarios])
+
+  // Filtered list (all users tab)
   const usuariosFiltrados = useMemo(() => {
     return usuarios.filter(u => {
-      const matchBusca = !busca || 
+      const matchBusca = !busca ||
         (u.nome?.toLowerCase().includes(busca.toLowerCase())) ||
         (u.email?.toLowerCase().includes(busca.toLowerCase()))
       const matchPerfil = filtroPerfil === 'todos' || u.perfil === filtroPerfil
-      const matchStatus = filtroStatus === 'todos' || 
-        (filtroStatus === 'ativo' && u.confirmado) ||
-        (filtroStatus === 'pendente' && !u.confirmado)
+      const matchStatus = filtroStatus === 'todos' ||
+        (filtroStatus === 'ativo' && (u.status === 'ativo' || u.confirmado)) ||
+        (filtroStatus === 'pendente' && u.status === 'pendente')
       return matchBusca && matchPerfil && matchStatus
     })
   }, [usuarios, busca, filtroPerfil, filtroStatus])
@@ -156,6 +188,47 @@ export default function GestaoUsuarios() {
       toast({ title: 'Erro ao atualizar perfil', variant: 'destructive' })
     } finally {
       setSalvando(false)
+    }
+  }
+
+  // Approve user
+  async function aprovarUsuario() {
+    if (!usuarioAprovando) return
+    setAprovando(true)
+    try {
+      const { error } = await supabase
+        .from('user_profiles' as any)
+        .update({ status: 'ativo', perfil: papelAprovacao, updated_at: new Date().toISOString() } as any)
+        .eq('id', usuarioAprovando.id)
+      if (error) throw error
+      toast({ title: '✅ Usuário aprovado com sucesso!' })
+      setUsuarioAprovando(null)
+      setPapelAprovacao('consultor')
+      fetchUsuarios()
+    } catch {
+      toast({ title: 'Erro ao aprovar usuário', variant: 'destructive' })
+    } finally {
+      setAprovando(false)
+    }
+  }
+
+  // Reject user
+  async function rejeitarUsuario() {
+    if (!usuarioRejeitando) return
+    setRejeitando(true)
+    try {
+      const { error } = await supabase
+        .from('user_profiles' as any)
+        .update({ status: 'inativo', updated_at: new Date().toISOString() } as any)
+        .eq('id', usuarioRejeitando.id)
+      if (error) throw error
+      toast({ title: 'Usuário rejeitado.' })
+      setUsuarioRejeitando(null)
+      fetchUsuarios()
+    } catch {
+      toast({ title: 'Erro ao rejeitar usuário', variant: 'destructive' })
+    } finally {
+      setRejeitando(false)
     }
   }
 
@@ -216,149 +289,249 @@ export default function GestaoUsuarios() {
         </Button>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-4 pb-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou email..."
-                value={busca}
-                onChange={e => setBusca(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={filtroPerfil} onValueChange={setFiltroPerfil}>
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <SelectValue placeholder="Perfil" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os perfis</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="proprietario">Proprietário</SelectItem>
-                <SelectItem value="gerente">Gerente</SelectItem>
-                <SelectItem value="operador">Operador</SelectItem>
-                <SelectItem value="consultor">Consultor</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-              <SelectTrigger className="w-full sm:w-[140px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="ativo">Ativo</SelectItem>
-                <SelectItem value="pendente">Pendente</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="pendentes" className="gap-2">
+            <Clock className="h-4 w-4" />
+            Pendentes
+            {usuariosPendentes.length > 0 && (
+              <Badge variant="destructive" className="ml-1 text-[10px] px-1.5 py-0 h-5 min-w-[20px] flex items-center justify-center">
+                {usuariosPendentes.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="todos">Todos os Usuários</TabsTrigger>
+        </TabsList>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
+        {/* === Pendentes Tab === */}
+        <TabsContent value="pendentes" className="space-y-4 mt-4">
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : usuariosFiltrados.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">Nenhum usuário encontrado</p>
-              <p className="text-sm">Ajuste os filtros para ver resultados</p>
-            </div>
+          ) : usuariosPendentes.length === 0 ? (
+            <Card>
+              <CardContent className="py-16 text-center">
+                <UserCheck className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
+                <p className="font-medium text-foreground">Nenhum usuário pendente</p>
+                <p className="text-sm text-muted-foreground">Todos os cadastros foram analisados</p>
+              </CardContent>
+            </Card>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>Perfil</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Cadastro</TableHead>
-                  <TableHead className="w-[50px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {usuariosFiltrados.map(u => (
-                  <TableRow key={u.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                            {getInitials(u.nome)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-foreground">{u.nome || 'Sem nome'}</p>
-                          <p className="text-xs text-muted-foreground">{u.email || '—'}</p>
-                        </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {usuariosPendentes.map(u => (
+                <Card key={u.id} className="border-yellow-200 dark:border-yellow-800/50">
+                  <CardContent className="pt-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 font-medium">
+                          {getInitials(u.nome)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">{u.nome || 'Sem nome'}</p>
+                        <p className="text-xs text-muted-foreground truncate">{u.email || '—'}</p>
                       </div>
-                    </TableCell>
-                    <TableCell>{renderPerfilBadge(u.perfil, u.is_super_admin)}</TableCell>
-                    <TableCell>
-                      {u.confirmado ? (
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
-                          Ativo
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-muted text-muted-foreground">
-                          Pendente
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {u.criado_em
-                        ? format(new Date(u.criado_em), "dd MMM yyyy", { locale: ptBR })
-                        : '—'}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditModal(u)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar Perfil
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {u.perfil !== 'admin' && (
-                            <DropdownMenuItem onClick={() => toggleAdmin(u.id, true)}>
-                              <Shield className="mr-2 h-4 w-4" />
-                              Tornar Admin
-                            </DropdownMenuItem>
+                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800 shrink-0">
+                        Pendente
+                      </Badge>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      Cadastro em {u.criado_em ? format(new Date(u.criado_em), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR }) : '—'}
+                    </p>
+
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1 gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => { setUsuarioAprovando(u); setPapelAprovacao('consultor') }}
+                      >
+                        <UserCheck className="h-4 w-4" />
+                        Aprovar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="flex-1 gap-1.5"
+                        onClick={() => setUsuarioRejeitando(u)}
+                      >
+                        <UserX className="h-4 w-4" />
+                        Rejeitar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* === Todos Tab === */}
+        <TabsContent value="todos" className="space-y-4 mt-4">
+          {/* Filters */}
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome ou email..."
+                    value={busca}
+                    onChange={e => setBusca(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={filtroPerfil} onValueChange={setFiltroPerfil}>
+                  <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectValue placeholder="Perfil" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os perfis</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="proprietario">Proprietário</SelectItem>
+                    <SelectItem value="gerente">Gerente</SelectItem>
+                    <SelectItem value="operador">Operador</SelectItem>
+                    <SelectItem value="consultor">Consultor</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                  <SelectTrigger className="w-full sm:w-[140px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Table */}
+          <Card>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : usuariosFiltrados.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Nenhum usuário encontrado</p>
+                  <p className="text-sm">Ajuste os filtros para ver resultados</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Usuário</TableHead>
+                      <TableHead>Perfil</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Cadastro</TableHead>
+                      <TableHead className="w-[50px]" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usuariosFiltrados.map(u => (
+                      <TableRow key={u.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                              <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                                {getInitials(u.nome)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-foreground">{u.nome || 'Sem nome'}</p>
+                              <p className="text-xs text-muted-foreground">{u.email || '—'}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{renderPerfilBadge(u.perfil, u.is_super_admin)}</TableCell>
+                        <TableCell>
+                          {u.status === 'pendente' ? (
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800">
+                              Pendente
+                            </Badge>
+                          ) : u.status === 'inativo' ? (
+                            <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
+                              Inativo
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                              Ativo
+                            </Badge>
                           )}
-                          {u.perfil === 'admin' && !u.is_super_admin && (
-                            <DropdownMenuItem onClick={() => toggleAdmin(u.id, false)}>
-                              <Shield className="mr-2 h-4 w-4" />
-                              Remover Admin
-                            </DropdownMenuItem>
-                          )}
-                          {(u.perfil !== 'admin' || !u.is_super_admin) && (
-                            <>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {u.criado_em
+                            ? format(new Date(u.criado_em), "dd MMM yyyy", { locale: ptBR })
+                            : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {u.status === 'pendente' && (
+                                <>
+                                  <DropdownMenuItem onClick={() => { setUsuarioAprovando(u); setPapelAprovacao('consultor') }}>
+                                    <UserCheck className="mr-2 h-4 w-4" />
+                                    Aprovar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setUsuarioRejeitando(u)} className="text-destructive focus:text-destructive">
+                                    <UserX className="mr-2 h-4 w-4" />
+                                    Rejeitar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              <DropdownMenuItem onClick={() => openEditModal(u)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar Perfil
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              {!u.is_super_admin && (
-                                <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Excluir Usuário
+                              {u.perfil !== 'admin' && (
+                                <DropdownMenuItem onClick={() => toggleAdmin(u.id, true)}>
+                                  <Shield className="mr-2 h-4 w-4" />
+                                  Tornar Admin
                                 </DropdownMenuItem>
                               )}
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                              {u.perfil === 'admin' && !u.is_super_admin && (
+                                <DropdownMenuItem onClick={() => toggleAdmin(u.id, false)}>
+                                  <Shield className="mr-2 h-4 w-4" />
+                                  Remover Admin
+                                </DropdownMenuItem>
+                              )}
+                              {(u.perfil !== 'admin' || !u.is_super_admin) && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  {!u.is_super_admin && (
+                                    <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Excluir Usuário
+                                    </DropdownMenuItem>
+                                  )}
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Modal */}
       <Dialog open={!!usuarioEditando} onOpenChange={open => !open && setUsuarioEditando(null)}>
@@ -369,7 +542,6 @@ export default function GestaoUsuarios() {
 
           {usuarioEditando && (
             <div className="space-y-4">
-              {/* User info */}
               <div className="flex items-center gap-3">
                 <Avatar className="h-12 w-12">
                   <AvatarFallback className="bg-primary/10 text-primary font-medium">
@@ -384,7 +556,6 @@ export default function GestaoUsuarios() {
 
               <Separator />
 
-              {/* Profile select */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Perfil de Acesso</label>
                 {usuarioEditando.is_super_admin ? (
@@ -434,6 +605,91 @@ export default function GestaoUsuarios() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Approval Dialog */}
+      <Dialog open={!!usuarioAprovando} onOpenChange={open => !open && setUsuarioAprovando(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Aprovar Usuário</DialogTitle>
+          </DialogHeader>
+
+          {usuarioAprovando && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 font-medium">
+                    {getInitials(usuarioAprovando.nome)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-foreground">{usuarioAprovando.nome || 'Sem nome'}</p>
+                  <p className="text-sm text-muted-foreground">{usuarioAprovando.email || '—'}</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Papel do usuário</label>
+                <Select value={papelAprovacao} onValueChange={setPapelAprovacao}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(PERFIL_CONFIG)
+                      .filter(([key]) => key !== 'admin')
+                      .map(([key, config]) => (
+                        <SelectItem key={key} value={key}>
+                          <div className="flex flex-col">
+                            <span>{config.label}</span>
+                            <span className="text-xs text-muted-foreground">{PERFIL_DESCRICAO[key]}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setUsuarioAprovando(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={aprovarUsuario}
+              disabled={aprovando}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {aprovando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserCheck className="mr-2 h-4 w-4" />}
+              Confirmar Aprovação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject AlertDialog */}
+      <AlertDialog open={!!usuarioRejeitando} onOpenChange={open => !open && setUsuarioRejeitando(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rejeitar usuário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja rejeitar o cadastro de <strong>{usuarioRejeitando?.nome || usuarioRejeitando?.email}</strong>? O usuário será marcado como inativo e não terá acesso ao sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rejeitando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={rejeitarUsuario}
+              disabled={rejeitando}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {rejeitando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Sim, rejeitar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
