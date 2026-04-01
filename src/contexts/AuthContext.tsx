@@ -4,10 +4,13 @@ import { supabase } from '@/lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '@/hooks/use-toast'
 
+type UserStatus = 'pendente' | 'ativo' | 'inativo' | null
+
 interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
+  userStatus: UserStatus
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string) => Promise<void>
   signOut: () => Promise<void>
@@ -20,23 +23,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [userStatus, setUserStatus] = useState<UserStatus>(null)
   const { toast } = useToast()
   const navigate = useNavigate()
 
+  const fetchUserStatus = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('status')
+        .eq('id', userId)
+        .single()
+
+      if (error || !data) {
+        setUserStatus(null)
+        return
+      }
+      setUserStatus((data.status as UserStatus) || 'ativo')
+    } catch {
+      setUserStatus(null)
+    }
+  }
+
   useEffect(() => {
-    // Set up auth state listener FIRST
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchUserStatus(session.user.id)
+      } else {
+        setUserStatus(null)
+      }
       setLoading(false)
     })
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchUserStatus(session.user.id)
+      } else {
+        setUserStatus(null)
+      }
       setLoading(false)
     })
 
@@ -106,11 +136,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut()
-      // Ignore "Auth session missing" - session already expired
       if (error && !error.message?.includes('session missing')) throw error
 
       setUser(null)
       setSession(null)
+      setUserStatus(null)
 
       toast({
         title: 'Logout realizado',
@@ -125,7 +155,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: authError.message,
         variant: 'destructive',
       })
-      // Still redirect on error
       navigate('/login')
     }
   }
@@ -157,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     session,
     loading,
+    userStatus,
     signIn,
     signUp,
     signOut,
