@@ -142,7 +142,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         {/* Navegação */}
         <ScrollArea className="h-[calc(100vh-4rem)]">
           <div className="space-y-1 p-3">
-            {routes.map((route) => {
+            {routesFiltradas.map((route) => {
               const isActive = location.pathname === route.href
               
               return (
