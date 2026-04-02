@@ -42,6 +42,7 @@ import {
   Shield,
   Menu,
   LayoutDashboard,
+  Puzzle,
 } from 'lucide-react'
 
 interface HeaderGlobalProps {
@@ -439,6 +440,13 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
                   >
                     <User className="mr-2 h-4 w-4" />
                     Gestão de Usuários
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate('/admin/modulos')}
+                    className="cursor-pointer text-destructive focus:text-destructive"
+                  >
+                    <Puzzle className="mr-2 h-4 w-4" />
+                    Módulos das Propriedades
                   </DropdownMenuItem>
                 </>
               )}

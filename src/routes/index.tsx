@@ -27,6 +27,7 @@ import { Configuracoes } from '@/pages/Configuracoes'
 import Auditoria from '@/pages/Auditoria'
 import AdminDashboard from '@/pages/admin/Dashboard'
 import GestaoUsuarios from '@/pages/admin/GestaoUsuarios'
+import ModulosPropriedades from '@/pages/admin/ModulosPropriedades'
 import Perfil from '@/pages/Perfil'
 import Notificacoes from '@/pages/Notificacoes'
 import NotFound from '@/pages/NotFound'
@@ -129,6 +130,7 @@ export function AppRoutes() {
         <Route path="notificacoes" element={<Notificacoes />} />
         <Route path="admin" element={<AdminDashboard />} />
         <Route path="admin/usuarios" element={<GestaoUsuarios />} />
+        <Route path="admin/modulos" element={<ModulosPropriedades />} />
       </Route>
 
       {/* Página não encontrada */}
