@@ -120,6 +120,7 @@ export function AppRoutes() {
         <Route path="lancamentos/novo" element={<LancamentoForm />} />
         <Route path="lancamentos/:id" element={<LancamentoForm />} />
         <Route path="maquinas" element={<Maquinas />} />
+        <Route path="pecuaria" element={<Pecuaria />} />
         <Route path="financeiro" element={<Financeiro />} />
         <Route path="relatorios" element={<Relatorios />} />
         <Route path="auditoria" element={<Auditoria />} />

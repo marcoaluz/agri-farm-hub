@@ -40,6 +40,7 @@ const routes = [
   { label: 'Serviços', icon: Wheat, href: '/servicos' },
   { label: 'Lançamentos', icon: ClipboardList, href: '/lancamentos' },
   { label: 'Máquinas', icon: Tractor, href: '/maquinas' },
+  { label: 'Pecuária', icon: Beef, href: '/pecuaria' },
   { label: 'Financeiro', icon: DollarSign, href: '/financeiro' },
   { label: 'Relatórios', icon: BarChart3, href: '/relatorios' },
   { label: 'Auditoria', icon: ShieldCheck, href: '/auditoria' },
