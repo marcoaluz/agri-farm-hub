@@ -14,7 +14,219 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ordenhas: {
+        Row: {
+          created_at: string
+          data: string
+          destino: string | null
+          id: string
+          litros: number
+          observacoes: string | null
+          preco_litro: number | null
+          propriedade_id: string
+          qualidade: string | null
+          rebanho_id: string
+          turno: string
+          vacas_ordenhadas: number | null
+          valor_total: number | null
+        }
+        Insert: {
+          created_at?: string
+          data?: string
+          destino?: string | null
+          id?: string
+          litros: number
+          observacoes?: string | null
+          preco_litro?: number | null
+          propriedade_id: string
+          qualidade?: string | null
+          rebanho_id: string
+          turno?: string
+          vacas_ordenhadas?: number | null
+          valor_total?: number | null
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          destino?: string | null
+          id?: string
+          litros?: number
+          observacoes?: string | null
+          preco_litro?: number | null
+          propriedade_id?: string
+          qualidade?: string | null
+          rebanho_id?: string
+          turno?: string
+          vacas_ordenhadas?: number | null
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordenhas_rebanho_id_fkey"
+            columns: ["rebanho_id"]
+            isOneToOne: false
+            referencedRelation: "rebanhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rebanho_movimentacoes: {
+        Row: {
+          created_at: string
+          data_evento: string
+          fornecedor_comprador: string | null
+          id: string
+          observacoes: string | null
+          peso_medio_kg: number | null
+          propriedade_id: string
+          quantidade: number
+          rebanho_id: string
+          tipo: string
+          valor_total: number | null
+          valor_unitario: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_evento?: string
+          fornecedor_comprador?: string | null
+          id?: string
+          observacoes?: string | null
+          peso_medio_kg?: number | null
+          propriedade_id: string
+          quantidade?: number
+          rebanho_id: string
+          tipo: string
+          valor_total?: number | null
+          valor_unitario?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_evento?: string
+          fornecedor_comprador?: string | null
+          id?: string
+          observacoes?: string | null
+          peso_medio_kg?: number | null
+          propriedade_id?: string
+          quantidade?: number
+          rebanho_id?: string
+          tipo?: string
+          valor_total?: number | null
+          valor_unitario?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rebanho_movimentacoes_rebanho_id_fkey"
+            columns: ["rebanho_id"]
+            isOneToOne: false
+            referencedRelation: "rebanhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rebanhos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          data_formacao: string | null
+          especie: string
+          finalidade: string | null
+          id: string
+          localizacao: string | null
+          nome: string
+          observacoes: string | null
+          propriedade_id: string
+          quantidade_atual: number
+          raca: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          data_formacao?: string | null
+          especie?: string
+          finalidade?: string | null
+          id?: string
+          localizacao?: string | null
+          nome: string
+          observacoes?: string | null
+          propriedade_id: string
+          quantidade_atual?: number
+          raca?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          data_formacao?: string | null
+          especie?: string
+          finalidade?: string | null
+          id?: string
+          localizacao?: string | null
+          nome?: string
+          observacoes?: string | null
+          propriedade_id?: string
+          quantidade_atual?: number
+          raca?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sanitario_eventos: {
+        Row: {
+          created_at: string
+          custo: number | null
+          data_aplicacao: string
+          data_proxima: string | null
+          descricao: string
+          id: string
+          lote_produto: string | null
+          observacoes: string | null
+          propriedade_id: string
+          quantidade_dose: number | null
+          rebanho_id: string | null
+          responsavel: string | null
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          custo?: number | null
+          data_aplicacao?: string
+          data_proxima?: string | null
+          descricao: string
+          id?: string
+          lote_produto?: string | null
+          observacoes?: string | null
+          propriedade_id: string
+          quantidade_dose?: number | null
+          rebanho_id?: string | null
+          responsavel?: string | null
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          custo?: number | null
+          data_aplicacao?: string
+          data_proxima?: string | null
+          descricao?: string
+          id?: string
+          lote_produto?: string | null
+          observacoes?: string | null
+          propriedade_id?: string
+          quantidade_dose?: number | null
+          rebanho_id?: string | null
+          responsavel?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sanitario_eventos_rebanho_id_fkey"
+            columns: ["rebanho_id"]
+            isOneToOne: false
+            referencedRelation: "rebanhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
