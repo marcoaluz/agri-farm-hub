@@ -52,8 +52,17 @@ const routes = [
 export function Sidebar({ open, onClose }: SidebarProps) {
   const location = useLocation()
   const { user } = useAuth()
+  const { propriedadeAtual } = useGlobal()
+  const { modulos } = useModulos()
   const [isAdmin, setIsAdmin] = useState(false)
   const [pendentesCount, setPendentesCount] = useState(0)
+
+  const routesFiltradas = routes.filter(route => {
+    if (route.sempre) return true
+    if (!propriedadeAtual) return false
+    if (route.modulo) return modulos[route.modulo]
+    return true
+  })
 
   useEffect(() => {
     async function checkAdmin() {
