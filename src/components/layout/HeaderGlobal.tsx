@@ -42,6 +42,7 @@ import {
   Shield,
   Menu,
   LayoutDashboard,
+  Puzzle,
 } from 'lucide-react'
 
 interface HeaderGlobalProps {
