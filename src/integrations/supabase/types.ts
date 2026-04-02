@@ -70,6 +70,42 @@ export type Database = {
           },
         ]
       }
+      propriedade_modulos: {
+        Row: {
+          auditoria: boolean
+          created_at: string
+          financeiro: boolean
+          id: string
+          lavoura: boolean
+          pecuaria: boolean
+          propriedade_id: string
+          relatorios: boolean
+          updated_at: string
+        }
+        Insert: {
+          auditoria?: boolean
+          created_at?: string
+          financeiro?: boolean
+          id?: string
+          lavoura?: boolean
+          pecuaria?: boolean
+          propriedade_id: string
+          relatorios?: boolean
+          updated_at?: string
+        }
+        Update: {
+          auditoria?: boolean
+          created_at?: string
+          financeiro?: boolean
+          id?: string
+          lavoura?: boolean
+          pecuaria?: boolean
+          propriedade_id?: string
+          relatorios?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       rebanho_movimentacoes: {
         Row: {
           created_at: string
