@@ -24,6 +24,8 @@ import {
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { useGlobal } from '@/contexts/GlobalContext'
+import { useModulos } from '@/hooks/useModulos'
 import { supabase } from '@/lib/supabase'
 
 interface SidebarProps {
@@ -32,19 +34,19 @@ interface SidebarProps {
 }
 
 const routes = [
-  { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
-  { label: 'Propriedades', icon: Home, href: '/propriedades' },
-  { label: 'Safras', icon: Calendar, href: '/safras' },
-  { label: 'Talhões', icon: MapPin, href: '/talhoes' },
-  { label: 'Estoque', icon: Package, href: '/estoque' },
-  { label: 'Serviços', icon: Wheat, href: '/servicos' },
-  { label: 'Lançamentos', icon: ClipboardList, href: '/lancamentos' },
-  { label: 'Máquinas', icon: Tractor, href: '/maquinas' },
-  { label: 'Pecuária', icon: Beef, href: '/pecuaria' },
-  { label: 'Financeiro', icon: DollarSign, href: '/financeiro' },
-  { label: 'Relatórios', icon: BarChart3, href: '/relatorios' },
-  { label: 'Auditoria', icon: ShieldCheck, href: '/auditoria' },
-  { label: 'Configurações', icon: Settings, href: '/configuracoes' },
+  { label: 'Dashboard',     icon: LayoutDashboard, href: '/',             sempre: true },
+  { label: 'Propriedades',  icon: Home,            href: '/propriedades', sempre: true },
+  { label: 'Safras',        icon: Calendar,        href: '/safras',       modulo: 'lavoura' as const },
+  { label: 'Talhões',       icon: MapPin,          href: '/talhoes',      modulo: 'lavoura' as const },
+  { label: 'Estoque',       icon: Package,         href: '/estoque',      sempre: true },
+  { label: 'Serviços',      icon: Wheat,           href: '/servicos',     sempre: true },
+  { label: 'Lançamentos',   icon: ClipboardList,   href: '/lancamentos',  sempre: true },
+  { label: 'Máquinas',      icon: Tractor,         href: '/maquinas',     sempre: true },
+  { label: 'Pecuária',      icon: Beef,            href: '/pecuaria',     modulo: 'pecuaria' as const },
+  { label: 'Financeiro',    icon: DollarSign,      href: '/financeiro',   modulo: 'financeiro' as const },
+  { label: 'Relatórios',    icon: BarChart3,       href: '/relatorios',   modulo: 'relatorios' as const },
+  { label: 'Auditoria',     icon: ShieldCheck,     href: '/auditoria',    modulo: 'auditoria' as const },
+  { label: 'Configurações', icon: Settings,        href: '/configuracoes',sempre: true },
 ]
 
 export function Sidebar({ open, onClose }: SidebarProps) {
