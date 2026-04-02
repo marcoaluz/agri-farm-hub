@@ -130,6 +130,7 @@ export function AppRoutes() {
         <Route path="notificacoes" element={<Notificacoes />} />
         <Route path="admin" element={<AdminDashboard />} />
         <Route path="admin/usuarios" element={<GestaoUsuarios />} />
+        <Route path="admin/modulos" element={<ModulosPropriedades />} />
       </Route>
 
       {/* Página não encontrada */}
