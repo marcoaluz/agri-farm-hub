@@ -30,10 +30,11 @@ interface RacaoDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   propriedadeId: string
+  safraId: string
   rebanhos: any[]
 }
 
-export function RacaoDialog({ open, onOpenChange, propriedadeId, rebanhos }: RacaoDialogProps) {
+export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanhos }: RacaoDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [saving, setSaving] = useState(false)
@@ -74,9 +75,9 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, rebanhos }: Rac
 
     setSaving(true)
     try {
-      // Need safra_id for transacoes - we'll use a placeholder approach
       const { error } = await supabase.from('transacoes' as any).insert({
         propriedade_id: propriedadeId,
+        safra_id: safraId,
         tipo: 'despesa',
         categoria: 'alimentacao_animal',
         descricao: `${tipoLabel} - ${rebanhoNome}`,
