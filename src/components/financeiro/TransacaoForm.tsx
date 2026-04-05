@@ -39,6 +39,10 @@ const categorias = [
   { value: 'venda_producao', label: 'Venda de Produção' },
   { value: 'servicos_terceiros', label: 'Serviços de Terceiros' },
   { value: 'impostos', label: 'Impostos' },
+  { value: 'sanidade_animal', label: '🐄 Sanidade Animal' },
+  { value: 'alimentacao_animal', label: '🌾 Alimentação / Ração' },
+  { value: 'compra_animais', label: '🐄 Compra de Animais' },
+  { value: 'venda_animais', label: '🐄 Venda de Animais' },
   { value: 'outros', label: 'Outros' },
 ]
 

@@ -46,7 +46,8 @@ const categoriasLabel: Record<string, string> = {
   insumos: 'Insumos', combustivel: 'Combustível', manutencao: 'Manutenção',
   mao_de_obra: 'Mão de Obra', arrendamento: 'Arrendamento', maquinario: 'Maquinário',
   venda_producao: 'Venda Produção', servicos_terceiros: 'Serviços Terceiros',
-  impostos: 'Impostos', outros: 'Outros',
+  impostos: 'Impostos', sanidade_animal: 'Sanidade Animal', alimentacao_animal: 'Alimentação / Ração',
+  compra_animais: 'Compra de Animais', venda_animais: 'Venda de Animais', outros: 'Outros',
 }
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
