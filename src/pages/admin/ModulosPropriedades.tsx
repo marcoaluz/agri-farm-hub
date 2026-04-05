@@ -58,7 +58,7 @@ export default function ModulosPropriedades() {
           propriedade_id: m.propriedade_id,
           lavoura: m.lavoura ?? true,
           pecuaria: m.pecuaria ?? true,
-          financeiro: m.financeiro ?? true,
+          financeiro: m.financeiro ?? m.financei ?? true,
           relatorios: m.relatorios ?? true,
           auditoria: m.auditoria ?? true,
         }
@@ -84,15 +84,17 @@ export default function ModulosPropriedades() {
     const updated = { ...current, [key]: value }
     setLocalState(prev => ({ ...prev, [propId]: updated }))
 
-    const { error } = await supabase.from('propriedade_modulos' as any).upsert({
+    const payload = {
       propriedade_id: propId,
       lavoura: updated.lavoura,
       pecuaria: updated.pecuaria,
-      financeiro: updated.financeiro,
+      financei: updated.financeiro,
       relatorios: updated.relatorios,
       auditoria: updated.auditoria,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'propriedade_id' })
+    }
+
+    const { error } = await supabase.from('propriedade_modulos' as any).upsert(payload as any, { onConflict: 'propriedade_id' })
 
     if (error) {
       // Revert
