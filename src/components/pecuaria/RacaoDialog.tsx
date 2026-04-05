@@ -30,10 +30,11 @@ interface RacaoDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   propriedadeId: string
+  safraId: string
   rebanhos: any[]
 }
 
-export function RacaoDialog({ open, onOpenChange, propriedadeId, rebanhos }: RacaoDialogProps) {
+export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanhos }: RacaoDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [saving, setSaving] = useState(false)
