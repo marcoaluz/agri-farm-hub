@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Beef, Syringe, Milk, ArrowLeftRight, MapPin, Pencil, Trash2, AlertTriangle } from 'lucide-react'
+import { Plus, Beef, Syringe, Milk, ArrowLeftRight, MapPin, Pencil, Trash2, AlertTriangle, Wheat } from 'lucide-react'
 import { format, addDays, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
@@ -19,6 +19,7 @@ import { LoteDialog } from '@/components/pecuaria/LoteDialog'
 import { MovimentacaoDialog } from '@/components/pecuaria/MovimentacaoDialog'
 import { EventoSanitarioDialog } from '@/components/pecuaria/EventoSanitarioDialog'
 import { OrdenhaDialog } from '@/components/pecuaria/OrdenhaDialog'
+import { RacaoDialog } from '@/components/pecuaria/RacaoDialog'
 
 const ESPECIE_EMOJI: Record<string, string> = {
   bovino_corte: '🐄', bovino_leite: '🐄', ave_postura: '🐔', ave_corte: '🐔',
@@ -48,6 +49,7 @@ export default function Pecuaria() {
   const [movRebanhoId, setMovRebanhoId] = useState<string | undefined>()
   const [sanitarioDialog, setSanitarioDialog] = useState(false)
   const [ordenhaDialog, setOrdenhaDialog] = useState(false)
+  const [racaoDialog, setRacaoDialog] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   // Filters
@@ -217,6 +219,7 @@ export default function Pecuaria() {
           </div>
 
           <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setRacaoDialog(true)}><Wheat className="h-4 w-4 mr-1" /> Registrar Ração</Button>
             <Button onClick={() => { setEditLote(null); setLoteDialog(true) }}><Plus className="h-4 w-4 mr-1" /> Novo Lote</Button>
           </div>
 
@@ -438,6 +441,7 @@ export default function Pecuaria() {
       <MovimentacaoDialog open={movDialog} onOpenChange={setMovDialog} propriedadeId={propId} rebanhos={rebanhos || []} rebanhoIdInicial={movRebanhoId} />
       <EventoSanitarioDialog open={sanitarioDialog} onOpenChange={setSanitarioDialog} propriedadeId={propId} rebanhos={rebanhos || []} />
       <OrdenhaDialog open={ordenhaDialog} onOpenChange={setOrdenhaDialog} propriedadeId={propId} rebanhosLeite={rebanhosLeite} />
+      <RacaoDialog open={racaoDialog} onOpenChange={setRacaoDialog} propriedadeId={propId || ''} rebanhos={rebanhos || []} />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
