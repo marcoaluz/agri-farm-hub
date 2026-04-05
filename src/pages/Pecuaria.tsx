@@ -115,8 +115,10 @@ export default function Pecuaria() {
   const valorRebanho = useMemo(() => {
     if (!movimentacoes) return 0
     return movimentacoes.reduce((s: number, m: any) => {
-      if (m.tipo === 'compra') return s + (m.valor_total || 0)
-      if (m.tipo === 'venda') return s - (m.valor_total || 0)
+      const entradas = ['compra', 'transferencia_entrada', 'ajuste_entrada', 'nascimento']
+      const saidas   = ['venda', 'transferencia_saida', 'ajuste_saida', 'morte']
+      if (entradas.includes(m.tipo)) return s + (m.valor_total || 0)
+      if (saidas.includes(m.tipo))   return s - (m.valor_total || 0)
       return s
     }, 0)
   }, [movimentacoes])
@@ -208,7 +210,7 @@ export default function Pecuaria() {
               <>
                 <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total de Animais</p><p className="text-2xl font-bold">{totalAnimais}</p></CardContent></Card>
                 <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Lotes Ativos</p><p className="text-2xl font-bold">{totalLotes}</p></CardContent></Card>
-                <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Valor Estimado</p><p className="text-2xl font-bold">R$ {valorRebanho.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></CardContent></Card>
+                <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Valor do Rebanho</p><p className="text-2xl font-bold">R$ {valorRebanho.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p><p className="text-xs text-muted-foreground mt-1">baseado em compras e vendas registradas</p></CardContent></Card>
                 <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Eventos Sanitários</p><p className="text-2xl font-bold">{eventosProximos}<span className="text-sm font-normal text-muted-foreground ml-1">próx. 30d</span></p></CardContent></Card>
               </>
             )}
