@@ -58,7 +58,7 @@ export default function ModulosPropriedades() {
           propriedade_id: m.propriedade_id,
           lavoura: m.lavoura ?? true,
           pecuaria: m.pecuaria ?? true,
-          financeiro: m.financeiro ?? true,
+          financeiro: m.financeiro ?? m.financei ?? true,
           relatorios: m.relatorios ?? true,
           auditoria: m.auditoria ?? true,
         }

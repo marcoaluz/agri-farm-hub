@@ -35,7 +35,7 @@ export function useModulos() {
       return {
         lavoura: (data as any).lavoura ?? true,
         pecuaria: (data as any).pecuaria ?? true,
-        financeiro: (data as any).financeiro ?? true,
+        financeiro: (data as any).financeiro ?? (data as any).financei ?? true,
         relatorios: (data as any).relatorios ?? true,
         auditoria: (data as any).auditoria ?? true,
       } as Modulos
