@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
@@ -9,8 +9,9 @@ import {
 } from 'recharts'
 import {
   ClipboardList, Wheat, CheckCircle, AlertTriangle, ArrowRight,
-  Coffee, Apple, Sprout, Leaf,
+  Coffee, Apple, Sprout, Leaf, Beef, Syringe,
 } from 'lucide-react'
+import { useModulos } from '@/hooks/useModulos'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { supabase } from '@/lib/supabase'
 import { ChartCard } from '@/components/common/ChartCard'
@@ -47,6 +48,8 @@ const formatMesLabel = (item: any) => {
 
 export default function Dashboard() {
   const { propriedadeAtual, safraAtual, propriedades, setPropriedadeAtual } = useGlobal()
+  const navigate = useNavigate()
+  const { modulos } = useModulos()
   const propId = propriedadeAtual?.id
   const safraId = safraAtual?.id
   const isConsolidado = !propId
@@ -382,6 +385,9 @@ export default function Dashboard() {
 
       {/* Estoque de Produção (both modes) */}
       <EstoqueProducao propriedadeId={propId || null} isConsolidado={isConsolidado} />
+
+      {/* Pecuária */}
+      {modulos.pecuaria && propId && <DashboardPecuaria propId={propId} navigate={navigate} />}
 
       {/* Clima — consolidated: full width, above charts */}
       {isConsolidado && (
