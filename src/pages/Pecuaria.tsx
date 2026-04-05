@@ -441,6 +441,7 @@ export default function Pecuaria() {
       <MovimentacaoDialog open={movDialog} onOpenChange={setMovDialog} propriedadeId={propId} rebanhos={rebanhos || []} rebanhoIdInicial={movRebanhoId} />
       <EventoSanitarioDialog open={sanitarioDialog} onOpenChange={setSanitarioDialog} propriedadeId={propId} rebanhos={rebanhos || []} />
       <OrdenhaDialog open={ordenhaDialog} onOpenChange={setOrdenhaDialog} propriedadeId={propId} rebanhosLeite={rebanhosLeite} />
+      <RacaoDialog open={racaoDialog} onOpenChange={setRacaoDialog} propriedadeId={propId || ''} rebanhos={rebanhos || []} />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
