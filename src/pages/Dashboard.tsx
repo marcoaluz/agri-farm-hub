@@ -152,7 +152,7 @@ function DashboardPecuaria({ propId, navigate }: { propId: string; navigate: (pa
   )
 }
 
-
+export default function Dashboard() {
   const { propriedadeAtual, safraAtual, propriedades, setPropriedadeAtual } = useGlobal()
   const navigate = useNavigate()
   const { modulos } = useModulos()
