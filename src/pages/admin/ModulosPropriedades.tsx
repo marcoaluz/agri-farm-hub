@@ -86,7 +86,11 @@ export default function ModulosPropriedades() {
 
     const { error } = await supabase.from('propriedade_modulos' as any).upsert({
       propriedade_id: propId,
-      [key]: value,
+      lavoura: updated.lavoura,
+      pecuaria: updated.pecuaria,
+      financeiro: updated.financeiro,
+      relatorios: updated.relatorios,
+      auditoria: updated.auditoria,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'propriedade_id' })
 
