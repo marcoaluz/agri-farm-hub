@@ -46,7 +46,113 @@ const formatMesLabel = (item: any) => {
   }
 }
 
-export default function Dashboard() {
+function DashboardPecuaria({ propId, navigate }: { propId: string; navigate: (path: string) => void }) {
+  const { data: resumoPecuaria } = useQuery({
+    queryKey: ['dash-pecuaria', propId],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from('rebanhos').select('id, nome, especie, quantidade_atual').eq('propriedade_id', propId).eq('ativo', true)
+      return data || []
+    },
+    enabled: !!propId,
+  })
+
+  const { data: vacinasProximas } = useQuery({
+    queryKey: ['dash-vacinas', propId],
+    queryFn: async () => {
+      const hoje = new Date().toISOString().split('T')[0]
+      const limite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      const { data } = await (supabase as any)
+        .from('sanitario_eventos')
+        .select('id, descricao, tipo, data_proxima, rebanho:rebanhos(nome)')
+        .eq('propriedade_id', propId)
+        .gte('data_proxima', hoje)
+        .lte('data_proxima', limite)
+        .order('data_proxima')
+      return data || []
+    },
+    enabled: !!propId,
+  })
+
+  const totalAnimais = (resumoPecuaria || []).reduce((s: number, r: any) => s + (r.quantidade_atual || 0), 0)
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+        <Beef className="h-5 w-5 text-primary" />
+        Pecuária
+      </h2>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Resumo do rebanho */}
+        <Card>
+          <CardContent className="p-5">
+            <h3 className="text-sm font-semibold text-muted-foreground mb-3">Rebanho Atual</h3>
+            {!resumoPecuaria?.length ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">Nenhum lote cadastrado.</p>
+            ) : (
+              <div className="space-y-3">
+                {resumoPecuaria.map((r: any) => (
+                  <div key={r.id} className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">{r.nome}</span>
+                    <Badge variant="secondary">{r.quantidade_atual} animais</Badge>
+                  </div>
+                ))}
+                <div className="pt-2 border-t border-border flex items-center justify-between">
+                  <span className="text-sm font-semibold text-foreground">Total: {totalAnimais} animais</span>
+                </div>
+                <Button variant="outline" size="sm" className="w-full" onClick={() => navigate('/pecuaria')}>
+                  Ver Pecuária
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Alertas de vacinação */}
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Syringe className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold text-muted-foreground">Eventos Sanitários Próximos</h3>
+              {vacinasProximas?.length ? (
+                <Badge variant="destructive" className="ml-auto">{vacinasProximas.length}</Badge>
+              ) : null}
+            </div>
+            {!vacinasProximas?.length ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">✅ Nenhum evento nos próximos 30 dias.</p>
+            ) : (
+              <div className="space-y-2">
+                {vacinasProximas.slice(0, 4).map((v: any) => (
+                  <div key={v.id} className="flex items-center justify-between rounded-lg bg-muted/50 p-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{v.descricao}</p>
+                        {v.rebanho?.nome && (
+                          <span className="text-xs text-muted-foreground">· {v.rebanho.nome}</span>
+                        )}
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="shrink-0 ml-2">
+                      {format(new Date(v.data_proxima + 'T12:00:00'), 'dd/MM', { locale: ptBR })}
+                    </Badge>
+                  </div>
+                ))}
+                {vacinasProximas.length > 4 && (
+                  <p className="text-xs text-muted-foreground text-center">+{vacinasProximas.length - 4} outros eventos</p>
+                )}
+                <Button variant="outline" size="sm" className="w-full" onClick={() => navigate('/pecuaria')}>
+                  Ver todos na Pecuária
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+
   const { propriedadeAtual, safraAtual, propriedades, setPropriedadeAtual } = useGlobal()
   const navigate = useNavigate()
   const { modulos } = useModulos()
