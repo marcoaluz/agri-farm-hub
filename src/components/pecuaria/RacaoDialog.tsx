@@ -75,9 +75,9 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
 
     setSaving(true)
     try {
-      // Need safra_id for transacoes - we'll use a placeholder approach
       const { error } = await supabase.from('transacoes' as any).insert({
         propriedade_id: propriedadeId,
+        safra_id: safraId,
         tipo: 'despesa',
         categoria: 'alimentacao_animal',
         descricao: `${tipoLabel} - ${rebanhoNome}`,
