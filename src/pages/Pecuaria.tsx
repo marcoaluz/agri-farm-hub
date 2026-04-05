@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { useSafraContext } from '@/contexts/SafraContext'
 import { useToast } from '@/hooks/use-toast'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -38,6 +39,7 @@ const MOV_BADGE: Record<string, string> = {
 
 export default function Pecuaria() {
   const { propriedadeAtual } = useGlobal()
+  const { safraSelecionada } = useSafraContext()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const propId = propriedadeAtual?.id
@@ -441,7 +443,7 @@ export default function Pecuaria() {
       <MovimentacaoDialog open={movDialog} onOpenChange={setMovDialog} propriedadeId={propId} rebanhos={rebanhos || []} rebanhoIdInicial={movRebanhoId} />
       <EventoSanitarioDialog open={sanitarioDialog} onOpenChange={setSanitarioDialog} propriedadeId={propId} rebanhos={rebanhos || []} />
       <OrdenhaDialog open={ordenhaDialog} onOpenChange={setOrdenhaDialog} propriedadeId={propId} rebanhosLeite={rebanhosLeite} />
-      <RacaoDialog open={racaoDialog} onOpenChange={setRacaoDialog} propriedadeId={propId || ''} rebanhos={rebanhos || []} />
+      <RacaoDialog open={racaoDialog} onOpenChange={setRacaoDialog} propriedadeId={propId || ''} safraId={safraSelecionada?.id || ''} rebanhos={rebanhos || []} />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
