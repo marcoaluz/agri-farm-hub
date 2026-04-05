@@ -84,15 +84,17 @@ export default function ModulosPropriedades() {
     const updated = { ...current, [key]: value }
     setLocalState(prev => ({ ...prev, [propId]: updated }))
 
-    const { error } = await supabase.from('propriedade_modulos' as any).upsert({
+    const payload = {
       propriedade_id: propId,
       lavoura: updated.lavoura,
       pecuaria: updated.pecuaria,
-      financeiro: updated.financeiro,
+      financei: updated.financeiro,
       relatorios: updated.relatorios,
       auditoria: updated.auditoria,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'propriedade_id' })
+    }
+
+    const { error } = await supabase.from('propriedade_modulos' as any).upsert(payload as any, { onConflict: 'propriedade_id' })
 
     if (error) {
       // Revert
