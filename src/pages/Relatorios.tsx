@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { BarChart3, DollarSign, TrendingUp, Wheat, ChevronUp, ChevronDown, Eye, EyeOff, AlertTriangle, ArrowUpDown } from 'lucide-react'
+import { BarChart3, DollarSign, TrendingUp, Wheat, ChevronUp, ChevronDown, Eye, EyeOff, AlertTriangle, ArrowUpDown, FileX } from 'lucide-react'
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { CalendarIcon } from 'lucide-react'
@@ -383,7 +384,12 @@ export function Relatorios() {
             <Button variant="ghost" size="sm" onClick={() => setShowChartsOp(!showChartsOp)}>
               {showChartsOp ? <><EyeOff className="h-4 w-4 mr-1" /> Ocultar Gráficos</> : <><Eye className="h-4 w-4 mr-1" /> Mostrar Gráficos</>}
             </Button>
-            <BotaoExportacao onExportarPDFCompleto={handlePdfCompletoOp} onExportarPDFSintetico={handlePdfSinteticoOp} onExportarExcel={handleExcelOp} isLoading={opData.lancamentos.isLoading} />
+            <div className="flex items-center gap-2">
+              {lancamentos.length > 0 && (
+                <Badge variant="outline">{lancamentos.length} registro{lancamentos.length !== 1 ? 's' : ''}</Badge>
+              )}
+              <BotaoExportacao onExportarPDFCompleto={handlePdfCompletoOp} onExportarPDFSintetico={handlePdfSinteticoOp} onExportarExcel={handleExcelOp} isLoading={opData.lancamentos.isLoading} />
+            </div>
           </div>
 
           {/* Gráficos */}
@@ -405,6 +411,17 @@ export function Relatorios() {
           )}
 
           {/* Tabela */}
+          {opData.lancamentos.isLoading ? (
+            <Card><CardContent className="pt-4 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            </CardContent></Card>
+          ) : lancamentos.length === 0 ? (
+            <Card><CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <FileX className="h-12 w-12 mb-4 opacity-50" />
+              <p className="text-lg font-medium">Nenhum lançamento encontrado para esta safra.</p>
+              <p className="text-sm">Registre operações em Lançamentos para ver os relatórios.</p>
+            </CardContent></Card>
+          ) : (
           <Card>
             <CardContent className="pt-4">
               <Table>
@@ -418,11 +435,7 @@ export function Relatorios() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {opData.lancamentos.isLoading ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
-                  ) : lancPag.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum lançamento encontrado</TableCell></TableRow>
-                  ) : lancPag.map((l: any, i: number) => {
+                  {lancPag.map((l: any, i: number) => {
                     const custoHa = Number(l.custo_por_ha || 0)
                     const isAlto = custoMedioHaGeral > 0 && custoHa > custoMedioHaGeral * 1.5
                     return (
@@ -438,16 +451,14 @@ export function Relatorios() {
                     )
                   })}
                 </TableBody>
-                {lancPag.length > 0 && (
-                  <TableFooter>
-                    <TableRow>
-                      <TableCell colSpan={4} className="font-bold">TOTAL</TableCell>
-                      <TableCell className="font-bold">{fmtN(kpisOp.areaTotal)} ha</TableCell>
-                      <TableCell className="font-bold">{fmt(kpisOp.custoTotal)}</TableCell>
-                      <TableCell className="font-bold">{fmt(kpisOp.custoMedioHa)}</TableCell>
-                    </TableRow>
-                  </TableFooter>
-                )}
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={4} className="font-bold">TOTAL</TableCell>
+                    <TableCell className="font-bold">{fmtN(kpisOp.areaTotal)} ha</TableCell>
+                    <TableCell className="font-bold">{fmt(kpisOp.custoTotal)}</TableCell>
+                    <TableCell className="font-bold">{fmt(kpisOp.custoMedioHa)}</TableCell>
+                  </TableRow>
+                </TableFooter>
               </Table>
               {totalPagesOp > 1 && (
                 <div className="flex items-center justify-between mt-4">
@@ -460,6 +471,7 @@ export function Relatorios() {
               )}
             </CardContent>
           </Card>
+          )}
         </TabsContent>
 
         {/* ════════════ ABA FINANCEIRO ════════════ */}
@@ -497,7 +509,12 @@ export function Relatorios() {
             <Button variant="ghost" size="sm" onClick={() => setShowChartsFin(!showChartsFin)}>
               {showChartsFin ? <><EyeOff className="h-4 w-4 mr-1" /> Ocultar Gráficos</> : <><Eye className="h-4 w-4 mr-1" /> Mostrar Gráficos</>}
             </Button>
-            <BotaoExportacao onExportarPDFCompleto={handlePdfCompletoFin} onExportarPDFSintetico={handlePdfSinteticoFin} onExportarExcel={handleExcelFin} />
+            <div className="flex items-center gap-2">
+              {transacoes.length > 0 && (
+                <Badge variant="outline">{transacoes.length} registro{transacoes.length !== 1 ? 's' : ''}</Badge>
+              )}
+              <BotaoExportacao onExportarPDFCompleto={handlePdfCompletoFin} onExportarPDFSintetico={handlePdfSinteticoFin} onExportarExcel={handleExcelFin} />
+            </div>
           </div>
 
           {showChartsFin && (
@@ -520,6 +537,17 @@ export function Relatorios() {
             </div>
           )}
 
+          {finData.transacoes.isLoading ? (
+            <Card><CardContent className="pt-4 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            </CardContent></Card>
+          ) : transacoes.length === 0 ? (
+            <Card><CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <FileX className="h-12 w-12 mb-4 opacity-50" />
+              <p className="text-lg font-medium">Nenhuma transação encontrada para esta safra.</p>
+              <p className="text-sm">Registre receitas e despesas no Financeiro para ver os relatórios.</p>
+            </CardContent></Card>
+          ) : (
           <Card>
             <CardContent className="pt-4">
               <Table>
@@ -533,11 +561,7 @@ export function Relatorios() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {finData.transacoes.isLoading ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
-                  ) : transPag.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhuma transação encontrada</TableCell></TableRow>
-                  ) : transPag.map((t: any) => {
+                  {transPag.map((t: any) => {
                     const st = statusEfetivoTransacao(t)
                     return (
                       <TableRow key={t.id} className={st === 'vencido' ? 'bg-red-50' : ''}>
@@ -551,16 +575,14 @@ export function Relatorios() {
                     )
                   })}
                 </TableBody>
-                {transPag.length > 0 && (
-                  <TableFooter>
-                    <TableRow>
-                      <TableCell colSpan={3} className="font-bold">TOTAIS</TableCell>
-                      <TableCell className="font-bold text-green-600">Receitas: {fmt(totaisFin.rec)}</TableCell>
-                      <TableCell className="font-bold text-red-600">Despesas: {fmt(totaisFin.desp)}</TableCell>
-                      <TableCell className={`font-bold ${totaisFin.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>Saldo: {fmt(totaisFin.saldo)}</TableCell>
-                    </TableRow>
-                  </TableFooter>
-                )}
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={3} className="font-bold">TOTAIS</TableCell>
+                    <TableCell className="font-bold text-green-600">Receitas: {fmt(totaisFin.rec)}</TableCell>
+                    <TableCell className="font-bold text-red-600">Despesas: {fmt(totaisFin.desp)}</TableCell>
+                    <TableCell className={`font-bold ${totaisFin.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>Saldo: {fmt(totaisFin.saldo)}</TableCell>
+                  </TableRow>
+                </TableFooter>
               </Table>
               {totalPagesFin > 1 && (
                 <div className="flex items-center justify-between mt-4">
@@ -573,6 +595,7 @@ export function Relatorios() {
               )}
             </CardContent>
           </Card>
+          )}
         </TabsContent>
 
         {/* ════════════ ABA POR TALHÃO ════════════ */}
@@ -595,12 +618,30 @@ export function Relatorios() {
 
           {!talhaoSel ? (
             <>
-              {/* COMPARATIVO */}
+              {opData.porTalhao.isLoading ? (
+                <Card><CardContent className="pt-4 space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+                </CardContent></Card>
+              ) : talhoes.length === 0 ? (
+                <Card><CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <FileX className="h-12 w-12 mb-4 opacity-50" />
+                  <p className="text-lg font-medium">Nenhum talhão com dados nesta safra.</p>
+                  <p className="text-sm">Registre lançamentos vinculados a talhões para ver este relatório.</p>
+                </CardContent></Card>
+              ) : (
+              <>
+              {/* KPIs Talhão */}
               <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                 <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Talhões</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{kpisTalhaoComp.total}</div></CardContent></Card>
                 <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Maior Custo/ha</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{fmt(kpisTalhaoComp.maiorHa)}</div></CardContent></Card>
                 <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Menor Custo/ha</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">{fmt(kpisTalhaoComp.menorHa)}</div></CardContent></Card>
                 <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Média Geral</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{fmt(kpisTalhaoComp.media)}</div></CardContent></Card>
+              </div>
+
+              <div className="flex justify-end">
+                {talhoes.length > 0 && (
+                  <Badge variant="outline">{talhoes.length} talhão{talhoes.length !== 1 ? 'ões' : ''}</Badge>
+                )}
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -634,6 +675,8 @@ export function Relatorios() {
                   </TableBody>
                 </Table>
               </CardContent></Card>
+              </>
+              )}
             </>
           ) : (
             <>
