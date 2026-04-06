@@ -106,22 +106,52 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
 
   const isAdmin = profile?.perfil === 'admin'
 
-  // Buscar notificações não lidas (apenas admin)
+  // Buscar total de alertas (admin + estoque + sanitário)
   useEffect(() => {
-    if (!isAdmin) return
+    if (!user) return
 
-    const fetchNotificacoes = async () => {
-      const { count } = await supabase
-        .from('admin_notificacoes')
+    const fetchAlertas = async () => {
+      let total = 0
+
+      // Admin: notificações não lidas
+      if (isAdmin) {
+        const { count } = await supabase
+          .from('admin_notificacoes')
+          .select('id', { count: 'exact', head: true })
+          .eq('lida', false)
+        total += count || 0
+      }
+
+      // Estoque abaixo do mínimo
+      const { data: prods } = await supabase
+        .from('produtos')
+        .select('saldo_atual, nivel_minimo')
+        .eq('ativo', true)
+        .not('nivel_minimo', 'is', null)
+      const baixo = (prods || []).filter(
+        (p: any) => p.nivel_minimo !== null && p.saldo_atual <= p.nivel_minimo
+      ).length
+      total += baixo
+
+      // Eventos sanitários próximos (30 dias)
+      const hoje = new Date().toISOString().split('T')[0]
+      const limite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0]
+      const { count: vacCount } = await supabase
+        .from('sanitario_eventos')
         .select('id', { count: 'exact', head: true })
-        .eq('lida', false)
-      if (count !== null) setNotificacoesCount(count)
+        .gte('data_proxima', hoje)
+        .lte('data_proxima', limite)
+      total += vacCount || 0
+
+      setNotificacoesCount(total)
     }
 
-    fetchNotificacoes()
-    const interval = setInterval(fetchNotificacoes, 30000)
+    fetchAlertas()
+    const interval = setInterval(fetchAlertas, 60000)
     return () => clearInterval(interval)
-  }, [isAdmin])
+  }, [isAdmin, user])
 
   const displayName =
     profile?.full_name ||
