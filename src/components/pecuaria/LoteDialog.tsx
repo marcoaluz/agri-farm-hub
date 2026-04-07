@@ -81,9 +81,21 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
       propriedade_id: propriedadeId,
     }
 
-    const { error } = lote
-      ? await supabase.from('rebanhos' as any).update(payload).eq('id', lote.id)
-      : await supabase.from('rebanhos' as any).insert(payload)
+    const { data: novoLote, error } = lote
+      ? await supabase.from('rebanhos' as any).update(payload).eq('id', lote.id).select().single()
+      : await supabase.from('rebanhos' as any).insert(payload).select().single()
+
+    if (!error && !lote && novoLote &&
+        form.quantidade_inicial && Number(form.quantidade_inicial) > 0) {
+      await supabase.from('rebanho_movimentacoes').insert({
+        rebanho_id: (novoLote as any).id,
+        propriedade_id: propriedadeId,
+        tipo: 'ajuste_entrada',
+        quantidade: Number(form.quantidade_inicial),
+        data_evento: new Date().toISOString().split('T')[0],
+        observacoes: 'Saldo inicial do lote',
+      })
+    }
 
     setLoading(false)
     if (error) {
@@ -91,6 +103,7 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
     } else {
       toast({ title: lote ? 'Lote atualizado!' : 'Lote criado!' })
       queryClient.invalidateQueries({ queryKey: ['rebanhos'] })
+      queryClient.invalidateQueries({ queryKey: ['rebanho-movimentacoes'] })
       onOpenChange(false)
     }
   }
