@@ -160,6 +160,15 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
             <Label>Observações</Label>
             <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
           </div>
+          {!lote && (
+            <div>
+              <Label>Quantidade inicial de animais</Label>
+              <Input type="number" min="0" placeholder="Ex: 50" value={form.quantidade_inicial} onChange={e => setForm(f => ({ ...f, quantidade_inicial: e.target.value }))} />
+              <p className="text-xs text-muted-foreground mt-1">
+                Se informado, será registrada uma movimentação de entrada automaticamente.
+              </p>
+            </div>
+          )}
           <Button onClick={handleSave} disabled={loading} className="w-full">
             {loading ? 'Salvando...' : lote ? 'Salvar Alterações' : 'Criar Lote'}
           </Button>
