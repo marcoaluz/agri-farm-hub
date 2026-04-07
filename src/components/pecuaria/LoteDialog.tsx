@@ -44,6 +44,7 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
     localizacao: '',
     data_formacao: undefined as Date | undefined,
     observacoes: '',
+    quantidade_inicial: '',
   })
 
   useEffect(() => {
