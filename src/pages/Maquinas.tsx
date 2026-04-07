@@ -364,6 +364,18 @@ export function Maquinas() {
                     Abastecer
                   </Button>
 
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setMaquinaManutencao(maquina);
+                      setManutencaoDialog(true);
+                    }}
+                  >
+                    <Wrench className="h-4 w-4 mr-1" />
+                    Manutenção
+                  </Button>
+
                   <Sheet>
                     <SheetTrigger asChild>
                       <Button variant="ghost" size="sm">
