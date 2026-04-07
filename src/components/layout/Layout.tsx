@@ -20,6 +20,8 @@ export function Layout() {
           </div>
         </main>
       </div>
+
+      <AssistenteIA />
     </div>
   )
 }
