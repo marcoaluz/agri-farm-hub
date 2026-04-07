@@ -416,6 +416,13 @@ export function Maquinas() {
           ))}
         </div>
       )}
+
+      <ManutencaoDialog
+        open={manutencaoDialog}
+        onOpenChange={setManutencaoDialog}
+        maquina={maquinaManutencao}
+        propriedadeId={propriedadeAtual?.id || ''}
+      />
     </div>
   );
 }
