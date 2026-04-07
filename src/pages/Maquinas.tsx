@@ -221,7 +221,34 @@ export function Maquinas() {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-accent">
+                <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
+              </div>
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Manutenções</p>
+                <p className="text-xl sm:text-2xl font-bold">{manutencoesProximas?.length || 0}</p>
+                <p className="text-xs text-muted-foreground">próx. 30 dias</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {manutencoesProximas && manutencoesProximas.length > 0 && (
+        <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800">
+          <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-yellow-800 dark:text-yellow-300">
+            {manutencoesProximas.length} manutenção(ões) agendada(s) nos próximos 30 dias —
+            {manutencoesProximas.slice(0, 2).map((m: any) =>
+              ` ${m.maquina_nome}: ${m.descricao}`
+            ).join(',')}
+          </p>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
