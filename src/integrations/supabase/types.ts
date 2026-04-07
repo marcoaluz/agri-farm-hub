@@ -121,6 +121,53 @@ export type Database = {
           },
         ]
       }
+      pesagens: {
+        Row: {
+          created_at: string
+          data_pesagem: string
+          gmd_kg: number | null
+          id: string
+          observacoes: string | null
+          peso_anterior_kg: number | null
+          peso_kg: number
+          propriedade_id: string
+          rebanho_id: string
+          responsavel: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_pesagem?: string
+          gmd_kg?: number | null
+          id?: string
+          observacoes?: string | null
+          peso_anterior_kg?: number | null
+          peso_kg: number
+          propriedade_id: string
+          rebanho_id: string
+          responsavel?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_pesagem?: string
+          gmd_kg?: number | null
+          id?: string
+          observacoes?: string | null
+          peso_anterior_kg?: number | null
+          peso_kg?: number
+          propriedade_id?: string
+          rebanho_id?: string
+          responsavel?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pesagens_rebanho_id_fkey"
+            columns: ["rebanho_id"]
+            isOneToOne: false
+            referencedRelation: "rebanhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       propriedade_modulos: {
         Row: {
           auditoria: boolean
