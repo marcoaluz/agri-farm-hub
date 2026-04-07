@@ -44,6 +44,7 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
     localizacao: '',
     data_formacao: undefined as Date | undefined,
     observacoes: '',
+    quantidade_inicial: '',
   })
 
   useEffect(() => {
@@ -56,9 +57,10 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
         localizacao: lote.localizacao || '',
         data_formacao: lote.data_formacao ? new Date(lote.data_formacao) : undefined,
         observacoes: lote.observacoes || '',
+        quantidade_inicial: '',
       })
     } else {
-      setForm({ nome: '', especie: 'bovino_corte', raca: '', finalidade: '', localizacao: '', data_formacao: undefined, observacoes: '' })
+      setForm({ nome: '', especie: 'bovino_corte', raca: '', finalidade: '', localizacao: '', data_formacao: undefined, observacoes: '', quantidade_inicial: '' })
     }
   }, [lote, open])
 
@@ -79,9 +81,21 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
       propriedade_id: propriedadeId,
     }
 
-    const { error } = lote
-      ? await supabase.from('rebanhos' as any).update(payload).eq('id', lote.id)
-      : await supabase.from('rebanhos' as any).insert(payload)
+    const { data: novoLote, error } = lote
+      ? await supabase.from('rebanhos' as any).update(payload).eq('id', lote.id).select().single()
+      : await supabase.from('rebanhos' as any).insert(payload).select().single()
+
+    if (!error && !lote && novoLote &&
+        form.quantidade_inicial && Number(form.quantidade_inicial) > 0) {
+      await supabase.from('rebanho_movimentacoes').insert({
+        rebanho_id: (novoLote as any).id,
+        propriedade_id: propriedadeId,
+        tipo: 'ajuste_entrada',
+        quantidade: Number(form.quantidade_inicial),
+        data_evento: new Date().toISOString().split('T')[0],
+        observacoes: 'Saldo inicial do lote',
+      })
+    }
 
     setLoading(false)
     if (error) {
@@ -89,6 +103,7 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
     } else {
       toast({ title: lote ? 'Lote atualizado!' : 'Lote criado!' })
       queryClient.invalidateQueries({ queryKey: ['rebanhos'] })
+      queryClient.invalidateQueries({ queryKey: ['rebanho-movimentacoes'] })
       onOpenChange(false)
     }
   }
@@ -145,6 +160,15 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
             <Label>Observações</Label>
             <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
           </div>
+          {!lote && (
+            <div>
+              <Label>Quantidade inicial de animais</Label>
+              <Input type="number" min="0" placeholder="Ex: 50" value={form.quantidade_inicial} onChange={e => setForm(f => ({ ...f, quantidade_inicial: e.target.value }))} />
+              <p className="text-xs text-muted-foreground mt-1">
+                Se informado, será registrada uma movimentação de entrada automaticamente.
+              </p>
+            </div>
+          )}
           <Button onClick={handleSave} disabled={loading} className="w-full">
             {loading ? 'Salvando...' : lote ? 'Salvar Alterações' : 'Criar Lote'}
           </Button>
