@@ -227,7 +227,7 @@ ${(sanitario || []).map((s: any) =>
         size="icon"
       >
         {aberto ? <X className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
-        <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border-2 border-background" />
+        <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary border-2 border-background" />
       </Button>
 
       {/* Painel do chat */}
