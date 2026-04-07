@@ -39,6 +39,8 @@ export function Maquinas() {
   const [busca, setBusca] = useState('');
   const [abastecimentoMaquina, setAbastecimentoMaquina] = useState<Maquina | null>(null);
   const [abastecimentoDialogOpen, setAbastecimentoDialogOpen] = useState(false);
+  const [manutencaoDialog, setManutencaoDialog] = useState(false);
+  const [maquinaManutencao, setMaquinaManutencao] = useState<Maquina | null>(null);
 
   const { data: maquinas, isLoading } = useQuery({
     queryKey: ['maquinas', propriedadeAtual?.id],
