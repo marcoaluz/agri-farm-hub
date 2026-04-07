@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { HeaderGlobal } from './HeaderGlobal'
 import { Sidebar } from './Sidebar'
 import { Outlet } from 'react-router-dom'
+import { AssistenteIA } from '@/components/assistente/AssistenteIA'
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
