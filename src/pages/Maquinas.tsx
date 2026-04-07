@@ -79,6 +79,28 @@ export function Maquinas() {
     enabled: !!maquinas?.length
   });
 
+  const { data: manutencoesProximas } = useQuery({
+    queryKey: ['manutencoes-proximas', propriedadeAtual?.id],
+    queryFn: async () => {
+      const limite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString().split('T')[0];
+      const { data } = await supabase
+        .from('maquina_manutencoes' as any)
+        .select('id, descricao, data_prevista, status, maquina_id')
+        .eq('propriedade_id', propriedadeAtual?.id)
+        .eq('status', 'agendada')
+        .lte('data_prevista', limite)
+        .order('data_prevista');
+      // Enrich with machine names
+      const enriched = (data as any[] || []).map((m: any) => {
+        const maq = maquinas?.find(mq => mq.id === m.maquina_id);
+        return { ...m, maquina_nome: maq?.nome || 'Máquina' };
+      });
+      return enriched;
+    },
+    enabled: !!propriedadeAtual?.id && !!maquinas?.length,
+  });
+
   const maquinasFiltradas = maquinas?.filter(m =>
     m.nome.toLowerCase().includes(busca.toLowerCase()) ||
     m.modelo?.toLowerCase().includes(busca.toLowerCase())
