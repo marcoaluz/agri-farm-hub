@@ -57,9 +57,10 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
         localizacao: lote.localizacao || '',
         data_formacao: lote.data_formacao ? new Date(lote.data_formacao) : undefined,
         observacoes: lote.observacoes || '',
+        quantidade_inicial: '',
       })
     } else {
-      setForm({ nome: '', especie: 'bovino_corte', raca: '', finalidade: '', localizacao: '', data_formacao: undefined, observacoes: '' })
+      setForm({ nome: '', especie: 'bovino_corte', raca: '', finalidade: '', localizacao: '', data_formacao: undefined, observacoes: '', quantidade_inicial: '' })
     }
   }, [lote, open])
 
