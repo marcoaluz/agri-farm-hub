@@ -11,10 +11,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Tractor, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets } from 'lucide-react';
+import { Plus, Tractor, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets, Wrench, AlertTriangle } from 'lucide-react';
 import { MaquinaForm } from '@/components/maquinas/MaquinaForm';
 import { AbastecimentoForm } from '@/components/maquinas/AbastecimentoForm';
 import { HistoricoAbastecimentos } from '@/components/maquinas/HistoricoAbastecimentos';
+import { ManutencaoDialog } from '@/components/maquinas/ManutencaoDialog';
 
 interface Maquina {
   id: string;
