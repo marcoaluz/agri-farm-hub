@@ -161,7 +161,7 @@ export function Maquinas() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4">
         <Card>
           <CardContent className="p-3 sm:pt-6 sm:p-6">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
