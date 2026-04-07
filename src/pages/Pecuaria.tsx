@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Beef, Syringe, Milk, ArrowLeftRight, MapPin, Pencil, Trash2, AlertTriangle, Wheat } from 'lucide-react'
+import { Plus, Beef, Syringe, Milk, ArrowLeftRight, MapPin, Pencil, Trash2, AlertTriangle, Wheat, Scale } from 'lucide-react'
 import { format, addDays, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
@@ -21,6 +21,7 @@ import { MovimentacaoDialog } from '@/components/pecuaria/MovimentacaoDialog'
 import { EventoSanitarioDialog } from '@/components/pecuaria/EventoSanitarioDialog'
 import { OrdenhaDialog } from '@/components/pecuaria/OrdenhaDialog'
 import { RacaoDialog } from '@/components/pecuaria/RacaoDialog'
+import { PesagemDialog } from '@/components/pecuaria/PesagemDialog'
 
 const ESPECIE_EMOJI: Record<string, string> = {
   bovino_corte: '🐄', bovino_leite: '🐄', ave_postura: '🐔', ave_corte: '🐔',
@@ -52,6 +53,7 @@ export default function Pecuaria() {
   const [sanitarioDialog, setSanitarioDialog] = useState(false)
   const [ordenhaDialog, setOrdenhaDialog] = useState(false)
   const [racaoDialog, setRacaoDialog] = useState(false)
+  const [pesagemDialog, setPesagemDialog] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   // Filters
@@ -108,6 +110,20 @@ export default function Pecuaria() {
         .order('data', { ascending: false })
       if (error) throw error
       return data as any[]
+    },
+    enabled: !!propId,
+  })
+
+  const { data: pesagens, isLoading: loadingPesagens } = useQuery({
+    queryKey: ['pesagens', propId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('pesagens' as any)
+        .select('*, rebanho:rebanhos(nome)')
+        .eq('propriedade_id', propId)
+        .order('data_pesagem', { ascending: false })
+        .limit(100)
+      return (data || []) as any[]
     },
     enabled: !!propId,
   })
@@ -199,11 +215,12 @@ export default function Pecuaria() {
       <h1 className="text-2xl font-bold flex items-center gap-2"><Beef className="h-6 w-6" /> Pecuária</h1>
 
       <Tabs defaultValue="rebanho">
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="rebanho">🐄 Rebanho</TabsTrigger>
           <TabsTrigger value="sanidade">💉 Sanidade</TabsTrigger>
           <TabsTrigger value="leite">🥛 Leite</TabsTrigger>
           <TabsTrigger value="movimentacoes">↔️ Movimentações</TabsTrigger>
+          <TabsTrigger value="pesagens">⚖️ Pesagens</TabsTrigger>
         </TabsList>
 
         {/* ========= ABA REBANHO ========= */}
@@ -436,6 +453,69 @@ export default function Pecuaria() {
             </Card>
           )}
         </TabsContent>
+
+        {/* ========= ABA PESAGENS ========= */}
+        <TabsContent value="pesagens" className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => setPesagemDialog(true)}><Scale className="h-4 w-4 mr-1" /> Registrar Pesagem</Button>
+          </div>
+
+          {loadingPesagens ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-16" />
+              ))}
+            </div>
+          ) : !pesagens?.length ? (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                <span className="text-4xl block mb-2">⚖️</span>
+                <p>Nenhuma pesagem registrada.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Rebanho</TableHead>
+                    <TableHead>Peso (kg)</TableHead>
+                    <TableHead>Peso Anterior (kg)</TableHead>
+                    <TableHead>GMD (kg/dia)</TableHead>
+                    <TableHead>Responsável</TableHead>
+                    <TableHead>Obs</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pesagens.map((p: any) => (
+                    <TableRow key={p.id}>
+                      <TableCell>
+                        {format(new Date(p.data_pesagem + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                      </TableCell>
+                      <TableCell>{p.rebanho?.nome || '—'}</TableCell>
+                      <TableCell>
+                        {Number(p.peso_kg).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      </TableCell>
+                      <TableCell>
+                        {p.peso_anterior_kg
+                          ? Number(p.peso_anterior_kg).toLocaleString('pt-BR', { minimumFractionDigits: 1 })
+                          : '—'}
+                      </TableCell>
+                      <TableCell>
+                        {p.gmd_kg
+                          ? <Badge variant="secondary" className="bg-green-100 text-green-800">+{Number(p.gmd_kg).toFixed(3)}</Badge>
+                          : '—'}
+                      </TableCell>
+                      <TableCell>{p.responsavel || '—'}</TableCell>
+                      <TableCell className="max-w-[150px] truncate">{p.observacoes || '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Dialogs */}
@@ -444,6 +524,7 @@ export default function Pecuaria() {
       <EventoSanitarioDialog open={sanitarioDialog} onOpenChange={setSanitarioDialog} propriedadeId={propId} rebanhos={rebanhos || []} />
       <OrdenhaDialog open={ordenhaDialog} onOpenChange={setOrdenhaDialog} propriedadeId={propId} rebanhosLeite={rebanhosLeite} />
       <RacaoDialog open={racaoDialog} onOpenChange={setRacaoDialog} propriedadeId={propId || ''} safraId={safraSelecionada?.id || ''} rebanhos={rebanhos || []} />
+      <PesagemDialog open={pesagemDialog} onOpenChange={setPesagemDialog} propriedadeId={propId || ''} rebanhos={rebanhos || []} />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
