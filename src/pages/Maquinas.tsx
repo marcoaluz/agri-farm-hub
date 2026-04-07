@@ -11,10 +11,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Tractor, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets } from 'lucide-react';
+import { Plus, Tractor, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets, Wrench, AlertTriangle } from 'lucide-react';
 import { MaquinaForm } from '@/components/maquinas/MaquinaForm';
 import { AbastecimentoForm } from '@/components/maquinas/AbastecimentoForm';
 import { HistoricoAbastecimentos } from '@/components/maquinas/HistoricoAbastecimentos';
+import { ManutencaoDialog } from '@/components/maquinas/ManutencaoDialog';
 
 interface Maquina {
   id: string;
@@ -38,6 +39,8 @@ export function Maquinas() {
   const [busca, setBusca] = useState('');
   const [abastecimentoMaquina, setAbastecimentoMaquina] = useState<Maquina | null>(null);
   const [abastecimentoDialogOpen, setAbastecimentoDialogOpen] = useState(false);
+  const [manutencaoDialog, setManutencaoDialog] = useState(false);
+  const [maquinaManutencao, setMaquinaManutencao] = useState<Maquina | null>(null);
 
   const { data: maquinas, isLoading } = useQuery({
     queryKey: ['maquinas', propriedadeAtual?.id],
@@ -74,6 +77,28 @@ export function Maquinas() {
       return (data as any[])?.reduce((s: number, r: any) => s + (r.quantidade_litros || 0), 0) || 0;
     },
     enabled: !!maquinas?.length
+  });
+
+  const { data: manutencoesProximas } = useQuery({
+    queryKey: ['manutencoes-proximas', propriedadeAtual?.id],
+    queryFn: async () => {
+      const limite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString().split('T')[0];
+      const { data } = await supabase
+        .from('maquina_manutencoes' as any)
+        .select('id, descricao, data_prevista, status, maquina_id')
+        .eq('propriedade_id', propriedadeAtual?.id)
+        .eq('status', 'agendada')
+        .lte('data_prevista', limite)
+        .order('data_prevista');
+      // Enrich with machine names
+      const enriched = (data as any[] || []).map((m: any) => {
+        const maq = maquinas?.find(mq => mq.id === m.maquina_id);
+        return { ...m, maquina_nome: maq?.nome || 'Máquina' };
+      });
+      return enriched;
+    },
+    enabled: !!propriedadeAtual?.id && !!maquinas?.length,
   });
 
   const maquinasFiltradas = maquinas?.filter(m =>
@@ -136,7 +161,7 @@ export function Maquinas() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4">
         <Card>
           <CardContent className="p-3 sm:pt-6 sm:p-6">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
@@ -196,7 +221,34 @@ export function Maquinas() {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-accent">
+                <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
+              </div>
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Manutenções</p>
+                <p className="text-xl sm:text-2xl font-bold">{manutencoesProximas?.length || 0}</p>
+                <p className="text-xs text-muted-foreground">próx. 30 dias</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {manutencoesProximas && manutencoesProximas.length > 0 && (
+        <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800">
+          <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-yellow-800 dark:text-yellow-300">
+            {manutencoesProximas.length} manutenção(ões) agendada(s) nos próximos 30 dias —
+            {manutencoesProximas.slice(0, 2).map((m: any) =>
+              ` ${m.maquina_nome}: ${m.descricao}`
+            ).join(',')}
+          </p>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -312,6 +364,18 @@ export function Maquinas() {
                     Abastecer
                   </Button>
 
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setMaquinaManutencao(maquina);
+                      setManutencaoDialog(true);
+                    }}
+                  >
+                    <Wrench className="h-4 w-4 mr-1" />
+                    Manutenção
+                  </Button>
+
                   <Sheet>
                     <SheetTrigger asChild>
                       <Button variant="ghost" size="sm">
@@ -364,6 +428,13 @@ export function Maquinas() {
           ))}
         </div>
       )}
+
+      <ManutencaoDialog
+        open={manutencaoDialog}
+        onOpenChange={setManutencaoDialog}
+        maquina={maquinaManutencao}
+        propriedadeId={propriedadeAtual?.id || ''}
+      />
     </div>
   );
 }

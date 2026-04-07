@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      maquina_manutencoes: {
+        Row: {
+          created_at: string
+          custo: number | null
+          data_prevista: string | null
+          data_realizada: string | null
+          descricao: string
+          horimetro_manutencao: number | null
+          id: string
+          maquina_id: string
+          observacoes: string | null
+          oficina: string | null
+          propriedade_id: string
+          proximo_horimetro: number | null
+          status: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          custo?: number | null
+          data_prevista?: string | null
+          data_realizada?: string | null
+          descricao: string
+          horimetro_manutencao?: number | null
+          id?: string
+          maquina_id: string
+          observacoes?: string | null
+          oficina?: string | null
+          propriedade_id: string
+          proximo_horimetro?: number | null
+          status?: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          custo?: number | null
+          data_prevista?: string | null
+          data_realizada?: string | null
+          descricao?: string
+          horimetro_manutencao?: number | null
+          id?: string
+          maquina_id?: string
+          observacoes?: string | null
+          oficina?: string | null
+          propriedade_id?: string
+          proximo_horimetro?: number | null
+          status?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
       ordenhas: {
         Row: {
           created_at: string
