@@ -97,7 +97,7 @@ export function SafraProvider({ children }: { children: ReactNode }) {
         .from('propriedades_usuarios')
         .select('propriedade_id')
         .eq('usuario_id', user.id)
-        .eq('status_convite', 'aceito')
+        .eq('status', 'ativo')
 
       // Buscar detalhes das compartilhadas (se houver)
       let propCompartilhadas: Propriedade[] = []
