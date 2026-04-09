@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -19,10 +19,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Package, Calendar, AlertTriangle, CheckCircle, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { Package, Calendar, AlertTriangle, CheckCircle, Pencil, Trash2, Loader2, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LoteEditForm } from './LoteEditForm'
 import { LoteConsumosCard } from './LoteConsumosCard'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 interface Lote {
   id: string
@@ -136,6 +139,14 @@ export function LotesDialog({ produto, onClose }: LotesDialogProps) {
 
   const hoje = new Date()
 
+  const chartData = useMemo(() => {
+    if (!lotes || lotes.length < 2) return []
+    return lotes.map(l => ({
+      data: format(new Date(l.data_entrada + 'T12:00:00'), 'MMM/yy', { locale: ptBR }),
+      custo_unitario: l.custo_unitario,
+    }))
+  }, [lotes])
+
   return (
     <div className="space-y-6">
       <DialogHeader>
@@ -183,6 +194,32 @@ export function LotesDialog({ produto, onClose }: LotesDialogProps) {
           <strong>Sistema FIFO:</strong> Ao consumir este produto, os lotes mais antigos serão consumidos automaticamente.
         </AlertDescription>
       </Alert>
+
+      {/* Gráfico de Evolução de Preço */}
+      {chartData.length > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <h3 className="text-sm font-semibold text-muted-foreground">Evolução do Custo Unitário</h3>
+            </div>
+            <div className="h-[180px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="data" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: number) => `R$${v.toFixed(0)}`} />
+                  <Tooltip
+                    formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Custo Unitário']}
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                  />
+                  <Line type="monotone" dataKey="custo_unitario" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: 'hsl(var(--primary))' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Lista de Lotes */}
       {isLoading ? (
