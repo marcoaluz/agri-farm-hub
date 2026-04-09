@@ -190,3 +190,145 @@ export function exportarPDFSintetico(dados: {
 
   doc.save(`${dados.nomeArquivo}.pdf`)
 }
+
+// ── PDF RESUMO DASHBOARD ──────────────────────────────────────
+export function exportarResumoDashboard(dados: {
+  propriedade: string
+  mes: string
+  totalLancamentos: number
+  custoOperacional: number
+  receitas: number
+  despesas: number
+  saldo: number
+  alertas: string[]
+  producao: { nome: string; quantidade: number; unidade: string }[]
+  categorias: { categoria: string; custo: number }[]
+}) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const verde: [number, number, number] = [39, 103, 61]
+
+  // Header
+  doc.setFillColor(...verde)
+  doc.rect(0, 0, 210, 22, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.text('SGA — Resumo Mensal', 14, 13)
+  doc.setFontSize(9)
+  doc.text(dados.mes, 196, 13, { align: 'right' })
+
+  // Metadata
+  doc.setTextColor(60, 60, 60)
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Propriedade: ${dados.propriedade}`, 14, 30)
+  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 196, 30, { align: 'right' })
+
+  let y = 40
+
+  // KPIs
+  const kpis = [
+    { label: 'Total de Lançamentos', valor: String(dados.totalLancamentos) },
+    { label: 'Custo Operacional', valor: `R$ ${dados.custoOperacional.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+    { label: 'Receitas', valor: `R$ ${dados.receitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+    { label: 'Despesas', valor: `R$ ${dados.despesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+    { label: 'Saldo Financeiro', valor: `R$ ${dados.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+  ]
+  const kpiW = 88
+  kpis.forEach((kpi, i) => {
+    const col = i % 2
+    const row = Math.floor(i / 2)
+    const x = 14 + col * (kpiW + 6)
+    const ky = y + row * 18
+    doc.setFillColor(245, 248, 245)
+    doc.roundedRect(x, ky, kpiW, 15, 2, 2, 'F')
+    doc.setFontSize(7)
+    doc.setTextColor(120, 120, 120)
+    doc.text(kpi.label, x + 4, ky + 5)
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...verde)
+    doc.text(kpi.valor, x + 4, ky + 12)
+    doc.setFont('helvetica', 'normal')
+  })
+  y += Math.ceil(kpis.length / 2) * 18 + 8
+
+  // Alertas
+  if (dados.alertas.length > 0) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.setTextColor(...verde)
+    doc.text('Alertas Ativos', 14, y)
+    doc.setDrawColor(...verde)
+    doc.line(14, y + 1, 196, y + 1)
+    y += 7
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(80, 80, 80)
+    dados.alertas.forEach(a => {
+      doc.text(`⚠ ${a}`, 18, y)
+      y += 6
+    })
+    y += 4
+  } else {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(39, 103, 61)
+    doc.text('✅ Nenhum alerta ativo', 14, y)
+    y += 10
+  }
+
+  // Produção
+  if (dados.producao.length > 0) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.setTextColor(...verde)
+    doc.text('Produção', 14, y)
+    doc.setDrawColor(...verde)
+    doc.line(14, y + 1, 196, y + 1)
+    y += 7
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(80, 80, 80)
+    dados.producao.forEach(p => {
+      doc.text(p.nome, 18, y)
+      doc.text(`${p.quantidade.toLocaleString('pt-BR')} ${p.unidade}`, 196, y, { align: 'right' })
+      y += 6
+    })
+    y += 4
+  }
+
+  // Categorias de custo
+  if (dados.categorias.length > 0) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.setTextColor(...verde)
+    doc.text('Custos por Categoria', 14, y)
+    doc.setDrawColor(...verde)
+    doc.line(14, y + 1, 196, y + 1)
+    y += 7
+
+    const totalCat = dados.categorias.reduce((s, c) => s + c.custo, 0)
+    const barX = 18
+    const barW = 140
+
+    dados.categorias.forEach(cat => {
+      const pct = totalCat > 0 ? cat.custo / totalCat : 0
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(80, 80, 80)
+      doc.text(cat.categoria, barX, y)
+      doc.text(`R$ ${cat.custo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${(pct * 100).toFixed(1)}%)`, 196, y, { align: 'right' })
+      y += 3
+      // bar background
+      doc.setFillColor(230, 230, 230)
+      doc.rect(barX, y, barW, 3, 'F')
+      // bar fill
+      doc.setFillColor(...verde)
+      doc.rect(barX, y, barW * pct, 3, 'F')
+      y += 7
+    })
+  }
+
+  doc.save(`resumo_${dados.mes.replace(/\s/g, '_').toLowerCase()}.pdf`)
+}
