@@ -467,15 +467,39 @@ export default function Dashboard() {
             </Badge>
           )}
         </div>
-        {!isConsolidado && (
-          <Button asChild size="sm" className="gap-2">
-            <Link to="/lancamentos/novo">
-              <ClipboardList className="h-4 w-4" />
-              Novo Lançamento
-            </Link>
+        <div className="flex items-center gap-2">
+          {!isConsolidado && (
+            <Button asChild size="sm" className="gap-2">
+              <Link to="/lancamentos/novo">
+                <ClipboardList className="h-4 w-4" />
+                Novo Lançamento
+              </Link>
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => {
+              const mesAtual = format(new Date(), 'MMMM yyyy', { locale: ptBR })
+              exportarResumoDashboard({
+                propriedade: isConsolidado ? 'Todas as propriedades' : (propriedadeAtual?.nome || ''),
+                mes: mesAtual,
+                totalLancamentos: kpiData.totalLanc,
+                custoOperacional: kpiData.custoTotal,
+                receitas: isConsolidado ? totaisConsolidados.receitas_pagas : (transData || []).filter((t: any) => t.tipo === 'receita' && t.status === 'pago').reduce((s: number, t: any) => s + Number(t.valor), 0),
+                despesas: isConsolidado ? totaisConsolidados.despesas_pagas : (transData || []).filter((t: any) => t.tipo === 'despesa' && t.status === 'pago').reduce((s: number, t: any) => s + Number(t.valor), 0),
+                saldo: kpiData.saldo,
+                alertas: alertas.map(a => a.msg),
+                producao: producaoAgrupada.map(p => ({ nome: p.nome, quantidade: p.colhido, unidade: p.unidade })),
+                categorias: (dadosCatRender || []).map((c: any) => ({ categoria: c.categoria, custo: Number(c.custo_total || 0) })),
+              })
+            }}
+          >
+            <FileDown className="h-4 w-4" />
+            📊 Resumo do Mês
           </Button>
-        )}
-      </div>
+        </div>
 
       {/* KPI Cards */}
       <DashboardKPIs data={kpiData} isLoading={kpiLoading} />
