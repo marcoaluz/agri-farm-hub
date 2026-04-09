@@ -328,8 +328,8 @@ export default function Dashboard() {
     queryKey: ['dash-estoque-baixo', propId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
-        .from('produtos').select('nome,quantidade_atual,quantidade_minima')
-        .eq('propriedade_id', propId).lt('quantidade_atual', 10)
+        .from('produtos').select('nome,saldo_atual,nivel_minimo')
+        .eq('propriedade_id', propId).lt('saldo_atual', 10)
       if (error) throw error
       return (data || []) as any[]
     },
