@@ -1,5 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminUsers, useAdminStats, useCheckAdmin, usePromoteToAdmin, useDemoteFromAdmin } from "@/hooks/useAdmin";
@@ -22,6 +24,9 @@ import {
   Users,
   UserPlus,
   Home,
+  ClipboardList,
+  Beef,
+  DollarSign,
   FileText,
   Search,
   MoreVertical,
@@ -65,6 +70,20 @@ export default function AdminDashboard() {
 
   const [busca, setBusca] = useState("");
   const [filtroPerfil, setFiltroPerfil] = useState("todos");
+
+  const { data: extraStats, isLoading: loadingExtra } = useQuery({
+    queryKey: ['admin-extra-stats'],
+    queryFn: async () => {
+      const [rebanhos, transacoes] = await Promise.all([
+        supabase.from('rebanhos').select('id', { count: 'exact', head: true }),
+        supabase.from('transacoes' as any).select('id', { count: 'exact', head: true }),
+      ])
+      return {
+        totalRebanhos: rebanhos.count ?? 0,
+        totalTransacoes: transacoes.count ?? 0,
+      }
+    },
+  });
 
   // Redirecionar se não for admin
   if (!checkingAdmin && !isAdmin) {
@@ -138,9 +157,25 @@ export default function AdminDashboard() {
       title: "Total Lançamentos",
       value: stats?.total_lancamentos ?? 0,
       subtitle: "operações registradas",
-      icon: FileText,
+      icon: ClipboardList,
       color: "text-warning",
       bg: "bg-warning/10",
+    },
+    {
+      title: "Total de Rebanhos",
+      value: extraStats?.totalRebanhos ?? 0,
+      subtitle: "lotes cadastrados",
+      icon: Beef,
+      color: "text-accent-foreground",
+      bg: "bg-accent",
+    },
+    {
+      title: "Total de Transações",
+      value: extraStats?.totalTransacoes ?? 0,
+      subtitle: "transações financeiras",
+      icon: DollarSign,
+      color: "text-success",
+      bg: "bg-success/10",
     },
   ];
 
@@ -161,7 +196,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {statCards.map((card) => (
           <Card key={card.title}>
             <CardContent className="p-4">
