@@ -500,6 +500,7 @@ export default function Dashboard() {
             📊 Resumo do Mês
           </Button>
         </div>
+      </div>
 
       {/* KPI Cards */}
       <DashboardKPIs data={kpiData} isLoading={kpiLoading} />
