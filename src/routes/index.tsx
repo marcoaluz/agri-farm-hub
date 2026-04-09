@@ -21,6 +21,7 @@ import { Lancamentos } from '@/pages/Lancamentos'
 import { LancamentoForm } from '@/pages/LancamentoForm'
 import { Maquinas } from '@/pages/Maquinas'
 import Pecuaria from '@/pages/Pecuaria'
+import Calendario from '@/pages/Calendario'
 import { Financeiro } from '@/pages/Financeiro'
 import { Relatorios } from '@/pages/Relatorios'
 import { Configuracoes } from '@/pages/Configuracoes'
@@ -120,6 +121,7 @@ export function AppRoutes() {
         <Route path="lancamentos" element={<Lancamentos />} />
         <Route path="lancamentos/novo" element={<LancamentoForm />} />
         <Route path="lancamentos/:id" element={<LancamentoForm />} />
+        <Route path="calendario" element={<Calendario />} />
         <Route path="maquinas" element={<Maquinas />} />
         <Route path="pecuaria" element={<Pecuaria />} />
         <Route path="financeiro" element={<Financeiro />} />
