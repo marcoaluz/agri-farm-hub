@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -209,6 +211,114 @@ export function Relatorios() {
   // ── COMPARATIVO ──
   const compResults = compData.porSafra.data || []
 
+  // ── CUSTO DE PRODUÇÃO ──
+  const custoProducaoQuery = useQuery({
+    queryKey: ['rel-custo-producao', propId, safraId],
+    queryFn: async () => {
+      const db = supabase as any
+      // Buscar talhao_culturas com cultura e produção
+      const { data: tc } = await db
+        .from('talhao_culturas')
+        .select(`
+          id, talhao_id, cultura_id, area_plantada_ha, producao_estimada,
+          talhao:talhoes(id, nome, area_ha),
+          cultura:culturas_config(id, nome_exibicao, unidade_label, icone),
+          producao:producoes(quantidade_colhida, quantidade_vendida, quantidade_disponivel)
+        `)
+        .eq('safra_id', safraId)
+        .eq('propriedade_id', propId)
+
+      // Buscar lançamentos agrupados por talhão
+      const { data: lancData } = await db.rpc('get_relatorio_por_talhao', {
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
+      })
+
+      const talhaoMap: Record<string, { custo: number; lancamentos: number }> = {}
+      ;(lancData || []).forEach((t: any) => {
+        talhaoMap[t.talhao_id] = {
+          custo: Number(t.custo_total || 0),
+          lancamentos: Number(t.total_lancamentos || 0),
+        }
+      })
+
+      // Buscar dados da safra anterior para comparativo
+      const safraAnterior = (safras || []).find((s: any) => {
+        const sAtual = safras?.find((x: any) => x.id === safraId)
+        return sAtual && s.ano_inicio === (sAtual.ano_inicio - 1) && s.id !== safraId
+      })
+
+      let compAnterior: Record<string, { custo: number; producao: number }> = {}
+      if (safraAnterior) {
+        const { data: tcAnt } = await db
+          .from('talhao_culturas')
+          .select(`cultura_id, talhao_id, producao:producoes(quantidade_colhida)`)
+          .eq('safra_id', safraAnterior.id)
+          .eq('propriedade_id', propId)
+
+        const { data: lancAnt } = await db.rpc('get_relatorio_por_talhao', {
+          p_propriedade_id: propId,
+          p_safra_id: safraAnterior.id,
+        })
+
+        const talhaoMapAnt: Record<string, number> = {}
+        ;(lancAnt || []).forEach((t: any) => { talhaoMapAnt[t.talhao_id] = Number(t.custo_total || 0) })
+
+        ;(tcAnt || []).forEach((item: any) => {
+          const cultId = item.cultura_id
+          const prod = item.producao?.[0]?.quantidade_colhida || item.producao?.quantidade_colhida || 0
+          const custo = talhaoMapAnt[item.talhao_id] || 0
+          if (!compAnterior[cultId]) compAnterior[cultId] = { custo: 0, producao: 0 }
+          compAnterior[cultId].custo += custo
+          compAnterior[cultId].producao += Number(prod)
+        })
+      }
+
+      // Agrupar por cultura
+      const culturaMap: Record<string, any> = {}
+      ;(tc || []).forEach((item: any) => {
+        const cultId = item.cultura_id
+        const cultNome = item.cultura?.nome_exibicao || 'Cultura'
+        const unidade = item.cultura?.unidade_label || 'un'
+        const icone = item.cultura?.icone || '🌱'
+        const talhaoInfo = talhaoMap[item.talhao_id] || { custo: 0, lancamentos: 0 }
+        const prod = Array.isArray(item.producao) ? item.producao[0] : item.producao
+        const colhida = Number(prod?.quantidade_colhida || 0)
+
+        if (!culturaMap[cultId]) {
+          culturaMap[cultId] = {
+            cultura_id: cultId, nome: cultNome, unidade, icone,
+            custoTotal: 0, totalLancamentos: 0, producaoColhida: 0,
+            areaPlantada: 0, talhoes: [],
+          }
+        }
+        culturaMap[cultId].custoTotal += talhaoInfo.custo
+        culturaMap[cultId].totalLancamentos += talhaoInfo.lancamentos
+        culturaMap[cultId].producaoColhida += colhida
+        culturaMap[cultId].areaPlantada += Number(item.area_plantada_ha || item.talhao?.area_ha || 0)
+        culturaMap[cultId].talhoes.push({
+          nome: item.talhao?.nome || '—',
+          area: Number(item.area_plantada_ha || item.talhao?.area_ha || 0),
+          custo: talhaoInfo.custo,
+          lancamentos: talhaoInfo.lancamentos,
+          colhida,
+        })
+      })
+
+      return Object.values(culturaMap).map((c: any) => ({
+        ...c,
+        custoUnitario: c.producaoColhida > 0 ? c.custoTotal / c.producaoColhida : null,
+        custoHa: c.areaPlantada > 0 ? c.custoTotal / c.areaPlantada : null,
+        anterior: compAnterior[c.cultura_id] || null,
+        custoUnitarioAnterior: compAnterior[c.cultura_id] && compAnterior[c.cultura_id].producao > 0
+          ? compAnterior[c.cultura_id].custo / compAnterior[c.cultura_id].producao : null,
+      }))
+    },
+    enabled: !!propId && !!safraId,
+  })
+
+  const custoProducao = custoProducaoQuery.data || []
+
   // ── SORT TOGGLE ──
   function toggleSort(current: { col: string; dir: 'asc' | 'desc' }, col: string, setter: (v: any) => void) {
     if (current.col === col) setter({ col, dir: current.dir === 'asc' ? 'desc' : 'asc' })
@@ -337,10 +447,11 @@ export function Relatorios() {
 
 
       <Tabs defaultValue="operacional" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="operacional">📊 Operacional</TabsTrigger>
           <TabsTrigger value="financeiro">💰 Financeiro</TabsTrigger>
           <TabsTrigger value="talhao">🌾 Por Talhão</TabsTrigger>
+          <TabsTrigger value="custo-producao">🌿 Por Cultura</TabsTrigger>
           <TabsTrigger value="comparativo">📈 Comparativos</TabsTrigger>
         </TabsList>
 
@@ -716,6 +827,127 @@ export function Relatorios() {
                   </TableBody>
                 </Table>
               </CardContent></Card>
+            </>
+          )}
+        </TabsContent>
+
+        {/* ════════════ ABA CUSTO DE PRODUÇÃO ════════════ */}
+        <TabsContent value="custo-producao" className="space-y-4">
+          {custoProducaoQuery.isLoading ? (
+            <Card><CardContent className="pt-4 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </CardContent></Card>
+          ) : custoProducao.length === 0 ? (
+            <Card><CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <Wheat className="h-12 w-12 mb-4 opacity-50" />
+              <p className="text-lg font-medium">Nenhuma cultura encontrada nesta safra</p>
+              <p className="text-sm">Vincule culturas aos talhões na aba de Talhões</p>
+            </CardContent></Card>
+          ) : (
+            <>
+              {/* KPIs gerais */}
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Culturas Ativas</CardTitle></CardHeader>
+                  <CardContent><div className="text-2xl font-bold">{custoProducao.length}</div></CardContent></Card>
+                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Custo Total</CardTitle></CardHeader>
+                  <CardContent><div className="text-2xl font-bold text-destructive">{fmt(custoProducao.reduce((s: number, c: any) => s + c.custoTotal, 0))}</div></CardContent></Card>
+                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Produção Total</CardTitle></CardHeader>
+                  <CardContent><div className="text-2xl font-bold">{fmtN(custoProducao.reduce((s: number, c: any) => s + c.producaoColhida, 0), 0)}</div></CardContent></Card>
+                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Área Plantada</CardTitle></CardHeader>
+                  <CardContent><div className="text-2xl font-bold">{fmtN(custoProducao.reduce((s: number, c: any) => s + c.areaPlantada, 0))} ha</div></CardContent></Card>
+              </div>
+
+              {/* Gráfico comparativo de custo unitário */}
+              {custoProducao.some((c: any) => c.custoUnitario) && (
+                <Card><CardHeader><CardTitle className="text-base">Custo por Unidade Produzida</CardTitle></CardHeader>
+                  <CardContent className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={custoProducao.filter((c: any) => c.custoUnitario).map((c: any) => ({
+                        nome: `${c.icone} ${c.nome}`,
+                        atual: c.custoUnitario,
+                        anterior: c.custoUnitarioAnterior || 0,
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="nome" fontSize={11} />
+                        <YAxis fontSize={11} tickFormatter={v => `R$${v.toFixed(0)}`} />
+                        <Tooltip formatter={(v: number) => fmt(v)} />
+                        <Legend />
+                        <Bar dataKey="atual" name="Safra Atual" fill="hsl(142,70%,40%)" radius={[4,4,0,0]} />
+                        <Bar dataKey="anterior" name="Safra Anterior" fill="hsl(200,70%,50%)" radius={[4,4,0,0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent></Card>
+              )}
+
+              {/* Cards por cultura */}
+              {custoProducao.map((cult: any) => (
+                <Card key={cult.cultura_id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{cult.icone} {cult.nome}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{cult.totalLancamentos} lançamento{cult.totalLancamentos !== 1 ? 's' : ''}</Badge>
+                        <Badge variant="outline">{fmtN(cult.areaPlantada)} ha</Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Métricas da cultura */}
+                    <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+                      <div className="rounded-lg border p-3">
+                        <p className="text-xs text-muted-foreground">Custo Total</p>
+                        <p className="text-lg font-bold text-destructive">{fmt(cult.custoTotal)}</p>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <p className="text-xs text-muted-foreground">Produção Colhida</p>
+                        <p className="text-lg font-bold">{fmtN(cult.producaoColhida, 0)} {cult.unidade}</p>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <p className="text-xs text-muted-foreground">Custo/{cult.unidade}</p>
+                        <p className="text-lg font-bold">{cult.custoUnitario ? fmt(cult.custoUnitario) : '—'}</p>
+                        {cult.custoUnitarioAnterior && (
+                          <p className={cn('text-xs flex items-center gap-0.5', cult.custoUnitario <= cult.custoUnitarioAnterior ? 'text-green-600' : 'text-red-600')}>
+                            {cult.custoUnitario <= cult.custoUnitarioAnterior ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+                            Anterior: {fmt(cult.custoUnitarioAnterior)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <p className="text-xs text-muted-foreground">Custo/ha</p>
+                        <p className="text-lg font-bold">{cult.custoHa ? fmt(cult.custoHa) : '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Detalhamento por talhão */}
+                    {cult.talhoes.length > 1 && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Talhão</TableHead>
+                            <TableHead className="text-right">Área (ha)</TableHead>
+                            <TableHead className="text-right">Lançamentos</TableHead>
+                            <TableHead className="text-right">Custo</TableHead>
+                            <TableHead className="text-right">Colhido ({cult.unidade})</TableHead>
+                            <TableHead className="text-right">Custo/{cult.unidade}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {cult.talhoes.map((t: any, i: number) => (
+                            <TableRow key={i}>
+                              <TableCell>{t.nome}</TableCell>
+                              <TableCell className="text-right">{fmtN(t.area)}</TableCell>
+                              <TableCell className="text-right">{t.lancamentos}</TableCell>
+                              <TableCell className="text-right">{fmt(t.custo)}</TableCell>
+                              <TableCell className="text-right">{fmtN(t.colhida, 0)}</TableCell>
+                              <TableCell className="text-right">{t.colhida > 0 ? fmt(t.custo / t.colhida) : '—'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
             </>
           )}
         </TabsContent>
