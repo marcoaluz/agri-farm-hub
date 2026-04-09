@@ -101,7 +101,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     }
 
     fetchPendentes()
-    const interval = setInterval(fetchPendentes, 60000)
+    const interval = const interval = setInterval(fetchPendentes, 300000)  // 5 minutos
     return () => clearInterval(interval)
   }, [isAdmin])
 
