@@ -71,6 +71,20 @@ export default function AdminDashboard() {
   const [busca, setBusca] = useState("");
   const [filtroPerfil, setFiltroPerfil] = useState("todos");
 
+  const { data: extraStats, isLoading: loadingExtra } = useQuery({
+    queryKey: ['admin-extra-stats'],
+    queryFn: async () => {
+      const [rebanhos, transacoes] = await Promise.all([
+        supabase.from('rebanhos').select('id', { count: 'exact', head: true }),
+        supabase.from('transacoes' as any).select('id', { count: 'exact', head: true }),
+      ])
+      return {
+        totalRebanhos: rebanhos.count ?? 0,
+        totalTransacoes: transacoes.count ?? 0,
+      }
+    },
+  });
+
   // Redirecionar se não for admin
   if (!checkingAdmin && !isAdmin) {
     navigate("/");
