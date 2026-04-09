@@ -149,7 +149,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
     }
 
     fetchAlertas()
-    const interval = setInterval(fetchAlertas, 60000)
+    const interval = setInterval(fetchAlertas, 300000)  // 5 minutos
     return () => clearInterval(interval)
   }, [isAdmin, user])
 
