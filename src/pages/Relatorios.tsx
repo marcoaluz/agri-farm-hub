@@ -831,6 +831,127 @@ export function Relatorios() {
           )}
         </TabsContent>
 
+        {/* ════════════ ABA CUSTO DE PRODUÇÃO ════════════ */}
+        <TabsContent value="custo-producao" className="space-y-4">
+          {custoProducaoQuery.isLoading ? (
+            <Card><CardContent className="pt-4 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </CardContent></Card>
+          ) : custoProducao.length === 0 ? (
+            <Card><CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <Wheat className="h-12 w-12 mb-4 opacity-50" />
+              <p className="text-lg font-medium">Nenhuma cultura encontrada nesta safra</p>
+              <p className="text-sm">Vincule culturas aos talhões na aba de Talhões</p>
+            </CardContent></Card>
+          ) : (
+            <>
+              {/* KPIs gerais */}
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Culturas Ativas</CardTitle></CardHeader>
+                  <CardContent><div className="text-2xl font-bold">{custoProducao.length}</div></CardContent></Card>
+                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Custo Total</CardTitle></CardHeader>
+                  <CardContent><div className="text-2xl font-bold text-destructive">{fmt(custoProducao.reduce((s: number, c: any) => s + c.custoTotal, 0))}</div></CardContent></Card>
+                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Produção Total</CardTitle></CardHeader>
+                  <CardContent><div className="text-2xl font-bold">{fmtN(custoProducao.reduce((s: number, c: any) => s + c.producaoColhida, 0), 0)}</div></CardContent></Card>
+                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Área Plantada</CardTitle></CardHeader>
+                  <CardContent><div className="text-2xl font-bold">{fmtN(custoProducao.reduce((s: number, c: any) => s + c.areaPlantada, 0))} ha</div></CardContent></Card>
+              </div>
+
+              {/* Gráfico comparativo de custo unitário */}
+              {custoProducao.some((c: any) => c.custoUnitario) && (
+                <Card><CardHeader><CardTitle className="text-base">Custo por Unidade Produzida</CardTitle></CardHeader>
+                  <CardContent className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={custoProducao.filter((c: any) => c.custoUnitario).map((c: any) => ({
+                        nome: `${c.icone} ${c.nome}`,
+                        atual: c.custoUnitario,
+                        anterior: c.custoUnitarioAnterior || 0,
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="nome" fontSize={11} />
+                        <YAxis fontSize={11} tickFormatter={v => `R$${v.toFixed(0)}`} />
+                        <Tooltip formatter={(v: number) => fmt(v)} />
+                        <Legend />
+                        <Bar dataKey="atual" name="Safra Atual" fill="hsl(142,70%,40%)" radius={[4,4,0,0]} />
+                        <Bar dataKey="anterior" name="Safra Anterior" fill="hsl(200,70%,50%)" radius={[4,4,0,0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent></Card>
+              )}
+
+              {/* Cards por cultura */}
+              {custoProducao.map((cult: any) => (
+                <Card key={cult.cultura_id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{cult.icone} {cult.nome}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{cult.totalLancamentos} lançamento{cult.totalLancamentos !== 1 ? 's' : ''}</Badge>
+                        <Badge variant="outline">{fmtN(cult.areaPlantada)} ha</Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Métricas da cultura */}
+                    <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+                      <div className="rounded-lg border p-3">
+                        <p className="text-xs text-muted-foreground">Custo Total</p>
+                        <p className="text-lg font-bold text-destructive">{fmt(cult.custoTotal)}</p>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <p className="text-xs text-muted-foreground">Produção Colhida</p>
+                        <p className="text-lg font-bold">{fmtN(cult.producaoColhida, 0)} {cult.unidade}</p>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <p className="text-xs text-muted-foreground">Custo/{cult.unidade}</p>
+                        <p className="text-lg font-bold">{cult.custoUnitario ? fmt(cult.custoUnitario) : '—'}</p>
+                        {cult.custoUnitarioAnterior && (
+                          <p className={cn('text-xs flex items-center gap-0.5', cult.custoUnitario <= cult.custoUnitarioAnterior ? 'text-green-600' : 'text-red-600')}>
+                            {cult.custoUnitario <= cult.custoUnitarioAnterior ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+                            Anterior: {fmt(cult.custoUnitarioAnterior)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <p className="text-xs text-muted-foreground">Custo/ha</p>
+                        <p className="text-lg font-bold">{cult.custoHa ? fmt(cult.custoHa) : '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Detalhamento por talhão */}
+                    {cult.talhoes.length > 1 && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Talhão</TableHead>
+                            <TableHead className="text-right">Área (ha)</TableHead>
+                            <TableHead className="text-right">Lançamentos</TableHead>
+                            <TableHead className="text-right">Custo</TableHead>
+                            <TableHead className="text-right">Colhido ({cult.unidade})</TableHead>
+                            <TableHead className="text-right">Custo/{cult.unidade}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {cult.talhoes.map((t: any, i: number) => (
+                            <TableRow key={i}>
+                              <TableCell>{t.nome}</TableCell>
+                              <TableCell className="text-right">{fmtN(t.area)}</TableCell>
+                              <TableCell className="text-right">{t.lancamentos}</TableCell>
+                              <TableCell className="text-right">{fmt(t.custo)}</TableCell>
+                              <TableCell className="text-right">{fmtN(t.colhida, 0)}</TableCell>
+                              <TableCell className="text-right">{t.colhida > 0 ? fmt(t.custo / t.colhida) : '—'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          )}
+        </TabsContent>
+
         {/* ════════════ ABA COMPARATIVOS ════════════ */}
         <TabsContent value="comparativo" className="space-y-4">
           <Card>
