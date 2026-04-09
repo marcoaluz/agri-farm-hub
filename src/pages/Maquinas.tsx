@@ -11,6 +11,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Plus, Tractor, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets, Wrench, AlertTriangle } from 'lucide-react';
 import { MaquinaForm } from '@/components/maquinas/MaquinaForm';
 import { AbastecimentoForm } from '@/components/maquinas/AbastecimentoForm';
@@ -99,6 +102,20 @@ export function Maquinas() {
       return enriched;
     },
     enabled: !!propriedadeAtual?.id && !!maquinas?.length,
+  });
+
+  const { data: manutencoes } = useQuery({
+    queryKey: ['manutencoes', propriedadeAtual?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('maquina_manutencoes' as any)
+        .select('*, maquina:maquinas(nome)')
+        .eq('propriedade_id', propriedadeAtual?.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      return (data as any[]) || [];
+    },
+    enabled: !!propriedadeAtual?.id,
   });
 
   const maquinasFiltradas = maquinas?.filter(m =>
@@ -428,6 +445,67 @@ export function Maquinas() {
           ))}
         </div>
       )}
+
+      {/* Histórico de Manutenções */}
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold text-foreground">Histórico de Manutenções</h2>
+        {!manutencoes || manutencoes.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-8">
+              <Wrench className="h-12 w-12 text-muted-foreground mb-3" />
+              <p className="text-muted-foreground text-sm">Nenhuma manutenção registrada</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Máquina</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Data Prevista</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Custo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {manutencoes.map((m: any) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="font-medium">{m.maquina?.nome || '—'}</TableCell>
+                      <TableCell className="capitalize">{m.tipo?.replace(/_/g, ' ') || '—'}</TableCell>
+                      <TableCell>{m.descricao}</TableCell>
+                      <TableCell>
+                        {m.data_prevista
+                          ? format(new Date(m.data_prevista + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+                          : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            m.status === 'realizada'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300'
+                              : m.status === 'agendada'
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300'
+                              : 'bg-muted text-muted-foreground'
+                          }
+                        >
+                          {m.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {m.custo != null ? `R$ ${Number(m.custo).toFixed(2)}` : '—'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       <ManutencaoDialog
         open={manutencaoDialog}
