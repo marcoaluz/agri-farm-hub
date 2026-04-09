@@ -157,9 +157,25 @@ export default function AdminDashboard() {
       title: "Total Lançamentos",
       value: stats?.total_lancamentos ?? 0,
       subtitle: "operações registradas",
-      icon: FileText,
+      icon: ClipboardList,
       color: "text-warning",
       bg: "bg-warning/10",
+    },
+    {
+      title: "Total de Rebanhos",
+      value: extraStats?.totalRebanhos ?? 0,
+      subtitle: "lotes cadastrados",
+      icon: Beef,
+      color: "text-accent-foreground",
+      bg: "bg-accent",
+    },
+    {
+      title: "Total de Transações",
+      value: extraStats?.totalTransacoes ?? 0,
+      subtitle: "transações financeiras",
+      icon: DollarSign,
+      color: "text-success",
+      bg: "bg-success/10",
     },
   ];
 
