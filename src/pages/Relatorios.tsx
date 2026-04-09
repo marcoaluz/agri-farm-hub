@@ -209,6 +209,114 @@ export function Relatorios() {
   // ── COMPARATIVO ──
   const compResults = compData.porSafra.data || []
 
+  // ── CUSTO DE PRODUÇÃO ──
+  const custoProducaoQuery = useQuery({
+    queryKey: ['rel-custo-producao', propId, safraId],
+    queryFn: async () => {
+      const db = supabase as any
+      // Buscar talhao_culturas com cultura e produção
+      const { data: tc } = await db
+        .from('talhao_culturas')
+        .select(`
+          id, talhao_id, cultura_id, area_plantada_ha, producao_estimada,
+          talhao:talhoes(id, nome, area_ha),
+          cultura:culturas_config(id, nome_exibicao, unidade_label, icone),
+          producao:producoes(quantidade_colhida, quantidade_vendida, quantidade_disponivel)
+        `)
+        .eq('safra_id', safraId)
+        .eq('propriedade_id', propId)
+
+      // Buscar lançamentos agrupados por talhão
+      const { data: lancData } = await db.rpc('get_relatorio_por_talhao', {
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
+      })
+
+      const talhaoMap: Record<string, { custo: number; lancamentos: number }> = {}
+      ;(lancData || []).forEach((t: any) => {
+        talhaoMap[t.talhao_id] = {
+          custo: Number(t.custo_total || 0),
+          lancamentos: Number(t.total_lancamentos || 0),
+        }
+      })
+
+      // Buscar dados da safra anterior para comparativo
+      const safraAnterior = (safras || []).find((s: any) => {
+        const sAtual = safras?.find((x: any) => x.id === safraId)
+        return sAtual && s.ano_inicio === (sAtual.ano_inicio - 1) && s.id !== safraId
+      })
+
+      let compAnterior: Record<string, { custo: number; producao: number }> = {}
+      if (safraAnterior) {
+        const { data: tcAnt } = await db
+          .from('talhao_culturas')
+          .select(`cultura_id, talhao_id, producao:producoes(quantidade_colhida)`)
+          .eq('safra_id', safraAnterior.id)
+          .eq('propriedade_id', propId)
+
+        const { data: lancAnt } = await db.rpc('get_relatorio_por_talhao', {
+          p_propriedade_id: propId,
+          p_safra_id: safraAnterior.id,
+        })
+
+        const talhaoMapAnt: Record<string, number> = {}
+        ;(lancAnt || []).forEach((t: any) => { talhaoMapAnt[t.talhao_id] = Number(t.custo_total || 0) })
+
+        ;(tcAnt || []).forEach((item: any) => {
+          const cultId = item.cultura_id
+          const prod = item.producao?.[0]?.quantidade_colhida || item.producao?.quantidade_colhida || 0
+          const custo = talhaoMapAnt[item.talhao_id] || 0
+          if (!compAnterior[cultId]) compAnterior[cultId] = { custo: 0, producao: 0 }
+          compAnterior[cultId].custo += custo
+          compAnterior[cultId].producao += Number(prod)
+        })
+      }
+
+      // Agrupar por cultura
+      const culturaMap: Record<string, any> = {}
+      ;(tc || []).forEach((item: any) => {
+        const cultId = item.cultura_id
+        const cultNome = item.cultura?.nome_exibicao || 'Cultura'
+        const unidade = item.cultura?.unidade_label || 'un'
+        const icone = item.cultura?.icone || '🌱'
+        const talhaoInfo = talhaoMap[item.talhao_id] || { custo: 0, lancamentos: 0 }
+        const prod = Array.isArray(item.producao) ? item.producao[0] : item.producao
+        const colhida = Number(prod?.quantidade_colhida || 0)
+
+        if (!culturaMap[cultId]) {
+          culturaMap[cultId] = {
+            cultura_id: cultId, nome: cultNome, unidade, icone,
+            custoTotal: 0, totalLancamentos: 0, producaoColhida: 0,
+            areaPlantada: 0, talhoes: [],
+          }
+        }
+        culturaMap[cultId].custoTotal += talhaoInfo.custo
+        culturaMap[cultId].totalLancamentos += talhaoInfo.lancamentos
+        culturaMap[cultId].producaoColhida += colhida
+        culturaMap[cultId].areaPlantada += Number(item.area_plantada_ha || item.talhao?.area_ha || 0)
+        culturaMap[cultId].talhoes.push({
+          nome: item.talhao?.nome || '—',
+          area: Number(item.area_plantada_ha || item.talhao?.area_ha || 0),
+          custo: talhaoInfo.custo,
+          lancamentos: talhaoInfo.lancamentos,
+          colhida,
+        })
+      })
+
+      return Object.values(culturaMap).map((c: any) => ({
+        ...c,
+        custoUnitario: c.producaoColhida > 0 ? c.custoTotal / c.producaoColhida : null,
+        custoHa: c.areaPlantada > 0 ? c.custoTotal / c.areaPlantada : null,
+        anterior: compAnterior[c.cultura_id] || null,
+        custoUnitarioAnterior: compAnterior[c.cultura_id] && compAnterior[c.cultura_id].producao > 0
+          ? compAnterior[c.cultura_id].custo / compAnterior[c.cultura_id].producao : null,
+      }))
+    },
+    enabled: !!propId && !!safraId,
+  })
+
+  const custoProducao = custoProducaoQuery.data || []
+
   // ── SORT TOGGLE ──
   function toggleSort(current: { col: string; dir: 'asc' | 'desc' }, col: string, setter: (v: any) => void) {
     if (current.col === col) setter({ col, dir: current.dir === 'asc' ? 'desc' : 'asc' })
@@ -337,10 +445,11 @@ export function Relatorios() {
 
 
       <Tabs defaultValue="operacional" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="operacional">📊 Operacional</TabsTrigger>
           <TabsTrigger value="financeiro">💰 Financeiro</TabsTrigger>
           <TabsTrigger value="talhao">🌾 Por Talhão</TabsTrigger>
+          <TabsTrigger value="custo-producao">🌿 Por Cultura</TabsTrigger>
           <TabsTrigger value="comparativo">📈 Comparativos</TabsTrigger>
         </TabsList>
 
