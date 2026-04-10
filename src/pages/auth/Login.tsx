@@ -345,9 +345,8 @@ export function LoginPage() {
             </CardContent>
             <CardFooter className="flex-col gap-2 pt-0">
               <Separator />
-               <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 O acesso ao SGA é feito apenas por convite. Fale com o administrador.
-              </p>
               </p>
             </CardFooter>
           </Card>
