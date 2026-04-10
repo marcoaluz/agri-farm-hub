@@ -6,7 +6,7 @@ import { SafraProvider } from '@/contexts/SafraContext'
 
 // Páginas de autenticação
 import { LoginPage } from '@/pages/auth/Login'
-import { CadastroPage } from '@/pages/auth/Cadastro'
+// CadastroPage removido - acesso apenas por convite
 import { RecuperarSenhaPage } from '@/pages/auth/RecuperarSenha'
 
 // Páginas protegidas
@@ -31,6 +31,8 @@ import GestaoUsuarios from '@/pages/admin/GestaoUsuarios'
 import ModulosPropriedades from '@/pages/admin/ModulosPropriedades'
 import Perfil from '@/pages/Perfil'
 import Notificacoes from '@/pages/Notificacoes'
+import Convite from '@/pages/Convite'
+import Convites from '@/pages/admin/Convites'
 import NotFound from '@/pages/NotFound'
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -62,22 +64,11 @@ export function AppRoutes() {
           </PublicRoute>
         } 
       />
-      <Route 
-        path="/signup" 
-        element={
-          <PublicRoute>
-            <CadastroPage />
-          </PublicRoute>
-        } 
-      />
-      <Route 
-        path="/cadastro" 
-        element={
-          <PublicRoute>
-            <CadastroPage />
-          </PublicRoute>
-        } 
-      />
+      <Route path="/signup" element={<Navigate to="/login" />} />
+      <Route path="/cadastro" element={<Navigate to="/login" />} />
+      
+      {/* Convite público (sem auth) */}
+      <Route path="/convite" element={<Convite />} />
       
       {/* Recuperar senha */}
       <Route 
@@ -133,6 +124,7 @@ export function AppRoutes() {
         <Route path="admin" element={<AdminDashboard />} />
         <Route path="admin/usuarios" element={<GestaoUsuarios />} />
         <Route path="admin/modulos" element={<ModulosPropriedades />} />
+        <Route path="admin/convites" element={<Convites />} />
       </Route>
 
       {/* Página não encontrada */}

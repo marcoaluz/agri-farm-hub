@@ -346,10 +346,7 @@ export function LoginPage() {
             <CardFooter className="flex-col gap-2 pt-0">
               <Separator />
               <p className="text-sm text-muted-foreground">
-                Não tem uma conta?{" "}
-                <Link to="/cadastro" className="text-primary font-medium hover:underline">
-                  Cadastre-se gratuitamente
-                </Link>
+                O acesso ao SGA é feito apenas por convite. Fale com o administrador.
               </p>
             </CardFooter>
           </Card>

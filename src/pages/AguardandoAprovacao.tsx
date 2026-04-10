@@ -14,9 +14,9 @@ export default function AguardandoAprovacao() {
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-yellow-100">
             <Clock className="h-16 w-16 text-yellow-500" />
           </div>
-          <CardTitle className="text-2xl">Cadastro em Análise</CardTitle>
+          <CardTitle className="text-2xl">Conta Pendente</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Seu cadastro foi recebido com sucesso. Nossa equipe irá analisar e liberar seu acesso em breve.
+            Sua conta foi criada mas ainda não foi ativada. Você precisa de um convite de um administrador para acessar o sistema.
           </p>
         </CardHeader>
 
