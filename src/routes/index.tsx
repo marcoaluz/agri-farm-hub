@@ -31,6 +31,8 @@ import GestaoUsuarios from '@/pages/admin/GestaoUsuarios'
 import ModulosPropriedades from '@/pages/admin/ModulosPropriedades'
 import Perfil from '@/pages/Perfil'
 import Notificacoes from '@/pages/Notificacoes'
+import Convite from '@/pages/Convite'
+import Convites from '@/pages/admin/Convites'
 import NotFound from '@/pages/NotFound'
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
