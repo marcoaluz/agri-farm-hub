@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   Leaf, Lock, Eye, EyeOff, User, Loader2,
-  AlertTriangle, CheckCircle2, Clock,
+  AlertTriangle, CheckCircle2, Clock, ShieldAlert,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -24,6 +24,27 @@ interface TokenValidation {
   email?: string
 }
 
+const PAPEL_LABELS: Record<string, string> = {
+  proprietario: 'Proprietário',
+  gerente: 'Gerente',
+  operador: 'Operador',
+  visualizador: 'Visualizador',
+}
+
+function getPasswordStrength(pw: string): { level: number; label: string; color: string } {
+  if (!pw) return { level: 0, label: '', color: '' }
+  let score = 0
+  if (pw.length >= 8) score++
+  if (pw.length >= 12) score++
+  if (/[A-Z]/.test(pw)) score++
+  if (/[0-9]/.test(pw)) score++
+  if (/[^A-Za-z0-9]/.test(pw)) score++
+
+  if (score <= 2) return { level: 33, label: 'Fraca', color: 'bg-red-500' }
+  if (score <= 3) return { level: 66, label: 'Razoável', color: 'bg-yellow-500' }
+  return { level: 100, label: 'Forte', color: 'bg-green-500' }
+}
+
 export default function Convite() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -33,7 +54,6 @@ export default function Convite() {
   const [tokenData, setTokenData] = useState<TokenValidation | null>(null)
   const [tokenValido, setTokenValido] = useState(false)
 
-  // Form
   const [nome, setNome] = useState('')
   const [senha, setSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
@@ -42,25 +62,17 @@ export default function Convite() {
   const [criando, setCriando] = useState(false)
   const [sucesso, setSucesso] = useState(false)
 
-  const PAPEL_LABELS: Record<string, string> = {
-    proprietario: 'Proprietário',
-    gerente: 'Gerente',
-    operador: 'Operador',
-    visualizador: 'Visualizador',
-  }
+  const strength = useMemo(() => getPasswordStrength(senha), [senha])
 
-  // Validar token ao carregar
+  const senhasIguais = senha === confirmarSenha && confirmarSenha.length > 0
+  const formValido = nome.trim().length >= 3 && senha.length >= 8 && senhasIguais
+
   useEffect(() => {
     async function validar() {
-      if (!token) {
-        setValidando(false)
-        return
-      }
-
+      if (!token) { setValidando(false); return }
       try {
         const { data, error } = await supabase.rpc('validar_token_convite' as any, { p_token: token })
         if (error) throw error
-
         const result = data as unknown as TokenValidation
         setTokenData(result)
         setTokenValido(result.valido)
@@ -71,60 +83,33 @@ export default function Convite() {
         setValidando(false)
       }
     }
-
     validar()
   }, [token])
 
-  // Criar conta
   const handleCriarConta = async () => {
-    if (!nome.trim() || nome.trim().length < 3) {
-      toast.error('Nome deve ter no mínimo 3 caracteres.')
-      return
-    }
-    if (senha.length < 8) {
-      toast.error('Senha deve ter no mínimo 8 caracteres.')
-      return
-    }
-    if (senha !== confirmarSenha) {
-      toast.error('As senhas não coincidem.')
-      return
-    }
-    if (!tokenData?.email && !token) {
+    if (!formValido) return
+    if (!tokenData?.email || !token) {
       toast.error('Token inválido.')
       return
     }
 
     setCriando(true)
     try {
-      // Passo 1: criar conta no Auth
-      const emailConvite = (tokenData as any)?.email
-      if (!emailConvite) {
-        toast.error('Não foi possível obter o e-mail do convite.')
-        return
-      }
-
       const { error: authError } = await supabase.auth.signUp({
-        email: emailConvite,
+        email: tokenData.email,
         password: senha,
-        options: {
-          data: { name: nome.trim() },
-        },
+        options: { data: { name: nome.trim() } },
       })
-
       if (authError) throw authError
 
-      // Passo 2: aceitar convite
-      const { data: conviteData, error: conviteError } = await supabase.rpc('aceitar_convite' as any, {
+      const { error: conviteError } = await supabase.rpc('aceitar_convite' as any, {
         p_token: token,
         p_nome: nome.trim(),
       })
-
       if (conviteError) throw conviteError
 
       setSucesso(true)
       toast.success('Conta criada com sucesso! Bem-vindo ao SGA.')
-
-      // Redirecionar após sucesso
       setTimeout(() => navigate('/'), 2000)
     } catch (err: any) {
       toast.error(err.message || 'Erro ao criar conta.')
@@ -151,8 +136,8 @@ export default function Convite() {
       <div className="flex items-center justify-center min-h-screen bg-background p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-10 pb-8 space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
-              <AlertTriangle className="h-10 w-10 text-destructive" />
+            <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+              <ShieldAlert className="h-10 w-10 text-muted-foreground" />
             </div>
             <h2 className="text-2xl font-bold text-foreground">Link inválido</h2>
             <p className="text-muted-foreground">Nenhum token de convite encontrado na URL.</p>
@@ -169,10 +154,10 @@ export default function Convite() {
       <div className="flex items-center justify-center min-h-screen bg-background p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-10 pb-8 space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
-              <AlertTriangle className="h-10 w-10 text-destructive" />
+            <div className="mx-auto w-16 h-16 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+              <AlertTriangle className="h-10 w-10 text-yellow-600 dark:text-yellow-400" />
             </div>
-            <h2 className="text-2xl font-bold text-foreground">Convite Inválido</h2>
+            <h2 className="text-2xl font-bold text-foreground">Convite inválido ou expirado</h2>
             <p className="text-muted-foreground">
               {tokenData?.motivo || 'Este convite não é mais válido.'}
             </p>
@@ -201,7 +186,7 @@ export default function Convite() {
     )
   }
 
-  // Formulário de cadastro por convite
+  // Formulário
   return (
     <div className="min-h-screen flex">
       {/* Lado Esquerdo */}
@@ -265,12 +250,10 @@ export default function Convite() {
           <Card className="border-border shadow-lg">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold">Criar sua conta</CardTitle>
-              <CardDescription>
-                Preencha os dados abaixo para acessar o SGA
-              </CardDescription>
+              <CardDescription>Preencha os dados abaixo para acessar o SGA</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Banner no desktop */}
+              {/* Banner desktop */}
               <div className="hidden lg:block bg-primary/5 border border-primary/20 rounded-lg p-3">
                 <p className="text-sm text-foreground">
                   📩 Convite para <strong>{tokenData?.propriedade_nome}</strong> como{' '}
@@ -283,11 +266,7 @@ export default function Convite() {
               {/* E-mail (readonly) */}
               <div className="space-y-2">
                 <Label>E-mail</Label>
-                <Input
-                  value={(tokenData as any)?.email || ''}
-                  disabled
-                  className="opacity-70"
-                />
+                <Input value={tokenData?.email || ''} disabled className="opacity-70" />
                 <p className="text-xs text-muted-foreground">O e-mail é definido pelo convite e não pode ser alterado.</p>
               </div>
 
@@ -331,6 +310,20 @@ export default function Convite() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                {senha && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${strength.color}`} style={{ width: `${strength.level}%` }} />
+                      </div>
+                      <span className={`text-xs font-medium ${
+                        strength.level <= 33 ? 'text-red-500' : strength.level <= 66 ? 'text-yellow-500' : 'text-green-500'
+                      }`}>
+                        {strength.label}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Confirmar Senha */}
@@ -356,9 +349,17 @@ export default function Convite() {
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                {confirmarSenha && !senhasIguais && (
+                  <p className="text-xs text-red-500">As senhas não coincidem.</p>
+                )}
+                {senhasIguais && (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Senhas coincidem
+                  </p>
+                )}
               </div>
 
-              <Button onClick={handleCriarConta} disabled={criando} className="w-full" size="lg">
+              <Button onClick={handleCriarConta} disabled={criando || !formValido} className="w-full" size="lg">
                 {criando ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Criando conta...</>
                 ) : (
@@ -366,7 +367,6 @@ export default function Convite() {
                 )}
               </Button>
 
-              {/* Validade */}
               {tokenData?.expira_em && (
                 <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
                   <Clock className="h-3 w-3" />

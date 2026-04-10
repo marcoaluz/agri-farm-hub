@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   Mail, Send, Copy, Check, Loader2, Trash2, Clock, AlertTriangle,
-  UserPlus, Link as LinkIcon, RefreshCw,
+  UserPlus, Link as LinkIcon, RefreshCw, Info,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -37,13 +37,14 @@ interface ConvitePendente {
   criado_em: string
   expira_em: string
   expirado: boolean
+  status?: string
 }
 
-const PAPEL_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' }> = {
-  proprietario: { label: 'Proprietário', variant: 'default' },
-  gerente: { label: 'Gerente', variant: 'default' },
-  operador: { label: 'Operador', variant: 'secondary' },
-  visualizador: { label: 'Visualizador', variant: 'secondary' },
+const PAPEL_OPTIONS: Record<string, { label: string; desc: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  proprietario: { label: 'Proprietário', desc: 'Acesso total, pode gerenciar usuários', variant: 'default' },
+  gerente: { label: 'Gerente', desc: 'Pode criar e editar registros', variant: 'default' },
+  operador: { label: 'Operador', desc: 'Pode registrar operações do dia a dia', variant: 'secondary' },
+  visualizador: { label: 'Visualizador', desc: 'Somente leitura', variant: 'secondary' },
 }
 
 const VALIDADE_OPTIONS = [
@@ -56,25 +57,21 @@ const VALIDADE_OPTIONS = [
 export default function Convites() {
   const { user } = useAuth()
 
-  // Form state
   const [email, setEmail] = useState('')
   const [propriedadeId, setPropriedadeId] = useState('')
   const [papel, setPapel] = useState('')
   const [horas, setHoras] = useState('72')
   const [gerando, setGerando] = useState(false)
 
-  // Link gerado
   const [linkGerado, setLinkGerado] = useState('')
   const [showLinkDialog, setShowLinkDialog] = useState(false)
   const [copiado, setCopiado] = useState(false)
 
-  // Lista
   const [propriedades, setPropriedades] = useState<Propriedade[]>([])
   const [convites, setConvites] = useState<ConvitePendente[]>([])
   const [loadingConvites, setLoadingConvites] = useState(true)
   const [revogando, setRevogando] = useState<string | null>(null)
 
-  // Carregar propriedades
   useEffect(() => {
     async function fetchPropriedades() {
       const { data } = await supabase
@@ -87,7 +84,6 @@ export default function Convites() {
     fetchPropriedades()
   }, [])
 
-  // Carregar convites pendentes
   const fetchConvites = useCallback(async () => {
     setLoadingConvites(true)
     const { data, error } = await supabase.rpc('listar_convites_pendentes' as any)
@@ -103,7 +99,6 @@ export default function Convites() {
     fetchConvites()
   }, [fetchConvites])
 
-  // Gerar convite
   const handleGerarConvite = async () => {
     if (!email.trim()) { toast.error('Informe o e-mail do convidado.'); return }
     if (!propriedadeId) { toast.error('Selecione uma propriedade.'); return }
@@ -126,7 +121,6 @@ export default function Convites() {
       setShowLinkDialog(true)
       setCopiado(false)
 
-      // Limpar form
       setEmail('')
       setPapel('')
       setPropriedadeId('')
@@ -141,19 +135,17 @@ export default function Convites() {
     }
   }
 
-  // Copiar link
   const handleCopiar = async () => {
     try {
       await navigator.clipboard.writeText(linkGerado)
       setCopiado(true)
       toast.success('Link copiado!')
-      setTimeout(() => setCopiado(false), 3000)
+      setTimeout(() => setCopiado(false), 2000)
     } catch {
       toast.error('Erro ao copiar. Selecione e copie manualmente.')
     }
   }
 
-  // Revogar convite
   const handleRevogar = async (conviteId: string) => {
     setRevogando(conviteId)
     try {
@@ -168,6 +160,33 @@ export default function Convites() {
     }
   }
 
+  const papelSelecionado = papel ? PAPEL_OPTIONS[papel] : null
+
+  const getStatusBadge = (c: ConvitePendente) => {
+    if (c.status === 'ativo') {
+      return (
+        <Badge variant="default" className="gap-1 bg-green-600 hover:bg-green-600">
+          <Check className="h-3 w-3" />
+          Aceito
+        </Badge>
+      )
+    }
+    if (c.expirado) {
+      return (
+        <Badge variant="destructive" className="gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          Expirado
+        </Badge>
+      )
+    }
+    return (
+      <Badge variant="outline" className="gap-1 border-yellow-500 text-yellow-600 bg-yellow-50 dark:bg-yellow-950 dark:text-yellow-400">
+        <Clock className="h-3 w-3" />
+        Pendente
+      </Badge>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -179,7 +198,7 @@ export default function Convites() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Formulário de novo convite */}
+        {/* Formulário */}
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -226,12 +245,17 @@ export default function Convites() {
                   <SelectValue placeholder="Selecione o papel" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="proprietario">Proprietário</SelectItem>
-                  <SelectItem value="gerente">Gerente</SelectItem>
-                  <SelectItem value="operador">Operador</SelectItem>
-                  <SelectItem value="visualizador">Visualizador</SelectItem>
+                  {Object.entries(PAPEL_OPTIONS).map(([key, opt]) => (
+                    <SelectItem key={key} value={key}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {papelSelecionado && (
+                <div className="flex items-start gap-2 rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+                  <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>{papelSelecionado.desc}</span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -258,7 +282,7 @@ export default function Convites() {
           </CardContent>
         </Card>
 
-        {/* Lista de convites pendentes */}
+        {/* Lista */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -301,7 +325,7 @@ export default function Convites() {
                   </TableHeader>
                   <TableBody>
                     {convites.map((c) => {
-                      const papelInfo = PAPEL_LABELS[c.papel] || { label: c.papel, variant: 'secondary' as const }
+                      const papelInfo = PAPEL_OPTIONS[c.papel] || { label: c.papel, variant: 'secondary' as const }
                       return (
                         <TableRow key={c.id}>
                           <TableCell className="font-medium">{c.email}</TableCell>
@@ -315,25 +339,13 @@ export default function Convites() {
                           <TableCell className="text-sm text-muted-foreground">
                             {format(new Date(c.expira_em), "dd/MM/yy HH:mm", { locale: ptBR })}
                           </TableCell>
-                          <TableCell>
-                            {c.expirado ? (
-                              <Badge variant="destructive" className="gap-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                Expirado
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary" className="gap-1">
-                                <Clock className="h-3 w-3" />
-                                Pendente
-                              </Badge>
-                            )}
-                          </TableCell>
+                          <TableCell>{getStatusBadge(c)}</TableCell>
                           <TableCell>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRevogar(c.id)}
-                              disabled={revogando === c.id}
+                              disabled={revogando === c.id || c.status === 'ativo'}
                               className="text-destructive hover:text-destructive"
                             >
                               {revogando === c.id ? (
@@ -374,9 +386,9 @@ export default function Convites() {
                 className="font-mono text-sm"
                 onClick={(e) => (e.target as HTMLInputElement).select()}
               />
-              <Button onClick={handleCopiar} variant="outline" className="shrink-0">
+              <Button onClick={handleCopiar} variant="outline" className="shrink-0 min-w-[100px]">
                 {copiado ? (
-                  <><Check className="h-4 w-4 mr-1" />Copiado</>
+                  <><Check className="h-4 w-4 mr-1 text-green-600" />Copiado!</>
                 ) : (
                   <><Copy className="h-4 w-4 mr-1" />Copiar</>
                 )}
