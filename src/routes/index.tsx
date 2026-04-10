@@ -124,6 +124,7 @@ export function AppRoutes() {
         <Route path="admin" element={<AdminDashboard />} />
         <Route path="admin/usuarios" element={<GestaoUsuarios />} />
         <Route path="admin/modulos" element={<ModulosPropriedades />} />
+        <Route path="admin/convites" element={<Convites />} />
       </Route>
 
       {/* Página não encontrada */}
