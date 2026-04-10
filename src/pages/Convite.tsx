@@ -314,7 +314,9 @@ export default function Convite() {
                 {senha && (
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <Progress value={strength.level} className="h-1.5 flex-1" indicatorClassName={strength.color} />
+                      <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${strength.color}`} style={{ width: `${strength.level}%` }} />
+                      </div>
                       <span className={`text-xs font-medium ${
                         strength.level <= 33 ? 'text-red-500' : strength.level <= 66 ? 'text-yellow-500' : 'text-green-500'
                       }`}>
