@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   Mail, Send, Copy, Check, Loader2, Trash2, Clock, AlertTriangle,
-  UserPlus, Link as LinkIcon, RefreshCw, Info,
+  UserPlus, Link as LinkIcon, RefreshCw, Info, Building2, User,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -32,13 +32,16 @@ interface Propriedade {
 interface ConvitePendente {
   id: string
   email: string
-  propriedade_nome: string
-  papel: string
+  propriedade_nome: string | null
+  papel: string | null
+  tipo: string
   criado_em: string
   expira_em: string
   expirado: boolean
   status?: string
 }
+
+type TipoConvite = 'novo_proprietario' | 'acesso_propriedade'
 
 const PAPEL_OPTIONS: Record<string, { label: string; desc: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   proprietario: { label: 'Proprietário', desc: 'Acesso total, pode gerenciar usuários', variant: 'default' },
@@ -57,6 +60,7 @@ const VALIDADE_OPTIONS = [
 export default function Convites() {
   const { user } = useAuth()
 
+  const [tipoConvite, setTipoConvite] = useState<TipoConvite>('acesso_propriedade')
   const [email, setEmail] = useState('')
   const [propriedadeId, setPropriedadeId] = useState('')
   const [papel, setPapel] = useState('')
@@ -86,7 +90,7 @@ export default function Convites() {
 
   const fetchConvites = useCallback(async () => {
     setLoadingConvites(true)
-    const { data, error } = await supabase.rpc('listar_convites_pendentes' as any)
+    const { data, error } = await supabase.rpc('listar_todos_convites_pendentes' as any)
     if (error) {
       toast.error('Erro ao carregar convites: ' + error.message)
     } else {
@@ -99,24 +103,46 @@ export default function Convites() {
     fetchConvites()
   }, [fetchConvites])
 
+  const handleTrocarTipo = (tipo: TipoConvite) => {
+    setTipoConvite(tipo)
+    setEmail('')
+    setPropriedadeId('')
+    setPapel('')
+    setHoras('72')
+  }
+
   const handleGerarConvite = async () => {
     if (!email.trim()) { toast.error('Informe o e-mail do convidado.'); return }
-    if (!propriedadeId) { toast.error('Selecione uma propriedade.'); return }
-    if (!papel) { toast.error('Selecione o papel.'); return }
+
+    if (tipoConvite === 'acesso_propriedade') {
+      if (!propriedadeId) { toast.error('Selecione uma propriedade.'); return }
+      if (!papel) { toast.error('Selecione o papel.'); return }
+    }
 
     setGerando(true)
     try {
-      const { data, error } = await supabase.rpc('gerar_convite' as any, {
-        p_email: email.trim().toLowerCase(),
-        p_propriedade_id: propriedadeId,
-        p_papel: papel,
-        p_horas_validade: parseInt(horas),
-      })
+      let link = ''
 
-      if (error) throw error
+      if (tipoConvite === 'novo_proprietario') {
+        const { data, error } = await supabase.rpc('gerar_convite_novo_usuario' as any, {
+          p_email: email.trim().toLowerCase(),
+          p_horas_validade: parseInt(horas),
+        })
+        if (error) throw error
+        const result = data as any
+        link = `${window.location.origin}/convite?token=${result.token}&tipo=novo`
+      } else {
+        const { data, error } = await supabase.rpc('gerar_convite' as any, {
+          p_email: email.trim().toLowerCase(),
+          p_propriedade_id: propriedadeId,
+          p_papel: papel,
+          p_horas_validade: parseInt(horas),
+        })
+        if (error) throw error
+        const result = data as any
+        link = `${window.location.origin}/convite?token=${result.token}&tipo=existente`
+      }
 
-      const result = data as any
-      const link = `${window.location.origin}/convite?token=${result.token}`
       setLinkGerado(link)
       setShowLinkDialog(true)
       setCopiado(false)
@@ -187,6 +213,23 @@ export default function Convites() {
     )
   }
 
+  const getTipoBadge = (c: ConvitePendente) => {
+    if (c.tipo === 'novo_proprietario') {
+      return (
+        <Badge variant="outline" className="gap-1 border-purple-500 text-purple-600 bg-purple-50 dark:bg-purple-950 dark:text-purple-400">
+          <UserPlus className="h-3 w-3" />
+          Novo proprietário
+        </Badge>
+      )
+    }
+    return (
+      <Badge variant="outline" className="gap-1 border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400">
+        <Building2 className="h-3 w-3" />
+        Acesso: {c.propriedade_nome || '—'}
+      </Badge>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -208,6 +251,61 @@ export default function Convites() {
             <CardDescription>Gere um link de convite para um novo usuário</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Seletor de tipo */}
+            <div className="space-y-2">
+              <Label>Tipo de convite</Label>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleTrocarTipo('novo_proprietario')}
+                  disabled={gerando}
+                  className={`flex items-start gap-3 rounded-lg border-2 p-3 text-left transition-all ${
+                    tipoConvite === 'novo_proprietario'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-muted-foreground/30'
+                  } ${gerando ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                    tipoConvite === 'novo_proprietario' ? 'border-primary' : 'border-muted-foreground/40'
+                  }`}>
+                    {tipoConvite === 'novo_proprietario' && (
+                      <div className="h-2 w-2 rounded-full bg-primary" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-foreground">Novo proprietário</p>
+                    <p className="text-xs text-muted-foreground">Pessoa vai criar a própria fazenda após se cadastrar</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleTrocarTipo('acesso_propriedade')}
+                  disabled={gerando}
+                  className={`flex items-start gap-3 rounded-lg border-2 p-3 text-left transition-all ${
+                    tipoConvite === 'acesso_propriedade'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-muted-foreground/30'
+                  } ${gerando ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                    tipoConvite === 'acesso_propriedade' ? 'border-primary' : 'border-muted-foreground/40'
+                  }`}>
+                    {tipoConvite === 'acesso_propriedade' && (
+                      <div className="h-2 w-2 rounded-full bg-primary" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-foreground">Acesso a propriedade</p>
+                    <p className="text-xs text-muted-foreground">Dar acesso a uma fazenda já cadastrada no sistema</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* E-mail */}
             <div className="space-y-2">
               <Label htmlFor="email">E-mail do convidado</Label>
               <div className="relative">
@@ -224,40 +322,46 @@ export default function Convites() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Propriedade</Label>
-              <Select value={propriedadeId} onValueChange={setPropriedadeId} disabled={gerando}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a propriedade" />
-                </SelectTrigger>
-                <SelectContent>
-                  {propriedades.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Papel</Label>
-              <Select value={papel} onValueChange={setPapel} disabled={gerando}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o papel" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PAPEL_OPTIONS).map(([key, opt]) => (
-                    <SelectItem key={key} value={key}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {papelSelecionado && (
-                <div className="flex items-start gap-2 rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
-                  <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  <span>{papelSelecionado.desc}</span>
+            {/* Campos exclusivos de Tipo B */}
+            {tipoConvite === 'acesso_propriedade' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Propriedade</Label>
+                  <Select value={propriedadeId} onValueChange={setPropriedadeId} disabled={gerando}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a propriedade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {propriedades.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-            </div>
 
+                <div className="space-y-2">
+                  <Label>Papel</Label>
+                  <Select value={papel} onValueChange={setPapel} disabled={gerando}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o papel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(PAPEL_OPTIONS).map(([key, opt]) => (
+                        <SelectItem key={key} value={key}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {papelSelecionado && (
+                    <div className="flex items-start gap-2 rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+                      <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>{papelSelecionado.desc}</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Validade */}
             <div className="space-y-2">
               <Label>Validade</Label>
               <Select value={horas} onValueChange={setHoras} disabled={gerando}>
@@ -315,7 +419,7 @@ export default function Convites() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>E-mail</TableHead>
-                      <TableHead>Propriedade</TableHead>
+                      <TableHead>Tipo</TableHead>
                       <TableHead>Papel</TableHead>
                       <TableHead>Criado em</TableHead>
                       <TableHead>Expira em</TableHead>
@@ -325,13 +429,17 @@ export default function Convites() {
                   </TableHeader>
                   <TableBody>
                     {convites.map((c) => {
-                      const papelInfo = PAPEL_OPTIONS[c.papel] || { label: c.papel, variant: 'secondary' as const }
+                      const papelInfo = c.papel ? (PAPEL_OPTIONS[c.papel] || { label: c.papel, variant: 'secondary' as const }) : null
                       return (
                         <TableRow key={c.id}>
                           <TableCell className="font-medium">{c.email}</TableCell>
-                          <TableCell>{c.propriedade_nome}</TableCell>
+                          <TableCell>{getTipoBadge(c)}</TableCell>
                           <TableCell>
-                            <Badge variant={papelInfo.variant}>{papelInfo.label}</Badge>
+                            {papelInfo ? (
+                              <Badge variant={papelInfo.variant}>{papelInfo.label}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {format(new Date(c.criado_em), "dd/MM/yy HH:mm", { locale: ptBR })}

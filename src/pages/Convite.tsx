@@ -18,8 +18,8 @@ import { Separator } from '@/components/ui/separator'
 interface TokenValidation {
   valido: boolean
   motivo?: string
-  papel: string
-  propriedade_nome: string
+  papel?: string
+  propriedade_nome?: string
   expira_em: string
   email?: string
 }
@@ -49,6 +49,9 @@ export default function Convite() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
+  const tipo = searchParams.get('tipo') || 'existente' // 'novo' ou 'existente'
+
+  const isNovoProprietario = tipo === 'novo'
 
   const [validando, setValidando] = useState(true)
   const [tokenData, setTokenData] = useState<TokenValidation | null>(null)
@@ -71,20 +74,21 @@ export default function Convite() {
     async function validar() {
       if (!token) { setValidando(false); return }
       try {
-        const { data, error } = await supabase.rpc('validar_token_convite' as any, { p_token: token })
+        const rpcName = isNovoProprietario ? 'validar_token_novo_usuario' : 'validar_token_convite'
+        const { data, error } = await supabase.rpc(rpcName as any, { p_token: token })
         if (error) throw error
         const result = data as unknown as TokenValidation
         setTokenData(result)
         setTokenValido(result.valido)
       } catch (err: any) {
-        setTokenData({ valido: false, motivo: err.message || 'Erro ao validar convite', papel: '', propriedade_nome: '', expira_em: '' })
+        setTokenData({ valido: false, motivo: err.message || 'Erro ao validar convite', expira_em: '' })
         setTokenValido(false)
       } finally {
         setValidando(false)
       }
     }
     validar()
-  }, [token])
+  }, [token, isNovoProprietario])
 
   const handleCriarConta = async () => {
     if (!formValido) return
@@ -102,15 +106,22 @@ export default function Convite() {
       })
       if (authError) throw authError
 
-      const { error: conviteError } = await supabase.rpc('aceitar_convite' as any, {
+      const rpcName = isNovoProprietario ? 'aceitar_convite_novo_usuario' : 'aceitar_convite'
+      const { error: conviteError } = await supabase.rpc(rpcName as any, {
         p_token: token,
         p_nome: nome.trim(),
       })
       if (conviteError) throw conviteError
 
       setSucesso(true)
-      toast.success('Conta criada com sucesso! Bem-vindo ao SGA.')
-      setTimeout(() => navigate('/'), 2000)
+
+      if (isNovoProprietario) {
+        toast.success('Conta criada! Agora cadastre sua primeira propriedade.')
+        setTimeout(() => navigate('/propriedades'), 2000)
+      } else {
+        toast.success('Conta criada com sucesso! Bem-vindo ao SGA.')
+        setTimeout(() => navigate('/'), 2000)
+      }
     } catch (err: any) {
       toast.error(err.message || 'Erro ao criar conta.')
     } finally {
@@ -179,12 +190,21 @@ export default function Convite() {
               <CheckCircle2 className="h-10 w-10 text-primary" />
             </div>
             <h2 className="text-2xl font-bold text-foreground">Conta criada com sucesso!</h2>
-            <p className="text-muted-foreground">Redirecionando para o sistema...</p>
+            <p className="text-muted-foreground">
+              {isNovoProprietario
+                ? 'Redirecionando para cadastrar sua propriedade...'
+                : 'Redirecionando para o sistema...'}
+            </p>
           </CardContent>
         </Card>
       </div>
     )
   }
+
+  // Banner text
+  const bannerText = isNovoProprietario
+    ? 'Você foi convidado para criar sua conta no SGA e cadastrar sua propriedade.'
+    : `Você foi convidado para ${tokenData?.propriedade_nome || '—'} como ${PAPEL_LABELS[tokenData?.papel || ''] || tokenData?.papel}`
 
   // Formulário
   return (
@@ -204,16 +224,20 @@ export default function Convite() {
         <div className="space-y-6">
           <h2 className="text-3xl font-bold">Você foi convidado!</h2>
           <p className="text-primary-foreground/70 text-lg">
-            Crie sua conta para acessar o sistema e colaborar na gestão da propriedade.
+            {isNovoProprietario
+              ? 'Crie sua conta e cadastre sua propriedade para começar a usar o sistema.'
+              : 'Crie sua conta para acessar o sistema e colaborar na gestão da propriedade.'}
           </p>
-          <div className="bg-primary-foreground/10 backdrop-blur-sm rounded-xl p-6 space-y-3">
-            <p className="font-semibold text-lg">{tokenData?.propriedade_nome}</p>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="bg-primary-foreground/20 text-primary-foreground">
-                {PAPEL_LABELS[tokenData?.papel || ''] || tokenData?.papel}
-              </Badge>
+          {!isNovoProprietario && tokenData?.propriedade_nome && (
+            <div className="bg-primary-foreground/10 backdrop-blur-sm rounded-xl p-6 space-y-3">
+              <p className="font-semibold text-lg">{tokenData.propriedade_nome}</p>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="bg-primary-foreground/20 text-primary-foreground">
+                  {PAPEL_LABELS[tokenData?.papel || ''] || tokenData?.papel}
+                </Badge>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <p className="text-primary-foreground/60 text-sm">
@@ -239,12 +263,7 @@ export default function Convite() {
 
           {/* Banner convite mobile */}
           <div className="lg:hidden bg-primary/5 border border-primary/20 rounded-lg p-4 mb-4 text-center">
-            <p className="text-sm text-foreground">
-              Você foi convidado para <strong>{tokenData?.propriedade_nome}</strong> como{' '}
-              <Badge variant="secondary" className="ml-1">
-                {PAPEL_LABELS[tokenData?.papel || ''] || tokenData?.papel}
-              </Badge>
-            </p>
+            <p className="text-sm text-foreground">{bannerText}</p>
           </div>
 
           <Card className="border-border shadow-lg">
@@ -255,12 +274,7 @@ export default function Convite() {
             <CardContent className="space-y-4">
               {/* Banner desktop */}
               <div className="hidden lg:block bg-primary/5 border border-primary/20 rounded-lg p-3">
-                <p className="text-sm text-foreground">
-                  📩 Convite para <strong>{tokenData?.propriedade_nome}</strong> como{' '}
-                  <Badge variant="secondary">
-                    {PAPEL_LABELS[tokenData?.papel || ''] || tokenData?.papel}
-                  </Badge>
-                </p>
+                <p className="text-sm text-foreground">📩 {bannerText}</p>
               </div>
 
               {/* E-mail (readonly) */}
