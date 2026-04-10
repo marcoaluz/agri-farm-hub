@@ -64,22 +64,11 @@ export function AppRoutes() {
           </PublicRoute>
         } 
       />
-      <Route 
-        path="/signup" 
-        element={
-          <PublicRoute>
-            <CadastroPage />
-          </PublicRoute>
-        } 
-      />
-      <Route 
-        path="/cadastro" 
-        element={
-          <PublicRoute>
-            <CadastroPage />
-          </PublicRoute>
-        } 
-      />
+      <Route path="/signup" element={<Navigate to="/login" />} />
+      <Route path="/cadastro" element={<Navigate to="/login" />} />
+      
+      {/* Convite público (sem auth) */}
+      <Route path="/convite" element={<Convite />} />
       
       {/* Recuperar senha */}
       <Route 
