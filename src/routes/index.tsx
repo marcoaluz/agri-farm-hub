@@ -6,7 +6,7 @@ import { SafraProvider } from '@/contexts/SafraContext'
 
 // Páginas de autenticação
 import { LoginPage } from '@/pages/auth/Login'
-import { CadastroPage } from '@/pages/auth/Cadastro'
+// CadastroPage removido - acesso apenas por convite
 import { RecuperarSenhaPage } from '@/pages/auth/RecuperarSenha'
 
 // Páginas protegidas
