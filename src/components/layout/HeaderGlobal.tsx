@@ -56,6 +56,24 @@ type UserProfile = {
   is_super_admin: boolean | null
 }
 
+type AdminPropriedade = {
+  propriedade_id: string
+  propriedade_nome: string
+  dono_id: string
+  dono_nome: string
+  area_total: number | null
+  safra_ativa_id: string | null
+  safra_ativa_nome: string | null
+  total_talhoes: number
+  total_lancamentos: number
+}
+
+type PropriedadeAgrupada = {
+  dono_nome: string
+  dono_id: string
+  items: AdminPropriedade[]
+}
+
 const PERFIL_BADGE_VARIANT: Record<string, 'destructive' | 'default' | 'secondary' | 'outline'> = {
   admin: 'destructive',
   proprietario: 'default',
@@ -101,10 +119,50 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
     fetchProfile()
   }, [user])
 
-  // Removido: auto-seleção quando só tem 1 propriedade
-  // Agora o primeiro acesso sempre começa em "Visão Geral"
+  const isAdmin = profile?.perfil === 'admin' || profile?.is_super_admin === true
 
-  const isAdmin = profile?.perfil === 'admin'
+  // Admin: carregar TODAS as propriedades agrupadas por dono
+  const [adminProps, setAdminProps] = useState<AdminPropriedade[]>([])
+  const [adminPropsGrouped, setAdminPropsGrouped] = useState<PropriedadeAgrupada[]>([])
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setAdminProps([])
+      setAdminPropsGrouped([])
+      return
+    }
+
+    const fetchAdminProps = async () => {
+      const { data, error } = await supabase.rpc('get_todas_propriedades_admin' as any)
+      if (error) {
+        console.error('Erro ao carregar propriedades admin:', error)
+        return
+      }
+      const items = (data || []) as AdminPropriedade[]
+      setAdminProps(items)
+
+      // Agrupar por dono
+      const groups = new Map<string, PropriedadeAgrupada>()
+      for (const item of items) {
+        if (!groups.has(item.dono_id)) {
+          groups.set(item.dono_id, {
+            dono_id: item.dono_id,
+            dono_nome: item.dono_nome || 'Sem proprietário',
+            items: [],
+          })
+        }
+        groups.get(item.dono_id)!.items.push(item)
+      }
+      setAdminPropsGrouped(Array.from(groups.values()).sort((a, b) => a.dono_nome.localeCompare(b.dono_nome)))
+    }
+
+    fetchAdminProps()
+  }, [isAdmin])
+
+  // Encontrar dono da propriedade selecionada (admin only)
+  const selectedAdminProp = adminProps.find(
+    (ap) => ap.propriedade_id === propriedadeSelecionada?.id
+  )
 
   // Buscar total de alertas (admin + estoque + sanitário)
   useEffect(() => {
@@ -179,25 +237,55 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
   /*  Render helpers                                                    */
   /* ---------------------------------------------------------------- */
 
+  const handlePropriedadeChange = (value: string) => {
+    if (value === '__todas__') {
+      setPropriedadeSelecionada(null)
+      return
+    }
+
+    // Tentar encontrar nas propriedades normais primeiro
+    const prop = propriedades.find((p) => p.id === value)
+    if (prop) {
+      setPropriedadeSelecionada(prop)
+      return
+    }
+
+    // Admin: propriedade pode não estar na lista normal, criar objeto compatível
+    if (isAdmin) {
+      const adminProp = adminProps.find((ap) => ap.propriedade_id === value)
+      if (adminProp) {
+        setPropriedadeSelecionada({
+          id: adminProp.propriedade_id,
+          nome: adminProp.propriedade_nome,
+          area_total: adminProp.area_total,
+          localizacao: null,
+          ativo: true,
+          latitude: null,
+          longitude: null,
+        })
+      }
+    }
+  }
+
   const renderPropriedadeSelect = (className?: string) => (
     <Select
       value={propriedadeSelecionada?.id ?? '__todas__'}
-      onValueChange={(value) => {
-        if (value === '__todas__') {
-          setPropriedadeSelecionada(null)
-        } else {
-          const prop = propriedades.find((p) => p.id === value)
-          if (prop) setPropriedadeSelecionada(prop)
-        }
-      }}
+      onValueChange={handlePropriedadeChange}
     >
-      <SelectTrigger className={className ?? 'min-w-[180px] max-w-[260px] bg-card'}>
+      <SelectTrigger className={className ?? 'min-w-[180px] max-w-[300px] bg-card'}>
         <div className="flex items-center gap-2 truncate">
           {propriedadeSelecionada ? (
-            <>
-              <Home className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="truncate">{propriedadeSelecionada.nome}</span>
-            </>
+            <div className="flex flex-col items-start truncate">
+              <div className="flex items-center gap-2">
+                <Home className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">{propriedadeSelecionada.nome}</span>
+              </div>
+              {isAdmin && selectedAdminProp && (
+                <span className="text-[10px] text-muted-foreground truncate ml-6">
+                  {selectedAdminProp.dono_nome}
+                </span>
+              )}
+            </div>
           ) : (
             <>
               <LayoutDashboard className="h-3.5 w-3.5 shrink-0 text-success" />
@@ -206,7 +294,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
           )}
         </div>
       </SelectTrigger>
-      <SelectContent className="bg-popover border border-border z-[60]">
+      <SelectContent className="bg-popover border border-border z-[60] max-h-[400px]">
         <SelectItem value="__todas__">
           <div className="flex items-center gap-2">
             <LayoutDashboard className="h-3.5 w-3.5 text-success" />
@@ -214,23 +302,49 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
             <span className="text-xs text-muted-foreground ml-1">todas as propriedades</span>
           </div>
         </SelectItem>
-        {propriedades.length === 0 ? (
-          <div className="p-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-primary"
-              onClick={() => navigate('/propriedades')}
-            >
-              + Nova Propriedade
-            </Button>
-          </div>
-        ) : (
-          propriedades.map((prop) => (
-            <SelectItem key={prop.id} value={prop.id}>
-              {prop.nome}
-            </SelectItem>
+
+        {isAdmin && adminPropsGrouped.length > 0 ? (
+          /* ---- Admin: propriedades agrupadas por dono ---- */
+          adminPropsGrouped.map((group) => (
+            <div key={group.dono_id}>
+              <Separator className="my-1" />
+              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {group.dono_nome}
+              </div>
+              {group.items.map((ap) => (
+                <SelectItem key={ap.propriedade_id} value={ap.propriedade_id}>
+                  <div className="flex items-center gap-2">
+                    <span>{ap.propriedade_nome}</span>
+                    {ap.safra_ativa_nome && (
+                      <span className="text-[10px] text-muted-foreground">
+                        ({ap.safra_ativa_nome})
+                      </span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </div>
           ))
+        ) : (
+          /* ---- Usuário normal: lista simples ---- */
+          propriedades.length === 0 ? (
+            <div className="p-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-primary"
+                onClick={() => navigate('/propriedades')}
+              >
+                + Nova Propriedade
+              </Button>
+            </div>
+          ) : (
+            propriedades.map((prop) => (
+              <SelectItem key={prop.id} value={prop.id}>
+                {prop.nome}
+              </SelectItem>
+            ))
+          )
         )}
       </SelectContent>
     </Select>
@@ -322,7 +436,12 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
                 <span className="font-medium truncate max-w-[140px]">
                   {propriedadeSelecionada?.nome || 'Visão Geral'}
                 </span>
-                {safraSelecionada && (
+                {isAdmin && selectedAdminProp && (
+                  <span className="text-[10px] text-muted-foreground truncate">
+                    {selectedAdminProp.dono_nome}
+                  </span>
+                )}
+                {!isAdmin && safraSelecionada && (
                   <span className="text-[10px] text-muted-foreground truncate">
                     {safraSelecionada.nome}
                   </span>
@@ -354,6 +473,9 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
                 <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border">
                   <p className="text-xs text-muted-foreground mb-1">Contexto atual:</p>
                   <p className="font-medium text-foreground">{propriedadeSelecionada.nome}</p>
+                  {isAdmin && selectedAdminProp && (
+                    <p className="text-xs text-muted-foreground">Proprietário: {selectedAdminProp.dono_nome}</p>
+                  )}
                   {safraSelecionada && (
                     <p className="text-sm text-muted-foreground">{safraSelecionada.nome}</p>
                   )}
