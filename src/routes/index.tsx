@@ -26,6 +26,8 @@ import { Financeiro } from '@/pages/Financeiro'
 import { Relatorios } from '@/pages/Relatorios'
 import { Configuracoes } from '@/pages/Configuracoes'
 import Auditoria from '@/pages/Auditoria'
+import RelatorioRentabilidade from '@/pages/RelatorioRentabilidade'
+import RelatorioDinamico from '@/pages/RelatorioDinamico'
 import AdminDashboard from '@/pages/admin/Dashboard'
 import GestaoUsuarios from '@/pages/admin/GestaoUsuarios'
 import ModulosPropriedades from '@/pages/admin/ModulosPropriedades'
@@ -117,6 +119,8 @@ export function AppRoutes() {
         <Route path="pecuaria" element={<Pecuaria />} />
         <Route path="financeiro" element={<Financeiro />} />
         <Route path="relatorios" element={<Relatorios />} />
+        <Route path="relatorios/rentabilidade" element={<RelatorioRentabilidade />} />
+        <Route path="relatorios/dinamico" element={<RelatorioDinamico />} />
         <Route path="auditoria" element={<Auditoria />} />
         <Route path="configuracoes" element={<Configuracoes />} />
         <Route path="perfil" element={<Perfil />} />
