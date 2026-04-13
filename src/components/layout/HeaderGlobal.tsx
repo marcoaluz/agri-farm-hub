@@ -473,6 +473,9 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
                 <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border">
                   <p className="text-xs text-muted-foreground mb-1">Contexto atual:</p>
                   <p className="font-medium text-foreground">{propriedadeSelecionada.nome}</p>
+                  {isAdmin && selectedAdminProp && (
+                    <p className="text-xs text-muted-foreground">Proprietário: {selectedAdminProp.dono_nome}</p>
+                  )}
                   {safraSelecionada && (
                     <p className="text-sm text-muted-foreground">{safraSelecionada.nome}</p>
                   )}
