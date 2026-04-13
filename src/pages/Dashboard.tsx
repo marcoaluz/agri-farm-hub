@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
@@ -18,7 +18,10 @@ import { ChartCard } from '@/components/common/ChartCard'
 import { exportarResumoDashboard } from '@/lib/exportRelatorio'
 import { FileDown } from 'lucide-react'
 import { DashboardKPIs } from '@/components/dashboard/DashboardKPIs'
+import { DashboardKPIsV2 } from '@/components/dashboard/DashboardKPIsV2'
+import { PainelAlertas } from '@/components/dashboard/PainelAlertas'
 import { TabelaConsolidada } from '@/components/dashboard/TabelaConsolidada'
+import { TabelaConsolidadaV2 } from '@/components/dashboard/TabelaConsolidadaV2'
 import { EstoqueProducao } from '@/components/dashboard/EstoqueProducao'
 import { CardClima } from '@/components/dashboard/CardClima'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -84,7 +87,6 @@ function DashboardPecuaria({ propId, navigate }: { propId: string; navigate: (pa
         Pecuária
       </h2>
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Resumo do rebanho */}
         <Card>
           <CardContent className="p-5">
             <h3 className="text-sm font-semibold text-muted-foreground mb-3">Rebanho Atual</h3>
@@ -109,7 +111,6 @@ function DashboardPecuaria({ propId, navigate }: { propId: string; navigate: (pa
           </CardContent>
         </Card>
 
-        {/* Alertas de vacinação */}
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-3">
@@ -163,45 +164,61 @@ export default function Dashboard() {
   const isConsolidado = !propId
   const enabledFiltered = !!propId && !!safraId
 
-  // ── CONSOLIDATED QUERIES ──
-  const { data: consolidadoData, isLoading: loadConsolidado } = useQuery({
-    queryKey: ['dash-consolidado', safraId],
+  const [alertsOpen, setAlertsOpen] = useState(false)
+
+  // ── NEW KPI RPC (filtered mode) ──
+  const { data: kpisV2, isLoading: loadKpisV2 } = useQuery({
+    queryKey: ['dash-kpis-v2', propId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc('get_dashboard_consolidado', {
-        p_propriedade_id: null,
-        p_safra_id: safraId || null,
+      const { data, error } = await (supabase as any).rpc('get_dashboard_kpis_completo', {
+        p_propriedade_id: propId,
       })
+      if (error) throw error
+      return data as any
+    },
+    enabled: !!propId,
+  })
+
+  // ── NEW CONSOLIDATED V2 ──
+  const { data: consolidadoV2, isLoading: loadConsolidadoV2 } = useQuery({
+    queryKey: ['dash-consolidado-v2'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc('get_dashboard_consolidado_v2')
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: true,
+    enabled: isConsolidado,
   })
 
-  const totaisConsolidados = useMemo(() => {
-    if (!consolidadoData?.length) return { total_lancamentos: 0, custo_total: 0, area_operada_ha: 0, receitas_pagas: 0, despesas_pagas: 0, saldo: 0 }
-    return consolidadoData.reduce((acc: any, row: any) => ({
-      total_lancamentos: acc.total_lancamentos + Number(row.total_lancamentos || 0),
-      custo_total: acc.custo_total + Number(row.custo_total || 0),
-      area_operada_ha: acc.area_operada_ha + Number(row.area_operada_ha || 0),
-      receitas_pagas: acc.receitas_pagas + Number(row.receitas_pagas || 0),
-      despesas_pagas: acc.despesas_pagas + Number(row.despesas_pagas || 0),
-      saldo: acc.saldo + Number(row.saldo || 0),
-    }), { total_lancamentos: 0, custo_total: 0, area_operada_ha: 0, receitas_pagas: 0, despesas_pagas: 0, saldo: 0 })
-  }, [consolidadoData])
+  // Aggregate consolidated KPIs for top cards
+  const consolidadoKpis = useMemo(() => {
+    if (!consolidadoV2?.length) return null
+    return consolidadoV2.reduce((acc: any, row: any) => ({
+      custo_safra_ativa: (acc.custo_safra_ativa ?? 0) + Number(row.custo_safra || 0),
+      receita_paga: (acc.receita_paga ?? 0) + Number(row.receita_paga || 0),
+      resultado_parcial: (acc.resultado_parcial ?? 0) + Number(row.resultado || 0),
+      custo_por_ha: 0, // will compute below
+      alertas: {
+        total_alertas: (acc.alertas?.total_alertas ?? 0) + Number(row.total_alertas || 0),
+        produtos_baixo_estoque: 0,
+        manutencoes_vencidas: 0,
+        vacinas_proximas: 0,
+        financeiro_vencido: 0,
+      },
+    }), {
+      custo_safra_ativa: 0, receita_paga: 0, resultado_parcial: 0, custo_por_ha: 0,
+      alertas: { total_alertas: 0, produtos_baixo_estoque: 0, manutencoes_vencidas: 0, vacinas_proximas: 0, financeiro_vencido: 0 },
+    })
+  }, [consolidadoV2])
 
+  // ── LEGACY QUERIES (charts, recent entries, etc.) ──
   const { data: custosMesConsolidado, isLoading: loadMesConsolidado } = useQuery({
     queryKey: ['dash-custos-mes-consolidado'],
     queryFn: async () => {
-      const { data: props } = await (supabase as any)
-        .from('propriedades').select('id').eq('ativo', true)
+      const { data: props } = await (supabase as any).from('propriedades').select('id').eq('ativo', true)
       if (!props?.length) return []
       const results = await Promise.all(
-        props.map((p: any) =>
-          (supabase as any).rpc('get_custos_por_mes', {
-            p_propriedade_id: p.id,
-            p_safra_id: null,
-          })
-        )
+        props.map((p: any) => (supabase as any).rpc('get_custos_por_mes', { p_propriedade_id: p.id, p_safra_id: null }))
       )
       const mesMap = new Map<string, number>()
       results.forEach((r: any) => {
@@ -210,9 +227,7 @@ export default function Dashboard() {
           mesMap.set(key, (mesMap.get(key) || 0) + Number(item.custo_total || 0))
         })
       })
-      return Array.from(mesMap.entries())
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([mes, custo_total]) => ({ mes, custo_total }))
+      return Array.from(mesMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([mes, custo_total]) => ({ mes, custo_total }))
     },
     enabled: isConsolidado,
   })
@@ -220,16 +235,10 @@ export default function Dashboard() {
   const { data: custosCategConsolidado, isLoading: loadCatConsolidado } = useQuery({
     queryKey: ['dash-categ-consolidado'],
     queryFn: async () => {
-      const { data: props } = await (supabase as any)
-        .from('propriedades').select('id').eq('ativo', true)
+      const { data: props } = await (supabase as any).from('propriedades').select('id').eq('ativo', true)
       if (!props?.length) return []
       const results = await Promise.all(
-        props.map((p: any) =>
-          (supabase as any).rpc('get_relatorio_por_categoria', {
-            p_propriedade_id: p.id,
-            p_safra_id: null,
-          })
-        )
+        props.map((p: any) => (supabase as any).rpc('get_relatorio_por_categoria', { p_propriedade_id: p.id, p_safra_id: null }))
       )
       const catMap = new Map<string, number>()
       results.forEach((r: any) => {
@@ -276,7 +285,7 @@ export default function Dashboard() {
     enabled: enabledFiltered,
   })
 
-  const { data: transData, isLoading: loadTrans } = useQuery({
+  const { data: transData } = useQuery({
     queryKey: ['dash-trans', propId, safraId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -312,32 +321,6 @@ export default function Dashboard() {
     enabled: enabledFiltered,
   })
 
-  const { data: transVencidas } = useQuery({
-    queryKey: ['dash-vencidas', propId, safraId],
-    queryFn: async () => {
-      const hoje = new Date().toISOString().split('T')[0]
-      const { data, error } = await (supabase as any)
-        .from('transacoes').select('id')
-        .eq('propriedade_id', propId).eq('safra_id', safraId)
-        .eq('status', 'pendente').lt('data_vencimento', hoje)
-      if (error) throw error
-      return (data || []) as any[]
-    },
-    enabled: enabledFiltered,
-  })
-
-  const { data: produtosBaixos } = useQuery({
-    queryKey: ['dash-estoque-baixo', propId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('produtos').select('nome,saldo_atual,nivel_minimo')
-        .eq('propriedade_id', propId).lt('saldo_atual', 10)
-      if (error) throw error
-      return (data || []) as any[]
-    },
-    enabled: !!propId,
-  })
-
   const { data: producaoSafra, isLoading: loadProd } = useQuery({
     queryKey: ['dash-producao', propId, safraId],
     queryFn: async () => {
@@ -353,28 +336,6 @@ export default function Dashboard() {
   })
 
   // ── Computed (filtered mode) ──
-  const totalLanc = lancData?.length ?? 0
-  const custoTotal = lancData?.reduce((s: number, l: any) => s + Number(l.custo_total || 0), 0) ?? 0
-
-  const areaOperada = (() => {
-    if (!lancData?.length) return 0
-    const seen = new Map<string, number>()
-    lancData.forEach((l: any) => {
-      if (l.talhao_id && !seen.has(l.talhao_id)) {
-        seen.set(l.talhao_id, Number(l.talhao_area_ha || l.area_ha || 0))
-      }
-    })
-    return Array.from(seen.values()).reduce((a, b) => a + b, 0)
-  })()
-
-  const saldo = (() => {
-    if (!transData?.length) return 0
-    return transData.reduce((s: number, t: any) => {
-      if (t.status !== 'pago') return s
-      return t.tipo === 'receita' ? s + Number(t.valor) : s - Number(t.valor)
-    }, 0)
-  })()
-
   const producaoAgrupada = useMemo(() => {
     if (!producaoSafra?.length) return []
     const map = new Map<string, { nome: string; unidade: string; icone: string; colhido: number; vendido: number; disponivel: number }>()
@@ -422,28 +383,25 @@ export default function Dashboard() {
     return (dadosCatRender || []).reduce((s: number, c: any) => s + Number(c.custo_total || 0), 0)
   }, [dadosCatRender])
 
-  const alertas: { msg: string; tipo: 'high' | 'medium' }[] = []
-  if (transVencidas?.length) alertas.push({ msg: `${transVencidas.length} transação(ões) vencida(s)`, tipo: 'high' })
-  if (produtosBaixos?.length) alertas.push(...produtosBaixos.map((p: any) => ({ msg: `Estoque baixo: ${p.nome}`, tipo: 'medium' as const })))
+  // Total alerts for sidebar badge (exposed via window for Sidebar)
+  const totalAlertasGlobal = isConsolidado
+    ? (consolidadoKpis?.alertas?.total_alertas ?? 0)
+    : (kpisV2?.alertas?.total_alertas ?? 0)
 
-  const isLoadingFiltered = loadLanc || loadTrans
-
-  // KPI data based on mode
-  const kpiData = isConsolidado
-    ? {
-        totalLanc: totaisConsolidados.total_lancamentos,
-        custoTotal: totaisConsolidados.custo_total,
-        areaOperada: totaisConsolidados.area_operada_ha,
-        saldo: totaisConsolidados.saldo,
-      }
-    : { totalLanc, custoTotal, areaOperada, saldo }
-
-  const kpiLoading = isConsolidado ? loadConsolidado : isLoadingFiltered
+  // Expose alert count globally for sidebar
+  useMemo(() => {
+    (window as any).__sga_total_alertas = totalAlertasGlobal
+    window.dispatchEvent(new CustomEvent('sga-alertas-update', { detail: totalAlertasGlobal }))
+  }, [totalAlertasGlobal])
 
   const handleSelectPropriedade = (propIdSelected: string) => {
     const prop = propriedades.find((p) => p.id === propIdSelected)
     if (prop) setPropriedadeAtual(prop)
   }
+
+  // KPI data for V2
+  const kpiV2Data = isConsolidado ? consolidadoKpis : kpisV2
+  const kpiV2Loading = isConsolidado ? loadConsolidadoV2 : loadKpisV2
 
   return (
     <div className="w-full max-w-full overflow-x-hidden space-y-6 animate-fade-in">
@@ -485,12 +443,12 @@ export default function Dashboard() {
               exportarResumoDashboard({
                 propriedade: isConsolidado ? 'Todas as propriedades' : (propriedadeAtual?.nome || ''),
                 mes: mesAtual,
-                totalLancamentos: kpiData.totalLanc,
-                custoOperacional: kpiData.custoTotal,
-                receitas: isConsolidado ? totaisConsolidados.receitas_pagas : (transData || []).filter((t: any) => t.tipo === 'receita' && t.status === 'pago').reduce((s: number, t: any) => s + Number(t.valor), 0),
-                despesas: isConsolidado ? totaisConsolidados.despesas_pagas : (transData || []).filter((t: any) => t.tipo === 'despesa' && t.status === 'pago').reduce((s: number, t: any) => s + Number(t.valor), 0),
-                saldo: kpiData.saldo,
-                alertas: alertas.map(a => a.msg),
+                totalLancamentos: lancData?.length ?? 0,
+                custoOperacional: lancData?.reduce((s: number, l: any) => s + Number(l.custo_total || 0), 0) ?? 0,
+                receitas: (transData || []).filter((t: any) => t.tipo === 'receita' && t.status === 'pago').reduce((s: number, t: any) => s + Number(t.valor), 0),
+                despesas: (transData || []).filter((t: any) => t.tipo === 'despesa' && t.status === 'pago').reduce((s: number, t: any) => s + Number(t.valor), 0),
+                saldo: kpiV2Data?.resultado_parcial ?? 0,
+                alertas: [],
                 producao: producaoAgrupada.map(p => ({ nome: p.nome, quantidade: p.colhido, unidade: p.unidade })),
                 categorias: (dadosCatRender || []).map((c: any) => ({ categoria: c.categoria, custo: Number(c.custo_total || 0) })),
               })
@@ -502,27 +460,41 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <DashboardKPIs data={kpiData} isLoading={kpiLoading} />
+      {/* KPI Cards V2 */}
+      <DashboardKPIsV2
+        data={kpiV2Data}
+        isLoading={kpiV2Loading}
+        onAlertClick={propId ? () => setAlertsOpen(true) : undefined}
+      />
 
-      {/* Consolidated table */}
-      {isConsolidado && consolidadoData?.length > 0 && (
+      {/* Alerts Panel (filtered mode only) */}
+      {propId && (
+        <PainelAlertas
+          propriedadeId={propId}
+          totalAlertas={kpisV2?.alertas?.total_alertas ?? 0}
+          forceOpen={alertsOpen}
+        />
+      )}
+
+      {/* Consolidated table V2 */}
+      {isConsolidado && (
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-3">Por Propriedade</h2>
-          <TabelaConsolidada
-            data={consolidadoData}
+          <TabelaConsolidadaV2
+            data={consolidadoV2 || []}
+            isLoading={loadConsolidadoV2}
             onSelectPropriedade={handleSelectPropriedade}
           />
         </div>
       )}
 
-      {/* Estoque de Produção (both modes) */}
+      {/* Estoque de Produção */}
       <EstoqueProducao propriedadeId={propId || null} isConsolidado={isConsolidado} />
 
       {/* Pecuária */}
       {modulos.pecuaria && propId && <DashboardPecuaria propId={propId} navigate={navigate} />}
 
-      {/* Clima — consolidated: full width, above charts */}
+      {/* Clima — consolidated */}
       {isConsolidado && (
         <div className="w-full">
           <CardClima propriedades={propriedades} />
@@ -612,7 +584,6 @@ export default function Dashboard() {
           )}
         </ChartCard>
 
-        {/* CardClima inline only in filtered mode */}
         {!isConsolidado && <CardClima />}
 
         <ChartCard title="Distribuição por Categoria" description="Custos por tipo de serviço" className={isConsolidado ? 'lg:col-span-1' : 'lg:col-span-3'}>
@@ -655,9 +626,8 @@ export default function Dashboard() {
         </ChartCard>
       </div>
 
-      {/* Bottom row — Lançamentos + Alertas */}
+      {/* Bottom row — Lançamentos */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Últimos Lançamentos */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-card-foreground">Últimos Lançamentos</h3>
@@ -689,31 +659,33 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Alertas */}
+        {/* Alertas summary */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-4">
             <h3 className="text-lg font-semibold text-card-foreground">Alertas do Sistema</h3>
           </div>
-          {alertas.length === 0 ? (
+          {totalAlertasGlobal === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <CheckCircle className="h-10 w-10 text-success mb-3" />
               <p className="text-sm text-muted-foreground">
                 {isConsolidado ? 'Selecione uma propriedade para ver alertas detalhados' : 'Nenhum alerta no momento'}
               </p>
             </div>
+          ) : isConsolidado ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <AlertTriangle className="h-10 w-10 text-warning mb-3" />
+              <p className="text-2xl font-bold text-foreground mb-1">{totalAlertasGlobal}</p>
+              <p className="text-sm text-muted-foreground">alertas em todas as propriedades</p>
+              <p className="text-xs text-muted-foreground mt-2">Selecione uma propriedade para ver detalhes</p>
+            </div>
           ) : (
-            <div className="space-y-3">
-              {alertas.map((a, i) => (
-                <div key={i} className="flex items-center justify-between rounded-lg bg-muted/50 p-4 transition-colors hover:bg-muted">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-2 w-2 rounded-full shrink-0 ${a.tipo === 'high' ? 'bg-destructive animate-pulse' : 'bg-warning'}`} />
-                    <span className="text-sm font-medium text-foreground">{a.msg}</span>
-                  </div>
-                  <Badge variant={a.tipo === 'high' ? 'destructive' : 'secondary'}>
-                    {a.tipo === 'high' ? 'Urgente' : 'Atenção'}
-                  </Badge>
-                </div>
-              ))}
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <AlertTriangle className="h-10 w-10 text-warning mb-3" />
+              <p className="text-2xl font-bold text-foreground mb-1">{kpisV2?.alertas?.total_alertas ?? 0}</p>
+              <p className="text-sm text-muted-foreground">alertas ativos</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={() => setAlertsOpen(true)}>
+                Ver detalhes
+              </Button>
             </div>
           )}
         </div>
