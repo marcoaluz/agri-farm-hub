@@ -436,7 +436,12 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
                 <span className="font-medium truncate max-w-[140px]">
                   {propriedadeSelecionada?.nome || 'Visão Geral'}
                 </span>
-                {safraSelecionada && (
+                {isAdmin && selectedAdminProp && (
+                  <span className="text-[10px] text-muted-foreground truncate">
+                    {selectedAdminProp.dono_nome}
+                  </span>
+                )}
+                {!isAdmin && safraSelecionada && (
                   <span className="text-[10px] text-muted-foreground truncate">
                     {safraSelecionada.nome}
                   </span>
