@@ -119,6 +119,8 @@ export function AppRoutes() {
         <Route path="pecuaria" element={<Pecuaria />} />
         <Route path="financeiro" element={<Financeiro />} />
         <Route path="relatorios" element={<Relatorios />} />
+        <Route path="relatorios/rentabilidade" element={<RelatorioRentabilidade />} />
+        <Route path="relatorios/dinamico" element={<RelatorioDinamico />} />
         <Route path="auditoria" element={<Auditoria />} />
         <Route path="configuracoes" element={<Configuracoes />} />
         <Route path="perfil" element={<Perfil />} />
