@@ -119,10 +119,50 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
     fetchProfile()
   }, [user])
 
-  // Removido: auto-seleção quando só tem 1 propriedade
-  // Agora o primeiro acesso sempre começa em "Visão Geral"
+  const isAdmin = profile?.perfil === 'admin' || profile?.is_super_admin === true
 
-  const isAdmin = profile?.perfil === 'admin'
+  // Admin: carregar TODAS as propriedades agrupadas por dono
+  const [adminProps, setAdminProps] = useState<AdminPropriedade[]>([])
+  const [adminPropsGrouped, setAdminPropsGrouped] = useState<PropriedadeAgrupada[]>([])
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setAdminProps([])
+      setAdminPropsGrouped([])
+      return
+    }
+
+    const fetchAdminProps = async () => {
+      const { data, error } = await supabase.rpc('get_todas_propriedades_admin' as any)
+      if (error) {
+        console.error('Erro ao carregar propriedades admin:', error)
+        return
+      }
+      const items = (data || []) as AdminPropriedade[]
+      setAdminProps(items)
+
+      // Agrupar por dono
+      const groups = new Map<string, PropriedadeAgrupada>()
+      for (const item of items) {
+        if (!groups.has(item.dono_id)) {
+          groups.set(item.dono_id, {
+            dono_id: item.dono_id,
+            dono_nome: item.dono_nome || 'Sem proprietário',
+            items: [],
+          })
+        }
+        groups.get(item.dono_id)!.items.push(item)
+      }
+      setAdminPropsGrouped(Array.from(groups.values()).sort((a, b) => a.dono_nome.localeCompare(b.dono_nome)))
+    }
+
+    fetchAdminProps()
+  }, [isAdmin])
+
+  // Encontrar dono da propriedade selecionada (admin only)
+  const selectedAdminProp = adminProps.find(
+    (ap) => ap.propriedade_id === propriedadeSelecionada?.id
+  )
 
   // Buscar total de alertas (admin + estoque + sanitário)
   useEffect(() => {
