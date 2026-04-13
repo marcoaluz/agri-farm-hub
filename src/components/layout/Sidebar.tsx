@@ -179,6 +179,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                       isActive && 'text-sidebar-primary'
                     )} />
                     {route.label}
+                    {route.href === '/' && alertasCount > 0 && (
+                      <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0 h-5 min-w-[20px] flex items-center justify-center">
+                        {alertasCount}
+                      </Badge>
+                    )}
                   </Button>
                 </Link>
               )
