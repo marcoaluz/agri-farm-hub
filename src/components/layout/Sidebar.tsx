@@ -24,6 +24,14 @@ import {
   Beef,
   Puzzle,
   UserPlus,
+  Bell,
+  CalendarDays,
+  ShieldCheck,
+  Shield,
+  Users,
+  Beef,
+  Puzzle,
+  UserPlus,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
