@@ -178,7 +178,8 @@ export default function RelatorioDinamico() {
         return acc
       }, {} as Record<string, Resultado>)
 
-      setResultado(Object.values(agrupado).sort((a, b) => b.valor - a.valor))
+      const res = Object.values(agrupado) as Resultado[]
+      setResultado(res.sort((a, b) => b.valor - a.valor))
     } catch (err: any) {
       console.error(err)
       toast.error('Erro ao gerar relatório: ' + (err.message || ''))
