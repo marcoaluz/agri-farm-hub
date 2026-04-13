@@ -56,6 +56,24 @@ type UserProfile = {
   is_super_admin: boolean | null
 }
 
+type AdminPropriedade = {
+  propriedade_id: string
+  propriedade_nome: string
+  dono_id: string
+  dono_nome: string
+  area_total: number | null
+  safra_ativa_id: string | null
+  safra_ativa_nome: string | null
+  total_talhoes: number
+  total_lancamentos: number
+}
+
+type PropriedadeAgrupada = {
+  dono_nome: string
+  dono_id: string
+  items: AdminPropriedade[]
+}
+
 const PERFIL_BADGE_VARIANT: Record<string, 'destructive' | 'default' | 'secondary' | 'outline'> = {
   admin: 'destructive',
   proprietario: 'default',
