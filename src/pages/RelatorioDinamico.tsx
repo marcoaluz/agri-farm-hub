@@ -186,7 +186,7 @@ export default function RelatorioDinamico() {
         return acc
       }, {})
 
-      const res = Object.values(agrupado)
+      const res = (Object.values(agrupado) as { label: string; valor: number; count: number }[])
         .map(r => ({ ...r, valor: Math.round(r.valor * 100) / 100 }))
         .sort((a, b) => b.valor - a.valor)
 
