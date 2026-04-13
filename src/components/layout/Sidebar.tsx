@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -24,6 +24,7 @@ import {
   Beef,
   Puzzle,
   UserPlus,
+  Bell,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -60,6 +61,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const { modulos } = useModulos()
   const [isAdmin, setIsAdmin] = useState(false)
   const [pendentesCount, setPendentesCount] = useState(0)
+  const [alertasCount, setAlertasCount] = useState(0)
+
+  // Listen for alert count updates from Dashboard
+  useEffect(() => {
+    const handler = (e: any) => setAlertasCount(e.detail ?? 0)
+    window.addEventListener('sga-alertas-update', handler)
+    setAlertasCount((window as any).__sga_total_alertas ?? 0)
+    return () => window.removeEventListener('sga-alertas-update', handler)
+  }, [])
 
   const routesFiltradas = routes.filter(route => {
     if (route.sempre) return true
@@ -169,6 +179,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                       isActive && 'text-sidebar-primary'
                     )} />
                     {route.label}
+                    {route.href === '/' && alertasCount > 0 && (
+                      <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0 h-5 min-w-[20px] flex items-center justify-center">
+                        {alertasCount}
+                      </Badge>
+                    )}
                   </Button>
                 </Link>
               )
