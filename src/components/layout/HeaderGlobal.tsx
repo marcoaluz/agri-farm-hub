@@ -44,6 +44,7 @@ import {
   LayoutDashboard,
   Puzzle,
 } from 'lucide-react'
+import { AdminPropertyPicker } from '@/components/layout/AdminPropertyPicker'
 
 interface HeaderGlobalProps {
   onMenuClick?: () => void
@@ -56,23 +57,6 @@ type UserProfile = {
   is_super_admin: boolean | null
 }
 
-type AdminPropriedade = {
-  propriedade_id: string
-  propriedade_nome: string
-  dono_id: string
-  dono_nome: string
-  area_total: number | null
-  safra_ativa_id: string | null
-  safra_ativa_nome: string | null
-  total_talhoes: number
-  total_lancamentos: number
-}
-
-type PropriedadeAgrupada = {
-  dono_nome: string
-  dono_id: string
-  items: AdminPropriedade[]
-}
 
 const PERFIL_BADGE_VARIANT: Record<string, 'destructive' | 'default' | 'secondary' | 'outline'> = {
   admin: 'destructive',
@@ -121,48 +105,40 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
 
   const isAdmin = profile?.perfil === 'admin' || profile?.is_super_admin === true
 
-  // Admin: carregar TODAS as propriedades agrupadas por dono
-  const [adminProps, setAdminProps] = useState<AdminPropriedade[]>([])
-  const [adminPropsGrouped, setAdminPropsGrouped] = useState<PropriedadeAgrupada[]>([])
-
-  useEffect(() => {
-    if (!isAdmin) {
-      setAdminProps([])
-      setAdminPropsGrouped([])
+  // Admin property selection handler (with safra pre-selection)
+  const handleAdminSelectPropriedade = (prop: {
+    id: string
+    nome: string
+    area_total: number | null
+    safra_ativa_id: string | null
+    safra_ativa_nome: string | null
+    dono_nome: string
+  } | null) => {
+    if (!prop) {
+      setPropriedadeSelecionada(null)
       return
     }
-
-    const fetchAdminProps = async () => {
-      const { data, error } = await supabase.rpc('get_todas_propriedades_admin' as any)
-      if (error) {
-        console.error('Erro ao carregar propriedades admin:', error)
-        return
-      }
-      const items = (data || []) as AdminPropriedade[]
-      setAdminProps(items)
-
-      // Agrupar por dono
-      const groups = new Map<string, PropriedadeAgrupada>()
-      for (const item of items) {
-        if (!groups.has(item.dono_id)) {
-          groups.set(item.dono_id, {
-            dono_id: item.dono_id,
-            dono_nome: item.dono_nome || 'Sem proprietário',
-            items: [],
-          })
-        }
-        groups.get(item.dono_id)!.items.push(item)
-      }
-      setAdminPropsGrouped(Array.from(groups.values()).sort((a, b) => a.dono_nome.localeCompare(b.dono_nome)))
+    setPropriedadeSelecionada({
+      id: prop.id,
+      nome: prop.nome,
+      area_total: prop.area_total,
+      localizacao: null,
+      ativo: true,
+      latitude: null,
+      longitude: null,
+    })
+    // Pre-select active safra from admin RPC payload
+    if (prop.safra_ativa_id && prop.safra_ativa_nome) {
+      setSafraSelecionada({
+        id: prop.safra_ativa_id,
+        nome: prop.safra_ativa_nome,
+        ano_inicio: 0,
+        ano_fim: null,
+        ativa: true,
+        propriedade_id: prop.id,
+      } as any)
     }
-
-    fetchAdminProps()
-  }, [isAdmin])
-
-  // Encontrar dono da propriedade selecionada (admin only)
-  const selectedAdminProp = adminProps.find(
-    (ap) => ap.propriedade_id === propriedadeSelecionada?.id
-  )
+  }
 
   // Buscar total de alertas (admin + estoque + sanitário)
   useEffect(() => {
@@ -242,28 +218,9 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
       setPropriedadeSelecionada(null)
       return
     }
-
-    // Tentar encontrar nas propriedades normais primeiro
     const prop = propriedades.find((p) => p.id === value)
     if (prop) {
       setPropriedadeSelecionada(prop)
-      return
-    }
-
-    // Admin: propriedade pode não estar na lista normal, criar objeto compatível
-    if (isAdmin) {
-      const adminProp = adminProps.find((ap) => ap.propriedade_id === value)
-      if (adminProp) {
-        setPropriedadeSelecionada({
-          id: adminProp.propriedade_id,
-          nome: adminProp.propriedade_nome,
-          area_total: adminProp.area_total,
-          localizacao: null,
-          ativo: true,
-          latitude: null,
-          longitude: null,
-        })
-      }
     }
   }
 
@@ -275,16 +232,9 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
       <SelectTrigger className={className ?? 'min-w-[180px] max-w-[300px] bg-card'}>
         <div className="flex items-center gap-2 truncate">
           {propriedadeSelecionada ? (
-            <div className="flex flex-col items-start truncate">
-              <div className="flex items-center gap-2">
-                <Home className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="truncate">{propriedadeSelecionada.nome}</span>
-              </div>
-              {isAdmin && selectedAdminProp && (
-                <span className="text-[10px] text-muted-foreground truncate ml-6">
-                  {selectedAdminProp.dono_nome}
-                </span>
-              )}
+            <div className="flex items-center gap-2">
+              <Home className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">{propriedadeSelecionada.nome}</span>
             </div>
           ) : (
             <>
@@ -302,49 +252,23 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
             <span className="text-xs text-muted-foreground ml-1">todas as propriedades</span>
           </div>
         </SelectItem>
-
-        {isAdmin && adminPropsGrouped.length > 0 ? (
-          /* ---- Admin: propriedades agrupadas por dono ---- */
-          adminPropsGrouped.map((group) => (
-            <div key={group.dono_id}>
-              <Separator className="my-1" />
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {group.dono_nome}
-              </div>
-              {group.items.map((ap) => (
-                <SelectItem key={ap.propriedade_id} value={ap.propriedade_id}>
-                  <div className="flex items-center gap-2">
-                    <span>{ap.propriedade_nome}</span>
-                    {ap.safra_ativa_nome && (
-                      <span className="text-[10px] text-muted-foreground">
-                        ({ap.safra_ativa_nome})
-                      </span>
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </div>
-          ))
+        {propriedades.length === 0 ? (
+          <div className="p-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-primary"
+              onClick={() => navigate('/propriedades')}
+            >
+              + Nova Propriedade
+            </Button>
+          </div>
         ) : (
-          /* ---- Usuário normal: lista simples ---- */
-          propriedades.length === 0 ? (
-            <div className="p-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-primary"
-                onClick={() => navigate('/propriedades')}
-              >
-                + Nova Propriedade
-              </Button>
-            </div>
-          ) : (
-            propriedades.map((prop) => (
-              <SelectItem key={prop.id} value={prop.id}>
-                {prop.nome}
-              </SelectItem>
-            ))
-          )
+          propriedades.map((prop) => (
+            <SelectItem key={prop.id} value={prop.id}>
+              {prop.nome}
+            </SelectItem>
+          ))
         )}
       </SelectContent>
     </Select>
@@ -425,71 +349,71 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
         </Link>
 
         {/* ---- Mobile: compact drawer trigger ---- */}
-        <Drawer>
-          <DrawerTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="sm:hidden flex-1 max-w-[200px] justify-between text-xs h-9 px-2"
-            >
-              <div className="flex flex-col items-start truncate">
-                <span className="font-medium truncate max-w-[140px]">
-                  {propriedadeSelecionada?.nome || 'Visão Geral'}
-                </span>
-                {isAdmin && selectedAdminProp && (
-                  <span className="text-[10px] text-muted-foreground truncate">
-                    {selectedAdminProp.dono_nome}
+        {isAdmin ? (
+          <div className="sm:hidden flex-1 max-w-[200px]">
+            <AdminPropertyPicker
+              propriedadeSelecionada={propriedadeSelecionada}
+              onSelectPropriedade={handleAdminSelectPropriedade}
+              className="w-full h-9 text-xs"
+            />
+          </div>
+        ) : (
+          <Drawer>
+            <DrawerTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="sm:hidden flex-1 max-w-[200px] justify-between text-xs h-9 px-2"
+              >
+                <div className="flex flex-col items-start truncate">
+                  <span className="font-medium truncate max-w-[140px]">
+                    {propriedadeSelecionada?.nome || 'Visão Geral'}
                   </span>
-                )}
-                {!isAdmin && safraSelecionada && (
-                  <span className="text-[10px] text-muted-foreground truncate">
-                    {safraSelecionada.nome}
-                  </span>
-                )}
-              </div>
-              <ChevronDown className="h-3 w-3 ml-1 shrink-0 opacity-50" />
-            </Button>
-          </DrawerTrigger>
-          <DrawerContent className="bg-background">
-            <DrawerHeader className="pb-2">
-              <DrawerTitle>Selecionar Contexto</DrawerTitle>
-            </DrawerHeader>
-            <div className="p-4 space-y-4 pb-8">
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Home className="h-4 w-4 text-primary" />
-                  Propriedade
-                </label>
-                {renderPropriedadeSelect('w-full bg-card')}
-              </div>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Wheat className="h-4 w-4 text-accent-foreground" />
-                  Safra
-                </label>
-                {renderSafraSelect('w-full bg-card')}
-              </div>
-              {propriedadeSelecionada && (
-                <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border">
-                  <p className="text-xs text-muted-foreground mb-1">Contexto atual:</p>
-                  <p className="font-medium text-foreground">{propriedadeSelecionada.nome}</p>
-                  {isAdmin && selectedAdminProp && (
-                    <p className="text-xs text-muted-foreground">Proprietário: {selectedAdminProp.dono_nome}</p>
-                  )}
                   {safraSelecionada && (
-                    <p className="text-sm text-muted-foreground">{safraSelecionada.nome}</p>
+                    <span className="text-[10px] text-muted-foreground truncate">
+                      {safraSelecionada.nome}
+                    </span>
                   )}
                 </div>
-              )}
-            </div>
-          </DrawerContent>
-        </Drawer>
+                <ChevronDown className="h-3 w-3 ml-1 shrink-0 opacity-50" />
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent className="bg-background">
+              <DrawerHeader className="pb-2">
+                <DrawerTitle>Selecionar Contexto</DrawerTitle>
+              </DrawerHeader>
+              <div className="p-4 space-y-4 pb-8">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Home className="h-4 w-4 text-primary" />
+                    Propriedade
+                  </label>
+                  {renderPropriedadeSelect('w-full bg-card')}
+                </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Wheat className="h-4 w-4 text-accent-foreground" />
+                    Safra
+                  </label>
+                  {renderSafraSelect('w-full bg-card')}
+                </div>
+              </div>
+            </DrawerContent>
+          </Drawer>
+        )}
 
         <div className="flex-1" />
 
         {/* ---- Desktop selectors ---- */}
         <div className="hidden sm:flex items-center gap-2">
-          {renderPropriedadeSelect()}
+          {isAdmin ? (
+            <AdminPropertyPicker
+              propriedadeSelecionada={propriedadeSelecionada}
+              onSelectPropriedade={handleAdminSelectPropriedade}
+            />
+          ) : (
+            renderPropriedadeSelect()
+          )}
           <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
           {renderSafraSelect()}
         </div>
