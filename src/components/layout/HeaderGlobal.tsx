@@ -366,71 +366,71 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
         </Link>
 
         {/* ---- Mobile: compact drawer trigger ---- */}
-        <Drawer>
-          <DrawerTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="sm:hidden flex-1 max-w-[200px] justify-between text-xs h-9 px-2"
-            >
-              <div className="flex flex-col items-start truncate">
-                <span className="font-medium truncate max-w-[140px]">
-                  {propriedadeSelecionada?.nome || 'Visão Geral'}
-                </span>
-                {isAdmin && selectedAdminProp && (
-                  <span className="text-[10px] text-muted-foreground truncate">
-                    {selectedAdminProp.dono_nome}
+        {isAdmin ? (
+          <div className="sm:hidden flex-1 max-w-[200px]">
+            <AdminPropertyPicker
+              propriedadeSelecionada={propriedadeSelecionada}
+              onSelectPropriedade={handleAdminSelectPropriedade}
+              className="w-full h-9 text-xs"
+            />
+          </div>
+        ) : (
+          <Drawer>
+            <DrawerTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="sm:hidden flex-1 max-w-[200px] justify-between text-xs h-9 px-2"
+              >
+                <div className="flex flex-col items-start truncate">
+                  <span className="font-medium truncate max-w-[140px]">
+                    {propriedadeSelecionada?.nome || 'Visão Geral'}
                   </span>
-                )}
-                {!isAdmin && safraSelecionada && (
-                  <span className="text-[10px] text-muted-foreground truncate">
-                    {safraSelecionada.nome}
-                  </span>
-                )}
-              </div>
-              <ChevronDown className="h-3 w-3 ml-1 shrink-0 opacity-50" />
-            </Button>
-          </DrawerTrigger>
-          <DrawerContent className="bg-background">
-            <DrawerHeader className="pb-2">
-              <DrawerTitle>Selecionar Contexto</DrawerTitle>
-            </DrawerHeader>
-            <div className="p-4 space-y-4 pb-8">
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Home className="h-4 w-4 text-primary" />
-                  Propriedade
-                </label>
-                {renderPropriedadeSelect('w-full bg-card')}
-              </div>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Wheat className="h-4 w-4 text-accent-foreground" />
-                  Safra
-                </label>
-                {renderSafraSelect('w-full bg-card')}
-              </div>
-              {propriedadeSelecionada && (
-                <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border">
-                  <p className="text-xs text-muted-foreground mb-1">Contexto atual:</p>
-                  <p className="font-medium text-foreground">{propriedadeSelecionada.nome}</p>
-                  {isAdmin && selectedAdminProp && (
-                    <p className="text-xs text-muted-foreground">Proprietário: {selectedAdminProp.dono_nome}</p>
-                  )}
                   {safraSelecionada && (
-                    <p className="text-sm text-muted-foreground">{safraSelecionada.nome}</p>
+                    <span className="text-[10px] text-muted-foreground truncate">
+                      {safraSelecionada.nome}
+                    </span>
                   )}
                 </div>
-              )}
-            </div>
-          </DrawerContent>
-        </Drawer>
+                <ChevronDown className="h-3 w-3 ml-1 shrink-0 opacity-50" />
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent className="bg-background">
+              <DrawerHeader className="pb-2">
+                <DrawerTitle>Selecionar Contexto</DrawerTitle>
+              </DrawerHeader>
+              <div className="p-4 space-y-4 pb-8">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Home className="h-4 w-4 text-primary" />
+                    Propriedade
+                  </label>
+                  {renderPropriedadeSelect('w-full bg-card')}
+                </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Wheat className="h-4 w-4 text-accent-foreground" />
+                    Safra
+                  </label>
+                  {renderSafraSelect('w-full bg-card')}
+                </div>
+              </div>
+            </DrawerContent>
+          </Drawer>
+        )}
 
         <div className="flex-1" />
 
         {/* ---- Desktop selectors ---- */}
         <div className="hidden sm:flex items-center gap-2">
-          {renderPropriedadeSelect()}
+          {isAdmin ? (
+            <AdminPropertyPicker
+              propriedadeSelecionada={propriedadeSelecionada}
+              onSelectPropriedade={handleAdminSelectPropriedade}
+            />
+          ) : (
+            renderPropriedadeSelect()
+          )}
           <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
           {renderSafraSelect()}
         </div>
