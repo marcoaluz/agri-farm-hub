@@ -87,11 +87,19 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
     if (!user) return
 
     const fetchProfile = async () => {
+      // DEBUG: verificar sessão e perfil
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      console.log('[SGA DEBUG] SESSION:', currentSession?.user?.id, currentSession?.user?.email)
+      console.log('[SGA DEBUG] SUPABASE URL:', (supabase as any).supabaseUrl || 'não acessível')
+
       const { data, error } = await supabase
         .from('user_profiles')
         .select('perfil, full_name, avatar_url, is_super_admin')
         .eq('id', user.id)
         .single()
+
+      console.log('[SGA DEBUG] PERFIL QUERY result:', { data, error: error?.message })
+      console.log('[SGA DEBUG] IS_ADMIN:', data?.perfil === 'admin' || (data as any)?.is_super_admin === true)
 
       if (error) {
         console.error('Erro ao buscar perfil do usuário:', error)
