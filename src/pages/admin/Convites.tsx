@@ -99,11 +99,35 @@ export default function Convites() {
 
   const fetchConvites = useCallback(async () => {
     setLoadingConvites(true);
-    const { data, error } = await supabase.rpc("listar_todos_convites_pendentes" as any);
+    const { data, error } = await supabase
+      .from('propriedades_usuarios' as any)
+      .select(`
+        id,
+        email_convite,
+        papel,
+        status,
+        criado_em,
+        token_expira_em,
+        propriedade:propriedades(nome)
+      `)
+      .eq('status', 'pendente')
+      .not('token_primeiro_acesso', 'is', null)
+      .order('criado_em', { ascending: false });
     if (error) {
       toast.error("Erro ao carregar convites: " + error.message);
     } else {
-      setConvites((data || []) as ConvitePendente[]);
+      const mapped: ConvitePendente[] = ((data as any[]) || []).map((c: any) => ({
+        id: c.id,
+        email: c.email_convite,
+        propriedade_nome: c.propriedade?.nome || null,
+        papel: c.papel,
+        tipo: "acesso_propriedade",
+        criado_em: c.criado_em,
+        expira_em: c.token_expira_em,
+        expirado: c.token_expira_em ? new Date(c.token_expira_em) < new Date() : false,
+        status: c.status,
+      }));
+      setConvites(mapped);
     }
     setLoadingConvites(false);
   }, []);
