@@ -235,28 +235,9 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
       setPropriedadeSelecionada(null)
       return
     }
-
-    // Tentar encontrar nas propriedades normais primeiro
     const prop = propriedades.find((p) => p.id === value)
     if (prop) {
       setPropriedadeSelecionada(prop)
-      return
-    }
-
-    // Admin: propriedade pode não estar na lista normal, criar objeto compatível
-    if (isAdmin) {
-      const adminProp = adminProps.find((ap) => ap.propriedade_id === value)
-      if (adminProp) {
-        setPropriedadeSelecionada({
-          id: adminProp.propriedade_id,
-          nome: adminProp.propriedade_nome,
-          area_total: adminProp.area_total,
-          localizacao: null,
-          ativo: true,
-          latitude: null,
-          longitude: null,
-        })
-      }
     }
   }
 
@@ -268,16 +249,9 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
       <SelectTrigger className={className ?? 'min-w-[180px] max-w-[300px] bg-card'}>
         <div className="flex items-center gap-2 truncate">
           {propriedadeSelecionada ? (
-            <div className="flex flex-col items-start truncate">
-              <div className="flex items-center gap-2">
-                <Home className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="truncate">{propriedadeSelecionada.nome}</span>
-              </div>
-              {isAdmin && selectedAdminProp && (
-                <span className="text-[10px] text-muted-foreground truncate ml-6">
-                  {selectedAdminProp.dono_nome}
-                </span>
-              )}
+            <div className="flex items-center gap-2">
+              <Home className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">{propriedadeSelecionada.nome}</span>
             </div>
           ) : (
             <>
@@ -295,49 +269,23 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
             <span className="text-xs text-muted-foreground ml-1">todas as propriedades</span>
           </div>
         </SelectItem>
-
-        {isAdmin && adminPropsGrouped.length > 0 ? (
-          /* ---- Admin: propriedades agrupadas por dono ---- */
-          adminPropsGrouped.map((group) => (
-            <div key={group.dono_id}>
-              <Separator className="my-1" />
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {group.dono_nome}
-              </div>
-              {group.items.map((ap) => (
-                <SelectItem key={ap.propriedade_id} value={ap.propriedade_id}>
-                  <div className="flex items-center gap-2">
-                    <span>{ap.propriedade_nome}</span>
-                    {ap.safra_ativa_nome && (
-                      <span className="text-[10px] text-muted-foreground">
-                        ({ap.safra_ativa_nome})
-                      </span>
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </div>
-          ))
+        {propriedades.length === 0 ? (
+          <div className="p-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-primary"
+              onClick={() => navigate('/propriedades')}
+            >
+              + Nova Propriedade
+            </Button>
+          </div>
         ) : (
-          /* ---- Usuário normal: lista simples ---- */
-          propriedades.length === 0 ? (
-            <div className="p-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-primary"
-                onClick={() => navigate('/propriedades')}
-              >
-                + Nova Propriedade
-              </Button>
-            </div>
-          ) : (
-            propriedades.map((prop) => (
-              <SelectItem key={prop.id} value={prop.id}>
-                {prop.nome}
-              </SelectItem>
-            ))
-          )
+          propriedades.map((prop) => (
+            <SelectItem key={prop.id} value={prop.id}>
+              {prop.nome}
+            </SelectItem>
+          ))
         )}
       </SelectContent>
     </Select>
