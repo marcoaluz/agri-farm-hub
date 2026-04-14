@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useGlobal } from '@/contexts/GlobalContext';
@@ -14,11 +14,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Tractor, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets, Wrench, AlertTriangle } from 'lucide-react';
+import { Plus, Tractor, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets, Wrench, AlertTriangle, Info } from 'lucide-react';
 import { MaquinaForm } from '@/components/maquinas/MaquinaForm';
 import { AbastecimentoForm } from '@/components/maquinas/AbastecimentoForm';
 import { HistoricoAbastecimentos } from '@/components/maquinas/HistoricoAbastecimentos';
 import { ManutencaoDialog } from '@/components/maquinas/ManutencaoDialog';
+import { cn } from '@/lib/utils';
 
 interface Maquina {
   id: string;
@@ -33,6 +34,25 @@ interface Maquina {
   created_at: string;
 }
 
+interface AnaliseConsumo {
+  maquina_id: string;
+  propriedade_id: string;
+  maquina_nome: string;
+  total_abastecimentos: number;
+  total_litros: number;
+  total_gasto: number;
+  consumo_medio_lh: number;
+  custo_medio_litro: number;
+  ultimo_abastecimento: string | null;
+  horimetro_atual: number;
+}
+
+const fmtCurrency = (v: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v ?? 0);
+
+const fmtHorimetro = (v: number) =>
+  `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`;
+
 export function Maquinas() {
   const { propriedadeAtual } = useGlobal();
   const { toast } = useToast();
@@ -45,97 +65,148 @@ export function Maquinas() {
   const [manutencaoDialog, setManutencaoDialog] = useState(false);
   const [maquinaManutencao, setMaquinaManutencao] = useState<Maquina | null>(null);
 
+  const propId = propriedadeAtual?.id;
+
   const { data: maquinas, isLoading } = useQuery({
-    queryKey: ['maquinas', propriedadeAtual?.id],
+    queryKey: ['maquinas', propId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('maquinas')
         .select('*')
-        .eq('propriedade_id', propriedadeAtual?.id)
+        .eq('propriedade_id', propId)
         .eq('ativo', true)
         .order('nome');
-
       if (error) throw error;
       return data as Maquina[];
     },
-    enabled: !!propriedadeAtual?.id
+    enabled: !!propId,
   });
+
+  // Consumption analysis from view
+  const { data: analiseConsumo } = useQuery({
+    queryKey: ['analise-consumo', propId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('vw_analise_consumo_maquinas' as any)
+        .select('*')
+        .eq('propriedade_id', propId);
+      if (error) throw error;
+      return (data || []) as AnaliseConsumo[];
+    },
+    enabled: !!propId,
+  });
+
+  // Build lookup map
+  const analiseMap = useMemo(() => {
+    const map = new Map<string, AnaliseConsumo>();
+    (analiseConsumo || []).forEach((a) => map.set(a.maquina_id, a));
+    return map;
+  }, [analiseConsumo]);
 
   // Diesel consumed this month across all machines
   const { data: dieselMes } = useQuery({
-    queryKey: ['abastecimentos-stats', propriedadeAtual?.id],
+    queryKey: ['abastecimentos-stats', propId],
     queryFn: async () => {
       const now = new Date();
       const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-      const maquinaIds = maquinas?.map(m => m.id) || [];
+      const maquinaIds = maquinas?.map((m) => m.id) || [];
       if (!maquinaIds.length) return 0;
-
       const { data, error } = await supabase
         .from('abastecimentos' as any)
         .select('quantidade_litros')
         .in('maquina_id', maquinaIds)
         .gte('data', start);
-
       if (error) throw error;
       return (data as any[])?.reduce((s: number, r: any) => s + (r.quantidade_litros || 0), 0) || 0;
     },
-    enabled: !!maquinas?.length
+    enabled: !!maquinas?.length,
   });
 
   const { data: manutencoesProximas } = useQuery({
-    queryKey: ['manutencoes-proximas', propriedadeAtual?.id],
+    queryKey: ['manutencoes-proximas', propId],
     queryFn: async () => {
-      const limite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        .toISOString().split('T')[0];
+      const limite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const { data } = await supabase
         .from('maquina_manutencoes' as any)
         .select('id, descricao, data_prevista, status, maquina_id')
-        .eq('propriedade_id', propriedadeAtual?.id)
+        .eq('propriedade_id', propId)
         .eq('status', 'agendada')
         .lte('data_prevista', limite)
         .order('data_prevista');
-      // Enrich with machine names
       const enriched = (data as any[] || []).map((m: any) => {
-        const maq = maquinas?.find(mq => mq.id === m.maquina_id);
+        const maq = maquinas?.find((mq) => mq.id === m.maquina_id);
         return { ...m, maquina_nome: maq?.nome || 'Máquina' };
       });
       return enriched;
     },
-    enabled: !!propriedadeAtual?.id && !!maquinas?.length,
+    enabled: !!propId && !!maquinas?.length,
   });
 
-  const { data: manutencoes } = useQuery({
-    queryKey: ['manutencoes', propriedadeAtual?.id],
+  // All maintenance records for horímetro alerts
+  const { data: todasManutencoes } = useQuery({
+    queryKey: ['manutencoes-todas', propId],
     queryFn: async () => {
       const { data } = await supabase
         .from('maquina_manutencoes' as any)
         .select('*, maquina:maquinas(nome)')
-        .eq('propriedade_id', propriedadeAtual?.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
+        .eq('propriedade_id', propId)
+        .order('created_at', { ascending: false });
       return (data as any[]) || [];
     },
-    enabled: !!propriedadeAtual?.id,
+    enabled: !!propId,
   });
 
-  const maquinasFiltradas = maquinas?.filter(m =>
-    m.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    m.modelo?.toLowerCase().includes(busca.toLowerCase())
+  // Recent maintenance for history table (limit 20)
+  const manutencoes = useMemo(() => (todasManutencoes || []).slice(0, 20), [todasManutencoes]);
+
+  // Horímetro-based alerts per machine
+  const alertasHorimetro = useMemo(() => {
+    if (!maquinas?.length || !todasManutencoes?.length) return [];
+
+    const alerts: Array<{
+      maquina: Maquina;
+      tipo: 'vencida' | 'proxima';
+      horimetroAtual: number;
+      proximoHorimetro: number;
+      faltam: number;
+    }> = [];
+
+    maquinas.forEach((maq) => {
+      // Find max proximo_horimetro for this machine
+      const manuts = (todasManutencoes || []).filter(
+        (m: any) => m.maquina_id === maq.id && m.proximo_horimetro != null
+      );
+      if (!manuts.length) return;
+
+      const maxProximo = Math.max(...manuts.map((m: any) => Number(m.proximo_horimetro)));
+      const faltam = maxProximo - maq.horimetro_atual;
+
+      if (maq.horimetro_atual >= maxProximo) {
+        alerts.push({ maquina: maq, tipo: 'vencida', horimetroAtual: maq.horimetro_atual, proximoHorimetro: maxProximo, faltam });
+      } else if (faltam <= 50) {
+        alerts.push({ maquina: maq, tipo: 'proxima', horimetroAtual: maq.horimetro_atual, proximoHorimetro: maxProximo, faltam });
+      }
+    });
+
+    return alerts;
+  }, [maquinas, todasManutencoes]);
+
+  const maquinasFiltradas = maquinas?.filter(
+    (m) =>
+      m.nome.toLowerCase().includes(busca.toLowerCase()) ||
+      m.modelo?.toLowerCase().includes(busca.toLowerCase())
   );
 
   const totalMaquinas = maquinas?.length || 0;
-  const maquinasComCusto = maquinas?.filter(m => m.custo_hora != null) || [];
-  const custoMedioHora = maquinasComCusto.length 
+  const maquinasComCusto = maquinas?.filter((m) => m.custo_hora != null) || [];
+  const custoMedioHora = maquinasComCusto.length
     ? maquinasComCusto.reduce((sum, m) => sum + (m.custo_hora || 0), 0) / maquinasComCusto.length
     : 0;
   const horimetroTotal = maquinas?.reduce((sum, m) => sum + m.horimetro_atual, 0) || 0;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('maquinas')
-        .update({ ativo: false })
-        .eq('id', id);
+      const { error } = await supabase.from('maquinas').update({ ativo: false }).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -144,7 +215,7 @@ export function Maquinas() {
     },
     onError: () => {
       toast({ title: 'Erro ao remover máquina', variant: 'destructive' });
-    }
+    },
   });
 
   return (
@@ -153,11 +224,8 @@ export function Maquinas() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Máquinas</h1>
-          <p className="text-sm text-muted-foreground">
-            Gerencie equipamentos, horímetro e custos
-          </p>
+          <p className="text-sm text-muted-foreground">Gerencie equipamentos, horímetro e custos</p>
         </div>
-
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2 w-full sm:w-auto" onClick={() => setMaquinaEditando(null)}>
@@ -192,7 +260,6 @@ export function Maquinas() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-3 sm:pt-6 sm:p-6">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
@@ -201,14 +268,11 @@ export function Maquinas() {
               </div>
               <div className="text-center sm:text-left">
                 <p className="text-xs sm:text-sm text-muted-foreground">Horímetro</p>
-                <p className="text-lg sm:text-2xl font-bold">
-                  {horimetroTotal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}h
-                </p>
+                <p className="text-lg sm:text-2xl font-bold">{horimetroTotal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}h</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-3 sm:pt-6 sm:p-6">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
@@ -222,7 +286,6 @@ export function Maquinas() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-3 sm:pt-6 sm:p-6">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
@@ -231,14 +294,11 @@ export function Maquinas() {
               </div>
               <div className="text-center sm:text-left">
                 <p className="text-xs sm:text-sm text-muted-foreground">Diesel/mês</p>
-                <p className="text-xl sm:text-2xl font-bold">
-                  {(dieselMes ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}L
-                </p>
+                <p className="text-xl sm:text-2xl font-bold">{(dieselMes ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}L</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-3 sm:pt-6 sm:p-6">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
@@ -255,27 +315,74 @@ export function Maquinas() {
         </Card>
       </div>
 
+      {/* Date-based maintenance alerts */}
       {manutencoesProximas && manutencoesProximas.length > 0 && (
         <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800">
           <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
           <p className="text-sm text-yellow-800 dark:text-yellow-300">
             {manutencoesProximas.length} manutenção(ões) agendada(s) nos próximos 30 dias —
-            {manutencoesProximas.slice(0, 2).map((m: any) =>
-              ` ${m.maquina_nome}: ${m.descricao}`
-            ).join(',')}
+            {manutencoesProximas.slice(0, 2).map((m: any) => ` ${m.maquina_nome}: ${m.descricao}`).join(',')}
           </p>
         </div>
       )}
 
+      {/* Horímetro-based maintenance alerts */}
+      {alertasHorimetro.map((alerta) => (
+        <div
+          key={alerta.maquina.id}
+          className={cn(
+            'flex items-start gap-3 p-3 rounded-lg border',
+            alerta.tipo === 'vencida'
+              ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+              : 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
+          )}
+        >
+          {alerta.tipo === 'vencida' ? (
+            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+          ) : (
+            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+          )}
+          <div className="flex-1">
+            <p className={cn(
+              'text-sm font-medium',
+              alerta.tipo === 'vencida'
+                ? 'text-red-800 dark:text-red-300'
+                : 'text-blue-800 dark:text-blue-300'
+            )}>
+              {alerta.tipo === 'vencida'
+                ? `⚠️ Manutenção preventiva vencida — ${alerta.maquina.nome}`
+                : `🔔 Manutenção preventiva se aproximando — ${alerta.maquina.nome}`
+              }
+            </p>
+            <p className={cn(
+              'text-xs mt-0.5',
+              alerta.tipo === 'vencida'
+                ? 'text-red-700 dark:text-red-400'
+                : 'text-blue-700 dark:text-blue-400'
+            )}>
+              Horímetro atual: {fmtHorimetro(alerta.horimetroAtual)} · Previsto em: {fmtHorimetro(alerta.proximoHorimetro)}
+              {alerta.tipo === 'proxima' && ` · Faltam ${Math.round(alerta.faltam)} h`}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={() => {
+              setMaquinaManutencao(alerta.maquina);
+              setManutencaoDialog(true);
+            }}
+          >
+            <Wrench className="h-3 w-3 mr-1" />
+            Registrar
+          </Button>
+        </div>
+      ))}
+
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por nome ou modelo..."
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          className="pl-9"
-        />
+        <Input placeholder="Buscar por nome ou modelo..." value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-9" />
       </div>
 
       {/* Abastecimento Dialog */}
@@ -296,7 +403,7 @@ export function Maquinas() {
       {/* Grid */}
       {isLoading ? (
         <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map(i => (
+          {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-60 sm:h-72 w-full" />
           ))}
         </div>
@@ -320,129 +427,150 @@ export function Maquinas() {
         </Card>
       ) : (
         <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {maquinasFiltradas?.map(maquina => (
-            <Card key={maquina.id} className="hover:shadow-lg transition-all">
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
-                      <Tractor className="h-5 w-5 text-accent-foreground" />
+          {maquinasFiltradas?.map((maquina) => {
+            const analise = analiseMap.get(maquina.id);
+            return (
+              <Card key={maquina.id} className="hover:shadow-lg transition-all">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
+                        <Tractor className="h-5 w-5 text-accent-foreground" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold">{maquina.nome}</h3>
+                        {maquina.modelo && <p className="text-sm text-muted-foreground">{maquina.modelo}</p>}
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold">{maquina.nome}</h3>
-                      {maquina.modelo && (
-                        <p className="text-sm text-muted-foreground">{maquina.modelo}</p>
-                      )}
-                    </div>
+                    <Badge variant="default" className="bg-success">Ativo</Badge>
                   </div>
-                  <Badge variant="default" className="bg-success">Ativo</Badge>
-                </div>
 
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {maquina.ano_fabricacao && (
-                    <Badge variant="outline">{maquina.ano_fabricacao}</Badge>
-                  )}
-                </div>
-
-                <div className="space-y-3 mb-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground flex items-center gap-1">
-                      <Gauge className="h-3 w-3" /> Horímetro
-                    </span>
-                    <span className="font-medium">
-                      {maquina.horimetro_atual.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}h
-                    </span>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {maquina.ano_fabricacao && <Badge variant="outline">{maquina.ano_fabricacao}</Badge>}
                   </div>
-                  {maquina.horimetro_inicial > 0 && (
+
+                  <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Horímetro Inicial</span>
-                      <span className="font-medium">{maquina.horimetro_inicial.toLocaleString('pt-BR')}h</span>
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Gauge className="h-3 w-3" /> Horímetro
+                      </span>
+                      <span className="font-medium">{fmtHorimetro(maquina.horimetro_atual)}</span>
                     </div>
-                  )}
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Custo/Hora</span>
-                    <span className="font-medium">
-                      {maquina.custo_hora != null ? `R$ ${maquina.custo_hora.toFixed(2)}` : 'Não definido'}
-                    </span>
+                    {analise && analise.consumo_medio_lh > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Droplets className="h-3 w-3" /> Consumo médio
+                        </span>
+                        <span className="font-medium">{Number(analise.consumo_medio_lh).toFixed(1)} L/h</span>
+                      </div>
+                    )}
+                    {analise && analise.custo_medio_litro > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <DollarSign className="h-3 w-3" /> Custo/litro
+                        </span>
+                        <span className="font-medium">{fmtCurrency(Number(analise.custo_medio_litro))}</span>
+                      </div>
+                    )}
+                    {analise && analise.total_gasto > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <DollarSign className="h-3 w-3" /> Gasto (90 dias)
+                        </span>
+                        <span className="font-medium">{fmtCurrency(Number(analise.total_gasto))}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Custo/Hora</span>
+                      <span className="font-medium">
+                        {maquina.custo_hora != null ? fmtCurrency(maquina.custo_hora) : 'Não definido'}
+                      </span>
+                    </div>
+                    {analise?.ultimo_abastecimento && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Fuel className="h-3 w-3" /> Últ. abastecimento
+                        </span>
+                        <span className="font-medium text-muted-foreground">
+                          {format(new Date(analise.ultimo_abastecimento + 'T12:00:00'), 'dd/MM/yy', { locale: ptBR })}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </div>
 
-                <div className="flex gap-2 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      setAbastecimentoMaquina(maquina);
-                      setAbastecimentoDialogOpen(true);
-                    }}
-                  >
-                    <Fuel className="h-4 w-4 mr-1" />
-                    Abastecer
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setMaquinaManutencao(maquina);
-                      setManutencaoDialog(true);
-                    }}
-                  >
-                    <Wrench className="h-4 w-4 mr-1" />
-                    Manutenção
-                  </Button>
-
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <History className="h-4 w-4" />
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-                      <HistoricoAbastecimentos maquina={maquina} />
-                    </SheetContent>
-                  </Sheet>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setMaquinaEditando(maquina);
-                      setDialogOpen(true);
-                    }}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta ação irá desativar a máquina "{maquina.nome}".
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => deleteMutation.mutate(maquina.id)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Remover
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="flex gap-2 pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        setAbastecimentoMaquina(maquina);
+                        setAbastecimentoDialogOpen(true);
+                      }}
+                    >
+                      <Fuel className="h-4 w-4 mr-1" />
+                      Abastecer
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setMaquinaManutencao(maquina);
+                        setManutencaoDialog(true);
+                      }}
+                    >
+                      <Wrench className="h-4 w-4 mr-1" />
+                      Manutenção
+                    </Button>
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <History className="h-4 w-4" />
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+                        <HistoricoAbastecimentos maquina={maquina} />
+                      </SheetContent>
+                    </Sheet>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setMaquinaEditando(maquina);
+                        setDialogOpen(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação irá desativar a máquina "{maquina.nome}".
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteMutation.mutate(maquina.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Remover
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -458,14 +586,15 @@ export function Maquinas() {
           </Card>
         ) : (
           <Card>
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Máquina</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Descrição</TableHead>
-                    <TableHead>Data Prevista</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Horímetro</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Custo</TableHead>
                   </TableRow>
@@ -475,28 +604,35 @@ export function Maquinas() {
                     <TableRow key={m.id}>
                       <TableCell className="font-medium">{m.maquina?.nome || '—'}</TableCell>
                       <TableCell className="capitalize">{m.tipo?.replace(/_/g, ' ') || '—'}</TableCell>
-                      <TableCell>{m.descricao}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{m.descricao}</TableCell>
                       <TableCell>
-                        {m.data_prevista
+                        {m.data_realizada
+                          ? format(new Date(m.data_realizada + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+                          : m.data_prevista
                           ? format(new Date(m.data_prevista + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })
                           : '—'}
                       </TableCell>
                       <TableCell>
+                        {m.horimetro_manutencao != null ? fmtHorimetro(Number(m.horimetro_manutencao)) : '—'}
+                      </TableCell>
+                      <TableCell>
                         <Badge
                           variant="outline"
-                          className={
+                          className={cn(
                             m.status === 'realizada'
                               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300'
                               : m.status === 'agendada'
-                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300'
-                              : 'bg-muted text-muted-foreground'
-                          }
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-300'
+                              : m.status === 'cancelada'
+                              ? 'bg-muted text-muted-foreground'
+                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300'
+                          )}
                         >
                           {m.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {m.custo != null ? `R$ ${Number(m.custo).toFixed(2)}` : '—'}
+                        {m.custo != null ? fmtCurrency(Number(m.custo)) : '—'}
                       </TableCell>
                     </TableRow>
                   ))}
