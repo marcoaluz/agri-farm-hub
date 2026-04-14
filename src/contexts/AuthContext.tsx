@@ -136,25 +136,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut()
-      if (error && !error.message?.includes('session missing')) throw error
-
+      if (error && !error.message?.includes('session missing') && !error.message?.includes('Failed to fetch')) throw error
+    } catch (error) {
+      console.warn('Erro ao sair (ignorado):', error)
+    } finally {
+      // Sempre limpar estado local, mesmo se a chamada falhar
       setUser(null)
       setSession(null)
       setUserStatus(null)
+      localStorage.removeItem('sga_propriedade_id')
+      localStorage.removeItem('sga_safra_id')
 
       toast({
         title: 'Logout realizado',
         description: 'Até logo!',
       })
 
-      navigate('/login')
-    } catch (error) {
-      const authError = error as AuthError
-      toast({
-        title: 'Erro ao sair',
-        description: authError.message,
-        variant: 'destructive',
-      })
       navigate('/login')
     }
   }
