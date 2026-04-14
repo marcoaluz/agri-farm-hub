@@ -44,6 +44,7 @@ import {
   LayoutDashboard,
   Puzzle,
 } from 'lucide-react'
+import { AdminPropertyPicker } from '@/components/layout/AdminPropertyPicker'
 
 interface HeaderGlobalProps {
   onMenuClick?: () => void
