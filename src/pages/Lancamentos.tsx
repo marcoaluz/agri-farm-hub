@@ -71,7 +71,11 @@ export function Lancamentos() {
           talhao:talhoes(id, nome),
           lancamentos_itens(
             id,
-            item:itens(tipo)
+            produto_id,
+            maquina_id,
+            quantidade,
+            custo_unitario,
+            custo_total
           ),
           abastecimento:abastecimentos(
             id,
