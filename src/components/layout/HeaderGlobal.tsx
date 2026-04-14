@@ -118,6 +118,8 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
       setPropriedadeSelecionada(null)
       return
     }
+    // setPropriedadeSelecionada triggers recarregarSafras in SafraContext
+    // which will auto-select the active safra — no need to set it manually
     setPropriedadeSelecionada({
       id: prop.id,
       nome: prop.nome,
@@ -127,17 +129,6 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
       latitude: null,
       longitude: null,
     })
-    // Pre-select active safra from admin RPC payload
-    if (prop.safra_ativa_id && prop.safra_ativa_nome) {
-      setSafraSelecionada({
-        id: prop.safra_ativa_id,
-        nome: prop.safra_ativa_nome,
-        ano_inicio: 0,
-        ano_fim: null,
-        ativa: true,
-        propriedade_id: prop.id,
-      } as any)
-    }
   }
 
   // Buscar total de alertas (admin + estoque + sanitário)
