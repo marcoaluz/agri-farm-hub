@@ -1,201 +1,219 @@
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/contexts/AuthContext'
-import { toast } from 'sonner'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
-  Mail, Send, Copy, Check, Loader2, Trash2, Clock, AlertTriangle,
-  UserPlus, Link as LinkIcon, RefreshCw, Info, Building2, User,
-} from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from '@/components/ui/dialog'
-import { Separator } from '@/components/ui/separator'
+  Mail,
+  Send,
+  Copy,
+  Check,
+  Loader2,
+  Trash2,
+  Clock,
+  AlertTriangle,
+  UserPlus,
+  Link as LinkIcon,
+  RefreshCw,
+  Info,
+  Building2,
+  User,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 interface Propriedade {
-  id: string
-  nome: string
+  id: string;
+  nome: string;
 }
 
 interface ConvitePendente {
-  id: string
-  email: string
-  propriedade_nome: string | null
-  papel: string | null
-  tipo: string
-  criado_em: string
-  expira_em: string
-  expirado: boolean
-  status?: string
+  id: string;
+  email: string;
+  propriedade_nome: string | null;
+  papel: string | null;
+  tipo: string;
+  criado_em: string;
+  expira_em: string;
+  expirado: boolean;
+  status?: string;
 }
 
-type TipoConvite = 'novo_proprietario' | 'acesso_propriedade'
+type TipoConvite = "novo_proprietario" | "acesso_propriedade";
 
-const PAPEL_OPTIONS: Record<string, { label: string; desc: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  proprietario: { label: 'Proprietário', desc: 'Acesso total, pode gerenciar usuários', variant: 'default' },
-  gerente: { label: 'Gerente', desc: 'Pode criar e editar registros', variant: 'default' },
-  operador: { label: 'Operador', desc: 'Pode registrar operações do dia a dia', variant: 'secondary' },
-  visualizador: { label: 'Visualizador', desc: 'Somente leitura', variant: 'secondary' },
-}
+const PAPEL_OPTIONS: Record<
+  string,
+  { label: string; desc: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
+  proprietario: { label: "Proprietário", desc: "Acesso total, pode gerenciar usuários", variant: "default" },
+  gerente: { label: "Gerente", desc: "Pode criar e editar registros", variant: "default" },
+  operador: { label: "Operador", desc: "Pode registrar operações do dia a dia", variant: "secondary" },
+  visualizador: { label: "Visualizador", desc: "Somente leitura", variant: "secondary" },
+};
 
 const VALIDADE_OPTIONS = [
-  { value: '24', label: '24 horas' },
-  { value: '48', label: '48 horas' },
-  { value: '72', label: '72 horas' },
-  { value: '168', label: '7 dias' },
-]
+  { value: "24", label: "24 horas" },
+  { value: "48", label: "48 horas" },
+  { value: "72", label: "72 horas" },
+  { value: "168", label: "7 dias" },
+];
 
 export default function Convites() {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
-  const [tipoConvite, setTipoConvite] = useState<TipoConvite>('acesso_propriedade')
-  const [email, setEmail] = useState('')
-  const [propriedadeId, setPropriedadeId] = useState('')
-  const [papel, setPapel] = useState('')
-  const [horas, setHoras] = useState('72')
-  const [gerando, setGerando] = useState(false)
+  const [tipoConvite, setTipoConvite] = useState<TipoConvite>("acesso_propriedade");
+  const [email, setEmail] = useState("");
+  const [propriedadeId, setPropriedadeId] = useState("");
+  const [papel, setPapel] = useState("");
+  const [horas, setHoras] = useState("72");
+  const [gerando, setGerando] = useState(false);
 
-  const [linkGerado, setLinkGerado] = useState('')
-  const [showLinkDialog, setShowLinkDialog] = useState(false)
-  const [copiado, setCopiado] = useState(false)
+  const [linkGerado, setLinkGerado] = useState("");
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [copiado, setCopiado] = useState(false);
 
-  const [propriedades, setPropriedades] = useState<Propriedade[]>([])
-  const [convites, setConvites] = useState<ConvitePendente[]>([])
-  const [loadingConvites, setLoadingConvites] = useState(true)
-  const [revogando, setRevogando] = useState<string | null>(null)
+  const [propriedades, setPropriedades] = useState<Propriedade[]>([]);
+  const [convites, setConvites] = useState<ConvitePendente[]>([]);
+  const [loadingConvites, setLoadingConvites] = useState(true);
+  const [revogando, setRevogando] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchPropriedades() {
       const { data } = await supabase
-        .from('propriedades' as any)
-        .select('id, nome')
-        .eq('ativo', true)
-        .order('nome')
-      if (data) setPropriedades(data as any)
+        .from("propriedades" as any)
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome");
+      if (data) setPropriedades(data as any);
     }
-    fetchPropriedades()
-  }, [])
+    fetchPropriedades();
+  }, []);
 
   const fetchConvites = useCallback(async () => {
-    setLoadingConvites(true)
-    const { data, error } = await supabase.rpc('listar_todos_convites_pendentes' as any)
+    setLoadingConvites(true);
+    const { data, error } = await supabase.rpc("listar_todos_convites_pendentes" as any);
     if (error) {
-      toast.error('Erro ao carregar convites: ' + error.message)
+      toast.error("Erro ao carregar convites: " + error.message);
     } else {
-      setConvites((data || []) as ConvitePendente[])
+      setConvites((data || []) as ConvitePendente[]);
     }
-    setLoadingConvites(false)
-  }, [])
+    setLoadingConvites(false);
+  }, []);
 
   useEffect(() => {
-    fetchConvites()
-  }, [fetchConvites])
+    fetchConvites();
+  }, [fetchConvites]);
 
   const handleTrocarTipo = (tipo: TipoConvite) => {
-    setTipoConvite(tipo)
-    setEmail('')
-    setPropriedadeId('')
-    setPapel('')
-    setHoras('72')
-  }
+    setTipoConvite(tipo);
+    setEmail("");
+    setPropriedadeId("");
+    setPapel("");
+    setHoras("72");
+  };
 
   const handleGerarConvite = async () => {
-    if (!email.trim()) { toast.error('Informe o e-mail do convidado.'); return }
-
-    if (tipoConvite === 'acesso_propriedade') {
-      if (!propriedadeId) { toast.error('Selecione uma propriedade.'); return }
-      if (!papel) { toast.error('Selecione o papel.'); return }
+    if (!email.trim()) {
+      toast.error("Informe o e-mail do convidado.");
+      return;
     }
 
-    setGerando(true)
-    try {
-      let link = ''
+    if (tipoConvite === "acesso_propriedade") {
+      if (!propriedadeId) {
+        toast.error("Selecione uma propriedade.");
+        return;
+      }
+      if (!papel) {
+        toast.error("Selecione o papel.");
+        return;
+      }
+    }
 
-      if (tipoConvite === 'novo_proprietario') {
-        const { data, error } = await supabase.rpc('gerar_convite_novo_usuario' as any, {
+    setGerando(true);
+    try {
+      let link = "";
+
+      if (tipoConvite === "novo_proprietario") {
+        const { data, error } = await supabase.rpc("gerar_convite_novo_usuario" as any, {
           p_email: email.trim().toLowerCase(),
           p_horas_validade: parseInt(horas),
-        })
-        if (error) throw error
-        const result = data as any
-        link = `${window.location.origin}/convite?token=${result.token}&tipo=novo`
+        });
+        if (error) throw error;
+        const result = data as any;
+        link = `${window.location.origin}/convite?token=${result.token}&tipo=novo`;
       } else {
-        const { data, error } = await supabase.rpc('gerar_convite' as any, {
+        const { data, error } = await supabase.rpc("gerar_convite" as any, {
           p_email: email.trim().toLowerCase(),
           p_propriedade_id: propriedadeId,
           p_papel: papel,
           p_horas_validade: parseInt(horas),
-        })
-        if (error) throw error
-        const result = data as any
-        link = `${window.location.origin}/convite?token=${result.token}&tipo=existente`
+        });
+        if (error) throw error;
+        const result = data as any;
+        link = `${window.location.origin}/convite?token=${result.token}&tipo=existente`;
       }
 
-      setLinkGerado(link)
-      setShowLinkDialog(true)
-      setCopiado(false)
+      setLinkGerado(link);
+      setShowLinkDialog(true);
+      setCopiado(false);
 
-      setEmail('')
-      setPapel('')
-      setPropriedadeId('')
-      setHoras('72')
+      setEmail("");
+      setPapel("");
+      setPropriedadeId("");
+      setHoras("72");
 
-      toast.success('Convite gerado com sucesso!')
-      fetchConvites()
+      toast.success("Convite gerado com sucesso!");
+      fetchConvites();
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao gerar convite')
+      toast.error(err.message || "Erro ao gerar convite");
     } finally {
-      setGerando(false)
+      setGerando(false);
     }
-  }
+  };
 
   const handleCopiar = async () => {
     try {
-      await navigator.clipboard.writeText(linkGerado)
-      setCopiado(true)
-      toast.success('Link copiado!')
-      setTimeout(() => setCopiado(false), 2000)
+      await navigator.clipboard.writeText(linkGerado);
+      setCopiado(true);
+      toast.success("Link copiado!");
+      setTimeout(() => setCopiado(false), 2000);
     } catch {
-      toast.error('Erro ao copiar. Selecione e copie manualmente.')
+      toast.error("Erro ao copiar. Selecione e copie manualmente.");
     }
-  }
+  };
 
   const handleRevogar = async (conviteId: string) => {
-    setRevogando(conviteId)
+    setRevogando(conviteId);
     try {
-      const { error } = await supabase.rpc('revogar_convite' as any, { p_convite_id: conviteId })
-      if (error) throw error
-      toast.success('Convite revogado.')
-      fetchConvites()
+      const { error } = await supabase.rpc("revogar_convite" as any, { p_convite_id: conviteId });
+      if (error) throw error;
+      toast.success("Convite revogado.");
+      fetchConvites();
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao revogar convite')
+      toast.error(err.message || "Erro ao revogar convite");
     } finally {
-      setRevogando(null)
+      setRevogando(null);
     }
-  }
+  };
 
-  const papelSelecionado = papel ? PAPEL_OPTIONS[papel] : null
+  const papelSelecionado = papel ? PAPEL_OPTIONS[papel] : null;
 
   const getStatusBadge = (c: ConvitePendente) => {
-    if (c.status === 'ativo') {
+    if (c.status === "ativo") {
       return (
         <Badge variant="default" className="gap-1 bg-green-600 hover:bg-green-600">
           <Check className="h-3 w-3" />
           Aceito
         </Badge>
-      )
+      );
     }
     if (c.expirado) {
       return (
@@ -203,32 +221,41 @@ export default function Convites() {
           <AlertTriangle className="h-3 w-3" />
           Expirado
         </Badge>
-      )
+      );
     }
     return (
-      <Badge variant="outline" className="gap-1 border-yellow-500 text-yellow-600 bg-yellow-50 dark:bg-yellow-950 dark:text-yellow-400">
+      <Badge
+        variant="outline"
+        className="gap-1 border-yellow-500 text-yellow-600 bg-yellow-50 dark:bg-yellow-950 dark:text-yellow-400"
+      >
         <Clock className="h-3 w-3" />
         Pendente
       </Badge>
-    )
-  }
+    );
+  };
 
   const getTipoBadge = (c: ConvitePendente) => {
-    if (c.tipo === 'novo_proprietario') {
+    if (c.tipo === "novo_proprietario") {
       return (
-        <Badge variant="outline" className="gap-1 border-purple-500 text-purple-600 bg-purple-50 dark:bg-purple-950 dark:text-purple-400">
+        <Badge
+          variant="outline"
+          className="gap-1 border-purple-500 text-purple-600 bg-purple-50 dark:bg-purple-950 dark:text-purple-400"
+        >
           <UserPlus className="h-3 w-3" />
           Novo proprietário
         </Badge>
-      )
+      );
     }
     return (
-      <Badge variant="outline" className="gap-1 border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400">
+      <Badge
+        variant="outline"
+        className="gap-1 border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400"
+      >
         <Building2 className="h-3 w-3" />
-        Acesso: {c.propriedade_nome || '—'}
+        Acesso: {c.propriedade_nome || "—"}
       </Badge>
-    )
-  }
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -257,43 +284,45 @@ export default function Convites() {
               <div className="grid grid-cols-1 gap-2">
                 <button
                   type="button"
-                  onClick={() => handleTrocarTipo('novo_proprietario')}
+                  onClick={() => handleTrocarTipo("novo_proprietario")}
                   disabled={gerando}
                   className={`flex items-start gap-3 rounded-lg border-2 p-3 text-left transition-all ${
-                    tipoConvite === 'novo_proprietario'
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-muted-foreground/30'
-                  } ${gerando ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    tipoConvite === "novo_proprietario"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground/30"
+                  } ${gerando ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                 >
-                  <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                    tipoConvite === 'novo_proprietario' ? 'border-primary' : 'border-muted-foreground/40'
-                  }`}>
-                    {tipoConvite === 'novo_proprietario' && (
-                      <div className="h-2 w-2 rounded-full bg-primary" />
-                    )}
+                  <div
+                    className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      tipoConvite === "novo_proprietario" ? "border-primary" : "border-muted-foreground/40"
+                    }`}
+                  >
+                    {tipoConvite === "novo_proprietario" && <div className="h-2 w-2 rounded-full bg-primary" />}
                   </div>
                   <div>
                     <p className="font-medium text-sm text-foreground">Novo proprietário</p>
-                    <p className="text-xs text-muted-foreground">Pessoa vai criar a própria fazenda após se cadastrar</p>
+                    <p className="text-xs text-muted-foreground">
+                      Pessoa vai criar a própria fazenda após se cadastrar
+                    </p>
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleTrocarTipo('acesso_propriedade')}
+                  onClick={() => handleTrocarTipo("acesso_propriedade")}
                   disabled={gerando}
                   className={`flex items-start gap-3 rounded-lg border-2 p-3 text-left transition-all ${
-                    tipoConvite === 'acesso_propriedade'
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-muted-foreground/30'
-                  } ${gerando ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    tipoConvite === "acesso_propriedade"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground/30"
+                  } ${gerando ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                 >
-                  <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                    tipoConvite === 'acesso_propriedade' ? 'border-primary' : 'border-muted-foreground/40'
-                  }`}>
-                    {tipoConvite === 'acesso_propriedade' && (
-                      <div className="h-2 w-2 rounded-full bg-primary" />
-                    )}
+                  <div
+                    className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      tipoConvite === "acesso_propriedade" ? "border-primary" : "border-muted-foreground/40"
+                    }`}
+                  >
+                    {tipoConvite === "acesso_propriedade" && <div className="h-2 w-2 rounded-full bg-primary" />}
                   </div>
                   <div>
                     <p className="font-medium text-sm text-foreground">Acesso a propriedade</p>
@@ -323,7 +352,7 @@ export default function Convites() {
             </div>
 
             {/* Campos exclusivos de Tipo B */}
-            {tipoConvite === 'acesso_propriedade' && (
+            {tipoConvite === "acesso_propriedade" && (
               <>
                 <div className="space-y-2">
                   <Label>Propriedade</Label>
@@ -333,7 +362,9 @@ export default function Convites() {
                     </SelectTrigger>
                     <SelectContent>
                       {propriedades.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.nome}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -347,7 +378,9 @@ export default function Convites() {
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(PAPEL_OPTIONS).map(([key, opt]) => (
-                        <SelectItem key={key} value={key}>{opt.label}</SelectItem>
+                        <SelectItem key={key} value={key}>
+                          {opt.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -370,7 +403,9 @@ export default function Convites() {
                 </SelectTrigger>
                 <SelectContent>
                   {VALIDADE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -378,9 +413,15 @@ export default function Convites() {
 
             <Button onClick={handleGerarConvite} disabled={gerando} className="w-full">
               {gerando ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Gerando...</>
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Gerando...
+                </>
               ) : (
-                <><Send className="mr-2 h-4 w-4" />Gerar Convite</>
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Gerar Convite
+                </>
               )}
             </Button>
           </CardContent>
@@ -398,7 +439,7 @@ export default function Convites() {
                 <CardDescription>Convites aguardando aceite</CardDescription>
               </div>
               <Button variant="outline" size="sm" onClick={fetchConvites} disabled={loadingConvites}>
-                <RefreshCw className={`h-4 w-4 mr-1 ${loadingConvites ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 mr-1 ${loadingConvites ? "animate-spin" : ""}`} />
                 Atualizar
               </Button>
             </div>
@@ -429,7 +470,9 @@ export default function Convites() {
                   </TableHeader>
                   <TableBody>
                     {convites.map((c) => {
-                      const papelInfo = c.papel ? (PAPEL_OPTIONS[c.papel] || { label: c.papel, variant: 'secondary' as const }) : null
+                      const papelInfo = c.papel
+                        ? PAPEL_OPTIONS[c.papel] || { label: c.papel, variant: "secondary" as const }
+                        : null;
                       return (
                         <TableRow key={c.id}>
                           <TableCell className="font-medium">{c.email}</TableCell>
@@ -453,7 +496,7 @@ export default function Convites() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRevogar(c.id)}
-                              disabled={revogando === c.id || c.status === 'ativo'}
+                              disabled={revogando === c.id || c.status === "ativo"}
                               className="text-destructive hover:text-destructive"
                             >
                               {revogando === c.id ? (
@@ -464,7 +507,7 @@ export default function Convites() {
                             </Button>
                           </TableCell>
                         </TableRow>
-                      )
+                      );
                     })}
                   </TableBody>
                 </Table>
@@ -496,9 +539,15 @@ export default function Convites() {
               />
               <Button onClick={handleCopiar} variant="outline" className="shrink-0 min-w-[100px]">
                 {copiado ? (
-                  <><Check className="h-4 w-4 mr-1 text-green-600" />Copiado!</>
+                  <>
+                    <Check className="h-4 w-4 mr-1 text-green-600" />
+                    Copiado!
+                  </>
                 ) : (
-                  <><Copy className="h-4 w-4 mr-1" />Copiar</>
+                  <>
+                    <Copy className="h-4 w-4 mr-1" />
+                    Copiar
+                  </>
                 )}
               </Button>
             </div>
@@ -509,5 +558,5 @@ export default function Convites() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
