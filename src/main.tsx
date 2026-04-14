@@ -21,6 +21,6 @@ if ('serviceWorker' in navigator) {
     names.forEach((name) => caches.delete(name));
   });
 }
-// Cache bust: 2026-04-14T001
+// Cache bust: 2026-04-14T002
 
 createRoot(document.getElementById("root")!).render(<App />);
