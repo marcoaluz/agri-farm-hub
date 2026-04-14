@@ -122,48 +122,40 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
 
   const isAdmin = profile?.perfil === 'admin' || profile?.is_super_admin === true
 
-  // Admin: carregar TODAS as propriedades agrupadas por dono
-  const [adminProps, setAdminProps] = useState<AdminPropriedade[]>([])
-  const [adminPropsGrouped, setAdminPropsGrouped] = useState<PropriedadeAgrupada[]>([])
-
-  useEffect(() => {
-    if (!isAdmin) {
-      setAdminProps([])
-      setAdminPropsGrouped([])
+  // Admin property selection handler (with safra pre-selection)
+  const handleAdminSelectPropriedade = (prop: {
+    id: string
+    nome: string
+    area_total: number | null
+    safra_ativa_id: string | null
+    safra_ativa_nome: string | null
+    dono_nome: string
+  } | null) => {
+    if (!prop) {
+      setPropriedadeSelecionada(null)
       return
     }
-
-    const fetchAdminProps = async () => {
-      const { data, error } = await supabase.rpc('get_todas_propriedades_admin' as any)
-      if (error) {
-        console.error('Erro ao carregar propriedades admin:', error)
-        return
-      }
-      const items = (data || []) as AdminPropriedade[]
-      setAdminProps(items)
-
-      // Agrupar por dono
-      const groups = new Map<string, PropriedadeAgrupada>()
-      for (const item of items) {
-        if (!groups.has(item.dono_id)) {
-          groups.set(item.dono_id, {
-            dono_id: item.dono_id,
-            dono_nome: item.dono_nome || 'Sem proprietário',
-            items: [],
-          })
-        }
-        groups.get(item.dono_id)!.items.push(item)
-      }
-      setAdminPropsGrouped(Array.from(groups.values()).sort((a, b) => a.dono_nome.localeCompare(b.dono_nome)))
+    setPropriedadeSelecionada({
+      id: prop.id,
+      nome: prop.nome,
+      area_total: prop.area_total,
+      localizacao: null,
+      ativo: true,
+      latitude: null,
+      longitude: null,
+    })
+    // Pre-select active safra from admin RPC payload
+    if (prop.safra_ativa_id && prop.safra_ativa_nome) {
+      setSafraSelecionada({
+        id: prop.safra_ativa_id,
+        nome: prop.safra_ativa_nome,
+        ano_inicio: 0,
+        ano_fim: null,
+        ativa: true,
+        propriedade_id: prop.id,
+      } as any)
     }
-
-    fetchAdminProps()
-  }, [isAdmin])
-
-  // Encontrar dono da propriedade selecionada (admin only)
-  const selectedAdminProp = adminProps.find(
-    (ap) => ap.propriedade_id === propriedadeSelecionada?.id
-  )
+  }
 
   // Buscar total de alertas (admin + estoque + sanitário)
   useEffect(() => {
