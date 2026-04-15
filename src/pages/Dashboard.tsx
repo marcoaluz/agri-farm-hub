@@ -479,155 +479,52 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Consolidated table V2 */}
+      {/* ═══ CONSOLIDATED MODE ═══ */}
       {isConsolidado && (
-        <div>
-          <h2 className="text-lg font-semibold text-foreground mb-3">Por Propriedade</h2>
-          <TabelaConsolidadaV2
-            data={consolidadoV2 || []}
-            isLoading={loadConsolidadoV2}
-            onSelectPropriedade={handleSelectPropriedade}
-          />
-        </div>
+        <>
+          {/* SEÇÃO 1 — Cards Resumo por Propriedade */}
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+              🏠 Resumo por Propriedade
+            </h2>
+            <TabelaConsolidadaV2
+              data={consolidadoV2 || []}
+              isLoading={loadConsolidadoV2}
+              onSelectPropriedade={handleSelectPropriedade}
+            />
+          </div>
+
+          {/* SEÇÃO 2 — Clima de Todas as Propriedades */}
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+              🌤️ Condições Climáticas
+            </h2>
+            <ClimaConsolidado propriedades={propriedades} />
+          </div>
+
+          {/* SEÇÃO 3 — Gráficos Consolidados */}
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+              📊 Análise Financeira Consolidada
+            </h2>
+            <GraficosConsolidados data={consolidadoV2 || []} isLoading={loadConsolidadoV2} />
+          </div>
+
+          {/* SEÇÃO 4 — Estoque de Produção Consolidado */}
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+              🌾 Estoque de Produção
+            </h2>
+            <EstoqueProducaoTabela />
+          </div>
+        </>
       )}
 
+      {/* ═══ FILTERED MODE (propriedade selecionada) ═══ */}
+      {!isConsolidado && (
+        <>
       {/* Estoque de Produção */}
-      <EstoqueProducao propriedadeId={propId || null} isConsolidado={isConsolidado} />
-
-      {/* Pecuária */}
-      {modulos.pecuaria && propId && <DashboardPecuaria propId={propId} navigate={navigate} />}
-
-      {/* Clima — consolidated */}
-      {isConsolidado && (
-        <div className="w-full">
-          <CardClima propriedades={propriedades} />
-        </div>
-      )}
-
-      {/* Produção da Safra */}
-      <div>
-        <h2 className="text-lg font-semibold text-foreground mb-3">Produção da Safra</h2>
-        {isConsolidado ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-              <Sprout className="h-10 w-10 text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                Selecione uma propriedade para ver a produção da safra.
-              </p>
-            </CardContent>
-          </Card>
-        ) : loadProd ? (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
-          </div>
-        ) : producaoAgrupada.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-              <Sprout className="h-10 w-10 text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground mb-4">Nenhuma colheita registrada nesta safra</p>
-              <Button asChild variant="outline" size="sm">
-                <Link to="/talhoes">Registrar Produção</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            {producaoAgrupada.map((item) => {
-              const pct = item.colhido > 0 ? Math.round((item.vendido / item.colhido) * 100) : 0
-              const IconComp = item.icone === 'coffee' ? Coffee : item.icone === 'wheat' ? Wheat : item.icone === 'apple' ? Apple : item.icone === 'sprout' ? Sprout : Leaf
-              return (
-                <Card key={item.nome}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <IconComp className="h-5 w-5 text-primary" />
-                      <Badge variant="secondary">{item.nome}</Badge>
-                    </div>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <p>Colhido: <span className="font-medium text-foreground">{item.colhido.toLocaleString('pt-BR')} {item.unidade}</span></p>
-                      <p>Vendido: <span className="font-medium text-foreground">{item.vendido.toLocaleString('pt-BR')} {item.unidade}</span></p>
-                    </div>
-                    <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-200 hover:bg-emerald-500/20">
-                      Disponível: {item.disponivel.toLocaleString('pt-BR')} {item.unidade}
-                    </Badge>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Vendido</span>
-                        <span>{pct}%</span>
-                      </div>
-                      <Progress
-                        value={pct}
-                        className={`h-2 ${pct > 80 ? '[&>div]:bg-destructive' : pct >= 50 ? '[&>div]:bg-warning' : '[&>div]:bg-success'}`}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Charts */}
-      <div className={`grid gap-6 ${isConsolidado ? 'lg:grid-cols-2' : 'lg:grid-cols-3'}`}>
-        <ChartCard title="Investimento por Mês" description="Custos consolidados por mês" className={isConsolidado ? 'lg:col-span-1' : 'lg:col-span-2'}>
-          {isLoadingMesRender ? (
-            <Skeleton className="h-[280px] rounded-lg" />
-          ) : (
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dadosMesFormatted}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="mesLabel" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} interval={0} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value: number) => [fmt(value), 'Custo']} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                  <Bar dataKey="custo_total" name="Custo" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </ChartCard>
-
-        {!isConsolidado && <CardClima />}
-
-        <ChartCard title="Distribuição por Categoria" description="Custos por tipo de serviço" className={isConsolidado ? 'lg:col-span-1' : 'lg:col-span-3'}>
-          {isLoadingCatRender ? (
-            <Skeleton className="h-[280px] rounded-lg" />
-          ) : (
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={dadosCatRender || []}
-                    cx="50%"
-                    cy="45%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={3}
-                    dataKey="custo_total"
-                    nameKey="categoria"
-                  >
-                    {(dadosCatRender || []).map((_: any, i: number) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => [fmt(value), 'Custo']} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="mt-2 grid grid-cols-2 gap-1.5">
-                {(dadosCatRender || []).map((item: any, i: number) => {
-                  const pct = totalCategoria > 0 ? ((Number(item.custo_total || 0) / totalCategoria) * 100).toFixed(1) : '0.0'
-                  return (
-                    <div key={i} className="flex items-center gap-2">
-                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                      <span className="text-xs text-muted-foreground truncate">{item.categoria} ({pct}%)</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </ChartCard>
-      </div>
+      <EstoqueProducao propriedadeId={propId || null} isConsolidado={false} />
 
       {/* Bottom row — Lançamentos */}
       <div className="grid gap-6 lg:grid-cols-2">
