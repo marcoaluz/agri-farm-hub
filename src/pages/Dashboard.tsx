@@ -523,73 +523,183 @@ export default function Dashboard() {
       {/* ═══ FILTERED MODE (propriedade selecionada) ═══ */}
       {!isConsolidado && (
         <>
-      {/* Estoque de Produção */}
-      <EstoqueProducao propriedadeId={propId || null} isConsolidado={false} />
+          {/* Estoque de Produção */}
+          <EstoqueProducao propriedadeId={propId || null} isConsolidado={false} />
 
-      {/* Bottom row — Lançamentos */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-card-foreground">Últimos Lançamentos</h3>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/lancamentos" className="gap-1">
-                Ver todos <ArrowRight className="h-3 w-3" />
-              </Link>
-            </Button>
+          {/* Pecuária */}
+          {modulos.pecuaria && propId && <DashboardPecuaria propId={propId} navigate={navigate} />}
+
+          {/* Produção da Safra */}
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-3">Produção da Safra</h2>
+            {loadProd ? (
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
+              </div>
+            ) : producaoAgrupada.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+                  <Sprout className="h-10 w-10 text-muted-foreground mb-3" />
+                  <p className="text-sm text-muted-foreground mb-4">Nenhuma colheita registrada nesta safra</p>
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/talhoes">Registrar Produção</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                {producaoAgrupada.map((item) => {
+                  const pct = item.colhido > 0 ? Math.round((item.vendido / item.colhido) * 100) : 0
+                  const IconComp = item.icone === 'coffee' ? Coffee : item.icone === 'wheat' ? Wheat : item.icone === 'apple' ? Apple : item.icone === 'sprout' ? Sprout : Leaf
+                  return (
+                    <Card key={item.nome}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <IconComp className="h-5 w-5 text-primary" />
+                          <Badge variant="secondary">{item.nome}</Badge>
+                        </div>
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          <p>Colhido: <span className="font-medium text-foreground">{item.colhido.toLocaleString('pt-BR')} {item.unidade}</span></p>
+                          <p>Vendido: <span className="font-medium text-foreground">{item.vendido.toLocaleString('pt-BR')} {item.unidade}</span></p>
+                        </div>
+                        <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-200 hover:bg-emerald-500/20">
+                          Disponível: {item.disponivel.toLocaleString('pt-BR')} {item.unidade}
+                        </Badge>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Vendido</span>
+                            <span>{pct}%</span>
+                          </div>
+                          <Progress
+                            value={pct}
+                            className={`h-2 ${pct > 80 ? '[&>div]:bg-destructive' : pct >= 50 ? '[&>div]:bg-warning' : '[&>div]:bg-success'}`}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            )}
           </div>
-          {isLoadingLancRender ? (
-            <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-lg" />)}</div>
-          ) : ultimosLancRender.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Nenhum lançamento encontrado.</p>
-          ) : (
-            <div className="space-y-3">
-              {ultimosLancRender.map((l: any, i: number) => (
-                <div key={i} className="flex items-center justify-between rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground truncate">{l.servico_nome || 'Serviço'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {isConsolidado && l.propriedade_nome && `${l.propriedade_nome} · `}
-                      {l.talhao_nome || 'Talhão'} • {l.data_execucao || '—'}
-                    </p>
-                  </div>
-                  <span className="text-sm font-semibold text-foreground ml-3 shrink-0">{fmt(Number(l.custo_total || 0))}</span>
+
+          {/* Charts */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            <ChartCard title="Investimento por Mês" description="Custos por mês" className="lg:col-span-2">
+              {isLoadingMesRender ? (
+                <Skeleton className="h-[280px] rounded-lg" />
+              ) : (
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dadosMesFormatted}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="mesLabel" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} interval={0} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(value: number) => [fmt(value), 'Custo']} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                      <Bar dataKey="custo_total" name="Custo" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              )}
+            </ChartCard>
 
-        {/* Alertas summary */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-card-foreground">Alertas do Sistema</h3>
+            <CardClima />
+
+            <ChartCard title="Distribuição por Categoria" description="Custos por tipo de serviço" className="lg:col-span-3">
+              {isLoadingCatRender ? (
+                <Skeleton className="h-[280px] rounded-lg" />
+              ) : (
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={dadosCatRender || []}
+                        cx="50%"
+                        cy="45%"
+                        innerRadius={55}
+                        outerRadius={85}
+                        paddingAngle={3}
+                        dataKey="custo_total"
+                        nameKey="categoria"
+                      >
+                        {(dadosCatRender || []).map((_: any, i: number) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => [fmt(value), 'Custo']} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="mt-2 grid grid-cols-2 gap-1.5">
+                    {(dadosCatRender || []).map((item: any, i: number) => {
+                      const pct = totalCategoria > 0 ? ((Number(item.custo_total || 0) / totalCategoria) * 100).toFixed(1) : '0.0'
+                      return (
+                        <div key={i} className="flex items-center gap-2">
+                          <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                          <span className="text-xs text-muted-foreground truncate">{item.categoria} ({pct}%)</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </ChartCard>
           </div>
-          {totalAlertasGlobal === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <CheckCircle className="h-10 w-10 text-success mb-3" />
-              <p className="text-sm text-muted-foreground">
-                {isConsolidado ? 'Selecione uma propriedade para ver alertas detalhados' : 'Nenhum alerta no momento'}
-              </p>
+
+          {/* Bottom row — Lançamentos & Alertas */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-card-foreground">Últimos Lançamentos</h3>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/lancamentos" className="gap-1">
+                    Ver todos <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </Button>
+              </div>
+              {loadLanc ? (
+                <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-lg" />)}</div>
+              ) : ultimosLanc.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">Nenhum lançamento encontrado.</p>
+              ) : (
+                <div className="space-y-3">
+                  {ultimosLanc.map((l: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground truncate">{l.servico_nome || 'Serviço'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {l.talhao_nome || 'Talhão'} • {l.data_execucao || '—'}
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold text-foreground ml-3 shrink-0">{fmt(Number(l.custo_total || 0))}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : isConsolidado ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <AlertTriangle className="h-10 w-10 text-warning mb-3" />
-              <p className="text-2xl font-bold text-foreground mb-1">{totalAlertasGlobal}</p>
-              <p className="text-sm text-muted-foreground">alertas em todas as propriedades</p>
-              <p className="text-xs text-muted-foreground mt-2">Selecione uma propriedade para ver detalhes</p>
+
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-card-foreground">Alertas do Sistema</h3>
+              </div>
+              {(kpisV2?.alertas?.total_alertas ?? 0) === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <CheckCircle className="h-10 w-10 text-success mb-3" />
+                  <p className="text-sm text-muted-foreground">Nenhum alerta no momento</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <AlertTriangle className="h-10 w-10 text-warning mb-3" />
+                  <p className="text-2xl font-bold text-foreground mb-1">{kpisV2?.alertas?.total_alertas ?? 0}</p>
+                  <p className="text-sm text-muted-foreground">alertas ativos</p>
+                  <Button variant="outline" size="sm" className="mt-3" onClick={() => setAlertsOpen(true)}>
+                    Ver detalhes
+                  </Button>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <AlertTriangle className="h-10 w-10 text-warning mb-3" />
-              <p className="text-2xl font-bold text-foreground mb-1">{kpisV2?.alertas?.total_alertas ?? 0}</p>
-              <p className="text-sm text-muted-foreground">alertas ativos</p>
-              <Button variant="outline" size="sm" className="mt-3" onClick={() => setAlertsOpen(true)}>
-                Ver detalhes
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
