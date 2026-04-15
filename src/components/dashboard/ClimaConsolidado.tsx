@@ -22,8 +22,8 @@ function weatherEmoji(code: number): { emoji: string; label: string } {
 interface Prop {
   id: string
   nome: string
-  latitude: number | null
-  longitude: number | null
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export function ClimaConsolidado({ propriedades }: { propriedades: Prop[] }) {
