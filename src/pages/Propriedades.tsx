@@ -105,8 +105,8 @@ export function Propriedades() {
     setDeleteDialogOpen(true)
   }
 
-  // Filter only active properties
-  const activePropriedades = propriedades.filter(p => p.ativo)
+  const propriedadesLista = Array.isArray(propriedades) ? propriedades : []
+  const activePropriedades = propriedadesLista.filter((p) => p.ativo)
 
   if (isLoading) {
     return (

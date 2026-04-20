@@ -162,6 +162,7 @@ export default function Dashboard() {
   const { propriedadeAtual, safraAtual, propriedades, setPropriedadeAtual } = useGlobal()
   const navigate = useNavigate()
   const { modulos } = useModulos()
+  const propriedadesLista = Array.isArray(propriedades) ? propriedades : []
   const propId = propriedadeAtual?.id
   const safraId = safraAtual?.id
   const isConsolidado = !propId
@@ -398,7 +399,7 @@ export default function Dashboard() {
   }, [totalAlertasGlobal])
 
   const handleSelectPropriedade = (propIdSelected: string) => {
-    const prop = propriedades.find((p) => p.id === propIdSelected)
+    const prop = propriedadesLista.find((p) => p.id === propIdSelected)
     if (prop) setPropriedadeAtual(prop)
   }
 
