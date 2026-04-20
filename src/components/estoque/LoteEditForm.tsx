@@ -109,18 +109,28 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
     <div className="border rounded-lg p-4 bg-muted/50 space-y-4">
       <h4 className="font-semibold text-sm">Editar Lote</h4>
 
+      {safraFechada && (
+        <Alert variant="destructive">
+          <Lock className="h-4 w-4" />
+          <AlertDescription>
+            <strong>🔒 Safra fechada — somente leitura.</strong> Não é possível editar lotes nesta safra.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs">Nota Fiscal</Label>
-          <Input value={form.nota_fiscal} onChange={e => setForm(f => ({ ...f, nota_fiscal: e.target.value }))} />
+          <Input disabled={safraFechada} value={form.nota_fiscal} onChange={e => setForm(f => ({ ...f, nota_fiscal: e.target.value }))} />
         </div>
         <div>
           <Label className="text-xs">Fornecedor</Label>
-          <Input value={form.fornecedor} onChange={e => setForm(f => ({ ...f, fornecedor: e.target.value }))} />
+          <Input disabled={safraFechada} value={form.fornecedor} onChange={e => setForm(f => ({ ...f, fornecedor: e.target.value }))} />
         </div>
         <div>
           <Label className="text-xs">Custo Unitário (R$/{unidade})</Label>
           <Input
+            disabled={safraFechada}
             type="number"
             step="0.01"
             min="0"
@@ -131,6 +141,7 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
         <div>
           <Label className="text-xs">Quantidade ({unidade})</Label>
           <Input
+            disabled={safraFechada}
             type="number"
             step="0.001"
             min="0.001"
@@ -140,15 +151,15 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
         </div>
         <div>
           <Label className="text-xs">Data de Entrada</Label>
-          <Input type="date" value={form.data_entrada} onChange={e => setForm(f => ({ ...f, data_entrada: e.target.value }))} />
+          <Input disabled={safraFechada} type="date" value={form.data_entrada} onChange={e => setForm(f => ({ ...f, data_entrada: e.target.value }))} />
         </div>
         <div>
           <Label className="text-xs">Validade (opcional)</Label>
-          <Input type="date" value={form.data_validade} onChange={e => setForm(f => ({ ...f, data_validade: e.target.value }))} />
+          <Input disabled={safraFechada} type="date" value={form.data_validade} onChange={e => setForm(f => ({ ...f, data_validade: e.target.value }))} />
         </div>
       </div>
 
-      {form.quantidade !== lote.quantidade_original && (
+      {form.quantidade !== lote.quantidade_original && !safraFechada && (
         <p className="text-xs text-muted-foreground">
           ⚠️ Alterar a quantidade recalculará o saldo do produto automaticamente
         </p>
@@ -158,7 +169,7 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
         <Button variant="outline" size="sm" onClick={onClose} disabled={mutation.isPending}>
           <X className="h-3 w-3 mr-1" /> Cancelar
         </Button>
-        <Button size="sm" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+        <Button size="sm" onClick={() => mutation.mutate()} disabled={safraFechada || mutation.isPending}>
           {mutation.isPending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
           Salvar
         </Button>
