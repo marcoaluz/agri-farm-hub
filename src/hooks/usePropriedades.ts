@@ -21,10 +21,12 @@ export function usePropriedades() {
   const { data: propriedades = [], isLoading } = useQuery({
     queryKey: ['propriedades', user?.id],
     queryFn: async () => {
+      // RLS já garante que o usuário só vê as propriedades que tem acesso
+      // (próprias + compartilhadas via propriedades_usuarios)
       const { data, error } = await supabase
         .from('propriedades')
         .select('*')
-        .eq('user_id', user!.id)
+        .eq('ativo', true)
         .order('nome')
 
       if (error) throw error
