@@ -61,31 +61,34 @@ function CardClimaSingle() {
   const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [geoError, setGeoError] = useState(false)
 
-  const propLat = (propriedadeAtual as any)?.latitude
-  const propLng = (propriedadeAtual as any)?.longitude
+  const propLatRaw = (propriedadeAtual as any)?.latitude
+  const propLngRaw = (propriedadeAtual as any)?.longitude
+  const propLat = propLatRaw != null ? Number(propLatRaw) : null
+  const propLng = propLngRaw != null ? Number(propLngRaw) : null
+  const hasPropCoords = propLat != null && propLng != null && !isNaN(propLat) && !isNaN(propLng)
 
   useEffect(() => {
-    if (propLat && propLng) return
+    if (hasPropCoords) return
     if (!navigator.geolocation) { setGeoError(true); return }
     navigator.geolocation.getCurrentPosition(
       (pos) => setGeoCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => setGeoError(true),
       { timeout: 8000 },
     )
-  }, [propLat, propLng])
+  }, [hasPropCoords])
 
-  const lat = propLat || geoCoords?.lat
-  const lng = propLng || geoCoords?.lng
+  const lat = hasPropCoords ? propLat : geoCoords?.lat
+  const lng = hasPropCoords ? propLng : geoCoords?.lng
 
   const { data: clima, isLoading, dataUpdatedAt } = useQuery({
     queryKey: ['clima', lat, lng],
     queryFn: async () => {
-      const url = `${METEO_BASE}?latitude=${lat}&longitude=${lng}${METEO_PARAMS}`
+      const url = `${METEO_BASE}?latitude=${Number(lat)}&longitude=${Number(lng)}${METEO_PARAMS}`
       const res = await fetch(url)
       return res.json()
     },
     staleTime: 10 * 60 * 1000,
-    enabled: !!lat && !!lng,
+    enabled: lat != null && lng != null,
   })
 
   const atualizadoHa = useMemo(() => {
@@ -94,7 +97,7 @@ function CardClimaSingle() {
     return min < 1 ? 'agora' : `há ${min} min`
   }, [dataUpdatedAt, clima])
 
-  if (!lat && !lng && (geoError || (!propLat && !propLng))) {
+  if (lat == null && lng == null && (geoError || !hasPropCoords)) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-10 text-center">
@@ -137,7 +140,7 @@ function CardClimaSingle() {
    ══════════════════════════════════════ */
 function CardClimaConsolidado({ propriedades }: { propriedades: any[] }) {
   const propriedadesComCoords = useMemo(
-    () => (propriedades || []).filter((p: any) => p.latitude && p.longitude),
+    () => (propriedades || []).filter((p: any) => p.latitude != null && p.longitude != null),
     [propriedades],
   )
 
@@ -145,7 +148,9 @@ function CardClimaConsolidado({ propriedades }: { propriedades: any[] }) {
     queries: propriedadesComCoords.map((prop: any) => ({
       queryKey: ['clima', prop.latitude, prop.longitude],
       queryFn: async () => {
-        const url = `${METEO_BASE}?latitude=${prop.latitude}&longitude=${prop.longitude}${METEO_PARAMS}`
+        const lat = Number(prop.latitude)
+        const lng = Number(prop.longitude)
+        const url = `${METEO_BASE}?latitude=${lat}&longitude=${lng}${METEO_PARAMS}`
         const res = await fetch(url)
         const data = await res.json()
         return { ...data, propriedade: prop }

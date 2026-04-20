@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
-import { useQueries } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { MapPinOff, Wind, Droplets, Settings } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { supabase } from '@/lib/supabase'
 
 const METEO_BASE = 'https://api.open-meteo.com/v1/forecast'
 
@@ -26,17 +27,38 @@ interface Prop {
   longitude?: number | null
 }
 
-export function ClimaConsolidado({ propriedades }: { propriedades: Prop[] }) {
+export function ClimaConsolidado({ propriedades }: { propriedades?: Prop[] }) {
+  // Se não vier prop, busca diretamente do banco (RLS garante segurança)
+  const { data: fetched } = useQuery({
+    queryKey: ['clima-propriedades-todas'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('propriedades')
+        .select('id, nome, latitude, longitude')
+        .eq('ativo', true)
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+      if (error) throw error
+      return (data || []) as Prop[]
+    },
+    enabled: !propriedades || propriedades.length === 0,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const fonte = (propriedades && propriedades.length > 0) ? propriedades : (fetched || [])
+
   const comCoords = useMemo(
-    () => propriedades.filter((p) => p.latitude && p.longitude),
-    [propriedades],
+    () => fonte.filter((p) => p.latitude != null && p.longitude != null),
+    [fonte],
   )
 
   const queries = useQueries({
     queries: comCoords.map((prop) => ({
       queryKey: ['clima-consolidado', prop.latitude, prop.longitude],
       queryFn: async () => {
-        const url = `${METEO_BASE}?latitude=${prop.latitude}&longitude=${prop.longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=America/Sao_Paulo`
+        const lat = Number(prop.latitude)
+        const lng = Number(prop.longitude)
+        const url = `${METEO_BASE}?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=America/Sao_Paulo`
         const res = await fetch(url)
         const data = await res.json()
         return { ...data, prop }
