@@ -29,19 +29,20 @@ interface Prop {
 
 export function ClimaConsolidado({ propriedades }: { propriedades?: Prop[] }) {
   // Se não vier prop, busca diretamente do banco (RLS garante segurança)
-  const { data: fetched } = useQuery({
+  const shouldFetchAll = !propriedades || propriedades.length === 0
+
+  const { data: fetched, isLoading: isLoadingProps } = useQuery({
     queryKey: ['clima-propriedades-todas'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('propriedades')
         .select('id, nome, latitude, longitude')
         .eq('ativo', true)
-        .not('latitude', 'is', null)
-        .not('longitude', 'is', null)
+        .order('nome')
       if (error) throw error
       return (data || []) as Prop[]
     },
-    enabled: !propriedades || propriedades.length === 0,
+    enabled: shouldFetchAll,
     staleTime: 5 * 60 * 1000,
   })
 
@@ -66,6 +67,25 @@ export function ClimaConsolidado({ propriedades }: { propriedades?: Prop[] }) {
       staleTime: 10 * 60 * 1000,
     })),
   })
+
+  if (shouldFetchAll && isLoadingProps) {
+    return (
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, idx) => (
+          <Card key={idx}>
+            <CardContent className="p-5 space-y-3">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-10 w-20" />
+              <div className="flex gap-4">
+                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-5 w-16" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
 
   if (comCoords.length === 0) {
     return (
