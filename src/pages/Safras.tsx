@@ -195,25 +195,37 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
 
   const duracao = safra.ano_fim ? safra.ano_fim - safra.ano_inicio : 1;
 
+  // Status visual: ativa | fechada | inativa
+  const statusBadge = safra.fechada ? (
+    <Badge variant="destructive" className="gap-1">
+      <Lock className="h-3 w-3" />
+      🔒 FECHADA
+    </Badge>
+  ) : safra.ativa ? (
+    <Badge className="bg-green-600 hover:bg-green-700 gap-1">
+      <Check className="h-3 w-3" />
+      🟢 ATIVA
+    </Badge>
+  ) : (
+    <Badge variant="secondary" className="gap-1">
+      ⚪ INATIVA
+    </Badge>
+  );
+
   return (
-    <Card className={cn("transition-all", safra.ativa && "border-green-500 bg-green-50 dark:bg-green-950/20")}>
+    <Card
+      className={cn(
+        'transition-all',
+        safra.ativa && !safra.fechada && 'border-green-500 bg-green-50 dark:bg-green-950/20',
+        safra.fechada && 'border-amber-400 bg-amber-50/50 dark:bg-amber-950/10 opacity-90',
+      )}
+    >
       <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
+        <div className="flex items-start justify-between flex-wrap gap-3">
+          <div className="flex-1 min-w-[240px]">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
               <h3 className="text-xl font-bold">{safra.nome}</h3>
-              {safra.ativa && (
-                <Badge className="bg-green-600 hover:bg-green-700">
-                  <Check className="h-3 w-3 mr-1" />
-                  ATIVA
-                </Badge>
-              )}
-              {safra.fechada && (
-                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                  <Lock className="h-3 w-3 mr-1" />
-                  FECHADA
-                </Badge>
-              )}
+              {statusBadge}
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-4">
@@ -227,7 +239,6 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
               </div>
             </div>
 
-            {/* Indicador de duração */}
             <div className="mt-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
@@ -237,7 +248,7 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
 
             {safra.fechada && safra.data_fechamento && (
               <div className="mt-2">
-                <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400 font-medium">
                   <Lock className="h-4 w-4" />
                   <span>Fechada em {new Date(safra.data_fechamento).toLocaleDateString('pt-BR')}</span>
                 </div>
@@ -245,8 +256,8 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
             )}
           </div>
 
-          <div className="flex gap-2">
-            {!safra.ativa && (
+          <div className="flex gap-2 flex-wrap">
+            {!safra.ativa && !safra.fechada && (
               <Button
                 variant="outline"
                 size="sm"
@@ -258,7 +269,10 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
               </Button>
             )}
 
-            <DialogFecharSafra safra={safra} />
+            {/* Apenas safras ativas e não fechadas podem ser fechadas */}
+            {(safra.ativa || safra.fechada) && (
+              <DialogFecharSafra safra={safra} />
+            )}
 
             <Button variant="outline" size="icon" onClick={onEdit} disabled={safra.fechada}>
               <Edit className="h-4 w-4" />

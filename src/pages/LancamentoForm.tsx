@@ -773,7 +773,13 @@ export function LancamentoForm() {
     return true
   }
 
+  const safraFechada = (safraAtual as any)?.fechada === true
+
   const handleSalvar = () => {
+    if (safraFechada) {
+      toast({ title: 'Safra fechada', description: 'Esta safra está fechada — somente leitura.', variant: 'destructive' })
+      return
+    }
     if (!validarFormulario()) return
     salvarMutation.mutate(formData)
   }
@@ -866,6 +872,14 @@ export function LancamentoForm() {
               </CardHeader>
 
               <CardContent className="space-y-6">
+                {(safraAtual as any)?.fechada && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>🔒 Safra fechada — somente leitura.</strong> Não é possível salvar alterações nesta safra.
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <div className="grid gap-6 sm:grid-cols-2">
                   {/* DATA */}
                   <div className="space-y-2">
@@ -1093,7 +1107,7 @@ export function LancamentoForm() {
               <Button
                 type="button"
                 onClick={handleSalvar}
-                disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente || !temAlteracaoReal}
+                disabled={safraFechada || salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente || !temAlteracaoReal}
                 className="w-full"
                 size="lg"
               >
@@ -1208,7 +1222,7 @@ export function LancamentoForm() {
                 <Button
                   type="button"
                   onClick={handleSalvar}
-                  disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente || !temAlteracaoReal}
+                  disabled={safraFechada || salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente || !temAlteracaoReal}
                   className="w-full"
                   size="lg"
                 >

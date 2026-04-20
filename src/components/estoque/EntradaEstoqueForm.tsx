@@ -23,9 +23,10 @@ interface EntradaEstoqueFormProps {
 }
 
 export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
-  const { propriedadeAtual } = useGlobal();
+  const { propriedadeAtual, safraAtual } = useGlobal();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const safraFechada = (safraAtual as any)?.fechada === true;
 
   const [formData, setFormData] = useState({
     produto_id: '',
@@ -115,6 +116,15 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
           Registre a entrada de um novo lote no estoque
         </p>
       </DialogHeader>
+
+      {safraFechada && (
+        <Alert variant="destructive">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>🔒 Safra fechada — somente leitura.</strong> Não é possível registrar entradas nesta safra.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Alert>
         <Info className="h-4 w-4" />
@@ -305,6 +315,7 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
         <Button
           onClick={() => saveMutation.mutate()}
           disabled={
+            safraFechada ||
             saveMutation.isPending ||
             !formData.produto_id ||
             formData.quantidade <= 0 ||

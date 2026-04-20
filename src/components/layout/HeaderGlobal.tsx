@@ -302,12 +302,20 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
             <SelectItem key={safra.id} value={safra.id}>
               <div className="flex items-center gap-2">
                 {safra.nome}
-                {safra.ativa && (
+                {safra.ativa && !((safra as any).fechada) && (
                   <Badge
                     variant="default"
                     className="ml-1 text-[10px] px-1.5 py-0 bg-success text-success-foreground"
                   >
                     ATIVA
+                  </Badge>
+                )}
+                {(safra as any).fechada && (
+                  <Badge
+                    variant="destructive"
+                    className="ml-1 text-[10px] px-1.5 py-0"
+                  >
+                    🔒 Fechada
                   </Badge>
                 )}
               </div>
@@ -411,10 +419,15 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
               onSelectPropriedade={handleAdminSelectPropriedade}
             />
           ) : (
-            renderPropriedadeSelect()
+          renderPropriedadeSelect()
           )}
           <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
           {renderSafraSelect()}
+          {(safraSelecionada as any)?.fechada && (
+            <Badge variant="destructive" className="text-[10px] gap-1 hidden md:flex">
+              🔒 Fechada
+            </Badge>
+          )}
         </div>
 
         <div className="flex-1" />
