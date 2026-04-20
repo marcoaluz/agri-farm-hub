@@ -500,7 +500,7 @@ export default function Dashboard() {
             <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
               🌤️ Condições Climáticas
             </h2>
-            <ClimaConsolidado propriedades={propriedades} />
+            <ClimaConsolidado />
           </div>
 
           {/* SEÇÃO 3 — Gráficos Consolidados */}
