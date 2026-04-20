@@ -118,6 +118,8 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
     id: string
     nome: string
     area_total: number | null
+    latitude?: number | null
+    longitude?: number | null
     safra_ativa_id: string | null
     safra_ativa_nome: string | null
     dono_nome: string
@@ -144,8 +146,8 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
         area_total: data?.area_total ?? prop.area_total,
         localizacao: data?.localizacao ?? null,
         ativo: data?.ativo ?? true,
-        latitude: data?.latitude ?? null,
-        longitude: data?.longitude ?? null,
+        latitude: data?.latitude ?? prop.latitude ?? null,
+        longitude: data?.longitude ?? prop.longitude ?? null,
       })
     })()
   }
