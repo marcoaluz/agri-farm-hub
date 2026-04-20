@@ -82,45 +82,15 @@ export function SafraProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true)
 
-      // Propriedades do próprio usuário
-      const { data: proprias, error: e1 } = await supabase
+      const { data, error } = await supabase
         .from('propriedades')
         .select('id, nome, area_total, localizacao, ativo, latitude, longitude')
-        .eq('user_id', user.id)
         .eq('ativo', true)
         .order('nome')
 
-      if (e1) throw e1
+      if (error) throw error
 
-      // Propriedades compartilhadas via propriedades_usuarios
-      const { data: compartilhadas, error: e2 } = await supabase
-        .from('propriedades_usuarios')
-        .select('propriedade_id')
-        .eq('usuario_id', user.id)
-        .eq('status', 'ativo')
-
-      // Buscar detalhes das compartilhadas (se houver)
-      let propCompartilhadas: Propriedade[] = []
-      if (!e2 && compartilhadas && compartilhadas.length > 0) {
-        const ids = compartilhadas.map((c) => c.propriedade_id)
-        const { data: detalhes } = await supabase
-          .from('propriedades')
-          .select('id, nome, area_total, localizacao, ativo, latitude, longitude')
-          .in('id', ids)
-          .eq('ativo', true)
-          .order('nome')
-
-        propCompartilhadas = (detalhes || []) as Propriedade[]
-      }
-
-      // Mesclar sem duplicatas
-      const todasMap = new Map<string, Propriedade>()
-      for (const p of [...(proprias || []), ...propCompartilhadas]) {
-        todasMap.set(p.id, p as Propriedade)
-      }
-      const todas = Array.from(todasMap.values()).sort((a, b) =>
-        a.nome.localeCompare(b.nome),
-      )
+      const todas = (data || []) as Propriedade[]
 
       setPropriedades(todas)
 
