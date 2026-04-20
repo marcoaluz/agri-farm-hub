@@ -1,439 +1,88 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-
-import { format, parseISO } from 'date-fns'
+import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { BarChart3, DollarSign, TrendingUp, Wheat, ChevronUp, ChevronDown, Eye, EyeOff, AlertTriangle, ArrowUpDown, FileX } from 'lucide-react'
-import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import {
+  BarChart3, ClipboardList, DollarSign, Sprout, TrendingUp, Package,
+  ArrowUpDown, ChevronUp, ChevronDown, Download, FileX, Lock, Circle, Leaf,
+} from 'lucide-react'
+import {
+  BarChart, Bar, ComposedChart, Line, PieChart, Pie, Cell, XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
+} from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
-import { CalendarIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Progress } from '@/components/ui/progress'
 import { useGlobal } from '@/contexts/GlobalContext'
-import { useRelatorioOperacional, useRelatorioFinanceiro, useRelatorioComparativo, statusEfetivoTransacao, type FiltrosRelatorio } from '@/hooks/useRelatorios'
-import { BotaoExportacao } from '@/components/relatorios/BotaoExportacao'
-import { exportarExcel, exportarPDFCompleto, exportarPDFSintetico } from '@/lib/exportRelatorio'
 
-const PIE_COLORS = ['hsl(142,70%,40%)', 'hsl(200,70%,50%)', 'hsl(40,90%,50%)', 'hsl(0,72%,51%)', 'hsl(270,60%,50%)', 'hsl(180,60%,40%)']
+/* ───────────────── helpers ───────────────── */
+const fmt = (v: number) =>
+  (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const fmtN = (v: number, d = 2) =>
+  (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d })
+const fmtPct = (v: number) => `${(Number(v) || 0).toFixed(1)}%`
+const fmtData = (s?: string) => (s ? format(new Date(String(s).substring(0, 10) + 'T12:00:00'), 'dd/MM/yyyy') : '-')
 
-const categoriasFinLabel: Record<string, string> = {
-  insumos: 'Insumos', combustivel: 'Combustível', manutencao: 'Manutenção',
-  mao_de_obra: 'Mão de Obra', arrendamento: 'Arrendamento', maquinario: 'Maquinário',
-  venda_producao: 'Venda Produção', servicos_terceiros: 'Serv. Terceiros', impostos: 'Impostos',
-  sanidade_animal: 'Sanidade Animal', alimentacao_animal: 'Alimentação / Ração',
-  compra_animais: 'Compra de Animais', venda_animais: 'Venda de Animais', outros: 'Outros',
+const PALETTE = [
+  'hsl(142,70%,40%)', 'hsl(0,72%,51%)', 'hsl(40,90%,50%)', 'hsl(200,70%,50%)',
+  'hsl(270,60%,50%)', 'hsl(180,60%,40%)', 'hsl(20,80%,55%)', 'hsl(330,65%,55%)',
+  'hsl(90,60%,40%)', 'hsl(260,60%,55%)',
+]
+
+const db = supabase as any
+
+/* CSV helpers (BOM UTF-8) */
+function downloadCSV(filename: string, headers: string[], rows: (string | number)[][]) {
+  const esc = (v: any) => {
+    const s = String(v ?? '')
+    return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const csv = '\uFEFF' + [headers, ...rows].map((r) => r.map(esc).join(';')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
-const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const fmtN = (v: number, d = 2) => v.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d })
-
-const PER_PAGE = 20
-
-function DatePickerField({ value, onChange, placeholder }: { value?: string; onChange: (v: string) => void; placeholder: string }) {
-  const date = value ? new Date(value + 'T12:00:00') : undefined
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className={cn('w-[140px] justify-start text-left font-normal', !value && 'text-muted-foreground')}>
-          <CalendarIcon className="mr-1 h-3.5 w-3.5" />
-          {value ? format(new Date(value + 'T12:00:00'), 'dd/MM/yyyy') : placeholder}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar mode="single" selected={date} onSelect={(d) => onChange(d ? format(d, 'yyyy-MM-dd') : '')} className="p-3 pointer-events-auto" />
-      </PopoverContent>
-    </Popover>
-  )
+/* Sort icon */
+function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
+  if (!active) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />
+  return dir === 'asc' ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />
 }
 
+/* gradiente de cores por valor (amarelo → vermelho) */
+function colorScale(value: number, max: number) {
+  if (max <= 0) return 'hsl(50,80%,55%)'
+  const t = Math.min(1, value / max)
+  // hue 50 (amarelo) → 0 (vermelho)
+  const hue = 50 - t * 50
+  return `hsl(${hue.toFixed(0)},80%,50%)`
+}
+
+/* ════════════════════════════════════════════════
+   PÁGINA
+   ════════════════════════════════════════════════ */
 export function Relatorios() {
-  const { propriedadeAtual, safraAtual, safras } = useGlobal()
+  const { propriedadeAtual, safraAtual } = useGlobal()
   const propId = propriedadeAtual?.id || ''
   const safraId = safraAtual?.id || ''
-
-
-  // Operacional filters
-  const [filtrosOp, setFiltrosOp] = useState<FiltrosRelatorio>({})
-  const [showChartsOp, setShowChartsOp] = useState(true)
-  const [sortOp, setSortOp] = useState<{ col: string; dir: 'asc' | 'desc' }>({ col: 'data_execucao', dir: 'desc' })
-  const [pageOp, setPageOp] = useState(0)
-
-  // Financeiro filters
-  const [filtrosFin, setFiltrosFin] = useState<FiltrosRelatorio>({})
-  const [showChartsFin, setShowChartsFin] = useState(true)
-  const [sortFin, setSortFin] = useState<{ col: string; dir: 'asc' | 'desc' }>({ col: 'data_vencimento', dir: 'desc' })
-  const [pageFin, setPageFin] = useState(0)
-
-  // Talhão tab
-  const [talhaoSel, setTalhaoSel] = useState<string>('')
-  const [filtrosTalhao, setFiltrosTalhao] = useState<FiltrosRelatorio>({})
-
-  // Comparativo
-  const [safraCompIds, setSafraCompIds] = useState<string[]>([])
-
-  useEffect(() => { setPageOp(0) }, [filtrosOp])
-  useEffect(() => { setPageFin(0) }, [filtrosFin])
-
-  // Data hooks
-  const opData = useRelatorioOperacional(propId, safraId, filtrosOp)
-  const talhaoData = useRelatorioOperacional(propId, safraId, { ...filtrosTalhao, talhao_id: talhaoSel || undefined })
-  const finData = useRelatorioFinanceiro(propId, safraId, filtrosFin)
-  const compData = useRelatorioComparativo(propId, safraCompIds.length > 0 ? safraCompIds : [safraId])
-
-  const semContexto = !propriedadeAtual || !safraAtual
-
-  // ── OPERACIONAL KPIs ──
-  const lancamentos = opData.lancamentos.data || []
-  const kpisOp = useMemo(() => {
-    const custoTotal = lancamentos.reduce((s, l: any) => s + Number(l.custo_total || 0), 0)
-    const areas = new Set<string>()
-    let areaTotal = 0
-    lancamentos.forEach((l: any) => {
-      if (l.talhao_id && !areas.has(l.talhao_id)) {
-        areas.add(l.talhao_id)
-        areaTotal += Number(l.talhao_area_ha || 0)
-      }
-    })
-    return { totalLancamentos: lancamentos.length, custoTotal, areaTotal, custoMedioHa: areaTotal > 0 ? custoTotal / areaTotal : 0 }
-  }, [lancamentos])
-
-  // ── OPERACIONAL sort/paginate ──
-  const lancOrdenados = useMemo(() => {
-    const sorted = [...lancamentos].sort((a: any, b: any) => {
-      const va = a[sortOp.col], vb = b[sortOp.col]
-      if (va == null) return 1; if (vb == null) return -1
-      const cmp = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb))
-      return sortOp.dir === 'asc' ? cmp : -cmp
-    })
-    return sorted
-  }, [lancamentos, sortOp])
-  const totalPagesOp = Math.ceil(lancOrdenados.length / PER_PAGE)
-  const lancPag = lancOrdenados.slice(pageOp * PER_PAGE, (pageOp + 1) * PER_PAGE)
-  const custoMedioHaGeral = kpisOp.custoMedioHa
-
-  // ── OPERACIONAL charts ──
-  const chartMensalOp = useMemo(() => {
-    const porMes = opData.porMes.data || []
-    return porMes.map((m: any) => ({
-      mes: m.mes ? format(new Date(m.mes.substring(0, 10) + 'T12:00:00'), 'MMM/yy', { locale: ptBR }) : '—',
-      custo: Number(m.custo_total_mes || 0),
-    }))
-  }, [opData.porMes.data])
-
-  const pieCategOp = useMemo(() => {
-    return (opData.porCategoria.data || []).slice(0, 6).map((c: any) => ({
-      name: c.categoria || 'Outros', value: Number(c.custo_total || 0),
-    }))
-  }, [opData.porCategoria.data])
-
-  // ── FINANCEIRO KPIs ──
-  const transacoes = finData.transacoes.data || []
-  const kpisFin = useMemo(() => {
-    let rec = 0, desp = 0, vencido = 0
-    transacoes.forEach((t: any) => {
-      const st = statusEfetivoTransacao(t)
-      if (st === 'cancelado') return
-      if (t.tipo === 'receita') rec += Number(t.valor || 0)
-      if (t.tipo === 'despesa') desp += Number(t.valor || 0)
-      if (st === 'vencido') vencido += Number(t.valor || 0)
-    })
-    return { rec, desp, saldo: rec - desp, vencido }
-  }, [transacoes])
-
-  // ── FINANCEIRO sort/paginate ──
-  const transOrdenadas = useMemo(() => {
-    return [...transacoes].sort((a: any, b: any) => {
-      const va = a[sortFin.col], vb = b[sortFin.col]
-      if (va == null) return 1; if (vb == null) return -1
-      const cmp = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb))
-      return sortFin.dir === 'asc' ? cmp : -cmp
-    })
-  }, [transacoes, sortFin])
-  const totalPagesFin = Math.ceil(transOrdenadas.length / PER_PAGE)
-  const transPag = transOrdenadas.slice(pageFin * PER_PAGE, (pageFin + 1) * PER_PAGE)
-
-  const totaisFin = useMemo(() => {
-    const r = transacoes.filter((t: any) => t.tipo === 'receita' && statusEfetivoTransacao(t) !== 'cancelado').reduce((s: number, t: any) => s + Number(t.valor), 0)
-    const d = transacoes.filter((t: any) => t.tipo === 'despesa' && statusEfetivoTransacao(t) !== 'cancelado').reduce((s: number, t: any) => s + Number(t.valor), 0)
-    return { rec: r, desp: d, saldo: r - d }
-  }, [transacoes])
-
-  // ── FINANCEIRO charts ──
-  const chartMensalFin = useMemo(() => {
-    const map: Record<string, { rec: number; desp: number }> = {}
-    transacoes.forEach((t: any) => {
-      if (statusEfetivoTransacao(t) === 'cancelado') return
-      const m = t.data_vencimento?.substring(0, 7)
-      if (!m) return
-      if (!map[m]) map[m] = { rec: 0, desp: 0 }
-      if (t.tipo === 'receita') map[m].rec += Number(t.valor)
-      else map[m].desp += Number(t.valor)
-    })
-    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b)).map(([m, v]) => ({
-      mes: format(parseISO(m + '-01'), 'MMM/yy', { locale: ptBR }), receitas: v.rec, despesas: v.desp,
-    }))
-  }, [transacoes])
-
-  const pieDespFin = useMemo(() => {
-    const map: Record<string, number> = {}
-    transacoes.forEach((t: any) => {
-      if (t.tipo !== 'despesa' || statusEfetivoTransacao(t) === 'cancelado') return
-      map[t.categoria] = (map[t.categoria] || 0) + Number(t.valor)
-    })
-    return Object.entries(map).map(([k, v]) => ({ name: categoriasFinLabel[k] || k, value: v })).sort((a, b) => b.value - a.value)
-  }, [transacoes])
-
-  // ── POR TALHÃO ──
-  const talhoes = opData.porTalhao.data || []
-  const talhaoDetalhe = talhaoSel ? talhoes.find((t: any) => t.talhao_id === talhaoSel) : null
-  const lancTalhao = talhaoData.lancamentos.data || []
-
-  const kpisTalhaoComp = useMemo(() => {
-    if (!talhoes.length) return { total: 0, maiorHa: 0, menorHa: 0, media: 0 }
-    const custos = talhoes.map((t: any) => Number(t.custo_por_ha || 0)).filter((v: number) => v > 0)
-    return {
-      total: talhoes.length,
-      maiorHa: custos.length ? Math.max(...custos) : 0,
-      menorHa: custos.length ? Math.min(...custos) : 0,
-      media: custos.length ? custos.reduce((s: number, v: number) => s + v, 0) / custos.length : 0,
-    }
-  }, [talhoes])
-
-  // ── COMPARATIVO ──
-  const compResults = compData.porSafra.data || []
-
-  // ── CUSTO DE PRODUÇÃO ──
-  const custoProducaoQuery = useQuery({
-    queryKey: ['rel-custo-producao', propId, safraId],
-    queryFn: async () => {
-      const db = supabase as any
-      // Buscar talhao_culturas com cultura e produção
-      const { data: tc } = await db
-        .from('talhao_culturas')
-        .select(`
-          id, talhao_id, cultura_id, area_plantada_ha, producao_estimada,
-          talhao:talhoes(id, nome, area_ha),
-          cultura:culturas_config(id, nome_exibicao, unidade_label, icone),
-          producao:producoes(quantidade_colhida, quantidade_vendida, quantidade_disponivel)
-        `)
-        .eq('safra_id', safraId)
-        .eq('propriedade_id', propId)
-
-      // Buscar lançamentos agrupados por talhão
-      const { data: lancData } = await db.rpc('get_relatorio_por_talhao', {
-        p_propriedade_id: propId,
-        p_safra_id: safraId,
-      })
-
-      const talhaoMap: Record<string, { custo: number; lancamentos: number }> = {}
-      ;(lancData || []).forEach((t: any) => {
-        talhaoMap[t.talhao_id] = {
-          custo: Number(t.custo_total || 0),
-          lancamentos: Number(t.total_lancamentos || 0),
-        }
-      })
-
-      // Buscar dados da safra anterior para comparativo
-      const safraAnterior = (safras || []).find((s: any) => {
-        const sAtual = safras?.find((x: any) => x.id === safraId)
-        return sAtual && s.ano_inicio === (sAtual.ano_inicio - 1) && s.id !== safraId
-      })
-
-      let compAnterior: Record<string, { custo: number; producao: number }> = {}
-      if (safraAnterior) {
-        const { data: tcAnt } = await db
-          .from('talhao_culturas')
-          .select(`cultura_id, talhao_id, producao:producoes(quantidade_colhida)`)
-          .eq('safra_id', safraAnterior.id)
-          .eq('propriedade_id', propId)
-
-        const { data: lancAnt } = await db.rpc('get_relatorio_por_talhao', {
-          p_propriedade_id: propId,
-          p_safra_id: safraAnterior.id,
-        })
-
-        const talhaoMapAnt: Record<string, number> = {}
-        ;(lancAnt || []).forEach((t: any) => { talhaoMapAnt[t.talhao_id] = Number(t.custo_total || 0) })
-
-        ;(tcAnt || []).forEach((item: any) => {
-          const cultId = item.cultura_id
-          const prod = item.producao?.[0]?.quantidade_colhida || item.producao?.quantidade_colhida || 0
-          const custo = talhaoMapAnt[item.talhao_id] || 0
-          if (!compAnterior[cultId]) compAnterior[cultId] = { custo: 0, producao: 0 }
-          compAnterior[cultId].custo += custo
-          compAnterior[cultId].producao += Number(prod)
-        })
-      }
-
-      // Agrupar por cultura
-      const culturaMap: Record<string, any> = {}
-      ;(tc || []).forEach((item: any) => {
-        const cultId = item.cultura_id
-        const cultNome = item.cultura?.nome_exibicao || 'Cultura'
-        const unidade = item.cultura?.unidade_label || 'un'
-        const icone = item.cultura?.icone || '🌱'
-        const talhaoInfo = talhaoMap[item.talhao_id] || { custo: 0, lancamentos: 0 }
-        const prod = Array.isArray(item.producao) ? item.producao[0] : item.producao
-        const colhida = Number(prod?.quantidade_colhida || 0)
-
-        if (!culturaMap[cultId]) {
-          culturaMap[cultId] = {
-            cultura_id: cultId, nome: cultNome, unidade, icone,
-            custoTotal: 0, totalLancamentos: 0, producaoColhida: 0,
-            areaPlantada: 0, talhoes: [],
-          }
-        }
-        culturaMap[cultId].custoTotal += talhaoInfo.custo
-        culturaMap[cultId].totalLancamentos += talhaoInfo.lancamentos
-        culturaMap[cultId].producaoColhida += colhida
-        culturaMap[cultId].areaPlantada += Number(item.area_plantada_ha || item.talhao?.area_ha || 0)
-        culturaMap[cultId].talhoes.push({
-          nome: item.talhao?.nome || '—',
-          area: Number(item.area_plantada_ha || item.talhao?.area_ha || 0),
-          custo: talhaoInfo.custo,
-          lancamentos: talhaoInfo.lancamentos,
-          colhida,
-        })
-      })
-
-      return Object.values(culturaMap).map((c: any) => ({
-        ...c,
-        custoUnitario: c.producaoColhida > 0 ? c.custoTotal / c.producaoColhida : null,
-        custoHa: c.areaPlantada > 0 ? c.custoTotal / c.areaPlantada : null,
-        anterior: compAnterior[c.cultura_id] || null,
-        custoUnitarioAnterior: compAnterior[c.cultura_id] && compAnterior[c.cultura_id].producao > 0
-          ? compAnterior[c.cultura_id].custo / compAnterior[c.cultura_id].producao : null,
-      }))
-    },
-    enabled: !!propId && !!safraId,
-  })
-
-  const custoProducao = custoProducaoQuery.data || []
-
-  // ── SORT TOGGLE ──
-  function toggleSort(current: { col: string; dir: 'asc' | 'desc' }, col: string, setter: (v: any) => void) {
-    if (current.col === col) setter({ col, dir: current.dir === 'asc' ? 'desc' : 'asc' })
-    else setter({ col, dir: 'asc' })
-  }
-
-  const SortIcon = ({ col, current }: { col: string; current: { col: string; dir: string } }) => {
-    if (current.col !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />
-    return current.dir === 'asc' ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />
-  }
-
-  // ── EXPORT HANDLERS (Operacional) ──
-  const handleExcelOp = () => {
-    exportarExcel({
-      titulo: 'Relatório Operacional', nomeArquivo: `relatorio-operacional-${safraAtual?.nome || ''}`,
-      abas: [
-        { nome: 'Lançamentos', colunas: ['Data', 'Serviço', 'Categoria', 'Talhão', 'Área (ha)', 'Custo Total', 'Custo/ha'],
-          linhas: lancamentos.map((l: any) => [l.data_execucao ? format(new Date(l.data_execucao), 'dd/MM/yyyy') : '-', l.servico_nome || '-', l.servico_categoria || '-', l.talhao_nome || '-', l.talhao_area_ha || '-', Number(l.custo_total || 0), l.custo_por_ha || '-']),
-          totais: ['TOTAL', '', '', '', `${fmtN(kpisOp.areaTotal)} ha`, fmt(kpisOp.custoTotal), fmt(kpisOp.custoMedioHa)] },
-        { nome: 'Por Categoria', colunas: ['Categoria', 'Lançamentos', 'Custo Total'],
-          linhas: (opData.porCategoria.data || []).map((c: any) => [c.categoria || '-', c.total_lancamentos || 0, Number(c.custo_total || 0)]) },
-        { nome: 'Por Talhão', colunas: ['Talhão', 'Área (ha)', 'Lançamentos', 'Custo Total', 'Custo/ha'],
-          linhas: talhoes.map((t: any) => [t.talhao_nome || '-', t.area_ha || '-', t.total_lancamentos || 0, Number(t.custo_total || 0), t.custo_por_ha || '-']) },
-      ],
-    })
-  }
-
-  const handlePdfCompletoOp = () => {
-    exportarPDFCompleto({
-      titulo: 'Relatório Operacional', subtitulo: 'Detalhado', nomeArquivo: `relatorio-operacional-${safraAtual?.nome || ''}`,
-      propriedade: propriedadeAtual?.nome || '-', safra: safraAtual?.nome || '-',
-      periodo: `${filtrosOp.data_inicio || 'Início'} a ${filtrosOp.data_fim || 'Hoje'}`,
-      kpis: [
-        { label: 'Total Lançamentos', valor: String(kpisOp.totalLancamentos) },
-        { label: 'Custo Total', valor: fmt(kpisOp.custoTotal) },
-        { label: 'Área Total', valor: `${fmtN(kpisOp.areaTotal)} ha` },
-        { label: 'Custo Médio/ha', valor: fmt(kpisOp.custoMedioHa) },
-      ],
-      tabelas: [
-        { titulo: 'Lançamentos', colunas: ['Data', 'Serviço', 'Categoria', 'Talhão', 'Área', 'Custo', 'Custo/ha'],
-          linhas: lancamentos.map((l: any) => [l.data_execucao ? format(new Date(l.data_execucao), 'dd/MM/yyyy') : '-', l.servico_nome || '-', l.servico_categoria || '-', l.talhao_nome || '-', l.talhao_area_ha ? `${l.talhao_area_ha} ha` : '-', fmt(Number(l.custo_total || 0)), l.custo_por_ha ? fmt(l.custo_por_ha) : '-']),
-          rodape: ['TOTAL', '', '', '', `${fmtN(kpisOp.areaTotal)} ha`, fmt(kpisOp.custoTotal), fmt(kpisOp.custoMedioHa)] },
-      ],
-    })
-  }
-
-  const handlePdfSinteticoOp = () => {
-    exportarPDFSintetico({
-      titulo: 'Relatório Operacional — Sintético', nomeArquivo: `relatorio-sintetico-${safraAtual?.nome || ''}`,
-      propriedade: propriedadeAtual?.nome || '-', safra: safraAtual?.nome || '-',
-      periodo: `${filtrosOp.data_inicio || 'Início'} a ${filtrosOp.data_fim || 'Hoje'}`,
-      kpis: [
-        { label: 'Total Lançamentos', valor: String(kpisOp.totalLancamentos) },
-        { label: 'Custo Total', valor: fmt(kpisOp.custoTotal) },
-        { label: 'Área Total', valor: `${fmtN(kpisOp.areaTotal)} ha` },
-        { label: 'Custo Médio/ha', valor: fmt(kpisOp.custoMedioHa) },
-      ],
-      resumos: [
-        { titulo: 'Custos por Categoria', itens: [
-          ...(opData.porCategoria.data || []).map((c: any) => ({ label: c.categoria || '-', valor: `${fmt(Number(c.custo_total || 0))} (${kpisOp.custoTotal > 0 ? ((Number(c.custo_total || 0) / kpisOp.custoTotal) * 100).toFixed(1) : 0}%)` })),
-          { label: 'TOTAL GERAL', valor: fmt(kpisOp.custoTotal), destaque: true },
-        ] },
-        { titulo: 'Custos por Talhão', itens: talhoes.map((t: any) => ({ label: `${t.talhao_nome || '-'} (${t.area_ha || '-'} ha)`, valor: `${fmt(Number(t.custo_total || 0))} | ${t.custo_por_ha ? fmt(t.custo_por_ha) + '/ha' : '-'}` })) },
-      ],
-    })
-  }
-
-  // ── EXPORT HANDLERS (Financeiro) ──
-  const handleExcelFin = () => {
-    exportarExcel({
-      titulo: 'Relatório Financeiro', nomeArquivo: `relatorio-financeiro-${safraAtual?.nome || ''}`,
-      abas: [{ nome: 'Transações', colunas: ['Data Venc.', 'Descrição', 'Tipo', 'Categoria', 'Fornecedor', 'Valor', 'Status'],
-        linhas: transacoes.map((t: any) => [t.data_vencimento || '-', t.descricao || '-', t.tipo, categoriasFinLabel[t.categoria] || t.categoria, t.fornecedor_cliente || '-', Number(t.valor || 0), statusEfetivoTransacao(t)]),
-        totais: ['', '', '', '', 'Receitas:', totaisFin.rec, `Despesas: ${fmt(totaisFin.desp)} | Saldo: ${fmt(totaisFin.saldo)}`] }],
-    })
-  }
-
-  const handlePdfCompletoFin = () => {
-    exportarPDFCompleto({
-      titulo: 'Relatório Financeiro', subtitulo: 'Completo', nomeArquivo: `relatorio-financeiro-${safraAtual?.nome || ''}`,
-      propriedade: propriedadeAtual?.nome || '-', safra: safraAtual?.nome || '-',
-      periodo: `${filtrosFin.data_inicio || 'Início'} a ${filtrosFin.data_fim || 'Hoje'}`,
-      kpis: [{ label: 'Receitas', valor: fmt(kpisFin.rec) }, { label: 'Despesas', valor: fmt(kpisFin.desp) }, { label: 'Saldo', valor: fmt(kpisFin.saldo) }, { label: 'Vencido', valor: fmt(kpisFin.vencido) }],
-      tabelas: [{ titulo: 'Transações', colunas: ['Data', 'Descrição', 'Categoria', 'Fornecedor', 'Valor', 'Status'],
-        linhas: transacoes.map((t: any) => [t.data_vencimento || '-', t.descricao || '-', categoriasFinLabel[t.categoria] || t.categoria, t.fornecedor_cliente || '-', fmt(Number(t.valor || 0)), statusEfetivoTransacao(t)]),
-        rodape: ['', 'TOTAIS', '', 'Receitas:', fmt(totaisFin.rec), `Despesas: ${fmt(totaisFin.desp)}`] }],
-    })
-  }
-
-  const handlePdfSinteticoFin = () => {
-    exportarPDFSintetico({
-      titulo: 'Relatório Financeiro — Sintético', nomeArquivo: `relatorio-fin-sintetico-${safraAtual?.nome || ''}`,
-      propriedade: propriedadeAtual?.nome || '-', safra: safraAtual?.nome || '-',
-      periodo: `${filtrosFin.data_inicio || 'Início'} a ${filtrosFin.data_fim || 'Hoje'}`,
-      kpis: [{ label: 'Receitas', valor: fmt(kpisFin.rec) }, { label: 'Despesas', valor: fmt(kpisFin.desp) }, { label: 'Saldo', valor: fmt(kpisFin.saldo) }, { label: 'Vencido', valor: fmt(kpisFin.vencido) }],
-      resumos: [{ titulo: 'Despesas por Categoria', itens: pieDespFin.map(c => ({ label: c.name, valor: fmt(c.value) })) }],
-    })
-  }
-
-  // ── STATUS BADGE ──
-  const StatusBadge = ({ status }: { status: string }) => {
-    const st = status
-    const cls: Record<string, string> = {
-      pendente: 'bg-yellow-100 text-yellow-700', pago: 'bg-green-100 text-green-700',
-      vencido: 'bg-red-100 text-red-700', cancelado: 'bg-muted text-muted-foreground',
-    }
-    return <Badge variant="outline" className={cls[st] || ''}>{st.charAt(0).toUpperCase() + st.slice(1)}</Badge>
-  }
+  const semContexto = !propId || !safraId
 
   if (semContexto) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
         <BarChart3 className="h-12 w-12 mb-4 opacity-50" />
         <p className="text-lg font-medium">Selecione uma propriedade e safra</p>
-        <p className="text-sm">Use o header para selecionar antes de gerar relatórios</p>
+        <p className="text-sm">Use o seletor no topo para ver os relatórios.</p>
       </div>
     )
   }
@@ -442,608 +91,818 @@ export function Relatorios() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Relatórios</h1>
-        <p className="text-muted-foreground">Análises detalhadas e exportações</p>
+        <p className="text-muted-foreground">
+          {propriedadeAtual?.nome} · {safraAtual?.nome}
+        </p>
       </div>
 
-
       <Tabs defaultValue="operacional" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="operacional">📊 Operacional</TabsTrigger>
-          <TabsTrigger value="financeiro">💰 Financeiro</TabsTrigger>
-          <TabsTrigger value="talhao">🌾 Por Talhão</TabsTrigger>
-          <TabsTrigger value="custo-producao">🌿 Por Cultura</TabsTrigger>
-          <TabsTrigger value="comparativo">📈 Comparativos</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+          <TabsTrigger value="operacional"><ClipboardList className="h-4 w-4 mr-1" />Operacional</TabsTrigger>
+          <TabsTrigger value="financeiro"><DollarSign className="h-4 w-4 mr-1" />Financeiro</TabsTrigger>
+          <TabsTrigger value="talhao"><Sprout className="h-4 w-4 mr-1" />Por Talhão</TabsTrigger>
+          <TabsTrigger value="comparativo"><TrendingUp className="h-4 w-4 mr-1" />Comparativo</TabsTrigger>
+          <TabsTrigger value="insumos"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
         </TabsList>
 
-        {/* ════════════ ABA OPERACIONAL ════════════ */}
-        <TabsContent value="operacional" className="space-y-4">
-          {/* Filtros */}
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex flex-wrap gap-3 items-end">
-                <DatePickerField value={filtrosOp.data_inicio} onChange={(v) => setFiltrosOp(f => ({ ...f, data_inicio: v || undefined }))} placeholder="Data início" />
-                <DatePickerField value={filtrosOp.data_fim} onChange={(v) => setFiltrosOp(f => ({ ...f, data_fim: v || undefined }))} placeholder="Data fim" />
-                <Select value={filtrosOp.talhao_id || '_all'} onValueChange={(v) => setFiltrosOp(f => ({ ...f, talhao_id: v === '_all' ? undefined : v }))}>
-                  <SelectTrigger className="w-[160px]"><SelectValue placeholder="Talhão" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_all">Todos os talhões</SelectItem>
-                    {talhoes.map((t: any) => <SelectItem key={t.talhao_id} value={t.talhao_id}>{t.talhao_nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={filtrosOp.categoria || '_all'} onValueChange={(v) => setFiltrosOp(f => ({ ...f, categoria: v === '_all' ? undefined : v }))}>
-                  <SelectTrigger className="w-[160px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_all">Todas categorias</SelectItem>
-                    {(opData.porCategoria.data || []).map((c: any) => <SelectItem key={c.categoria} value={c.categoria}>{c.categoria}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Button variant="ghost" size="sm" onClick={() => setFiltrosOp({})}>Limpar</Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* KPIs */}
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Lançamentos</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{kpisOp.totalLancamentos}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Custo Total</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{fmt(kpisOp.custoTotal)}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Área Total</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{fmtN(kpisOp.areaTotal)} ha</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Custo Médio/ha</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{fmt(kpisOp.custoMedioHa)}</div></CardContent></Card>
-          </div>
-
-          {/* Toggle gráficos */}
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" size="sm" onClick={() => setShowChartsOp(!showChartsOp)}>
-              {showChartsOp ? <><EyeOff className="h-4 w-4 mr-1" /> Ocultar Gráficos</> : <><Eye className="h-4 w-4 mr-1" /> Mostrar Gráficos</>}
-            </Button>
-            <div className="flex items-center gap-2">
-              {lancamentos.length > 0 && (
-                <Badge variant="outline">{lancamentos.length} registro{lancamentos.length !== 1 ? 's' : ''}</Badge>
-              )}
-              <BotaoExportacao onExportarPDFCompleto={handlePdfCompletoOp} onExportarPDFSintetico={handlePdfSinteticoOp} onExportarExcel={handleExcelOp} isLoading={opData.lancamentos.isLoading} />
-            </div>
-          </div>
-
-          {/* Gráficos */}
-          {showChartsOp && (
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card><CardHeader><CardTitle className="text-base">Custo por Mês</CardTitle></CardHeader><CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartMensalOp}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="mes" fontSize={11} /><YAxis fontSize={11} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} /><Tooltip formatter={(v: number) => fmt(v)} /><Bar dataKey="custo" name="Custo" fill="hsl(142,70%,40%)" radius={[4,4,0,0]} /></BarChart>
-                </ResponsiveContainer>
-              </CardContent></Card>
-              <Card><CardHeader><CardTitle className="text-base">Custo por Categoria</CardTitle></CardHeader><CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart><Pie data={pieCategOp} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
-                    {pieCategOp.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                  </Pie><Tooltip formatter={(v: number) => fmt(v)} /></PieChart>
-                </ResponsiveContainer>
-              </CardContent></Card>
-            </div>
-          )}
-
-          {/* Tabela */}
-          {opData.lancamentos.isLoading ? (
-            <Card><CardContent className="pt-4 space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-            </CardContent></Card>
-          ) : lancamentos.length === 0 ? (
-            <Card><CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <FileX className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">Nenhum lançamento encontrado para esta safra.</p>
-              <p className="text-sm">Registre operações em Lançamentos para ver os relatórios.</p>
-            </CardContent></Card>
-          ) : (
-          <Card>
-            <CardContent className="pt-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {[{ k: 'data_execucao', l: 'Data' }, { k: 'servico_nome', l: 'Serviço' }, { k: 'servico_categoria', l: 'Categoria' }, { k: 'talhao_nome', l: 'Talhão' }, { k: 'talhao_area_ha', l: 'Área (ha)' }, { k: 'custo_total', l: 'Custo Total' }, { k: 'custo_por_ha', l: 'Custo/ha' }].map(c => (
-                      <TableHead key={c.k} className="cursor-pointer select-none" onClick={() => toggleSort(sortOp, c.k, setSortOp)}>
-                        <span className="flex items-center">{c.l}<SortIcon col={c.k} current={sortOp} /></span>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {lancPag.map((l: any, i: number) => {
-                    const custoHa = Number(l.custo_por_ha || 0)
-                    const isAlto = custoMedioHaGeral > 0 && custoHa > custoMedioHaGeral * 1.5
-                    return (
-                      <TableRow key={l.id || i} className={isAlto ? 'bg-amber-50' : ''}>
-                        <TableCell>{l.data_execucao ? format(new Date(l.data_execucao), 'dd/MM/yyyy') : '-'}</TableCell>
-                        <TableCell className="font-medium">{l.servico_nome || '-'}</TableCell>
-                        <TableCell>{l.servico_categoria || '-'}</TableCell>
-                        <TableCell>{l.talhao_nome || '-'}</TableCell>
-                        <TableCell>{l.talhao_area_ha ? fmtN(Number(l.talhao_area_ha)) : '-'}</TableCell>
-                        <TableCell className="font-medium">{fmt(Number(l.custo_total || 0))}</TableCell>
-                        <TableCell className={isAlto ? 'font-bold text-amber-700' : ''}>{custoHa ? fmt(custoHa) : '-'} {isAlto && <AlertTriangle className="inline h-3.5 w-3.5 ml-1 text-amber-500" />}</TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-                <TableFooter>
-                  <TableRow>
-                    <TableCell colSpan={4} className="font-bold">TOTAL</TableCell>
-                    <TableCell className="font-bold">{fmtN(kpisOp.areaTotal)} ha</TableCell>
-                    <TableCell className="font-bold">{fmt(kpisOp.custoTotal)}</TableCell>
-                    <TableCell className="font-bold">{fmt(kpisOp.custoMedioHa)}</TableCell>
-                  </TableRow>
-                </TableFooter>
-              </Table>
-              {totalPagesOp > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <span className="text-sm text-muted-foreground">Página {pageOp + 1} de {totalPagesOp} ({lancOrdenados.length} registros)</span>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" disabled={pageOp === 0} onClick={() => setPageOp(p => p - 1)}>Anterior</Button>
-                    <Button variant="outline" size="sm" disabled={pageOp >= totalPagesOp - 1} onClick={() => setPageOp(p => p + 1)}>Próxima</Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          )}
-        </TabsContent>
-
-        {/* ════════════ ABA FINANCEIRO ════════════ */}
-        <TabsContent value="financeiro" className="space-y-4">
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex flex-wrap gap-3 items-end">
-                <DatePickerField value={filtrosFin.data_inicio} onChange={(v) => setFiltrosFin(f => ({ ...f, data_inicio: v || undefined }))} placeholder="Data início" />
-                <DatePickerField value={filtrosFin.data_fim} onChange={(v) => setFiltrosFin(f => ({ ...f, data_fim: v || undefined }))} placeholder="Data fim" />
-                <Select value={filtrosFin.tipo || '_all'} onValueChange={(v) => setFiltrosFin(f => ({ ...f, tipo: v === '_all' ? undefined : v }))}>
-                  <SelectTrigger className="w-[130px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
-                  <SelectContent><SelectItem value="_all">Todos</SelectItem><SelectItem value="receita">Receita</SelectItem><SelectItem value="despesa">Despesa</SelectItem></SelectContent>
-                </Select>
-                <Select value={filtrosFin.categoria || '_all'} onValueChange={(v) => setFiltrosFin(f => ({ ...f, categoria: v === '_all' ? undefined : v }))}>
-                  <SelectTrigger className="w-[150px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
-                  <SelectContent><SelectItem value="_all">Todas</SelectItem>{Object.entries(categoriasFinLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select value={filtrosFin.status || '_all'} onValueChange={(v) => setFiltrosFin(f => ({ ...f, status: v === '_all' ? undefined : v }))}>
-                  <SelectTrigger className="w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
-                  <SelectContent><SelectItem value="_all">Todos</SelectItem><SelectItem value="pendente">Pendente</SelectItem><SelectItem value="pago">Pago</SelectItem><SelectItem value="vencido">Vencido</SelectItem><SelectItem value="cancelado">Cancelado</SelectItem></SelectContent>
-                </Select>
-                <Button variant="ghost" size="sm" onClick={() => setFiltrosFin({})}>Limpar</Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">💰 Receitas</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">{fmt(kpisFin.rec)}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">💸 Despesas</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{fmt(kpisFin.desp)}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">⚖️ Saldo</CardTitle></CardHeader><CardContent><div className={`text-2xl font-bold ${kpisFin.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(kpisFin.saldo)}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">⚠️ Vencido</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{fmt(kpisFin.vencido)}</div></CardContent></Card>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" size="sm" onClick={() => setShowChartsFin(!showChartsFin)}>
-              {showChartsFin ? <><EyeOff className="h-4 w-4 mr-1" /> Ocultar Gráficos</> : <><Eye className="h-4 w-4 mr-1" /> Mostrar Gráficos</>}
-            </Button>
-            <div className="flex items-center gap-2">
-              {transacoes.length > 0 && (
-                <Badge variant="outline">{transacoes.length} registro{transacoes.length !== 1 ? 's' : ''}</Badge>
-              )}
-              <BotaoExportacao onExportarPDFCompleto={handlePdfCompletoFin} onExportarPDFSintetico={handlePdfSinteticoFin} onExportarExcel={handleExcelFin} />
-            </div>
-          </div>
-
-          {showChartsFin && (
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card><CardHeader><CardTitle className="text-base">Receitas vs Despesas / Mês</CardTitle></CardHeader><CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartMensalFin}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="mes" fontSize={11} /><YAxis fontSize={11} /><Tooltip formatter={(v: number) => fmt(v)} /><Legend />
-                    <Bar dataKey="receitas" name="Receitas" fill="hsl(142,70%,40%)" radius={[4,4,0,0]} />
-                    <Bar dataKey="despesas" name="Despesas" fill="hsl(0,72%,51%)" radius={[4,4,0,0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent></Card>
-              <Card><CardHeader><CardTitle className="text-base">Despesas por Categoria</CardTitle></CardHeader><CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart><Pie data={pieDespFin} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
-                    {pieDespFin.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                  </Pie><Tooltip formatter={(v: number) => fmt(v)} /></PieChart>
-                </ResponsiveContainer>
-              </CardContent></Card>
-            </div>
-          )}
-
-          {finData.transacoes.isLoading ? (
-            <Card><CardContent className="pt-4 space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-            </CardContent></Card>
-          ) : transacoes.length === 0 ? (
-            <Card><CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <FileX className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">Nenhuma transação encontrada para esta safra.</p>
-              <p className="text-sm">Registre receitas e despesas no Financeiro para ver os relatórios.</p>
-            </CardContent></Card>
-          ) : (
-          <Card>
-            <CardContent className="pt-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {[{ k: 'data_vencimento', l: 'Data Venc.' }, { k: 'descricao', l: 'Descrição' }, { k: 'categoria', l: 'Categoria' }, { k: 'fornecedor_cliente', l: 'Fornecedor/Cliente' }, { k: 'valor', l: 'Valor' }, { k: 'status', l: 'Status' }].map(c => (
-                      <TableHead key={c.k} className="cursor-pointer select-none" onClick={() => toggleSort(sortFin, c.k, setSortFin)}>
-                        <span className="flex items-center">{c.l}<SortIcon col={c.k} current={sortFin} /></span>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transPag.map((t: any) => {
-                    const st = statusEfetivoTransacao(t)
-                    return (
-                      <TableRow key={t.id} className={st === 'vencido' ? 'bg-red-50' : ''}>
-                        <TableCell>{t.data_vencimento ? format(new Date(t.data_vencimento + 'T12:00:00'), 'dd/MM/yyyy') : '-'}</TableCell>
-                        <TableCell className="font-medium">{t.descricao}</TableCell>
-                        <TableCell>{categoriasFinLabel[t.categoria] || t.categoria}</TableCell>
-                        <TableCell>{t.fornecedor_cliente || '-'}</TableCell>
-                        <TableCell className={`font-medium ${t.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>{t.tipo === 'despesa' ? '-' : ''}{fmt(Number(t.valor))}</TableCell>
-                        <TableCell><StatusBadge status={st} /></TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-                <TableFooter>
-                  <TableRow>
-                    <TableCell colSpan={3} className="font-bold">TOTAIS</TableCell>
-                    <TableCell className="font-bold text-green-600">Receitas: {fmt(totaisFin.rec)}</TableCell>
-                    <TableCell className="font-bold text-red-600">Despesas: {fmt(totaisFin.desp)}</TableCell>
-                    <TableCell className={`font-bold ${totaisFin.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>Saldo: {fmt(totaisFin.saldo)}</TableCell>
-                  </TableRow>
-                </TableFooter>
-              </Table>
-              {totalPagesFin > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <span className="text-sm text-muted-foreground">Página {pageFin + 1} de {totalPagesFin} ({transOrdenadas.length} registros)</span>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" disabled={pageFin === 0} onClick={() => setPageFin(p => p - 1)}>Anterior</Button>
-                    <Button variant="outline" size="sm" disabled={pageFin >= totalPagesFin - 1} onClick={() => setPageFin(p => p + 1)}>Próxima</Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          )}
-        </TabsContent>
-
-        {/* ════════════ ABA POR TALHÃO ════════════ */}
-        <TabsContent value="talhao" className="space-y-4">
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex flex-wrap gap-3 items-end">
-                <Select value={talhaoSel || '_all'} onValueChange={(v) => setTalhaoSel(v === '_all' ? '' : v)}>
-                  <SelectTrigger className="w-[200px]"><SelectValue placeholder="Selecione um talhão" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_all">Todos os talhões (comparativo)</SelectItem>
-                    {talhoes.map((t: any) => <SelectItem key={t.talhao_id} value={t.talhao_id}>{t.talhao_nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <DatePickerField value={filtrosTalhao.data_inicio} onChange={(v) => setFiltrosTalhao(f => ({ ...f, data_inicio: v || undefined }))} placeholder="Data início" />
-                <DatePickerField value={filtrosTalhao.data_fim} onChange={(v) => setFiltrosTalhao(f => ({ ...f, data_fim: v || undefined }))} placeholder="Data fim" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {!talhaoSel ? (
-            <>
-              {opData.porTalhao.isLoading ? (
-                <Card><CardContent className="pt-4 space-y-3">
-                  {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-                </CardContent></Card>
-              ) : talhoes.length === 0 ? (
-                <Card><CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                  <FileX className="h-12 w-12 mb-4 opacity-50" />
-                  <p className="text-lg font-medium">Nenhum talhão com dados nesta safra.</p>
-                  <p className="text-sm">Registre lançamentos vinculados a talhões para ver este relatório.</p>
-                </CardContent></Card>
-              ) : (
-              <>
-              {/* KPIs Talhão */}
-              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Talhões</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{kpisTalhaoComp.total}</div></CardContent></Card>
-                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Maior Custo/ha</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{fmt(kpisTalhaoComp.maiorHa)}</div></CardContent></Card>
-                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Menor Custo/ha</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">{fmt(kpisTalhaoComp.menorHa)}</div></CardContent></Card>
-                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Média Geral</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{fmt(kpisTalhaoComp.media)}</div></CardContent></Card>
-              </div>
-
-              <div className="flex justify-end">
-                {talhoes.length > 0 && (
-                  <Badge variant="outline">{talhoes.length} talhão{talhoes.length !== 1 ? 'ões' : ''}</Badge>
-                )}
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card><CardHeader><CardTitle className="text-base">Custo Total por Talhão</CardTitle></CardHeader><CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={talhoes.slice(0, 10)} layout="vertical"><CartesianGrid strokeDasharray="3 3" /><XAxis type="number" fontSize={11} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} /><YAxis type="category" dataKey="talhao_nome" width={100} fontSize={10} /><Tooltip formatter={(v: number) => fmt(v)} /><Bar dataKey="custo_total" fill="hsl(142,70%,40%)" radius={[0,4,4,0]} /></BarChart>
-                  </ResponsiveContainer>
-                </CardContent></Card>
-                <Card><CardHeader><CardTitle className="text-base">Custo/ha por Talhão</CardTitle></CardHeader><CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={[...talhoes].sort((a: any, b: any) => Number(b.custo_por_ha || 0) - Number(a.custo_por_ha || 0)).slice(0, 10)} layout="vertical"><CartesianGrid strokeDasharray="3 3" /><XAxis type="number" fontSize={11} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} /><YAxis type="category" dataKey="talhao_nome" width={100} fontSize={10} /><Tooltip formatter={(v: number) => fmt(v)} /><Bar dataKey="custo_por_ha" fill="hsl(200,70%,50%)" radius={[0,4,4,0]} /></BarChart>
-                  </ResponsiveContainer>
-                </CardContent></Card>
-              </div>
-
-              <Card><CardContent className="pt-4">
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>Talhão</TableHead><TableHead>Área (ha)</TableHead><TableHead>Lançamentos</TableHead><TableHead>Custo Total</TableHead><TableHead>Custo/ha</TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {talhoes.map((t: any) => (
-                      <TableRow key={t.talhao_id} className="cursor-pointer hover:bg-muted/50" onClick={() => setTalhaoSel(t.talhao_id)}>
-                        <TableCell className="font-medium">{t.talhao_nome || '-'}</TableCell>
-                        <TableCell>{t.area_ha ? fmtN(Number(t.area_ha)) : '-'}</TableCell>
-                        <TableCell>{t.total_lancamentos || 0}</TableCell>
-                        <TableCell className="font-medium">{fmt(Number(t.custo_total || 0))}</TableCell>
-                        <TableCell>{t.custo_por_ha ? fmt(Number(t.custo_por_ha)) : '-'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent></Card>
-              </>
-              )}
-            </>
-          ) : (
-            <>
-              {/* DETALHE DO TALHÃO */}
-              {talhaoDetalhe && (
-                <Card className="border-primary/30 bg-primary/5">
-                  <CardContent className="pt-4">
-                    <div className="flex flex-wrap gap-6">
-                      <div><span className="text-sm text-muted-foreground">Talhão</span><p className="text-lg font-bold">{talhaoDetalhe.talhao_nome}</p></div>
-                      <div><span className="text-sm text-muted-foreground">Área</span><p className="text-lg font-bold">{talhaoDetalhe.area_ha ? `${fmtN(Number(talhaoDetalhe.area_ha))} ha` : '-'}</p></div>
-                      <div><span className="text-sm text-muted-foreground">Total Investido</span><p className="text-lg font-bold text-red-600">{fmt(Number(talhaoDetalhe.custo_total || 0))}</p></div>
-                      <div><span className="text-sm text-muted-foreground">Custo/ha</span><p className="text-lg font-bold">{talhaoDetalhe.custo_por_ha ? fmt(Number(talhaoDetalhe.custo_por_ha)) : '-'}</p></div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              <Card><CardContent className="pt-4">
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>Data</TableHead><TableHead>Serviço</TableHead><TableHead>Categoria</TableHead><TableHead>Custo</TableHead><TableHead>Custo/ha</TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {talhaoData.lancamentos.isLoading ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
-                    ) : lancTalhao.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum lançamento</TableCell></TableRow>
-                    ) : lancTalhao.map((l: any, i: number) => (
-                      <TableRow key={l.id || i}>
-                        <TableCell>{l.data_execucao ? format(new Date(l.data_execucao), 'dd/MM/yyyy') : '-'}</TableCell>
-                        <TableCell className="font-medium">{l.servico_nome || '-'}</TableCell>
-                        <TableCell>{l.servico_categoria || '-'}</TableCell>
-                        <TableCell className="font-medium">{fmt(Number(l.custo_total || 0))}</TableCell>
-                        <TableCell>{l.custo_por_ha ? fmt(Number(l.custo_por_ha)) : '-'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent></Card>
-            </>
-          )}
-        </TabsContent>
-
-        {/* ════════════ ABA CUSTO DE PRODUÇÃO ════════════ */}
-        <TabsContent value="custo-producao" className="space-y-4">
-          {custoProducaoQuery.isLoading ? (
-            <Card><CardContent className="pt-4 space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-            </CardContent></Card>
-          ) : custoProducao.length === 0 ? (
-            <Card><CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <Wheat className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">Nenhuma cultura encontrada nesta safra</p>
-              <p className="text-sm">Vincule culturas aos talhões na aba de Talhões</p>
-            </CardContent></Card>
-          ) : (
-            <>
-              {/* KPIs gerais */}
-              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Culturas Ativas</CardTitle></CardHeader>
-                  <CardContent><div className="text-2xl font-bold">{custoProducao.length}</div></CardContent></Card>
-                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Custo Total</CardTitle></CardHeader>
-                  <CardContent><div className="text-2xl font-bold text-destructive">{fmt(custoProducao.reduce((s: number, c: any) => s + c.custoTotal, 0))}</div></CardContent></Card>
-                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Produção Total</CardTitle></CardHeader>
-                  <CardContent><div className="text-2xl font-bold">{fmtN(custoProducao.reduce((s: number, c: any) => s + c.producaoColhida, 0), 0)}</div></CardContent></Card>
-                <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Área Plantada</CardTitle></CardHeader>
-                  <CardContent><div className="text-2xl font-bold">{fmtN(custoProducao.reduce((s: number, c: any) => s + c.areaPlantada, 0))} ha</div></CardContent></Card>
-              </div>
-
-              {/* Gráfico comparativo de custo unitário */}
-              {custoProducao.some((c: any) => c.custoUnitario) && (
-                <Card><CardHeader><CardTitle className="text-base">Custo por Unidade Produzida</CardTitle></CardHeader>
-                  <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={custoProducao.filter((c: any) => c.custoUnitario).map((c: any) => ({
-                        nome: `${c.icone} ${c.nome}`,
-                        atual: c.custoUnitario,
-                        anterior: c.custoUnitarioAnterior || 0,
-                      }))}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="nome" fontSize={11} />
-                        <YAxis fontSize={11} tickFormatter={v => `R$${v.toFixed(0)}`} />
-                        <Tooltip formatter={(v: number) => fmt(v)} />
-                        <Legend />
-                        <Bar dataKey="atual" name="Safra Atual" fill="hsl(142,70%,40%)" radius={[4,4,0,0]} />
-                        <Bar dataKey="anterior" name="Safra Anterior" fill="hsl(200,70%,50%)" radius={[4,4,0,0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent></Card>
-              )}
-
-              {/* Cards por cultura */}
-              {custoProducao.map((cult: any) => (
-                <Card key={cult.cultura_id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{cult.icone} {cult.nome}</CardTitle>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{cult.totalLancamentos} lançamento{cult.totalLancamentos !== 1 ? 's' : ''}</Badge>
-                        <Badge variant="outline">{fmtN(cult.areaPlantada)} ha</Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Métricas da cultura */}
-                    <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-                      <div className="rounded-lg border p-3">
-                        <p className="text-xs text-muted-foreground">Custo Total</p>
-                        <p className="text-lg font-bold text-destructive">{fmt(cult.custoTotal)}</p>
-                      </div>
-                      <div className="rounded-lg border p-3">
-                        <p className="text-xs text-muted-foreground">Produção Colhida</p>
-                        <p className="text-lg font-bold">{fmtN(cult.producaoColhida, 0)} {cult.unidade}</p>
-                      </div>
-                      <div className="rounded-lg border p-3">
-                        <p className="text-xs text-muted-foreground">Custo/{cult.unidade}</p>
-                        <p className="text-lg font-bold">{cult.custoUnitario ? fmt(cult.custoUnitario) : '—'}</p>
-                        {cult.custoUnitarioAnterior && (
-                          <p className={cn('text-xs flex items-center gap-0.5', cult.custoUnitario <= cult.custoUnitarioAnterior ? 'text-green-600' : 'text-red-600')}>
-                            {cult.custoUnitario <= cult.custoUnitarioAnterior ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-                            Anterior: {fmt(cult.custoUnitarioAnterior)}
-                          </p>
-                        )}
-                      </div>
-                      <div className="rounded-lg border p-3">
-                        <p className="text-xs text-muted-foreground">Custo/ha</p>
-                        <p className="text-lg font-bold">{cult.custoHa ? fmt(cult.custoHa) : '—'}</p>
-                      </div>
-                    </div>
-
-                    {/* Detalhamento por talhão */}
-                    {cult.talhoes.length > 1 && (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Talhão</TableHead>
-                            <TableHead className="text-right">Área (ha)</TableHead>
-                            <TableHead className="text-right">Lançamentos</TableHead>
-                            <TableHead className="text-right">Custo</TableHead>
-                            <TableHead className="text-right">Colhido ({cult.unidade})</TableHead>
-                            <TableHead className="text-right">Custo/{cult.unidade}</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {cult.talhoes.map((t: any, i: number) => (
-                            <TableRow key={i}>
-                              <TableCell>{t.nome}</TableCell>
-                              <TableCell className="text-right">{fmtN(t.area)}</TableCell>
-                              <TableCell className="text-right">{t.lancamentos}</TableCell>
-                              <TableCell className="text-right">{fmt(t.custo)}</TableCell>
-                              <TableCell className="text-right">{fmtN(t.colhida, 0)}</TableCell>
-                              <TableCell className="text-right">{t.colhida > 0 ? fmt(t.custo / t.colhida) : '—'}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </>
-          )}
-        </TabsContent>
-
-        {/* ════════════ ABA COMPARATIVOS ════════════ */}
-        <TabsContent value="comparativo" className="space-y-4">
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex flex-wrap gap-3 items-end">
-                <span className="text-sm text-muted-foreground">Selecione safras para comparar:</span>
-                {safras.map((s: any) => {
-                  const id = typeof s === 'object' ? s.id : s
-                  const nome = typeof s === 'object' ? s.nome : s
-                  const sel = safraCompIds.includes(id)
-                  return (
-                    <Button key={id} variant={sel ? 'default' : 'outline'} size="sm" onClick={() => {
-                      if (sel) setSafraCompIds(safraCompIds.filter(x => x !== id))
-                      else if (safraCompIds.length < 3) setSafraCompIds([...safraCompIds, id])
-                    }}>
-                      {nome}
-                    </Button>
-                  )
-                })}
-                {safraCompIds.length === 0 && <span className="text-xs text-muted-foreground">(mostrando safra atual)</span>}
-              </div>
-            </CardContent>
-          </Card>
-
-          {compResults.length > 0 && (
-            <>
-              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-                {compResults.map((r: any, i: number) => {
-                  const safra = safras.find((s: any) => (typeof s === 'object' ? s.id : s) === r.safra_id)
-                  const nome = safra && typeof safra === 'object' ? safra.nome : r.safra_id
-                  const prev = i > 0 ? compResults[i - 1] : null
-                  const diff = prev && prev.custoTotal > 0 ? ((r.custoTotal - prev.custoTotal) / prev.custoTotal * 100) : null
-                  return (
-                    <Card key={r.safra_id}>
-                      <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{nome}</CardTitle></CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">{fmt(r.custoTotal)}</div>
-                        <div className="text-sm text-muted-foreground">{fmtN(r.areaTotal)} ha · {fmt(r.custoHa)}/ha</div>
-                        {diff !== null && (
-                          <Badge variant="outline" className={diff > 0 ? 'text-red-600 mt-1' : 'text-green-600 mt-1'}>
-                            {diff > 0 ? '+' : ''}{diff.toFixed(1)}% vs anterior
-                          </Badge>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-
-              {/* Evolução mensal */}
-              <Card><CardHeader><CardTitle className="text-base">Evolução Mensal de Custos</CardTitle></CardHeader><CardContent className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart>
-                    <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="mes" fontSize={11} allowDuplicatedCategory={false} /><YAxis fontSize={11} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} /><Tooltip formatter={(v: number) => fmt(v)} /><Legend />
-                    {compResults.map((r: any, i: number) => {
-                      const safra = safras.find((s: any) => (typeof s === 'object' ? s.id : s) === r.safra_id)
-                      const nome = safra && typeof safra === 'object' ? safra.nome : `Safra ${i + 1}`
-                      const colors = ['hsl(142,70%,40%)', 'hsl(200,70%,50%)', 'hsl(40,90%,50%)']
-                      const chartData = (r.meses || []).map((m: any) => ({ mes: m.mes ? format(new Date(m.mes.substring(0, 10) + 'T12:00:00'), 'MMM/yy', { locale: ptBR }) : '—', custo: Number(m.custo_total_mes || 0) }))
-                      return <Line key={r.safra_id} data={chartData} dataKey="custo" name={nome} stroke={colors[i % 3]} strokeWidth={2} dot={{ r: 3 }} />
-                    })}
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent></Card>
-
-              {/* Tabela resumo */}
-              <Card><CardContent className="pt-4">
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>Safra</TableHead><TableHead>Lançamentos</TableHead><TableHead>Custo Total</TableHead><TableHead>Área Total</TableHead><TableHead>Custo/ha Médio</TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {compResults.map((r: any) => {
-                      const safra = safras.find((s: any) => (typeof s === 'object' ? s.id : s) === r.safra_id)
-                      const nome = safra && typeof safra === 'object' ? safra.nome : r.safra_id
-                      return (
-                        <TableRow key={r.safra_id}>
-                          <TableCell className="font-medium">{nome}</TableCell>
-                          <TableCell>{r.totalLancamentos}</TableCell>
-                          <TableCell className="font-medium">{fmt(r.custoTotal)}</TableCell>
-                          <TableCell>{fmtN(r.areaTotal)} ha</TableCell>
-                          <TableCell>{fmt(r.custoHa)}</TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent></Card>
-            </>
-          )}
-        </TabsContent>
+        <TabsContent value="operacional"><AbaOperacional propId={propId} safraId={safraId} /></TabsContent>
+        <TabsContent value="financeiro"><AbaFinanceiro propId={propId} safraId={safraId} /></TabsContent>
+        <TabsContent value="talhao"><AbaPorTalhao propId={propId} safraId={safraId} /></TabsContent>
+        <TabsContent value="comparativo"><AbaComparativo propId={propId} safraAtualId={safraId} /></TabsContent>
+        <TabsContent value="insumos"><AbaInsumos propId={propId} safraId={safraId} /></TabsContent>
       </Tabs>
     </div>
   )
 }
+
+/* ════════════════════════════════════════════════
+   ABA 1 — OPERACIONAL
+   ════════════════════════════════════════════════ */
+function AbaOperacional({ propId, safraId }: { propId: string; safraId: string }) {
+  const lancQ = useQuery({
+    queryKey: ['rel-op-lanc', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('get_relatorio_lancamentos', {
+        p_propriedade_id: propId, p_safra_id: safraId,
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+  })
+  const catQ = useQuery({
+    queryKey: ['rel-op-cat', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('get_relatorio_por_categoria', {
+        p_propriedade_id: propId, p_safra_id: safraId,
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+  })
+
+  const [filtroCat, setFiltroCat] = useState<string>('_all')
+  const [filtroTalhao, setFiltroTalhao] = useState<string>('_all')
+  const [sort, setSort] = useState<{ col: string; dir: 'asc' | 'desc' }>({ col: 'data_execucao', dir: 'desc' })
+  const [page, setPage] = useState(0)
+  const PER = 10
+
+  const lanc = lancQ.data || []
+  const cats = catQ.data || []
+
+  const talhoesUnicos = useMemo(() => {
+    const m = new Map<string, string>()
+    lanc.forEach((l: any) => { if (l.talhao_id) m.set(l.talhao_id, l.talhao_nome || '—') })
+    return Array.from(m.entries())
+  }, [lanc])
+
+  const filtrados = useMemo(() => {
+    return lanc.filter((l: any) =>
+      (filtroCat === '_all' || l.servico_categoria === filtroCat) &&
+      (filtroTalhao === '_all' || l.talhao_id === filtroTalhao)
+    )
+  }, [lanc, filtroCat, filtroTalhao])
+
+  const ordenados = useMemo(() => {
+    const arr = [...filtrados]
+    arr.sort((a: any, b: any) => {
+      const va = a[sort.col], vb = b[sort.col]
+      if (va == null) return 1
+      if (vb == null) return -1
+      const cmp = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb))
+      return sort.dir === 'asc' ? cmp : -cmp
+    })
+    return arr
+  }, [filtrados, sort])
+
+  const totalPages = Math.max(1, Math.ceil(ordenados.length / PER))
+  const pageData = ordenados.slice(page * PER, (page + 1) * PER)
+
+  const kpis = useMemo(() => {
+    const total = lanc.length
+    const custo = lanc.reduce((s: number, l: any) => s + Number(l.custo_total || 0), 0)
+    const areas = new Set<string>()
+    let area = 0
+    lanc.forEach((l: any) => {
+      if (l.talhao_id && !areas.has(l.talhao_id)) {
+        areas.add(l.talhao_id)
+        area += Number(l.talhao_area_ha || 0)
+      }
+    })
+    return {
+      total,
+      custo,
+      medio: total > 0 ? custo / total : 0,
+      custoHa: area > 0 ? custo / area : 0,
+    }
+  }, [lanc])
+
+  const toggleSort = (col: string) =>
+    setSort((c) => (c.col === col ? { col, dir: c.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' }))
+
+  const exportCSV = () => {
+    const headers = ['Data', 'Serviço', 'Categoria', 'Talhão', 'Área (ha)', 'Custo Total', 'Custo/ha', 'Observações']
+    const rows = ordenados.map((l: any) => [
+      fmtData(l.data_execucao), l.servico_nome || '', l.servico_categoria || '',
+      l.talhao_nome || '', Number(l.talhao_area_ha || 0),
+      Number(l.custo_total || 0), Number(l.custo_por_ha || 0), l.observacoes || '',
+    ])
+    downloadCSV(`relatorio-operacional-${Date.now()}.csv`, headers, rows)
+  }
+
+  if (lancQ.isLoading || catQ.isLoading) return <SkeletonAba />
+
+  return (
+    <div className="space-y-4">
+      {/* KPIs */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <KpiCard title="Total de Lançamentos" value={String(kpis.total)} />
+        <KpiCard title="Custo Total" value={fmt(kpis.custo)} accent="negative" />
+        <KpiCard title="Custo Médio / Lançamento" value={fmt(kpis.medio)} />
+        <KpiCard title="Custo Médio / Hectare" value={fmt(kpis.custoHa)} />
+      </div>
+
+      {/* Gráfico por categoria */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Custo por Categoria</CardTitle></CardHeader>
+        <CardContent className="h-[280px]">
+          {cats.length === 0 ? (
+            <EmptyChart />
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={cats}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="categoria" fontSize={11} />
+                <YAxis fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                <Tooltip
+                  formatter={(v: number, n: string) =>
+                    n === 'custo_total' ? [fmt(Number(v)), 'Custo'] : [v, 'Lançamentos']
+                  }
+                />
+                <Legend />
+                <Bar dataKey="custo_total" name="Custo Total" fill="hsl(142,70%,40%)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Filtros + export */}
+      <Card>
+        <CardContent className="pt-4 flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[180px]">
+            <label className="text-xs text-muted-foreground">Categoria</label>
+            <Select value={filtroCat} onValueChange={(v) => { setFiltroCat(v); setPage(0) }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">Todas</SelectItem>
+                {cats.map((c: any) => (
+                  <SelectItem key={c.categoria} value={c.categoria}>{c.categoria}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1 min-w-[180px]">
+            <label className="text-xs text-muted-foreground">Talhão</label>
+            <Select value={filtroTalhao} onValueChange={(v) => { setFiltroTalhao(v); setPage(0) }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">Todos</SelectItem>
+                {talhoesUnicos.map(([id, nome]) => (
+                  <SelectItem key={id} value={id}>{nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" size="sm" onClick={exportCSV} disabled={ordenados.length === 0}>
+            <Download className="h-4 w-4 mr-1" /> Exportar CSV
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Tabela */}
+      <Card>
+        <CardContent className="pt-4">
+          {ordenados.length === 0 ? (
+            <EmptyState message="Nenhum lançamento encontrado" />
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="cursor-pointer" onClick={() => toggleSort('data_execucao')}>
+                      <span className="flex items-center">Data<SortIcon active={sort.col === 'data_execucao'} dir={sort.dir} /></span>
+                    </TableHead>
+                    <TableHead>Serviço</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Talhão</TableHead>
+                    <TableHead className="text-right">Área (ha)</TableHead>
+                    <TableHead className="text-right cursor-pointer" onClick={() => toggleSort('custo_total')}>
+                      <span className="flex items-center justify-end">Custo Total<SortIcon active={sort.col === 'custo_total'} dir={sort.dir} /></span>
+                    </TableHead>
+                    <TableHead className="text-right">Custo/ha</TableHead>
+                    <TableHead>Obs.</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pageData.map((l: any, i: number) => (
+                    <TableRow key={l.id || i}>
+                      <TableCell>{fmtData(l.data_execucao)}</TableCell>
+                      <TableCell className="font-medium">{l.servico_nome || '-'}</TableCell>
+                      <TableCell>{l.servico_categoria || '-'}</TableCell>
+                      <TableCell>{l.talhao_nome || '-'}</TableCell>
+                      <TableCell className="text-right">{l.talhao_area_ha ? fmtN(Number(l.talhao_area_ha)) : '-'}</TableCell>
+                      <TableCell className="text-right font-medium">{fmt(Number(l.custo_total || 0))}</TableCell>
+                      <TableCell className="text-right">{l.custo_por_ha ? fmt(Number(l.custo_por_ha)) : '-'}</TableCell>
+                      <TableCell className="max-w-[200px] truncate text-muted-foreground text-xs">{l.observacoes || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <Pagination page={page} totalPages={totalPages} total={ordenados.length} onChange={setPage} />
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════
+   ABA 2 — FINANCEIRO
+   ════════════════════════════════════════════════ */
+function AbaFinanceiro({ propId, safraId }: { propId: string; safraId: string }) {
+  const evolQ = useQuery({
+    queryKey: ['rel-fin-evol', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('get_evolucao_mensal', {
+        p_propriedade_id: propId, p_safra_id: safraId,
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+  })
+  const fluxoQ = useQuery({
+    queryKey: ['rel-fin-fluxo', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('get_fluxo_caixa_mensal', {
+        p_propriedade_id: propId, p_safra_id: safraId,
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+  })
+  const breakQ = useQuery({
+    queryKey: ['rel-fin-break', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('get_breakdown_custos', {
+        p_propriedade_id: propId, p_safra_id: safraId,
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+  })
+
+  const evol = evolQ.data || []
+  const fluxo = fluxoQ.data || []
+  const breakdown = breakQ.data || []
+
+  const kpis = useMemo(() => {
+    const receita = evol.reduce((s: number, m: any) => s + Number(m.receita || 0), 0)
+    const custoLanc = evol.reduce((s: number, m: any) => s + Number(m.custo_lancamentos || 0), 0)
+    const custoFin = evol.reduce((s: number, m: any) => s + Number(m.custo_financeiro || 0), 0)
+    const custo = custoLanc + custoFin
+    const resultado = receita - custo
+    const margem = receita > 0 ? (resultado / receita) * 100 : 0
+    return { receita, custo, resultado, margem }
+  }, [evol])
+
+  const evolChart = useMemo(() =>
+    evol.map((m: any) => ({
+      mes: m.mes_label || (m.mes ? format(new Date(String(m.mes).substring(0, 10) + 'T12:00:00'), 'MMM/yy', { locale: ptBR }) : '—'),
+      custo_lancamentos: Number(m.custo_lancamentos || 0),
+      custo_financeiro: Number(m.custo_financeiro || 0),
+      resultado_acum: Number(m.resultado_acum || 0),
+    })), [evol])
+
+  const fluxoChart = useMemo(() =>
+    fluxo.map((m: any) => ({
+      mes: m.mes_label || (m.mes ? format(new Date(String(m.mes).substring(0, 10) + 'T12:00:00'), 'MMM/yy', { locale: ptBR }) : '—'),
+      receitas: Number(m.total_receitas || 0),
+      despesas: Number(m.total_despesas || 0),
+      saldo: Number(m.saldo_mes || 0),
+    })), [fluxo])
+
+  const breakTotal = breakdown.reduce((s: number, b: any) => s + Number(b.valor_total || 0), 0)
+  const breakChart = useMemo(() =>
+    breakdown.map((b: any) => ({
+      name: b.categoria || 'Outros',
+      value: Number(b.valor_total || 0),
+      origem: b.origem || '',
+      pct: breakTotal > 0 ? (Number(b.valor_total || 0) / breakTotal) * 100 : 0,
+    })), [breakdown, breakTotal])
+
+  if (evolQ.isLoading || fluxoQ.isLoading || breakQ.isLoading) return <SkeletonAba />
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <KpiCard title="Receita Total" value={fmt(kpis.receita)} accent="positive" />
+        <KpiCard title="Custo Total" value={fmt(kpis.custo)} accent="negative" />
+        <KpiCard title="Resultado Final" value={fmt(kpis.resultado)} accent={kpis.resultado >= 0 ? 'positive' : 'negative'} />
+        <KpiCard title="Margem %" value={fmtPct(kpis.margem)} accent={kpis.margem >= 0 ? 'positive' : 'negative'} />
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Evolução Mensal</CardTitle></CardHeader>
+        <CardContent className="h-[320px]">
+          {evolChart.length === 0 ? <EmptyChart /> : (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={evolChart}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="mes" fontSize={11} />
+                <YAxis yAxisId="left" fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                <YAxis yAxisId="right" orientation="right" fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v: number) => fmt(Number(v))} />
+                <Legend />
+                <Bar yAxisId="left" dataKey="custo_lancamentos" name="Custo Lançamentos" fill="hsl(0,72%,51%)" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="left" dataKey="custo_financeiro" name="Custo Financeiro" fill="hsl(20,80%,55%)" radius={[4, 4, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="resultado_acum" name="Resultado Acum." stroke="hsl(200,70%,50%)" strokeWidth={2} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Fluxo de Caixa Mensal</CardTitle></CardHeader>
+          <CardContent className="h-[300px]">
+            {fluxoChart.length === 0 ? <EmptyChart /> : (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={fluxoChart}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="mes" fontSize={11} />
+                  <YAxis fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v: number) => fmt(Number(v))} />
+                  <Legend />
+                  <Bar dataKey="receitas" name="Receitas" fill="hsl(142,70%,40%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="despesas" name="Despesas" fill="hsl(0,72%,51%)" radius={[4, 4, 0, 0]} />
+                  <Line type="monotone" dataKey="saldo" name="Saldo" stroke="hsl(200,70%,50%)" strokeWidth={2} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Breakdown de Custos</CardTitle></CardHeader>
+          <CardContent className="h-[300px]">
+            {breakChart.length === 0 ? <EmptyChart /> : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={breakChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={95}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}
+                  >
+                    {breakChart.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                  </Pie>
+                  <Tooltip
+                    formatter={(v: number, _: any, item: any) => [
+                      `${fmt(Number(v))} (${item.payload.pct.toFixed(1)}%)`,
+                      item.payload.origem ? `${item.payload.name} · ${item.payload.origem}` : item.payload.name,
+                    ]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════
+   ABA 3 — POR TALHÃO
+   ════════════════════════════════════════════════ */
+function AbaPorTalhao({ propId, safraId }: { propId: string; safraId: string }) {
+  const talhaoQ = useQuery({
+    queryKey: ['rel-talhao', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('get_relatorio_por_talhao', {
+        p_propriedade_id: propId, p_safra_id: safraId,
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+  })
+  const rentQ = useQuery({
+    queryKey: ['rel-talhao-rent', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('get_rentabilidade_por_talhao', {
+        p_propriedade_id: propId, p_safra_id: safraId,
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+  })
+
+  const base = talhaoQ.data || []
+  const rent = rentQ.data || []
+
+  const cards = useMemo(() => {
+    const rentMap = new Map<string, any>()
+    rent.forEach((r: any) => rentMap.set(r.talhao_id, r))
+    return base.map((t: any) => {
+      const r = rentMap.get(t.talhao_id) || {}
+      return {
+        talhao_id: t.talhao_id,
+        nome: t.talhao_nome || '—',
+        cultura: r.cultura_nome || t.cultura_nome || '',
+        unidade: r.unidade_label || 'un',
+        area: Number(t.area_ha || r.area_ha || 0),
+        custo: Number(t.custo_total || 0),
+        custoHa: Number(t.custo_por_ha || 0),
+        ops: Number(t.total_lancamentos || 0),
+        colhida: Number(r.quantidade_colhida || 0),
+        produtividade: Number(r.produtividade_ha || 0),
+        receita: Number(r.receita_estimada || 0),
+        resultado: Number(r.resultado_estimado || 0),
+        primeira: t.primeira_operacao || r.primeira_operacao,
+        ultima: t.ultima_operacao || r.ultima_operacao,
+      }
+    })
+  }, [base, rent])
+
+  const chartData = useMemo(() =>
+    [...cards].sort((a, b) => b.custo - a.custo).map((c) => ({
+      nome: c.nome, custo_total: c.custo, receita_estimada: c.receita,
+    })), [cards])
+
+  if (talhaoQ.isLoading || rentQ.isLoading) return <SkeletonAba />
+  if (cards.length === 0) return <Card><CardContent className="pt-6"><EmptyState message="Nenhum talhão com operações nesta safra" /></CardContent></Card>
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        {cards.map((c) => (
+          <Card key={c.talhao_id}>
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base">{c.nome}</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {c.cultura ? <><Leaf className="inline h-3 w-3 mr-1" />{c.cultura} · </> : null}
+                    {fmtN(c.area)} ha
+                  </p>
+                </div>
+                <Badge variant="outline">{c.ops} {c.ops === 1 ? 'op.' : 'ops.'}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Custo Total</p>
+                  <p className="font-semibold text-destructive">{fmt(c.custo)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Custo / ha</p>
+                  <p className="font-semibold">{fmt(c.custoHa)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Colhido</p>
+                  <p className="font-semibold">{c.colhida > 0 ? `${fmtN(c.colhida)} ${c.unidade}` : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Produtividade / ha</p>
+                  <p className="font-semibold">{c.produtividade > 0 ? `${fmtN(c.produtividade)} ${c.unidade}/ha` : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Receita estimada</p>
+                  <p className="font-semibold text-emerald-600">{fmt(c.receita)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Resultado estimado</p>
+                  <p className={`font-semibold ${c.resultado >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>{fmt(c.resultado)}</p>
+                </div>
+              </div>
+              {(c.primeira || c.ultima) && (
+                <p className="text-xs text-muted-foreground border-t pt-2">
+                  Período: {fmtData(c.primeira)} → {fmtData(c.ultima)}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Custo vs Receita por Talhão</CardTitle></CardHeader>
+        <CardContent style={{ height: Math.max(280, chartData.length * 42 + 60) }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+              <YAxis type="category" dataKey="nome" fontSize={11} width={120} />
+              <Tooltip formatter={(v: number) => fmt(Number(v))} />
+              <Legend />
+              <Bar dataKey="custo_total" name="Custo" fill="hsl(0,72%,51%)" />
+              <Bar dataKey="receita_estimada" name="Receita estimada" fill="hsl(142,70%,40%)" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════
+   ABA 4 — COMPARATIVO DE SAFRAS
+   ════════════════════════════════════════════════ */
+function AbaComparativo({ propId, safraAtualId }: { propId: string; safraAtualId: string }) {
+  const compQ = useQuery({
+    queryKey: ['rel-comp-safras', propId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('get_comparativo_safras', {
+        p_propriedade_id: propId,
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+  })
+
+  const safras = (compQ.data || []).slice().sort((a: any, b: any) =>
+    String(a.safra_nome || '').localeCompare(String(b.safra_nome || ''))
+  )
+
+  const chart = safras
+    .filter((s: any) => Number(s.custo_total || 0) > 0)
+    .map((s: any) => ({
+      safra: s.safra_nome,
+      receita: Number(s.receita || 0),
+      custo: Number(s.custo_total || 0),
+      margem_pct: Number(s.margem_pct || 0),
+    }))
+
+  const renderStatus = (s: any) => {
+    if (s.fechada) return <Badge variant="outline" className="border-amber-500 text-amber-600"><Lock className="h-3 w-3 mr-1" />Fechada</Badge>
+    if (s.ativa) return <Badge variant="outline" className="border-emerald-500 text-emerald-600"><Circle className="h-3 w-3 mr-1 fill-emerald-500" />Ativa</Badge>
+    return <Badge variant="outline" className="text-muted-foreground"><Circle className="h-3 w-3 mr-1" />Inativa</Badge>
+  }
+
+  if (compQ.isLoading) return <SkeletonAba />
+  if (safras.length === 0) return <Card><CardContent className="pt-6"><EmptyState message="Nenhuma safra para comparar" /></CardContent></Card>
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader><CardTitle className="text-base">Comparativo Detalhado</CardTitle></CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Safra</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Receita</TableHead>
+                <TableHead className="text-right">Custo Total</TableHead>
+                <TableHead className="text-right">Resultado</TableHead>
+                <TableHead className="text-right">Margem %</TableHead>
+                <TableHead className="text-right">Área (ha)</TableHead>
+                <TableHead className="text-right">Custo/ha</TableHead>
+                <TableHead className="text-right">Lançamentos</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {safras.map((s: any) => {
+                const resultado = Number(s.resultado || (Number(s.receita || 0) - Number(s.custo_total || 0)))
+                const isAtual = s.safra_id === safraAtualId
+                return (
+                  <TableRow key={s.safra_id} className={isAtual ? 'bg-muted/40' : ''}>
+                    <TableCell className="font-medium">
+                      {s.safra_nome}
+                      {isAtual && <Badge variant="secondary" className="ml-2 text-xs">atual</Badge>}
+                    </TableCell>
+                    <TableCell>{renderStatus(s)}</TableCell>
+                    <TableCell className="text-right">{fmt(Number(s.receita || 0))}</TableCell>
+                    <TableCell className="text-right">{fmt(Number(s.custo_total || 0))}</TableCell>
+                    <TableCell className={`text-right font-semibold ${resultado >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                      {fmt(resultado)}
+                    </TableCell>
+                    <TableCell className="text-right">{fmtPct(Number(s.margem_pct || 0))}</TableCell>
+                    <TableCell className="text-right">{fmtN(Number(s.area_ha || 0))}</TableCell>
+                    <TableCell className="text-right">{fmt(Number(s.custo_por_ha || 0))}</TableCell>
+                    <TableCell className="text-right">{Number(s.total_lancamentos || 0)}</TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Receita × Custo × Margem</CardTitle></CardHeader>
+        <CardContent className="h-[340px]">
+          {chart.length === 0 ? <EmptyChart /> : (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chart}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="safra" fontSize={11} />
+                <YAxis yAxisId="left" fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                <YAxis yAxisId="right" orientation="right" fontSize={11} tickFormatter={(v) => `${v.toFixed(0)}%`} />
+                <Tooltip formatter={(v: number, n: string) => n === 'margem_pct' ? [`${Number(v).toFixed(1)}%`, 'Margem'] : [fmt(Number(v)), n === 'receita' ? 'Receita' : 'Custo']} />
+                <Legend />
+                <Bar yAxisId="left" dataKey="receita" name="Receita" fill="hsl(142,70%,40%)" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="left" dataKey="custo" name="Custo" fill="hsl(0,72%,51%)" radius={[4, 4, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="margem_pct" name="Margem %" stroke="hsl(200,70%,50%)" strokeWidth={2} />
+                <ReferenceLine yAxisId="right" y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════
+   ABA 5 — INSUMOS
+   ════════════════════════════════════════════════ */
+function AbaInsumos({ propId, safraId }: { propId: string; safraId: string }) {
+  const insQ = useQuery({
+    queryKey: ['rel-insumos', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('get_custo_por_insumo', {
+        p_propriedade_id: propId, p_safra_id: safraId,
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+  })
+
+  const itens = useMemo(() => {
+    const arr = (insQ.data || []).slice()
+    arr.sort((a: any, b: any) => Number(b.custo_total || 0) - Number(a.custo_total || 0))
+    return arr
+  }, [insQ.data])
+
+  const total = itens.reduce((s: number, i: any) => s + Number(i.custo_total || 0), 0)
+  const maxCusto = itens.length ? Number(itens[0].custo_total || 0) : 0
+  const top1 = itens[0]
+
+  const top10 = itens.slice(0, 10).map((i: any) => ({
+    nome: i.produto_nome || '—',
+    valor: Number(i.custo_total || 0),
+  }))
+
+  const exportCSV = () => {
+    const headers = ['#', 'Produto', 'Unidade', 'Qtd Total', 'Custo Total', 'Custo Unitário Médio', '% do Total', 'Talhões']
+    const rows = itens.map((i: any, idx: number) => [
+      idx + 1, i.produto_nome || '', i.unidade || '',
+      Number(i.quantidade_total || 0), Number(i.custo_total || 0),
+      Number(i.custo_unitario_medio || 0),
+      total > 0 ? ((Number(i.custo_total || 0) / total) * 100).toFixed(2) : '0',
+      i.talhoes || '',
+    ])
+    downloadCSV(`insumos-${Date.now()}.csv`, headers, rows)
+  }
+
+  if (insQ.isLoading) return <SkeletonAba />
+  if (itens.length === 0) return <Card><CardContent className="pt-6"><EmptyState message="Nenhum insumo registrado nesta safra" /></CardContent></Card>
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+        <KpiCard title="Total gasto em insumos" value={fmt(total)} accent="negative" />
+        <KpiCard title="Insumo mais caro" value={top1?.produto_nome || '—'} subValue={top1 ? fmt(Number(top1.custo_total || 0)) : ''} />
+        <KpiCard title="Insumos distintos" value={String(itens.length)} />
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Top 10 — Custo por Insumo</CardTitle></CardHeader>
+        <CardContent style={{ height: Math.max(280, top10.length * 36 + 60) }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={top10} layout="vertical" margin={{ left: 20, right: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+              <YAxis type="category" dataKey="nome" fontSize={11} width={140} />
+              <Tooltip formatter={(v: number) => fmt(Number(v))} />
+              <Bar dataKey="valor" name="Custo">
+                {top10.map((d, i) => <Cell key={i} fill={colorScale(d.valor, maxCusto)} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Ranking de Insumos</CardTitle>
+          <Button variant="outline" size="sm" onClick={exportCSV}>
+            <Download className="h-4 w-4 mr-1" /> Exportar CSV
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10">#</TableHead>
+                <TableHead>Produto</TableHead>
+                <TableHead>Unidade</TableHead>
+                <TableHead className="text-right">Qtd Total</TableHead>
+                <TableHead className="text-right">Custo Total</TableHead>
+                <TableHead className="text-right">Custo Unit. Médio</TableHead>
+                <TableHead className="w-[180px]">% do Total</TableHead>
+                <TableHead>Talhões</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {itens.map((i: any, idx: number) => {
+                const pct = total > 0 ? (Number(i.custo_total || 0) / total) * 100 : 0
+                const isTop = idx === 0
+                return (
+                  <TableRow key={i.produto_id || idx} className={isTop ? 'bg-amber-50 dark:bg-amber-950/20' : ''}>
+                    <TableCell className="font-medium">{idx + 1}</TableCell>
+                    <TableCell className={isTop ? 'font-semibold' : 'font-medium'}>{i.produto_nome || '—'}</TableCell>
+                    <TableCell>{i.unidade || '-'}</TableCell>
+                    <TableCell className="text-right">{fmtN(Number(i.quantidade_total || 0))}</TableCell>
+                    <TableCell className="text-right font-semibold">{fmt(Number(i.custo_total || 0))}</TableCell>
+                    <TableCell className="text-right">{fmt(Number(i.custo_unitario_medio || 0))}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Progress value={pct} className="h-2 flex-1" />
+                        <span className="text-xs text-muted-foreground w-12 text-right">{pct.toFixed(1)}%</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">{i.talhoes || '-'}</TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════
+   COMPONENTES UTILITÁRIOS
+   ════════════════════════════════════════════════ */
+function KpiCard({ title, value, subValue, accent }: { title: string; value: string; subValue?: string; accent?: 'positive' | 'negative' }) {
+  const cls = accent === 'positive' ? 'text-emerald-600' : accent === 'negative' ? 'text-destructive' : 'text-foreground'
+  return (
+    <Card>
+      <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader>
+      <CardContent>
+        <div className={`text-2xl font-bold ${cls} truncate`}>{value}</div>
+        {subValue && <p className="text-xs text-muted-foreground mt-0.5">{subValue}</p>}
+      </CardContent>
+    </Card>
+  )
+}
+
+function SkeletonAba() {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+      </div>
+      <Skeleton className="h-[280px]" />
+      <Skeleton className="h-[200px]" />
+    </div>
+  )
+}
+
+function EmptyChart() {
+  return (
+    <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+      <BarChart3 className="h-10 w-10 opacity-40 mb-2" />
+      <p className="text-sm">Sem dados para exibir</p>
+    </div>
+  )
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+      <FileX className="h-10 w-10 opacity-40 mb-2" />
+      <p className="text-sm">{message}</p>
+    </div>
+  )
+}
+
+function Pagination({ page, totalPages, total, onChange }: { page: number; totalPages: number; total: number; onChange: (n: number) => void }) {
+  if (totalPages <= 1) return null
+  return (
+    <div className="flex items-center justify-between mt-4">
+      <span className="text-sm text-muted-foreground">Página {page + 1} de {totalPages} ({total} registros)</span>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" disabled={page === 0} onClick={() => onChange(page - 1)}>Anterior</Button>
+        <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => onChange(page + 1)}>Próxima</Button>
+      </div>
+    </div>
+  )
+}
+
+export default Relatorios
