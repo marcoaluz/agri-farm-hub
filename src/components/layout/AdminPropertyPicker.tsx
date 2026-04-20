@@ -27,6 +27,8 @@ interface AdminPropriedade {
   dono_id: string
   dono_nome: string
   area_total: number | null
+  latitude?: number | null
+  longitude?: number | null
   safra_ativa_id: string | null
   safra_ativa_nome: string | null
   total_talhoes: number
@@ -51,6 +53,8 @@ interface AdminPropertyPickerProps {
     id: string
     nome: string
     area_total: number | null
+    latitude?: number | null
+    longitude?: number | null
     safra_ativa_id: string | null
     safra_ativa_nome: string | null
     dono_nome: string
@@ -145,6 +149,8 @@ export function AdminPropertyPicker({
       id: prop.id,
       nome: prop.nome,
       area_total: prop.area_total,
+      latitude: adminRow?.latitude ?? null,
+      longitude: adminRow?.longitude ?? null,
       safra_ativa_id: prop.safra_ativa_id,
       safra_ativa_nome: prop.safra_ativa_nome,
       dono_nome: adminRow?.dono_nome || '',
