@@ -126,17 +126,28 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
       setPropriedadeSelecionada(null)
       return
     }
-    // setPropriedadeSelecionada triggers recarregarSafras in SafraContext
-    // which will auto-select the active safra — no need to set it manually
-    setPropriedadeSelecionada({
-      id: prop.id,
-      nome: prop.nome,
-      area_total: prop.area_total,
-      localizacao: null,
-      ativo: true,
-      latitude: null,
-      longitude: null,
-    })
+
+    void (async () => {
+      const { data, error } = await supabase
+        .from('propriedades')
+        .select('id, nome, area_total, localizacao, ativo, latitude, longitude')
+        .eq('id', prop.id)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Erro ao carregar coordenadas da propriedade selecionada:', error)
+      }
+
+      setPropriedadeSelecionada({
+        id: data?.id ?? prop.id,
+        nome: data?.nome ?? prop.nome,
+        area_total: data?.area_total ?? prop.area_total,
+        localizacao: data?.localizacao ?? null,
+        ativo: data?.ativo ?? true,
+        latitude: data?.latitude ?? null,
+        longitude: data?.longitude ?? null,
+      })
+    })()
   }
 
   // Buscar total de alertas (admin + estoque + sanitário)
