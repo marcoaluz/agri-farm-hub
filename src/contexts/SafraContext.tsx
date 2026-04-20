@@ -55,7 +55,7 @@ const STORAGE_SAFRA_KEY = 'sga_safra_id'
 /* ------------------------------------------------------------------ */
 
 export function SafraProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   const [propriedades, setPropriedades] = useState<Propriedade[]>([])
   const [safras, setSafras] = useState<Safra[]>([])
@@ -70,6 +70,10 @@ export function SafraProvider({ children }: { children: ReactNode }) {
 
   /* ---------- carregar propriedades -------------------------------- */
   const recarregarPropriedades = useCallback(async () => {
+    if (authLoading) {
+      return
+    }
+
     if (!user) {
       setPropriedades([])
       setPropriedadeSelecionadaState(null)
@@ -150,7 +154,7 @@ export function SafraProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [authLoading, user])
 
   /* ---------- carregar safras (para refresh manual) ----------------- */
   const recarregarSafras = useCallback(
@@ -195,6 +199,11 @@ export function SafraProvider({ children }: { children: ReactNode }) {
 
   /* ---------- efeitos ---------------------------------------------- */
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true)
+      return
+    }
+
     if (user) {
       recarregarPropriedades()
     } else {
@@ -205,7 +214,7 @@ export function SafraProvider({ children }: { children: ReactNode }) {
       setSafrasCache(new Map())
       setLoading(false)
     }
-  }, [user, recarregarPropriedades])
+  }, [authLoading, user, recarregarPropriedades])
 
   /* ---------- setters públicos ------------------------------------- */
   const setPropriedadeSelecionada = useCallback(

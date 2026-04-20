@@ -14,15 +14,13 @@ interface PropriedadeFormData {
 }
 
 export function usePropriedades() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
   const { data: propriedades = [], isLoading } = useQuery({
     queryKey: ['propriedades', user?.id],
     queryFn: async () => {
-      // RLS já garante que o usuário só vê as propriedades que tem acesso
-      // (próprias + compartilhadas via propriedades_usuarios)
       const { data, error } = await supabase
         .from('propriedades')
         .select('*')
@@ -32,7 +30,7 @@ export function usePropriedades() {
       if (error) throw error
       return data as Propriedade[]
     },
-    enabled: !!user,
+    enabled: !authLoading && !!user,
   })
 
   const createMutation = useMutation({
