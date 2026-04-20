@@ -773,7 +773,13 @@ export function LancamentoForm() {
     return true
   }
 
+  const safraFechada = (safraAtual as any)?.fechada === true
+
   const handleSalvar = () => {
+    if (safraFechada) {
+      toast({ title: 'Safra fechada', description: 'Esta safra está fechada — somente leitura.', variant: 'destructive' })
+      return
+    }
     if (!validarFormulario()) return
     salvarMutation.mutate(formData)
   }
@@ -1101,7 +1107,7 @@ export function LancamentoForm() {
               <Button
                 type="button"
                 onClick={handleSalvar}
-                disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente || !temAlteracaoReal}
+                disabled={safraFechada || salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente || !temAlteracaoReal}
                 className="w-full"
                 size="lg"
               >
@@ -1216,7 +1222,7 @@ export function LancamentoForm() {
                 <Button
                   type="button"
                   onClick={handleSalvar}
-                  disabled={salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente || !temAlteracaoReal}
+                  disabled={safraFechada || salvarMutation.isPending || validandoEstoque || !formData.servico_id || resumoFinanceiro.temEstoqueInsuficiente || !temAlteracaoReal}
                   className="w-full"
                   size="lg"
                 >
