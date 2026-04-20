@@ -870,11 +870,10 @@ export function LancamentoForm() {
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>🔒 Safra fechada — somente leitura.</strong> Os campos abaixo estão desabilitados.
+                      <strong>🔒 Safra fechada — somente leitura.</strong> Não é possível salvar alterações nesta safra.
                     </AlertDescription>
                   </Alert>
                 )}
-                <fieldset disabled={(safraAtual as any)?.fechada === true} className="space-y-6">
                 <div className="grid gap-6 sm:grid-cols-2">
                   {/* DATA */}
                   <div className="space-y-2">
