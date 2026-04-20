@@ -579,11 +579,11 @@ function AbaPorTalhao({ propId, safraId }: { propId: string; safraId: string }) 
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Receita estimada</p>
-                  <p className="font-semibold text-emerald-600">{fmt(c.receita)}</p>
+                  <p className="font-semibold text-success">{fmt(c.receita)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Resultado estimado</p>
-                  <p className={`font-semibold ${c.resultado >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>{fmt(c.resultado)}</p>
+                  <p className={`font-semibold ${c.resultado >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(c.resultado)}</p>
                 </div>
               </div>
               {(c.primeira || c.ultima) && (
@@ -645,8 +645,8 @@ function AbaComparativo({ propId, safraAtualId }: { propId: string; safraAtualId
     }))
 
   const renderStatus = (s: any) => {
-    if (s.fechada) return <Badge variant="outline" className="border-amber-500 text-amber-600"><Lock className="h-3 w-3 mr-1" />Fechada</Badge>
-    if (s.ativa) return <Badge variant="outline" className="border-emerald-500 text-emerald-600"><Circle className="h-3 w-3 mr-1 fill-emerald-500" />Ativa</Badge>
+    if (s.fechada) return <Badge variant="outline" className="border-warning text-warning"><Lock className="h-3 w-3 mr-1" />Fechada</Badge>
+    if (s.ativa) return <Badge variant="outline" className="border-success text-success"><Circle className="h-3 w-3 mr-1 fill-success" />Ativa</Badge>
     return <Badge variant="outline" className="text-muted-foreground"><Circle className="h-3 w-3 mr-1" />Inativa</Badge>
   }
 
@@ -685,7 +685,7 @@ function AbaComparativo({ propId, safraAtualId }: { propId: string; safraAtualId
                     <TableCell>{renderStatus(s)}</TableCell>
                     <TableCell className="text-right">{fmt(Number(s.receita || 0))}</TableCell>
                     <TableCell className="text-right">{fmt(Number(s.custo_total || 0))}</TableCell>
-                    <TableCell className={`text-right font-semibold ${resultado >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                    <TableCell className={`text-right font-semibold ${resultado >= 0 ? 'text-success' : 'text-destructive'}`}>
                       {fmt(resultado)}
                     </TableCell>
                     <TableCell className="text-right">{fmtPct(Number(s.margem_pct || 0))}</TableCell>
@@ -821,7 +821,7 @@ function AbaInsumos({ propId, safraId }: { propId: string; safraId: string }) {
                 const pct = total > 0 ? (Number(i.custo_total || 0) / total) * 100 : 0
                 const isTop = idx === 0
                 return (
-                  <TableRow key={i.produto_id || idx} className={isTop ? 'bg-amber-50 dark:bg-amber-950/20' : ''}>
+                  <TableRow key={i.produto_id || idx} className={isTop ? 'bg-warning/10' : ''}>
                     <TableCell className="font-medium">{idx + 1}</TableCell>
                     <TableCell className={isTop ? 'font-semibold' : 'font-medium'}>{i.produto_nome || '—'}</TableCell>
                     <TableCell>{i.unidade || '-'}</TableCell>
@@ -850,7 +850,7 @@ function AbaInsumos({ propId, safraId }: { propId: string; safraId: string }) {
    COMPONENTES UTILITÁRIOS
    ════════════════════════════════════════════════ */
 function KpiCard({ title, value, subValue, accent }: { title: string; value: string; subValue?: string; accent?: 'positive' | 'negative' }) {
-  const cls = accent === 'positive' ? 'text-emerald-600' : accent === 'negative' ? 'text-destructive' : 'text-foreground'
+  const cls = accent === 'positive' ? 'text-success' : accent === 'negative' ? 'text-destructive' : 'text-foreground'
   return (
     <Card>
       <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader>
