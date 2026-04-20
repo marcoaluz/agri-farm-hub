@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
+import { useGlobal } from '@/contexts/GlobalContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, Save, X } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Loader2, Save, X, Lock } from 'lucide-react'
 
 interface Lote {
   id: string
@@ -28,6 +30,8 @@ interface LoteEditFormProps {
 export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { safraAtual } = useGlobal()
+  const safraFechada = (safraAtual as any)?.fechada === true
 
   const [form, setForm] = useState({
     nota_fiscal: lote.nota_fiscal || '',
