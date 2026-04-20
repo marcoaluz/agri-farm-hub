@@ -866,6 +866,15 @@ export function LancamentoForm() {
               </CardHeader>
 
               <CardContent className="space-y-6">
+                {(safraAtual as any)?.fechada && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>🔒 Safra fechada — somente leitura.</strong> Os campos abaixo estão desabilitados.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <fieldset disabled={(safraAtual as any)?.fechada === true} className="space-y-6">
                 <div className="grid gap-6 sm:grid-cols-2">
                   {/* DATA */}
                   <div className="space-y-2">
