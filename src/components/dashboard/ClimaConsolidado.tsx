@@ -39,9 +39,8 @@ export function ClimaConsolidado({ propriedades }: { propriedades?: Prop[] }) {
         .select('id, nome, latitude, longitude')
         .eq('ativo', true)
         .order('nome')
-      if (error) throw error
 
-      const diretas = (data || []) as Prop[]
+      const diretas = error ? [] : ((data || []) as Prop[])
       if (diretas.length > 0) return diretas
 
       const { data: adminData, error: adminError } = await supabase.rpc('get_todas_propriedades_admin' as any)
