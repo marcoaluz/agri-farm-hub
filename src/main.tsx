@@ -2,25 +2,19 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-// Force clear old service worker caches - v4
-const isInIframe = (() => {
-  try { return window.self !== window.top; } catch { return true; }
-})();
-const isPreviewHost =
-  window.location.hostname.includes("id-preview--") ||
-  window.location.hostname.includes("lovableproject.com") ||
-  window.location.hostname.includes("lovable.app");
-
+// Remove qualquer PWA/cache antigo para sempre carregar a versão mais recente.
 if ('serviceWorker' in navigator) {
-  if (isPreviewHost || isInIframe) {
-    navigator.serviceWorker.getRegistrations().then((regs) => {
-      regs.forEach((r) => r.unregister());
-    });
-  }
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((r) => r.unregister());
+  });
+}
+
+if ('caches' in window) {
   caches.keys().then((names) => {
     names.forEach((name) => caches.delete(name));
   });
 }
-// Cache bust: 2026-04-14T002
+
+// Cache bust: 2026-05-05T2045
 
 createRoot(document.getElementById("root")!).render(<App />);
