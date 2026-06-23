@@ -119,19 +119,18 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
       </DialogHeader>
 
       {safraFechada && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="py-2">
           <Info className="h-4 w-4" />
-          <AlertDescription>
+          <AlertDescription className="text-xs">
             <strong>🔒 Safra fechada — somente leitura.</strong> Não é possível registrar entradas nesta safra.
           </AlertDescription>
         </Alert>
       )}
 
-      <Alert>
+      <Alert className="py-2">
         <Info className="h-4 w-4" />
-        <AlertDescription>
-          Cada entrada de produto cria um novo <strong>lote</strong> no sistema FIFO. 
-          O custo será calculado automaticamente ao consumir.
+        <AlertDescription className="text-xs">
+          Cada entrada de produto cria um novo <strong>lote</strong> no sistema FIFO. O custo será calculado automaticamente ao consumir.
         </AlertDescription>
       </Alert>
 
