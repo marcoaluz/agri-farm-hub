@@ -158,7 +158,7 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
         </Alert>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* Produto */}
         <div>
           <Label>Produto *</Label>
@@ -307,8 +307,9 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
         </div>
       </div>
 
+      </div>{/* end scrollable area */}
       {/* Botões */}
-      <div className="flex justify-end gap-2 pt-4">
+      <div className="flex justify-end gap-2 pt-4 border-t mt-2">
         <Button variant="outline" onClick={onSuccess}>
           Cancelar
         </Button>
