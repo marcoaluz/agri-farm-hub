@@ -246,7 +246,7 @@ export default function Convite() {
       </div>
 
       {/* Lado Direito */}
-      <div className="w-full lg:w-3/5 bg-background flex items-center justify-center p-6 sm:p-8 overflow-y-auto">
+      <div className="w-full lg:w-3/5 bg-background flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
         <div className="max-w-md w-full">
           {/* Logo mobile */}
           <div className="lg:hidden flex flex-col items-center gap-2 mb-6">
@@ -267,25 +267,25 @@ export default function Convite() {
           </div>
 
           <Card className="border-border shadow-lg">
-            <CardHeader className="space-y-1">
+            <CardHeader className="space-y-1 pb-3 pt-4 px-4 sm:px-6 sm:pt-6">
               <CardTitle className="text-2xl font-bold">Criar sua conta</CardTitle>
               <CardDescription>Preencha os dados abaixo para acessar o SGA</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 px-4 sm:px-6">
               {/* Banner desktop */}
-              <div className="hidden lg:block bg-primary/5 border border-primary/20 rounded-lg p-3">
+              <div className="hidden lg:block bg-primary/5 border border-primary/20 rounded-lg p-2">
                 <p className="text-sm text-foreground">📩 {bannerText}</p>
               </div>
 
               {/* E-mail (readonly) */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label>E-mail</Label>
                 <Input value={tokenData?.email || ''} disabled className="opacity-70" />
                 <p className="text-xs text-muted-foreground">O e-mail é definido pelo convite e não pode ser alterado.</p>
               </div>
 
               {/* Nome */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="nome">Nome completo</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -302,7 +302,7 @@ export default function Convite() {
               </div>
 
               {/* Senha */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="senha">Senha</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -341,7 +341,7 @@ export default function Convite() {
               </div>
 
               {/* Confirmar Senha */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="confirmar-senha">Confirmar senha</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -388,7 +388,7 @@ export default function Convite() {
                 </p>
               )}
             </CardContent>
-            <CardFooter className="flex-col gap-2 pt-0">
+            <CardFooter className="flex-col gap-1 pt-0 pb-4 px-4 sm:px-6 sm:pb-6">
               <Separator />
               <p className="text-sm text-muted-foreground">
                 Já tem conta?{' '}
