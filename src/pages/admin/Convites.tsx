@@ -45,6 +45,7 @@ interface ConvitePendente {
   expira_em: string;
   expirado: boolean;
   status?: string;
+  token: string | null;
 }
 
 type TipoConvite = "novo_proprietario" | "acesso_propriedade";
@@ -113,6 +114,7 @@ export default function Convites() {
         expira_em: c.expira_em,
         expirado: c.expirado,
         status: c.expirado ? 'expirado' : 'pendente',
+        token: c.token || null,
       }));
       setConvites(mapped);
     }
