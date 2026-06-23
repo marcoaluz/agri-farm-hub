@@ -263,8 +263,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </div>
 
           {/* Footer da Sidebar */}
-          <div className="absolute bottom-0 left-0 right-0 border-t border-sidebar-border p-4">
-            <div className="text-xs text-sidebar-foreground/50 text-center">
+          <div className="border-t border-sidebar-border px-3 py-2">
+            <div className="text-[10px] text-sidebar-foreground/40 text-center">
               SGA v1.0.0
             </div>
           </div>
