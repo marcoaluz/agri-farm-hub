@@ -397,7 +397,6 @@ export default function Convite() {
             </CardFooter>
           </Card>
         </div>
-        </div>
       </div>
     </div>
   )
