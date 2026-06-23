@@ -109,7 +109,8 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col max-h-[80vh]">
+      <div className="overflow-y-auto flex-1 space-y-4 pr-1">
       <DialogHeader>
         <DialogTitle>Entrada de Estoque</DialogTitle>
         <p className="text-sm text-muted-foreground">
