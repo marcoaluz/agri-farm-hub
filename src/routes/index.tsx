@@ -8,6 +8,7 @@ import { SafraProvider } from '@/contexts/SafraContext'
 import { LoginPage } from '@/pages/auth/Login'
 // CadastroPage removido - acesso apenas por convite
 import { RecuperarSenhaPage } from '@/pages/auth/RecuperarSenha'
+import RedefinirSenha from '@/pages/auth/RedefinirSenha'
 
 // Páginas protegidas
 import Dashboard from '@/pages/Dashboard'
