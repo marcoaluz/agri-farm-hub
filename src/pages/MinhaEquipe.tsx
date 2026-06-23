@@ -57,7 +57,8 @@ interface Membro {
 }
 
 export default function MinhaEquipe() {
-  const { propriedadeId } = useGlobal()
+  const { propriedadeAtual } = useGlobal()
+  const propriedadeId = propriedadeAtual?.id
   const { user } = useAuth()
 
   const [membros, setMembros] = useState<Membro[]>([])
