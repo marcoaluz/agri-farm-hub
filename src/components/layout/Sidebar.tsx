@@ -248,7 +248,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <Button
                     variant="ghost"
                     className={cn(
-                      'w-full justify-start gap-3 font-medium transition-all duration-200',
+                      'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200',
                       location.pathname === '/admin/convites'
                         ? 'bg-destructive/20 text-sidebar-accent-foreground'
                         : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
