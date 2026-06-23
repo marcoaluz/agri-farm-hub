@@ -156,8 +156,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         {/* Navegação */}
-        <ScrollArea className="h-[calc(100vh-4rem)]">
-          <div className="space-y-1 p-3">
+        <ScrollArea className="h-[calc(100vh-4rem)] pb-8">
+          <div className="space-y-0.5 p-2">
             {routesFiltradas.map((route) => {
               const isActive = location.pathname === route.href
               
@@ -170,14 +170,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <Button
                     variant="ghost"
                     className={cn(
-                      'w-full justify-start gap-3 font-medium transition-all duration-200',
-                      isActive 
+                      'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200',
+                      isActive
                         ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
                         : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                     )}
                   >
                     <route.icon className={cn(
-                      'h-5 w-5',
+                      'h-4 w-4',
                       isActive && 'text-sidebar-primary'
                     )} />
                     {route.label}
@@ -198,13 +198,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <Button
                     variant="ghost"
                     className={cn(
-                      'w-full justify-start gap-3 font-medium transition-all duration-200 mt-2',
+                      'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200 mt-1',
                       location.pathname === '/admin'
                         ? 'bg-destructive/20 text-sidebar-accent-foreground'
                         : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                     )}
                   >
-                    <Shield className="h-5 w-5 text-destructive" />
+                    <Shield className="h-4 w-4 text-destructive" />
                     Painel Admin
                     <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0">
                       ADMIN
@@ -215,13 +215,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <Button
                     variant="ghost"
                     className={cn(
-                      'w-full justify-start gap-3 font-medium transition-all duration-200',
+                      'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200',
                       location.pathname === '/admin/usuarios'
                         ? 'bg-destructive/20 text-sidebar-accent-foreground'
                         : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                     )}
                   >
-                    <Users className="h-5 w-5 text-destructive" />
+                    <Users className="h-4 w-4 text-destructive" />
                     Gestão Usuários
                     {pendentesCount > 0 && (
                       <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0 h-5 min-w-[20px] flex items-center justify-center">
@@ -234,13 +234,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <Button
                     variant="ghost"
                     className={cn(
-                      'w-full justify-start gap-3 font-medium transition-all duration-200',
+                      'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200',
                       location.pathname === '/admin/modulos'
                         ? 'bg-destructive/20 text-sidebar-accent-foreground'
                         : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                     )}
                   >
-                    <Puzzle className="h-5 w-5 text-destructive" />
+                    <Puzzle className="h-4 w-4 text-destructive" />
                     Módulos
                   </Button>
                 </Link>
@@ -248,13 +248,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <Button
                     variant="ghost"
                     className={cn(
-                      'w-full justify-start gap-3 font-medium transition-all duration-200',
+                      'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200',
                       location.pathname === '/admin/convites'
                         ? 'bg-destructive/20 text-sidebar-accent-foreground'
                         : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                     )}
                   >
-                    <UserPlus className="h-5 w-5 text-destructive" />
+                    <UserPlus className="h-4 w-4 text-destructive" />
                     Convites
                   </Button>
                 </Link>
@@ -263,8 +263,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </div>
 
           {/* Footer da Sidebar */}
-          <div className="absolute bottom-0 left-0 right-0 border-t border-sidebar-border p-4">
-            <div className="text-xs text-sidebar-foreground/50 text-center">
+          <div className="border-t border-sidebar-border px-3 py-2">
+            <div className="text-[10px] text-sidebar-foreground/40 text-center">
               SGA v1.0.0
             </div>
           </div>
