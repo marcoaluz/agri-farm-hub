@@ -170,14 +170,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <Button
                     variant="ghost"
                     className={cn(
-                      'w-full justify-start gap-3 font-medium transition-all duration-200',
-                      isActive 
+                      'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200',
+                      isActive
                         ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
                         : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                     )}
                   >
                     <route.icon className={cn(
-                      'h-5 w-5',
+                      'h-4 w-4',
                       isActive && 'text-sidebar-primary'
                     )} />
                     {route.label}
