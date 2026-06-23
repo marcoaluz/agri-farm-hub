@@ -45,6 +45,7 @@ interface ConvitePendente {
   expira_em: string;
   expirado: boolean;
   status?: string;
+  token: string | null;
 }
 
 type TipoConvite = "novo_proprietario" | "acesso_propriedade";
