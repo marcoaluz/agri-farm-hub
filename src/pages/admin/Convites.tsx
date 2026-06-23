@@ -506,19 +506,36 @@ export default function Convites() {
                           </TableCell>
                           <TableCell>{getStatusBadge(c)}</TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRevogar(c.id)}
-                              disabled={revogando === c.id || c.status === "ativo"}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              {revogando === c.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
+                            <div className="flex items-center gap-1">
+                              {c.token && !c.expirado && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    const sufixo = c.tipo === 'novo_proprietario' ? '&tipo=novo' : '&tipo=existente';
+                                    const link = `${window.location.origin}/convite?token=${c.token}${sufixo}`;
+                                    navigator.clipboard.writeText(link);
+                                    toast.success("Link copiado!");
+                                  }}
+                                  title="Copiar link do convite"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
                               )}
-                            </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRevogar(c.id)}
+                                disabled={revogando === c.id || c.status === "ativo"}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                {revogando === c.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
