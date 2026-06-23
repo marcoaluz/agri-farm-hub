@@ -204,7 +204,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                     )}
                   >
-                    <Shield className="h-5 w-5 text-destructive" />
+                    <Shield className="h-4 w-4 text-destructive" />
                     Painel Admin
                     <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0">
                       ADMIN
@@ -221,7 +221,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                     )}
                   >
-                    <Users className="h-5 w-5 text-destructive" />
+                    <Users className="h-4 w-4 text-destructive" />
                     Gestão Usuários
                     {pendentesCount > 0 && (
                       <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0 h-5 min-w-[20px] flex items-center justify-center">
@@ -240,7 +240,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                     )}
                   >
-                    <Puzzle className="h-5 w-5 text-destructive" />
+                    <Puzzle className="h-4 w-4 text-destructive" />
                     Módulos
                   </Button>
                 </Link>
@@ -254,7 +254,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                     )}
                   >
-                    <UserPlus className="h-5 w-5 text-destructive" />
+                    <UserPlus className="h-4 w-4 text-destructive" />
                     Convites
                   </Button>
                 </Link>
