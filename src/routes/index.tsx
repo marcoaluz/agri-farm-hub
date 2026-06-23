@@ -91,6 +91,7 @@ export function AppRoutes() {
           </PublicRoute>
         }
       />
+      <Route path="/reset-password" element={<RedefinirSenha />} />
       
       {/* Redirect /auth to /login */}
       <Route path="/auth" element={<Navigate to="/login" />} />
