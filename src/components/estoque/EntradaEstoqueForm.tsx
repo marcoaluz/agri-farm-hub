@@ -109,7 +109,8 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col max-h-[80vh]">
+      <div className="overflow-y-auto flex-1 space-y-4 pr-1">
       <DialogHeader>
         <DialogTitle>Entrada de Estoque</DialogTitle>
         <p className="text-sm text-muted-foreground">
@@ -118,19 +119,18 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
       </DialogHeader>
 
       {safraFechada && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="py-2">
           <Info className="h-4 w-4" />
-          <AlertDescription>
+          <AlertDescription className="text-xs">
             <strong>🔒 Safra fechada — somente leitura.</strong> Não é possível registrar entradas nesta safra.
           </AlertDescription>
         </Alert>
       )}
 
-      <Alert>
+      <Alert className="py-2">
         <Info className="h-4 w-4" />
-        <AlertDescription>
-          Cada entrada de produto cria um novo <strong>lote</strong> no sistema FIFO. 
-          O custo será calculado automaticamente ao consumir.
+        <AlertDescription className="text-xs">
+          Cada entrada de produto cria um novo <strong>lote</strong> no sistema FIFO. O custo será calculado automaticamente ao consumir.
         </AlertDescription>
       </Alert>
 
@@ -158,7 +158,7 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
         </Alert>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* Produto */}
         <div>
           <Label>Produto *</Label>
@@ -307,8 +307,9 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
         </div>
       </div>
 
+      </div>{/* end scrollable area */}
       {/* Botões */}
-      <div className="flex justify-end gap-2 pt-4">
+      <div className="flex justify-end gap-2 pt-4 border-t mt-2">
         <Button variant="outline" onClick={onSuccess}>
           Cancelar
         </Button>
