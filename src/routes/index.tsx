@@ -38,6 +38,7 @@ import Notificacoes from '@/pages/Notificacoes'
 import Convite from '@/pages/Convite'
 import Convites from '@/pages/admin/Convites'
 import NotFound from '@/pages/NotFound'
+import MinhaEquipe from '@/pages/MinhaEquipe'
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -109,6 +110,7 @@ export function AppRoutes() {
       >
         <Route index element={<Dashboard />} />
         <Route path="propriedades" element={<Propriedades />} />
+        <Route path="equipe" element={<MinhaEquipe />} />
         <Route path="safras" element={<SafrasPage />} />
         <Route path="talhoes" element={<Talhoes />} />
         <Route path="estoque" element={<Estoque />} />
