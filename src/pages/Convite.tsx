@@ -208,9 +208,9 @@ export default function Convite() {
 
   // Formulário
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex overflow-x-hidden">
       {/* Lado Esquerdo */}
-      <div className="hidden lg:flex lg:w-2/5 bg-gradient-to-br from-primary to-primary/70 p-12 flex-col justify-between text-primary-foreground">
+      <div className="hidden lg:flex lg:w-2/5 bg-gradient-to-br from-primary to-primary/70 p-12 flex-col justify-between text-primary-foreground sticky top-0 h-screen">
         <div className="flex items-center gap-3">
           <div className="bg-primary-foreground/10 backdrop-blur-sm p-3 rounded-xl">
             <Leaf className="h-8 w-8" />
@@ -246,8 +246,8 @@ export default function Convite() {
       </div>
 
       {/* Lado Direito */}
-      <div className="w-full lg:w-3/5 bg-background flex items-center justify-center p-6 sm:p-8">
-        <div className="max-w-md w-full">
+      <div className="w-full lg:w-3/5 bg-background flex items-start justify-center p-6 sm:p-8 overflow-y-auto min-h-screen">
+        <div className="max-w-md w-full py-8">
           {/* Logo mobile */}
           <div className="lg:hidden flex flex-col items-center gap-2 mb-6">
             <div className="flex items-center gap-3">
@@ -396,6 +396,7 @@ export default function Convite() {
               </p>
             </CardFooter>
           </Card>
+        </div>
         </div>
       </div>
     </div>
