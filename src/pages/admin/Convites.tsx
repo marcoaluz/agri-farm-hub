@@ -114,6 +114,7 @@ export default function Convites() {
         expira_em: c.expira_em,
         expirado: c.expirado,
         status: c.expirado ? 'expirado' : 'pendente',
+        token: c.token || null,
       }));
       setConvites(mapped);
     }
