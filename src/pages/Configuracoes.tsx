@@ -180,21 +180,23 @@ export function Configuracoes() {
                 Plataforma de gestão para propriedades rurais.
               </p>
               <Separator />
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                asChild
-              >
-                <a
-                  href="https://github.com/marcoaluz/agri-farm-hub"
-                  target="_blank"
-                  rel="noopener noreferrer"
+              {perfil === 'admin' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  asChild
                 >
-                  <ExternalLink className="h-4 w-4" />
-                  Repositório no GitHub
-                </a>
-              </Button>
+                  <a
+                    href="https://github.com/marcoaluz/agri-farm-hub"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Repositório no GitHub
+                  </a>
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -40,6 +40,7 @@ interface SidebarProps {
 const routes = [
   { label: 'Dashboard',     icon: LayoutDashboard, href: '/',             sempre: true },
   { label: 'Propriedades',  icon: Home,            href: '/propriedades', sempre: true },
+  { label: 'Minha Equipe',  icon: Users,           href: '/equipe',       sempre: true, hideForAdmin: true },
   { label: 'Safras',        icon: Calendar,        href: '/safras',       modulo: 'lavoura' as const },
   { label: 'Talhões',       icon: MapPin,          href: '/talhoes',      modulo: 'lavoura' as const },
   { label: 'Estoque',       icon: Package,         href: '/estoque',      sempre: true },
@@ -72,6 +73,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   }, [])
 
   const routesFiltradas = routes.filter(route => {
+    if ((route as any).hideForAdmin && isAdmin) return false
     if (route.sempre) return true
     if (!propriedadeAtual) return false
     if (route.modulo) return modulos[route.modulo]
