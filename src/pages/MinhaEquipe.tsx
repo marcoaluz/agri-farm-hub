@@ -420,7 +420,7 @@ export default function MinhaEquipe() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </Dialog>
+      </AlertDialog>
     </div>
   )
 }
