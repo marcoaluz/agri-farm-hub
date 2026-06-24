@@ -478,6 +478,7 @@ export default function GestaoUsuarios() {
                       <TableHead>Usuário</TableHead>
                       <TableHead>Perfil</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Plano</TableHead>
                       <TableHead>Cadastro</TableHead>
                       <TableHead className="w-[50px]" />
                     </TableRow>
