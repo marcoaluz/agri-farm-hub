@@ -30,6 +30,9 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useModulos } from '@/hooks/useModulos'
+import { useModulosAcesso } from '@/hooks/useModulosAcesso'
+import { UpgradeRequiredModal } from '@/components/modulos/UpgradeRequiredModal'
+import { Lock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface SidebarProps {
@@ -60,9 +63,31 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const { user } = useAuth()
   const { propriedadeAtual } = useGlobal()
   const { modulos } = useModulos()
+  const { data: modulosAcesso } = useModulosAcesso()
   const [isAdmin, setIsAdmin] = useState(false)
   const [pendentesCount, setPendentesCount] = useState(0)
   const [alertasCount, setAlertasCount] = useState(0)
+  const [upgradeModal, setUpgradeModal] = useState<{ modulo: string; planoMinimo: string } | null>(null)
+
+  const MODULO_POR_ROTA: Record<string, string> = {
+    '/pecuaria': 'pecuaria',
+    '/financeiro': 'financeiro',
+    '/relatorios': 'relatorios',
+    '/auditoria': 'auditoria',
+  }
+
+  const PLANO_MINIMO: Record<string, string> = {
+    pecuaria: 'profissional',
+    financeiro: 'profissional',
+    relatorios: 'profissional',
+    auditoria: 'avancado',
+  }
+
+  const moduloBloqueado = (path: string): string | null => {
+    const modulo = MODULO_POR_ROTA[path]
+    if (!modulo || !modulosAcesso) return null
+    return (modulosAcesso as any)[modulo] ? null : modulo
+  }
 
   // Listen for alert count updates from Dashboard
   useEffect(() => {
@@ -160,7 +185,23 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <div className="space-y-0.5 p-2">
             {routesFiltradas.map((route) => {
               const isActive = location.pathname === route.href
-              
+              const bloqueado = moduloBloqueado(route.href)
+
+              if (bloqueado) {
+                return (
+                  <Button
+                    key={route.href}
+                    variant="ghost"
+                    className="w-full justify-start gap-2 h-8 text-sm font-medium opacity-60 hover:opacity-100 text-sidebar-foreground/70"
+                    onClick={() => setUpgradeModal({ modulo: bloqueado, planoMinimo: PLANO_MINIMO[bloqueado] || 'profissional' })}
+                  >
+                    <route.icon className="h-4 w-4" />
+                    <span className="flex-1 text-left">{route.label}</span>
+                    <Lock className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                )
+              }
+
               return (
                 <Link
                   key={route.href}
@@ -270,6 +311,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </div>
         </ScrollArea>
       </aside>
+
+      {upgradeModal && (
+        <UpgradeRequiredModal
+          open={!!upgradeModal}
+          onClose={() => setUpgradeModal(null)}
+          modulo={upgradeModal.modulo}
+          planoMinimo={upgradeModal.planoMinimo}
+        />
+      )}
     </>
   )
 }
