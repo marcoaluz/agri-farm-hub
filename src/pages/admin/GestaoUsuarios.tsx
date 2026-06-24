@@ -275,6 +275,27 @@ export default function GestaoUsuarios() {
     }
   }
 
+  // Change plan
+  async function alterarPlano() {
+    if (!usuarioAlterandoPlano) return
+    setAlterandoPlano(true)
+    try {
+      const { data, error } = await supabase.rpc('admin_alterar_plano_usuario' as any, {
+        p_usuario_id: usuarioAlterandoPlano.id,
+        p_plano_slug: novoPlanoSlug,
+        p_ciclo: novoCiclo,
+      })
+      if (error) throw error
+      toast({ title: `✅ Plano alterado para ${(data as any)?.plano}!` })
+      setUsuarioAlterandoPlano(null)
+      fetchUsuarios()
+    } catch (err: any) {
+      toast({ title: 'Erro ao alterar plano: ' + err.message, variant: 'destructive' })
+    } finally {
+      setAlterandoPlano(false)
+    }
+  }
+
   function openEditModal(u: UserProfile) {
     setUsuarioEditando(u)
     setNovoPerfilSelecionado(u.perfil)
