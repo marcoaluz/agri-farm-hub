@@ -542,6 +542,17 @@ export default function GestaoUsuarios() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditModal(u)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar Perfil
+                              </DropdownMenuItem>
+                              {u.perfil === 'proprietario' && (
+                                <DropdownMenuItem onClick={() => { setUsuarioAlterandoPlano(u); setNovoPlanoSlug(u.plano_slug || 'essencial'); setNovoCiclo('mensal') }}>
+                                  <Shield className="mr-2 h-4 w-4" />
+                                  Alterar Plano
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
                               {u.status === 'pendente' && (
                                 <>
                                   <DropdownMenuItem onClick={() => { setUsuarioAprovando(u); setPapelAprovacao('consultor') }}>
@@ -555,32 +566,28 @@ export default function GestaoUsuarios() {
                                   <DropdownMenuSeparator />
                                 </>
                               )}
-                              <DropdownMenuItem onClick={() => openEditModal(u)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar Perfil
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
                               {u.perfil !== 'admin' && (
                                 <DropdownMenuItem onClick={() => toggleAdmin(u.id, true)}>
                                   <Shield className="mr-2 h-4 w-4" />
-                                  Tornar Admin
+                                  Promover a admin
                                 </DropdownMenuItem>
                               )}
                               {u.perfil === 'admin' && !u.is_super_admin && (
                                 <DropdownMenuItem onClick={() => toggleAdmin(u.id, false)}>
                                   <Shield className="mr-2 h-4 w-4" />
-                                  Remover Admin
+                                  Remover admin
                                 </DropdownMenuItem>
                               )}
-                              {(u.perfil !== 'admin' || !u.is_super_admin) && (
+                              {!u.is_super_admin && u.status !== 'pendente' && (
                                 <>
                                   <DropdownMenuSeparator />
-                                  {!u.is_super_admin && (
-                                    <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      Excluir Usuário
-                                    </DropdownMenuItem>
-                                  )}
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => {}}
+                                  >
+                                    <UserX className="mr-2 h-4 w-4" />
+                                    Suspender conta
+                                  </DropdownMenuItem>
                                 </>
                               )}
                             </DropdownMenuContent>
