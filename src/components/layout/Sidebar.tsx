@@ -311,6 +311,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </div>
         </ScrollArea>
       </aside>
+
+      {upgradeModal && (
+        <UpgradeRequiredModal
+          open={!!upgradeModal}
+          onClose={() => setUpgradeModal(null)}
+          modulo={upgradeModal.modulo}
+          planoMinimo={upgradeModal.planoMinimo}
+        />
+      )}
     </>
   )
 }
