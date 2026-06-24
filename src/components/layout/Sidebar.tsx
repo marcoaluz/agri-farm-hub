@@ -185,7 +185,23 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <div className="space-y-0.5 p-2">
             {routesFiltradas.map((route) => {
               const isActive = location.pathname === route.href
-              
+              const bloqueado = moduloBloqueado(route.href)
+
+              if (bloqueado) {
+                return (
+                  <Button
+                    key={route.href}
+                    variant="ghost"
+                    className="w-full justify-start gap-2 h-8 text-sm font-medium opacity-60 hover:opacity-100 text-sidebar-foreground/70"
+                    onClick={() => setUpgradeModal({ modulo: bloqueado, planoMinimo: PLANO_MINIMO[bloqueado] || 'profissional' })}
+                  >
+                    <route.icon className="h-4 w-4" />
+                    <span className="flex-1 text-left">{route.label}</span>
+                    <Lock className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                )
+              }
+
               return (
                 <Link
                   key={route.href}
