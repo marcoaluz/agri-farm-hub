@@ -30,6 +30,9 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useModulos } from '@/hooks/useModulos'
+import { useModulosAcesso } from '@/hooks/useModulosAcesso'
+import { UpgradeRequiredModal } from '@/components/modulos/UpgradeRequiredModal'
+import { Lock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface SidebarProps {
