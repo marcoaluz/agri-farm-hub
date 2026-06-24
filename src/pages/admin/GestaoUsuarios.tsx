@@ -760,6 +760,69 @@ export default function GestaoUsuarios() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Plan Change Dialog */}
+      <Dialog open={!!usuarioAlterandoPlano} onOpenChange={open => !open && setUsuarioAlterandoPlano(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar Plano</DialogTitle>
+          </DialogHeader>
+
+          {usuarioAlterandoPlano && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                    {getInitials(usuarioAlterandoPlano.nome)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{usuarioAlterandoPlano.nome}</p>
+                  <p className="text-xs text-muted-foreground">{usuarioAlterandoPlano.email}</p>
+                  {usuarioAlterandoPlano.plano && (
+                    <p className="text-xs text-primary font-medium">Plano atual: {usuarioAlterandoPlano.plano}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Novo plano</label>
+                <Select value={novoPlanoSlug} onValueChange={setNovoPlanoSlug}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="essencial">Essencial — R$ 49,90/mês</SelectItem>
+                    <SelectItem value="profissional">Profissional — R$ 119,90/mês</SelectItem>
+                    <SelectItem value="avancado">Avançado — R$ 249,90/mês</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ciclo de cobrança</label>
+                <Select value={novoCiclo} onValueChange={setNovoCiclo}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mensal">Mensal</SelectItem>
+                    <SelectItem value="anual">Anual (15% de desconto)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
+                ⚠️ Confirme que o pagamento foi recebido antes de alterar o plano. O sistema sincronizará os módulos automaticamente.
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setUsuarioAlterandoPlano(null)}>Cancelar</Button>
+            <Button onClick={alterarPlano} disabled={alterandoPlano}>
+              {alterandoPlano ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Confirmar alteração
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
