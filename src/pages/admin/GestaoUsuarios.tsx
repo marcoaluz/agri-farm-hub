@@ -45,6 +45,10 @@ interface UserProfile {
   criado_em: string
   avatar_url: string | null
   is_super_admin?: boolean
+  plano?: string | null
+  plano_slug?: string | null
+  assinatura_status?: string | null
+  vencimento?: string | null
 }
 
 const PERFIL_CONFIG: Record<string, { label: string; className: string; variant?: 'destructive' | 'secondary' | 'default' }> = {
