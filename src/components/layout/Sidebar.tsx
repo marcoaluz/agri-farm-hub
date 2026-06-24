@@ -63,9 +63,31 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const { user } = useAuth()
   const { propriedadeAtual } = useGlobal()
   const { modulos } = useModulos()
+  const { data: modulosAcesso } = useModulosAcesso()
   const [isAdmin, setIsAdmin] = useState(false)
   const [pendentesCount, setPendentesCount] = useState(0)
   const [alertasCount, setAlertasCount] = useState(0)
+  const [upgradeModal, setUpgradeModal] = useState<{ modulo: string; planoMinimo: string } | null>(null)
+
+  const MODULO_POR_ROTA: Record<string, string> = {
+    '/pecuaria': 'pecuaria',
+    '/financeiro': 'financeiro',
+    '/relatorios': 'relatorios',
+    '/auditoria': 'auditoria',
+  }
+
+  const PLANO_MINIMO: Record<string, string> = {
+    pecuaria: 'profissional',
+    financeiro: 'profissional',
+    relatorios: 'profissional',
+    auditoria: 'avancado',
+  }
+
+  const moduloBloqueado = (path: string): string | null => {
+    const modulo = MODULO_POR_ROTA[path]
+    if (!modulo || !modulosAcesso) return null
+    return (modulosAcesso as any)[modulo] ? null : modulo
+  }
 
   // Listen for alert count updates from Dashboard
   useEffect(() => {
