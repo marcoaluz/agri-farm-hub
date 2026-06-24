@@ -45,6 +45,10 @@ interface UserProfile {
   criado_em: string
   avatar_url: string | null
   is_super_admin?: boolean
+  plano?: string | null
+  plano_slug?: string | null
+  assinatura_status?: string | null
+  vencimento?: string | null
 }
 
 const PERFIL_CONFIG: Record<string, { label: string; className: string; variant?: 'destructive' | 'secondary' | 'default' }> = {
@@ -81,6 +85,12 @@ export default function GestaoUsuarios() {
   const [usuarioEditando, setUsuarioEditando] = useState<UserProfile | null>(null)
   const [novoPerfilSelecionado, setNovoPerfilSelecionado] = useState('')
   const [salvando, setSalvando] = useState(false)
+
+  // Plan change dialog
+  const [usuarioAlterandoPlano, setUsuarioAlterandoPlano] = useState<UserProfile | null>(null)
+  const [novoPlanoSlug, setNovoPlanoSlug] = useState('essencial')
+  const [novoCiclo, setNovoCiclo] = useState('mensal')
+  const [alterandoPlano, setAlterandoPlano] = useState(false)
 
   // Approval dialog
   const [usuarioAprovando, setUsuarioAprovando] = useState<UserProfile | null>(null)
@@ -127,7 +137,24 @@ export default function GestaoUsuarios() {
         if (err2) throw err2
         setUsuarios((fallback || []) as any)
       } else {
-        setUsuarios((data || []) as any)
+        const usersWithPlan = await Promise.all(
+          ((data || []) as any[]).map(async (u: any) => {
+            try {
+              const { data: planoData } = await supabase.rpc('get_plano_ativo_usuario' as any, { p_usuario_id: u.id })
+              const plano = Array.isArray(planoData) && planoData.length > 0 ? planoData[0] : null
+              return {
+                ...u,
+                plano: plano?.plano_nome || null,
+                plano_slug: plano?.plano_slug || null,
+                assinatura_status: plano?.status || null,
+                vencimento: plano?.data_fim || null,
+              }
+            } catch {
+              return u
+            }
+          })
+        )
+        setUsuarios(usersWithPlan as any)
       }
     } catch {
       toast({ title: 'Erro ao carregar usuários', variant: 'destructive' })
@@ -245,6 +272,27 @@ export default function GestaoUsuarios() {
       fetchUsuarios()
     } catch {
       toast({ title: 'Erro na operação', variant: 'destructive' })
+    }
+  }
+
+  // Change plan
+  async function alterarPlano() {
+    if (!usuarioAlterandoPlano) return
+    setAlterandoPlano(true)
+    try {
+      const { data, error } = await supabase.rpc('admin_alterar_plano_usuario' as any, {
+        p_usuario_id: usuarioAlterandoPlano.id,
+        p_plano_slug: novoPlanoSlug,
+        p_ciclo: novoCiclo,
+      })
+      if (error) throw error
+      toast({ title: `✅ Plano alterado para ${(data as any)?.plano}!` })
+      setUsuarioAlterandoPlano(null)
+      fetchUsuarios()
+    } catch (err: any) {
+      toast({ title: 'Erro ao alterar plano: ' + err.message, variant: 'destructive' })
+    } finally {
+      setAlterandoPlano(false)
     }
   }
 
@@ -430,6 +478,7 @@ export default function GestaoUsuarios() {
                       <TableHead>Usuário</TableHead>
                       <TableHead>Perfil</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Plano</TableHead>
                       <TableHead>Cadastro</TableHead>
                       <TableHead className="w-[50px]" />
                     </TableRow>
@@ -466,6 +515,20 @@ export default function GestaoUsuarios() {
                             </Badge>
                           )}
                         </TableCell>
+                        <TableCell>
+                          {u.plano ? (
+                            <div>
+                              <span className="text-sm font-medium">{u.plano}</span>
+                              {u.vencimento && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Vence {format(new Date(u.vencimento), 'dd/MM/yy', { locale: ptBR })}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {u.criado_em
                             ? format(new Date(u.criado_em), "dd MMM yyyy", { locale: ptBR })
@@ -479,6 +542,17 @@ export default function GestaoUsuarios() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditModal(u)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar Perfil
+                              </DropdownMenuItem>
+                              {u.perfil === 'proprietario' && (
+                                <DropdownMenuItem onClick={() => { setUsuarioAlterandoPlano(u); setNovoPlanoSlug(u.plano_slug || 'essencial'); setNovoCiclo('mensal') }}>
+                                  <Shield className="mr-2 h-4 w-4" />
+                                  Alterar Plano
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
                               {u.status === 'pendente' && (
                                 <>
                                   <DropdownMenuItem onClick={() => { setUsuarioAprovando(u); setPapelAprovacao('consultor') }}>
@@ -492,32 +566,28 @@ export default function GestaoUsuarios() {
                                   <DropdownMenuSeparator />
                                 </>
                               )}
-                              <DropdownMenuItem onClick={() => openEditModal(u)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar Perfil
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
                               {u.perfil !== 'admin' && (
                                 <DropdownMenuItem onClick={() => toggleAdmin(u.id, true)}>
                                   <Shield className="mr-2 h-4 w-4" />
-                                  Tornar Admin
+                                  Promover a admin
                                 </DropdownMenuItem>
                               )}
                               {u.perfil === 'admin' && !u.is_super_admin && (
                                 <DropdownMenuItem onClick={() => toggleAdmin(u.id, false)}>
                                   <Shield className="mr-2 h-4 w-4" />
-                                  Remover Admin
+                                  Remover admin
                                 </DropdownMenuItem>
                               )}
-                              {(u.perfil !== 'admin' || !u.is_super_admin) && (
+                              {!u.is_super_admin && u.status !== 'pendente' && (
                                 <>
                                   <DropdownMenuSeparator />
-                                  {!u.is_super_admin && (
-                                    <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      Excluir Usuário
-                                    </DropdownMenuItem>
-                                  )}
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => {}}
+                                  >
+                                    <UserX className="mr-2 h-4 w-4" />
+                                    Suspender conta
+                                  </DropdownMenuItem>
                                 </>
                               )}
                             </DropdownMenuContent>
@@ -690,6 +760,69 @@ export default function GestaoUsuarios() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Plan Change Dialog */}
+      <Dialog open={!!usuarioAlterandoPlano} onOpenChange={open => !open && setUsuarioAlterandoPlano(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar Plano</DialogTitle>
+          </DialogHeader>
+
+          {usuarioAlterandoPlano && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                    {getInitials(usuarioAlterandoPlano.nome)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{usuarioAlterandoPlano.nome}</p>
+                  <p className="text-xs text-muted-foreground">{usuarioAlterandoPlano.email}</p>
+                  {usuarioAlterandoPlano.plano && (
+                    <p className="text-xs text-primary font-medium">Plano atual: {usuarioAlterandoPlano.plano}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Novo plano</label>
+                <Select value={novoPlanoSlug} onValueChange={setNovoPlanoSlug}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="essencial">Essencial — R$ 49,90/mês</SelectItem>
+                    <SelectItem value="profissional">Profissional — R$ 119,90/mês</SelectItem>
+                    <SelectItem value="avancado">Avançado — R$ 249,90/mês</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ciclo de cobrança</label>
+                <Select value={novoCiclo} onValueChange={setNovoCiclo}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mensal">Mensal</SelectItem>
+                    <SelectItem value="anual">Anual (15% de desconto)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
+                ⚠️ Confirme que o pagamento foi recebido antes de alterar o plano. O sistema sincronizará os módulos automaticamente.
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setUsuarioAlterandoPlano(null)}>Cancelar</Button>
+            <Button onClick={alterarPlano} disabled={alterandoPlano}>
+              {alterandoPlano ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Confirmar alteração
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
