@@ -86,6 +86,12 @@ export default function GestaoUsuarios() {
   const [novoPerfilSelecionado, setNovoPerfilSelecionado] = useState('')
   const [salvando, setSalvando] = useState(false)
 
+  // Plan change dialog
+  const [usuarioAlterandoPlano, setUsuarioAlterandoPlano] = useState<UserProfile | null>(null)
+  const [novoPlanoSlug, setNovoPlanoSlug] = useState('essencial')
+  const [novoCiclo, setNovoCiclo] = useState('mensal')
+  const [alterandoPlano, setAlterandoPlano] = useState(false)
+
   // Approval dialog
   const [usuarioAprovando, setUsuarioAprovando] = useState<UserProfile | null>(null)
   const [papelAprovacao, setPapelAprovacao] = useState('consultor')
