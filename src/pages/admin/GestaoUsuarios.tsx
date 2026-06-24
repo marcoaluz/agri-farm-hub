@@ -137,7 +137,24 @@ export default function GestaoUsuarios() {
         if (err2) throw err2
         setUsuarios((fallback || []) as any)
       } else {
-        setUsuarios((data || []) as any)
+        const usersWithPlan = await Promise.all(
+          ((data || []) as any[]).map(async (u: any) => {
+            try {
+              const { data: planoData } = await supabase.rpc('get_plano_ativo_usuario' as any, { p_usuario_id: u.id })
+              const plano = Array.isArray(planoData) && planoData.length > 0 ? planoData[0] : null
+              return {
+                ...u,
+                plano: plano?.plano_nome || null,
+                plano_slug: plano?.plano_slug || null,
+                assinatura_status: plano?.status || null,
+                vencimento: plano?.data_fim || null,
+              }
+            } catch {
+              return u
+            }
+          })
+        )
+        setUsuarios(usersWithPlan as any)
       }
     } catch {
       toast({ title: 'Erro ao carregar usuários', variant: 'destructive' })
