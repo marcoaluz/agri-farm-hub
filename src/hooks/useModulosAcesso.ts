@@ -20,7 +20,8 @@ export interface ModulosAcesso {
 }
 
 export function useModulosAcesso() {
-  const { propriedadeId } = useGlobal()
+  const { propriedadeAtual } = useGlobal()
+  const propriedadeId = propriedadeAtual?.id ?? null
 
   return useQuery<ModulosAcesso>({
     queryKey: ['modulos-acesso', propriedadeId],
