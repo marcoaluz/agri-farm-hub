@@ -515,6 +515,20 @@ export default function GestaoUsuarios() {
                             </Badge>
                           )}
                         </TableCell>
+                        <TableCell>
+                          {u.plano ? (
+                            <div>
+                              <span className="text-sm font-medium">{u.plano}</span>
+                              {u.vencimento && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Vence {format(new Date(u.vencimento), 'dd/MM/yy', { locale: ptBR })}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {u.criado_em
                             ? format(new Date(u.criado_em), "dd MMM yyyy", { locale: ptBR })
