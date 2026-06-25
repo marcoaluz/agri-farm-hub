@@ -72,6 +72,36 @@ function colorScale(value: number, max: number) {
   return `hsl(${hue.toFixed(0)},80%,50%)`
 }
 
+/* Botões de exportação reutilizáveis */
+function ExportButtons({
+  propriedadeNome, nomeAba, nomeArquivo, colunas, linhas,
+}: {
+  propriedadeNome: string
+  nomeAba: string
+  nomeArquivo: string
+  colunas: Coluna[]
+  linhas: any[]
+}) {
+  const disabled = !linhas || linhas.length === 0
+  return (
+    <div className="flex justify-end gap-2 mb-2">
+      <Button
+        variant="outline" size="sm" disabled={disabled}
+        onClick={() => exportarPDF({ nomeArquivo, propriedadeNome, nomeAba, colunas, linhas })}
+      >
+        <FileText className="h-4 w-4 mr-1" /> Exportar PDF
+      </Button>
+      <Button
+        variant="outline" size="sm" disabled={disabled}
+        onClick={() => exportarExcel({ nomeArquivo, nomeAba, colunas, linhas })}
+      >
+        <FileSpreadsheet className="h-4 w-4 mr-1" /> Exportar Excel
+      </Button>
+    </div>
+  )
+}
+
+
 /* ════════════════════════════════════════════════
    PÁGINA
    ════════════════════════════════════════════════ */
