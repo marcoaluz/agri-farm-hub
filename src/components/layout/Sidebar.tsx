@@ -52,6 +52,7 @@ const routes = [
   { label: 'Lançamentos',   icon: ClipboardList,   href: '/lancamentos',  sempre: true },
   { label: 'Calendário',    icon: CalendarDays,    href: '/calendario',   sempre: true },
   { label: 'Agenda',        icon: Calendar,        href: '/agenda',       sempre: true },
+  { label: 'Contatos',      icon: Contact,         href: '/contatos',     sempre: true },
   { label: 'Máquinas',      icon: Tractor,         href: '/maquinas',     sempre: true },
   { label: 'Pecuária',      icon: Beef,            href: '/pecuaria',     modulo: 'pecuaria' as const },
   { label: 'Financeiro',    icon: DollarSign,      href: '/financeiro',   modulo: 'financeiro' as const },
