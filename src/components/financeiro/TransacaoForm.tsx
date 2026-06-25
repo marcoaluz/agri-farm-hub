@@ -203,7 +203,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
     } else {
       form.reset({
         tipo: 'despesa', descricao: '', categoria: '', valor: '' as any,
-        status: 'pendente', data_pagamento: null, fornecedor_cliente: '',
+        status: 'pendente', data_pagamento: null, fornecedor_cliente: '', contato_id: null,
         numero_nf: '', forma_pagamento: '', talhao_id: '', observacoes: '',
         parcelar: false, num_parcelas: '' as any,
         cultura_id: '', quantidade_produzida: '' as any,
