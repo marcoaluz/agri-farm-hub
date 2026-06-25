@@ -41,6 +41,7 @@ import NotFound from '@/pages/NotFound'
 import MinhaEquipe from '@/pages/MinhaEquipe'
 import Agenda from '@/pages/Agenda'
 import Contatos from '@/pages/Contatos'
+import MapaPropriedade from '@/pages/MapaPropriedade'
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -115,6 +116,7 @@ export function AppRoutes() {
         <Route path="equipe" element={<MinhaEquipe />} />
         <Route path="safras" element={<SafrasPage />} />
         <Route path="talhoes" element={<Talhoes />} />
+        <Route path="mapa" element={<MapaPropriedade />} />
         <Route path="estoque" element={<Estoque />} />
         
         <Route path="servicos" element={<Servicos />} />
