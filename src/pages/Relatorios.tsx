@@ -6,6 +6,8 @@ import { ptBR } from 'date-fns/locale'
 import {
   BarChart3, ClipboardList, DollarSign, Sprout, TrendingUp, Package,
   ArrowUpDown, ChevronUp, ChevronDown, Download, FileX, Lock, Circle, Leaf,
+  FileSpreadsheet, FileText,
+
 } from 'lucide-react'
 import {
   BarChart, Bar, ComposedChart, Line, PieChart, Pie, Cell, XAxis, YAxis,
@@ -20,6 +22,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Progress } from '@/components/ui/progress'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { exportarExcel, exportarPDF, type Coluna } from '@/lib/exportTabela'
+
 
 /* ───────────────── helpers ───────────────── */
 const fmt = (v: number) =>
@@ -68,6 +72,36 @@ function colorScale(value: number, max: number) {
   return `hsl(${hue.toFixed(0)},80%,50%)`
 }
 
+/* Botões de exportação reutilizáveis */
+function ExportButtons({
+  propriedadeNome, nomeAba, nomeArquivo, colunas, linhas,
+}: {
+  propriedadeNome: string
+  nomeAba: string
+  nomeArquivo: string
+  colunas: Coluna[]
+  linhas: any[]
+}) {
+  const disabled = !linhas || linhas.length === 0
+  return (
+    <div className="flex justify-end gap-2 mb-2">
+      <Button
+        variant="outline" size="sm" disabled={disabled}
+        onClick={() => exportarPDF({ nomeArquivo, propriedadeNome, nomeAba, colunas, linhas })}
+      >
+        <FileText className="h-4 w-4 mr-1" /> Exportar PDF
+      </Button>
+      <Button
+        variant="outline" size="sm" disabled={disabled}
+        onClick={() => exportarExcel({ nomeArquivo, nomeAba, colunas, linhas })}
+      >
+        <FileSpreadsheet className="h-4 w-4 mr-1" /> Exportar Excel
+      </Button>
+    </div>
+  )
+}
+
+
 /* ════════════════════════════════════════════════
    PÁGINA
    ════════════════════════════════════════════════ */
@@ -105,11 +139,12 @@ export function Relatorios() {
           <TabsTrigger value="insumos"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="operacional"><AbaOperacional propId={propId} safraId={safraId} /></TabsContent>
-        <TabsContent value="financeiro"><AbaFinanceiro propId={propId} safraId={safraId} /></TabsContent>
-        <TabsContent value="talhao"><AbaPorTalhao propId={propId} safraId={safraId} /></TabsContent>
-        <TabsContent value="comparativo"><AbaComparativo propId={propId} safraAtualId={safraId} /></TabsContent>
-        <TabsContent value="insumos"><AbaInsumos propId={propId} safraId={safraId} /></TabsContent>
+        <TabsContent value="operacional"><AbaOperacional propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="financeiro"><AbaFinanceiro propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="talhao"><AbaPorTalhao propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="comparativo"><AbaComparativo propId={propId} safraAtualId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="insumos"><AbaInsumos propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+
       </Tabs>
     </div>
   )
@@ -118,7 +153,7 @@ export function Relatorios() {
 /* ════════════════════════════════════════════════
    ABA 1 — OPERACIONAL
    ════════════════════════════════════════════════ */
-function AbaOperacional({ propId, safraId }: { propId: string; safraId: string }) {
+function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
   const lancQ = useQuery({
     queryKey: ['rel-op-lanc', propId, safraId],
     queryFn: async () => {
@@ -213,6 +248,32 @@ function AbaOperacional({ propId, safraId }: { propId: string; safraId: string }
 
   return (
     <div className="space-y-4">
+      <ExportButtons
+        propriedadeNome={propriedadeNome}
+        nomeAba="Operacional"
+        nomeArquivo="relatorio-operacional"
+        colunas={[
+          { header: 'Data', key: 'data', width: 12 },
+          { header: 'Serviço', key: 'servico', width: 24 },
+          { header: 'Categoria', key: 'categoria', width: 18 },
+          { header: 'Talhão', key: 'talhao', width: 18 },
+          { header: 'Área (ha)', key: 'area', width: 10 },
+          { header: 'Custo Total (R$)', key: 'custo', width: 16 },
+          { header: 'Custo/ha (R$)', key: 'custoHa', width: 14 },
+          { header: 'Observações', key: 'obs', width: 30 },
+        ]}
+        linhas={ordenados.map((l: any) => ({
+          data: fmtData(l.data_execucao),
+          servico: l.servico_nome || '',
+          categoria: l.servico_categoria || '',
+          talhao: l.talhao_nome || '',
+          area: l.talhao_area_ha ? fmtN(Number(l.talhao_area_ha)) : '',
+          custo: fmt(Number(l.custo_total || 0)),
+          custoHa: l.custo_por_ha ? fmt(Number(l.custo_por_ha)) : '',
+          obs: l.observacoes || '',
+        }))}
+      />
+
       {/* KPIs */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Total de Lançamentos" value={String(kpis.total)} />
@@ -330,7 +391,7 @@ function AbaOperacional({ propId, safraId }: { propId: string; safraId: string }
 /* ════════════════════════════════════════════════
    ABA 2 — FINANCEIRO
    ════════════════════════════════════════════════ */
-function AbaFinanceiro({ propId, safraId }: { propId: string; safraId: string }) {
+function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
   const evolQ = useQuery({
     queryKey: ['rel-fin-evol', propId, safraId],
     queryFn: async () => {
@@ -405,6 +466,33 @@ function AbaFinanceiro({ propId, safraId }: { propId: string; safraId: string })
 
   return (
     <div className="space-y-4">
+      <ExportButtons
+        propriedadeNome={propriedadeNome}
+        nomeAba="Financeiro"
+        nomeArquivo="relatorio-financeiro"
+        colunas={[
+          { header: 'Mês', key: 'mes', width: 12 },
+          { header: 'Custo Lançamentos (R$)', key: 'custoLanc', width: 20 },
+          { header: 'Custo Financeiro (R$)', key: 'custoFin', width: 20 },
+          { header: 'Receitas (R$)', key: 'receitas', width: 16 },
+          { header: 'Despesas (R$)', key: 'despesas', width: 16 },
+          { header: 'Saldo do Mês (R$)', key: 'saldo', width: 18 },
+          { header: 'Resultado Acumulado (R$)', key: 'acum', width: 22 },
+        ]}
+        linhas={evolChart.map((e, idx) => {
+          const f = fluxoChart[idx] || { receitas: 0, despesas: 0, saldo: 0 }
+          return {
+            mes: e.mes,
+            custoLanc: fmt(e.custo_lancamentos),
+            custoFin: fmt(e.custo_financeiro),
+            receitas: fmt(Number(f.receitas || 0)),
+            despesas: fmt(Number(f.despesas || 0)),
+            saldo: fmt(Number(f.saldo || 0)),
+            acum: fmt(e.resultado_acum),
+          }
+        })}
+      />
+
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Receita Total" value={fmt(kpis.receita)} accent="positive" />
         <KpiCard title="Custo Total" value={fmt(kpis.custo)} accent="negative" />
@@ -485,7 +573,7 @@ function AbaFinanceiro({ propId, safraId }: { propId: string; safraId: string })
 /* ════════════════════════════════════════════════
    ABA 3 — POR TALHÃO
    ════════════════════════════════════════════════ */
-function AbaPorTalhao({ propId, safraId }: { propId: string; safraId: string }) {
+function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
   const talhaoQ = useQuery({
     queryKey: ['rel-talhao', propId, safraId],
     queryFn: async () => {
@@ -544,6 +632,36 @@ function AbaPorTalhao({ propId, safraId }: { propId: string; safraId: string }) 
 
   return (
     <div className="space-y-4">
+      <ExportButtons
+        propriedadeNome={propriedadeNome}
+        nomeAba="Por Talhão"
+        nomeArquivo="relatorio-por-talhao"
+        colunas={[
+          { header: 'Talhão', key: 'nome', width: 22 },
+          { header: 'Cultura', key: 'cultura', width: 18 },
+          { header: 'Área (ha)', key: 'area', width: 10 },
+          { header: 'Operações', key: 'ops', width: 10 },
+          { header: 'Custo Total (R$)', key: 'custo', width: 16 },
+          { header: 'Custo/ha (R$)', key: 'custoHa', width: 14 },
+          { header: 'Colhido', key: 'colhido', width: 14 },
+          { header: 'Produtividade/ha', key: 'prod', width: 16 },
+          { header: 'Receita estimada (R$)', key: 'receita', width: 18 },
+          { header: 'Resultado estimado (R$)', key: 'resultado', width: 18 },
+        ]}
+        linhas={cards.map((c) => ({
+          nome: c.nome,
+          cultura: c.cultura || '',
+          area: fmtN(c.area),
+          ops: c.ops,
+          custo: fmt(c.custo),
+          custoHa: fmt(c.custoHa),
+          colhido: c.colhida > 0 ? `${fmtN(c.colhida)} ${c.unidade}` : '',
+          prod: c.produtividade > 0 ? `${fmtN(c.produtividade)} ${c.unidade}/ha` : '',
+          receita: fmt(c.receita),
+          resultado: fmt(c.resultado),
+        }))}
+      />
+
       <div className="grid gap-4 md:grid-cols-2">
         {cards.map((c) => (
           <Card key={c.talhao_id}>
@@ -619,7 +737,7 @@ function AbaPorTalhao({ propId, safraId }: { propId: string; safraId: string }) 
 /* ════════════════════════════════════════════════
    ABA 4 — COMPARATIVO DE SAFRAS
    ════════════════════════════════════════════════ */
-function AbaComparativo({ propId, safraAtualId }: { propId: string; safraAtualId: string }) {
+function AbaComparativo({ propId, safraAtualId, propriedadeNome }: { propId: string; safraAtualId: string; propriedadeNome: string }) {
   const compQ = useQuery({
     queryKey: ['rel-comp-safras', propId],
     queryFn: async () => {
@@ -655,6 +773,37 @@ function AbaComparativo({ propId, safraAtualId }: { propId: string; safraAtualId
 
   return (
     <div className="space-y-4">
+      <ExportButtons
+        propriedadeNome={propriedadeNome}
+        nomeAba="Comparativo de Safras"
+        nomeArquivo="relatorio-comparativo"
+        colunas={[
+          { header: 'Safra', key: 'safra', width: 18 },
+          { header: 'Status', key: 'status', width: 12 },
+          { header: 'Receita (R$)', key: 'receita', width: 16 },
+          { header: 'Custo Total (R$)', key: 'custo', width: 16 },
+          { header: 'Resultado (R$)', key: 'resultado', width: 16 },
+          { header: 'Margem %', key: 'margem', width: 10 },
+          { header: 'Área (ha)', key: 'area', width: 10 },
+          { header: 'Custo/ha (R$)', key: 'custoHa', width: 14 },
+          { header: 'Lançamentos', key: 'lanc', width: 12 },
+        ]}
+        linhas={safras.map((s: any) => {
+          const resultado = Number(s.resultado || (Number(s.receita || 0) - Number(s.custo_total || 0)))
+          return {
+            safra: s.safra_nome || '',
+            status: s.fechada ? 'Fechada' : s.ativa ? 'Ativa' : 'Inativa',
+            receita: fmt(Number(s.receita || 0)),
+            custo: fmt(Number(s.custo_total || 0)),
+            resultado: fmt(resultado),
+            margem: fmtPct(Number(s.margem_pct || 0)),
+            area: fmtN(Number(s.area_ha || 0)),
+            custoHa: fmt(Number(s.custo_por_ha || 0)),
+            lanc: Number(s.total_lancamentos || 0),
+          }
+        })}
+      />
+
       <Card>
         <CardHeader><CardTitle className="text-base">Comparativo Detalhado</CardTitle></CardHeader>
         <CardContent>
@@ -728,7 +877,7 @@ function AbaComparativo({ propId, safraAtualId }: { propId: string; safraAtualId
 /* ════════════════════════════════════════════════
    ABA 5 — INSUMOS
    ════════════════════════════════════════════════ */
-function AbaInsumos({ propId, safraId }: { propId: string; safraId: string }) {
+function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
   const insQ = useQuery({
     queryKey: ['rel-insumos', propId, safraId],
     queryFn: async () => {
@@ -772,6 +921,32 @@ function AbaInsumos({ propId, safraId }: { propId: string; safraId: string }) {
 
   return (
     <div className="space-y-4">
+      <ExportButtons
+        propriedadeNome={propriedadeNome}
+        nomeAba="Insumos"
+        nomeArquivo="relatorio-insumos"
+        colunas={[
+          { header: '#', key: 'pos', width: 5 },
+          { header: 'Produto', key: 'produto', width: 30 },
+          { header: 'Unidade', key: 'unidade', width: 10 },
+          { header: 'Qtd Total', key: 'qtd', width: 14 },
+          { header: 'Custo Total (R$)', key: 'custo', width: 16 },
+          { header: 'Custo Unit. Médio (R$)', key: 'unit', width: 18 },
+          { header: '% do Total', key: 'pct', width: 10 },
+          { header: 'Talhões', key: 'talhoes', width: 30 },
+        ]}
+        linhas={itens.map((i: any, idx: number) => ({
+          pos: idx + 1,
+          produto: i.produto_nome || '',
+          unidade: i.unidade || '',
+          qtd: fmtN(Number(i.quantidade_total || 0)),
+          custo: fmt(Number(i.custo_total || 0)),
+          unit: fmt(Number(i.custo_unitario_medio || 0)),
+          pct: total > 0 ? ((Number(i.custo_total || 0) / total) * 100).toFixed(2) + '%' : '0%',
+          talhoes: i.talhoes || '',
+        }))}
+      />
+
       <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
         <KpiCard title="Total gasto em insumos" value={fmt(total)} accent="negative" />
         <KpiCard title="Insumo mais caro" value={top1?.produto_nome || '—'} subValue={top1 ? fmt(Number(top1.custo_total || 0)) : ''} />
