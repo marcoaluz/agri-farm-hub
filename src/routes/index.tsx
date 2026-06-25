@@ -121,6 +121,7 @@ export function AppRoutes() {
         <Route path="lancamentos/novo" element={<LancamentoForm />} />
         <Route path="lancamentos/:id" element={<LancamentoForm />} />
         <Route path="calendario" element={<Calendario />} />
+        <Route path="agenda" element={<Agenda />} />
         <Route path="maquinas" element={<Maquinas />} />
         <Route path="pecuaria" element={<Pecuaria />} />
         <Route path="financeiro" element={<Financeiro />} />
