@@ -66,6 +66,7 @@ const schema = z.object({
   status: z.enum(['pendente', 'pago', 'cancelado']),
   data_pagamento: z.date().nullable().optional(),
   fornecedor_cliente: z.string().optional(),
+  contato_id: z.string().nullable().optional(),
   numero_nf: z.string().optional(),
   forma_pagamento: z.string().optional(),
   talhao_id: z.string().optional(),
