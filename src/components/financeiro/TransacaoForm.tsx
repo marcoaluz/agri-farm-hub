@@ -112,6 +112,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       status: 'pendente',
       data_pagamento: null,
       fornecedor_cliente: '',
+      contato_id: null,
       numero_nf: '',
       forma_pagamento: '',
       talhao_id: '',
