@@ -39,6 +39,7 @@ import Convite from '@/pages/Convite'
 import Convites from '@/pages/admin/Convites'
 import NotFound from '@/pages/NotFound'
 import MinhaEquipe from '@/pages/MinhaEquipe'
+import Agenda from '@/pages/Agenda'
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
