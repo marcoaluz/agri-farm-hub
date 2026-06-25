@@ -45,6 +45,8 @@ import {
   Puzzle,
 } from 'lucide-react'
 import { AdminPropertyPicker } from '@/components/layout/AdminPropertyPicker'
+import { NotificationBell } from '@/components/NotificationBell'
+
 
 interface HeaderGlobalProps {
   onMenuClick?: () => void
@@ -448,22 +450,8 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
           )}
 
           {/* Notificações */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative h-9 w-9"
-            onClick={() => navigate('/notificacoes')}
-          >
-            <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-            {notificacoesCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 flex items-center justify-center text-[10px] sm:text-xs"
-              >
-                {notificacoesCount}
-              </Badge>
-            )}
-          </Button>
+          <NotificationBell />
+
 
           {/* User Menu */}
           <DropdownMenu>
