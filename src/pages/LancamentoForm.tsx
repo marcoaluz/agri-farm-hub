@@ -24,6 +24,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Separator } from '@/components/ui/separator'
+import { Anexos } from '@/components/Anexos'
+
 import { 
   ArrowLeft, 
   Loader2, 
@@ -1102,7 +1104,20 @@ export function LancamentoForm() {
               </Card>
             )}
 
+            {lancamentoId && propriedadeAtual?.id && (
+              <Card>
+                <CardContent className="pt-4">
+                  <Anexos
+                    entidadeTipo="lancamento"
+                    entidadeId={lancamentoId}
+                    propriedadeId={propriedadeAtual.id}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             {/* Botões - Mobile */}
+
             <div className="lg:hidden flex flex-col gap-3 pt-4 border-t">
               <Button
                 type="button"

@@ -28,6 +28,8 @@ import { useTalhoes } from '@/hooks/useTalhoes'
 import { useCreateTransacao, useUpdateTransacao, type Transacao } from '@/hooks/useTransacoes'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { Anexos } from '@/components/Anexos'
+
 
 const categorias = [
   { value: 'insumos', label: 'Insumos' },
@@ -543,12 +545,19 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
               </div>
             )}
 
+            {isEditing && transacao && propId && (
+              <div className="pt-3 border-t">
+                <Anexos entidadeTipo="transacao" entidadeId={transacao.id} propriedadeId={propId} />
+              </div>
+            )}
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
               <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
                 {(createMutation.isPending || updateMutation.isPending) ? 'Salvando...' : 'Salvar'}
               </Button>
             </DialogFooter>
+
           </form>
         </Form>
       </DialogContent>
