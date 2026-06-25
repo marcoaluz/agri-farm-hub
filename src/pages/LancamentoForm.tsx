@@ -24,6 +24,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Separator } from '@/components/ui/separator'
+import { Anexos } from '@/components/Anexos'
+
 import { 
   ArrowLeft, 
   Loader2, 
