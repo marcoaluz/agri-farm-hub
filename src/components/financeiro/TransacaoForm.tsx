@@ -29,6 +29,7 @@ import { useCreateTransacao, useUpdateTransacao, type Transacao } from '@/hooks/
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { Anexos } from '@/components/Anexos'
+import { ContatoCombobox } from '@/components/financeiro/ContatoCombobox'
 
 
 const categorias = [
