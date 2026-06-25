@@ -248,6 +248,32 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
 
   return (
     <div className="space-y-4">
+      <ExportButtons
+        propriedadeNome={propriedadeNome}
+        nomeAba="Operacional"
+        nomeArquivo="relatorio-operacional"
+        colunas={[
+          { header: 'Data', key: 'data', width: 12 },
+          { header: 'Serviço', key: 'servico', width: 24 },
+          { header: 'Categoria', key: 'categoria', width: 18 },
+          { header: 'Talhão', key: 'talhao', width: 18 },
+          { header: 'Área (ha)', key: 'area', width: 10 },
+          { header: 'Custo Total (R$)', key: 'custo', width: 16 },
+          { header: 'Custo/ha (R$)', key: 'custoHa', width: 14 },
+          { header: 'Observações', key: 'obs', width: 30 },
+        ]}
+        linhas={ordenados.map((l: any) => ({
+          data: fmtData(l.data_execucao),
+          servico: l.servico_nome || '',
+          categoria: l.servico_categoria || '',
+          talhao: l.talhao_nome || '',
+          area: l.talhao_area_ha ? fmtN(Number(l.talhao_area_ha)) : '',
+          custo: fmt(Number(l.custo_total || 0)),
+          custoHa: l.custo_por_ha ? fmt(Number(l.custo_por_ha)) : '',
+          obs: l.observacoes || '',
+        }))}
+      />
+
       {/* KPIs */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Total de Lançamentos" value={String(kpis.total)} />
@@ -440,6 +466,33 @@ function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; s
 
   return (
     <div className="space-y-4">
+      <ExportButtons
+        propriedadeNome={propriedadeNome}
+        nomeAba="Financeiro"
+        nomeArquivo="relatorio-financeiro"
+        colunas={[
+          { header: 'Mês', key: 'mes', width: 12 },
+          { header: 'Custo Lançamentos (R$)', key: 'custoLanc', width: 20 },
+          { header: 'Custo Financeiro (R$)', key: 'custoFin', width: 20 },
+          { header: 'Receitas (R$)', key: 'receitas', width: 16 },
+          { header: 'Despesas (R$)', key: 'despesas', width: 16 },
+          { header: 'Saldo do Mês (R$)', key: 'saldo', width: 18 },
+          { header: 'Resultado Acumulado (R$)', key: 'acum', width: 22 },
+        ]}
+        linhas={evolChart.map((e, idx) => {
+          const f = fluxoChart[idx] || { receitas: 0, despesas: 0, saldo: 0 }
+          return {
+            mes: e.mes,
+            custoLanc: fmt(e.custo_lancamentos),
+            custoFin: fmt(e.custo_financeiro),
+            receitas: fmt(Number(f.receitas || 0)),
+            despesas: fmt(Number(f.despesas || 0)),
+            saldo: fmt(Number(f.saldo || 0)),
+            acum: fmt(e.resultado_acum),
+          }
+        })}
+      />
+
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Receita Total" value={fmt(kpis.receita)} accent="positive" />
         <KpiCard title="Custo Total" value={fmt(kpis.custo)} accent="negative" />
@@ -579,6 +632,36 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
 
   return (
     <div className="space-y-4">
+      <ExportButtons
+        propriedadeNome={propriedadeNome}
+        nomeAba="Por Talhão"
+        nomeArquivo="relatorio-por-talhao"
+        colunas={[
+          { header: 'Talhão', key: 'nome', width: 22 },
+          { header: 'Cultura', key: 'cultura', width: 18 },
+          { header: 'Área (ha)', key: 'area', width: 10 },
+          { header: 'Operações', key: 'ops', width: 10 },
+          { header: 'Custo Total (R$)', key: 'custo', width: 16 },
+          { header: 'Custo/ha (R$)', key: 'custoHa', width: 14 },
+          { header: 'Colhido', key: 'colhido', width: 14 },
+          { header: 'Produtividade/ha', key: 'prod', width: 16 },
+          { header: 'Receita estimada (R$)', key: 'receita', width: 18 },
+          { header: 'Resultado estimado (R$)', key: 'resultado', width: 18 },
+        ]}
+        linhas={cards.map((c) => ({
+          nome: c.nome,
+          cultura: c.cultura || '',
+          area: fmtN(c.area),
+          ops: c.ops,
+          custo: fmt(c.custo),
+          custoHa: fmt(c.custoHa),
+          colhido: c.colhida > 0 ? `${fmtN(c.colhida)} ${c.unidade}` : '',
+          prod: c.produtividade > 0 ? `${fmtN(c.produtividade)} ${c.unidade}/ha` : '',
+          receita: fmt(c.receita),
+          resultado: fmt(c.resultado),
+        }))}
+      />
+
       <div className="grid gap-4 md:grid-cols-2">
         {cards.map((c) => (
           <Card key={c.talhao_id}>
@@ -690,6 +773,37 @@ function AbaComparativo({ propId, safraAtualId, propriedadeNome }: { propId: str
 
   return (
     <div className="space-y-4">
+      <ExportButtons
+        propriedadeNome={propriedadeNome}
+        nomeAba="Comparativo de Safras"
+        nomeArquivo="relatorio-comparativo"
+        colunas={[
+          { header: 'Safra', key: 'safra', width: 18 },
+          { header: 'Status', key: 'status', width: 12 },
+          { header: 'Receita (R$)', key: 'receita', width: 16 },
+          { header: 'Custo Total (R$)', key: 'custo', width: 16 },
+          { header: 'Resultado (R$)', key: 'resultado', width: 16 },
+          { header: 'Margem %', key: 'margem', width: 10 },
+          { header: 'Área (ha)', key: 'area', width: 10 },
+          { header: 'Custo/ha (R$)', key: 'custoHa', width: 14 },
+          { header: 'Lançamentos', key: 'lanc', width: 12 },
+        ]}
+        linhas={safras.map((s: any) => {
+          const resultado = Number(s.resultado || (Number(s.receita || 0) - Number(s.custo_total || 0)))
+          return {
+            safra: s.safra_nome || '',
+            status: s.fechada ? 'Fechada' : s.ativa ? 'Ativa' : 'Inativa',
+            receita: fmt(Number(s.receita || 0)),
+            custo: fmt(Number(s.custo_total || 0)),
+            resultado: fmt(resultado),
+            margem: fmtPct(Number(s.margem_pct || 0)),
+            area: fmtN(Number(s.area_ha || 0)),
+            custoHa: fmt(Number(s.custo_por_ha || 0)),
+            lanc: Number(s.total_lancamentos || 0),
+          }
+        })}
+      />
+
       <Card>
         <CardHeader><CardTitle className="text-base">Comparativo Detalhado</CardTitle></CardHeader>
         <CardContent>
@@ -807,6 +921,32 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
 
   return (
     <div className="space-y-4">
+      <ExportButtons
+        propriedadeNome={propriedadeNome}
+        nomeAba="Insumos"
+        nomeArquivo="relatorio-insumos"
+        colunas={[
+          { header: '#', key: 'pos', width: 5 },
+          { header: 'Produto', key: 'produto', width: 30 },
+          { header: 'Unidade', key: 'unidade', width: 10 },
+          { header: 'Qtd Total', key: 'qtd', width: 14 },
+          { header: 'Custo Total (R$)', key: 'custo', width: 16 },
+          { header: 'Custo Unit. Médio (R$)', key: 'unit', width: 18 },
+          { header: '% do Total', key: 'pct', width: 10 },
+          { header: 'Talhões', key: 'talhoes', width: 30 },
+        ]}
+        linhas={itens.map((i: any, idx: number) => ({
+          pos: idx + 1,
+          produto: i.produto_nome || '',
+          unidade: i.unidade || '',
+          qtd: fmtN(Number(i.quantidade_total || 0)),
+          custo: fmt(Number(i.custo_total || 0)),
+          unit: fmt(Number(i.custo_unitario_medio || 0)),
+          pct: total > 0 ? ((Number(i.custo_total || 0) / total) * 100).toFixed(2) + '%' : '0%',
+          talhoes: i.talhoes || '',
+        }))}
+      />
+
       <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
         <KpiCard title="Total gasto em insumos" value={fmt(total)} accent="negative" />
         <KpiCard title="Insumo mais caro" value={top1?.produto_nome || '—'} subValue={top1 ? fmt(Number(top1.custo_total || 0)) : ''} />
