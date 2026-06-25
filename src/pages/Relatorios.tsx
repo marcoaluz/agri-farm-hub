@@ -6,6 +6,8 @@ import { ptBR } from 'date-fns/locale'
 import {
   BarChart3, ClipboardList, DollarSign, Sprout, TrendingUp, Package,
   ArrowUpDown, ChevronUp, ChevronDown, Download, FileX, Lock, Circle, Leaf,
+  FileSpreadsheet, FileText,
+
 } from 'lucide-react'
 import {
   BarChart, Bar, ComposedChart, Line, PieChart, Pie, Cell, XAxis, YAxis,
@@ -20,6 +22,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Progress } from '@/components/ui/progress'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { exportarExcel, exportarPDF, type Coluna } from '@/lib/exportTabela'
+
 
 /* ───────────────── helpers ───────────────── */
 const fmt = (v: number) =>
