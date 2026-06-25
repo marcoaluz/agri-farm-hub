@@ -139,11 +139,12 @@ export function Relatorios() {
           <TabsTrigger value="insumos"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="operacional"><AbaOperacional propId={propId} safraId={safraId} /></TabsContent>
-        <TabsContent value="financeiro"><AbaFinanceiro propId={propId} safraId={safraId} /></TabsContent>
-        <TabsContent value="talhao"><AbaPorTalhao propId={propId} safraId={safraId} /></TabsContent>
-        <TabsContent value="comparativo"><AbaComparativo propId={propId} safraAtualId={safraId} /></TabsContent>
-        <TabsContent value="insumos"><AbaInsumos propId={propId} safraId={safraId} /></TabsContent>
+        <TabsContent value="operacional"><AbaOperacional propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="financeiro"><AbaFinanceiro propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="talhao"><AbaPorTalhao propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="comparativo"><AbaComparativo propId={propId} safraAtualId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="insumos"><AbaInsumos propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+
       </Tabs>
     </div>
   )
