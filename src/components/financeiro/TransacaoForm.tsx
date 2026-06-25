@@ -230,6 +230,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       status: data.status,
       data_pagamento: data.data_pagamento ? format(data.data_pagamento, 'yyyy-MM-dd') : null,
       fornecedor_cliente: data.fornecedor_cliente || null,
+      contato_id: data.contato_id || null,
       numero_nf: data.numero_nf || null,
       forma_pagamento: data.forma_pagamento || null,
       talhao_id: data.talhao_id || null,
