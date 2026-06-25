@@ -47,6 +47,7 @@ const routes = [
   { label: 'Minha Equipe',  icon: Users,           href: '/equipe',       sempre: true, hideForAdmin: true },
   { label: 'Safras',        icon: Calendar,        href: '/safras',       modulo: 'lavoura' as const },
   { label: 'Talhões',       icon: MapPin,          href: '/talhoes',      modulo: 'lavoura' as const },
+  { label: 'Mapa',          icon: MapPin,          href: '/mapa',         modulo: 'lavoura' as const },
   { label: 'Estoque',       icon: Package,         href: '/estoque',      sempre: true },
   { label: 'Serviços',      icon: Wheat,           href: '/servicos',     sempre: true },
   { label: 'Lançamentos',   icon: ClipboardList,   href: '/lancamentos',  sempre: true },
