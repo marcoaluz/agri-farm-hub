@@ -184,6 +184,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         status: transacao.status === 'vencido' ? 'pendente' : transacao.status as any,
         data_pagamento: transacao.data_pagamento ? new Date(transacao.data_pagamento + 'T12:00:00') : null,
         fornecedor_cliente: transacao.fornecedor_cliente || '',
+        contato_id: (transacao as any)?.contato_id || null,
         numero_nf: transacao.numero_nf || '',
         forma_pagamento: transacao.forma_pagamento || '',
         talhao_id: transacao.talhao_id || '',
