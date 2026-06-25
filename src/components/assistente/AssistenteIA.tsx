@@ -328,8 +328,33 @@ ${(sanitario || []).map((s: any) =>
             )}
           </div>
 
+          {/* Bloqueio por plano sem IA */}
+          {!carregandoPlano && !temAcessoIA && (
+            <div className="border-t border-border p-4 space-y-3 bg-muted/30">
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">Assistente de IA bloqueado</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    O Assistente de IA está disponível nos planos <strong>Profissional</strong> e <strong>Avançado</strong>.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => { setAberto(false); navigate('/planos') }}
+                className="w-full"
+                size="sm"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Ver planos e fazer upgrade
+              </Button>
+            </div>
+          )}
+
           {/* Sugestões rápidas */}
-          {mensagens.filter(m => m.role === 'user').length === 0 && (
+          {temAcessoIA && mensagens.filter(m => m.role === 'user').length === 0 && (
             <div className="flex flex-wrap gap-1.5 px-4 pb-2">
               {[
                 'Como está meu estoque?',
@@ -349,43 +374,52 @@ ${(sanitario || []).map((s: any) =>
           )}
 
           {/* Input */}
-          <div className="flex items-center gap-2 px-3 py-3 border-t border-border">
-            <Input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  enviarMensagem(input)
-                }
-              }}
-              placeholder={gravando ? '🎙️ Ouvindo...' : 'Pergunte algo...'}
-              disabled={carregando || gravando}
-              className="flex-1 text-sm"
-            />
+          {temAcessoIA && (
+            <div className="px-3 py-3 border-t border-border space-y-1">
+              {!isSuperAdmin && limiteIA > 0 && (
+                <p className="text-[10px] text-muted-foreground px-1">
+                  {limiteIA} consultas disponíveis no seu plano
+                </p>
+              )}
+              <div className="flex items-center gap-2">
+                <Input
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      enviarMensagem(input)
+                    }
+                  }}
+                  placeholder={gravando ? '🎙️ Ouvindo...' : 'Pergunte algo...'}
+                  disabled={carregando || gravando}
+                  className="flex-1 text-sm"
+                />
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 shrink-0"
-              onClick={gravando ? pararGravacao : iniciarGravacao}
-            >
-              {gravando
-                ? <MicOff className="h-4 w-4 text-destructive" />
-                : <Mic className="h-4 w-4 text-muted-foreground" />}
-            </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={gravando ? pararGravacao : iniciarGravacao}
+                >
+                  {gravando
+                    ? <MicOff className="h-4 w-4 text-destructive" />
+                    : <Mic className="h-4 w-4 text-muted-foreground" />}
+                </Button>
 
-            <Button
-              size="icon"
-              className="h-9 w-9 shrink-0"
-              onClick={() => enviarMensagem(input)}
-              disabled={!input.trim() || carregando}
-            >
-              {carregando
-                ? <Loader2 className="h-4 w-4 animate-spin" />
-                : <Send className="h-4 w-4" />}
-            </Button>
-          </div>
+                <Button
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => enviarMensagem(input)}
+                  disabled={!input.trim() || carregando}
+                >
+                  {carregando
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
