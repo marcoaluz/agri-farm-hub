@@ -29,6 +29,7 @@ import { useCreateTransacao, useUpdateTransacao, type Transacao } from '@/hooks/
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { Anexos } from '@/components/Anexos'
+import { ContatoCombobox } from '@/components/financeiro/ContatoCombobox'
 
 
 const categorias = [
@@ -65,6 +66,7 @@ const schema = z.object({
   status: z.enum(['pendente', 'pago', 'cancelado']),
   data_pagamento: z.date().nullable().optional(),
   fornecedor_cliente: z.string().optional(),
+  contato_id: z.string().nullable().optional(),
   numero_nf: z.string().optional(),
   forma_pagamento: z.string().optional(),
   talhao_id: z.string().optional(),
@@ -110,6 +112,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       status: 'pendente',
       data_pagamento: null,
       fornecedor_cliente: '',
+      contato_id: null,
       numero_nf: '',
       forma_pagamento: '',
       talhao_id: '',
@@ -181,6 +184,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         status: transacao.status === 'vencido' ? 'pendente' : transacao.status as any,
         data_pagamento: transacao.data_pagamento ? new Date(transacao.data_pagamento + 'T12:00:00') : null,
         fornecedor_cliente: transacao.fornecedor_cliente || '',
+        contato_id: (transacao as any)?.contato_id || null,
         numero_nf: transacao.numero_nf || '',
         forma_pagamento: transacao.forma_pagamento || '',
         talhao_id: transacao.talhao_id || '',
@@ -199,7 +203,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
     } else {
       form.reset({
         tipo: 'despesa', descricao: '', categoria: '', valor: '' as any,
-        status: 'pendente', data_pagamento: null, fornecedor_cliente: '',
+        status: 'pendente', data_pagamento: null, fornecedor_cliente: '', contato_id: null,
         numero_nf: '', forma_pagamento: '', talhao_id: '', observacoes: '',
         parcelar: false, num_parcelas: '' as any,
         cultura_id: '', quantidade_produzida: '' as any,
@@ -226,6 +230,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       status: data.status,
       data_pagamento: data.data_pagamento ? format(data.data_pagamento, 'yyyy-MM-dd') : null,
       fornecedor_cliente: data.fornecedor_cliente || null,
+      contato_id: data.contato_id || null,
       numero_nf: data.numero_nf || null,
       forma_pagamento: data.forma_pagamento || null,
       talhao_id: data.talhao_id || null,
@@ -462,7 +467,17 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
               <FormField control={form.control} name="fornecedor_cliente" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Fornecedor / Cliente</FormLabel>
-                  <FormControl><Input {...field} placeholder="Nome" /></FormControl>
+                  <FormControl>
+                    <ContatoCombobox
+                      propriedadeId={propId}
+                      value={field.value || ''}
+                      contatoId={form.watch('contato_id') ?? null}
+                      onChange={(nome, contatoId) => {
+                        field.onChange(nome)
+                        form.setValue('contato_id', contatoId)
+                      }}
+                    />
+                  </FormControl>
                 </FormItem>
               )} />
               <FormField control={form.control} name="numero_nf" render={({ field }) => (
