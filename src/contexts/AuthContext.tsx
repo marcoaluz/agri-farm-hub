@@ -1,127 +1,123 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { User, Session, AuthError } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
-import { useNavigate } from 'react-router-dom'
-import { useToast } from '@/hooks/use-toast'
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { User, Session, AuthError } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
-type UserStatus = 'pendente' | 'ativo' | 'inativo' | null
+type UserStatus = "pendente" | "ativo" | "inativo" | null;
 
 interface AuthContextType {
-  user: User | null
-  session: Session | null
-  loading: boolean
-  userStatus: UserStatus
-  signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, name: string) => Promise<void>
-  signOut: () => Promise<void>
-  resetPassword: (email: string) => Promise<void>
+  user: User | null;
+  session: Session | null;
+  loading: boolean;
+  userStatus: UserStatus;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [userStatus, setUserStatus] = useState<UserStatus>(null)
-  const { toast } = useToast()
-  const navigate = useNavigate()
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [userStatus, setUserStatus] = useState<UserStatus>(null);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const fetchUserStatus = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('status')
-        .eq('id', userId)
-        .single()
+      const { data, error } = await supabase.from("user_profiles").select("status").eq("id", userId).single();
 
       if (error || !data) {
-        setUserStatus(null)
-        return
+        setUserStatus(null);
+        return;
       }
-      setUserStatus((data.status as UserStatus) || 'ativo')
+      setUserStatus((data.status as UserStatus) || "ativo");
     } catch {
-      setUserStatus(null)
+      setUserStatus(null);
     }
-  }
+  };
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     const initializeAuth = async () => {
       const {
         data: { session },
-      } = await supabase.auth.getSession()
+      } = await supabase.auth.getSession();
 
-      if (!mounted) return
+      if (!mounted) return;
 
-      setSession(session)
-      setUser(session?.user ?? null)
+      setSession(session);
+      setUser(session?.user ?? null);
 
       if (session?.user) {
-        await fetchUserStatus(session.user.id)
+        await fetchUserStatus(session.user.id);
       } else {
-        setUserStatus(null)
+        setUserStatus(null);
       }
 
       if (mounted) {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return
+      if (!mounted) return;
 
-      setSession(session)
-      setUser(session?.user ?? null)
+      setSession(session);
+      setUser(session?.user ?? null);
 
       if (session?.user) {
-        void fetchUserStatus(session.user.id)
+        void fetchUserStatus(session.user.id);
       } else {
-        setUserStatus(null)
+        setUserStatus(null);
       }
-    })
+    });
 
-    void initializeAuth()
+    void initializeAuth();
 
     return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
-  }, [])
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      })
+      });
 
-      if (error) throw error
+      if (error) throw error;
 
       toast({
-        title: 'Login realizado com sucesso!',
+        title: "Login realizado com sucesso!",
         description: `Bem-vindo de volta, ${data.user.email}`,
-      })
+      });
 
-      navigate('/')
+      navigate("/");
     } catch (error) {
-      const authError = error as AuthError
+      const authError = error as AuthError;
       toast({
-        title: 'Erro ao fazer login',
+        title: "Erro ao fazer login",
         description: authError.message,
-        variant: 'destructive',
-      })
-      throw error
+        variant: "destructive",
+      });
+      throw error;
     }
-  }
+  };
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      const redirectUrl = `${window.location.origin}/`
-      
+      const redirectUrl = `${window.location.origin}/`;
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -131,72 +127,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
           emailRedirectTo: redirectUrl,
         },
-      })
+      });
 
-      if (error) throw error
+      if (error) throw error;
 
       toast({
-        title: 'Cadastro realizado!',
-        description: 'Verifique seu email para confirmar a conta.',
-      })
+        title: "Cadastro realizado!",
+        description: "Verifique seu email para confirmar a conta.",
+      });
 
-      navigate('/login')
+      navigate("/login");
     } catch (error) {
-      const authError = error as AuthError
+      const authError = error as AuthError;
       toast({
-        title: 'Erro ao criar conta',
+        title: "Erro ao criar conta",
         description: authError.message,
-        variant: 'destructive',
-      })
-      throw error
+        variant: "destructive",
+      });
+      throw error;
     }
-  }
+  };
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error && !error.message?.includes('session missing') && !error.message?.includes('Failed to fetch')) throw error
+      const { error } = await supabase.auth.signOut();
+      if (error && !error.message?.includes("session missing") && !error.message?.includes("Failed to fetch"))
+        throw error;
     } catch (error) {
-      console.warn('Erro ao sair (ignorado):', error)
+      console.warn("Erro ao sair (ignorado):", error);
     } finally {
       // Sempre limpar estado local, mesmo se a chamada falhar
-      setUser(null)
-      setSession(null)
-      setUserStatus(null)
-      localStorage.removeItem('sga_propriedade_id')
-      localStorage.removeItem('sga_safra_id')
+      setUser(null);
+      setSession(null);
+      setUserStatus(null);
+      localStorage.removeItem("sga_propriedade_id");
+      localStorage.removeItem("sga_safra_id");
 
       toast({
-        title: 'Logout realizado',
-        description: 'Até logo!',
-      })
+        title: "Logout realizado",
+        description: "Até logo!",
+      });
 
-      navigate('/login')
+      navigate("/login");
     }
-  }
+  };
 
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
-      })
+      });
 
-      if (error) throw error
+      if (error) throw error;
 
       toast({
-        title: 'Email enviado!',
-        description: 'Verifique sua caixa de entrada para redefinir a senha.',
-      })
+        title: "Email enviado!",
+        description: "Verifique sua caixa de entrada para redefinir a senha.",
+      });
     } catch (error) {
-      const authError = error as AuthError
+      const authError = error as AuthError;
       toast({
-        title: 'Erro ao enviar email',
+        title: "Erro ao enviar email",
         description: authError.message,
-        variant: 'destructive',
-      })
-      throw error
+        variant: "destructive",
+      });
+      throw error;
     }
-  }
+  };
 
   const value = {
     user,
@@ -207,15 +204,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signOut,
     resetPassword,
-  }
+  };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-  return context
+  return context;
 }
