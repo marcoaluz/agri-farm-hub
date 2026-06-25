@@ -467,7 +467,17 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
               <FormField control={form.control} name="fornecedor_cliente" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Fornecedor / Cliente</FormLabel>
-                  <FormControl><Input {...field} placeholder="Nome" /></FormControl>
+                  <FormControl>
+                    <ContatoCombobox
+                      propriedadeId={propId}
+                      value={field.value || ''}
+                      contatoId={form.watch('contato_id') ?? null}
+                      onChange={(nome, contatoId) => {
+                        field.onChange(nome)
+                        form.setValue('contato_id', contatoId)
+                      }}
+                    />
+                  </FormControl>
                 </FormItem>
               )} />
               <FormField control={form.control} name="numero_nf" render={({ field }) => (
