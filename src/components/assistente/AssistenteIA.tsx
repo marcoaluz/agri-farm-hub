@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useSafraContext } from '@/contexts/SafraContext'
@@ -7,9 +9,15 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import {
-  Bot, X, Send, Mic, MicOff, Loader2, Sprout
+  Bot, X, Send, Mic, MicOff, Loader2, Sprout, Lock, Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+interface PlanoAtivo {
+  limite_ia?: number | null
+  plano_nome?: string | null
+  [k: string]: any
+}
 
 interface Mensagem {
   id: string
@@ -34,6 +42,36 @@ export function AssistenteIA() {
 
   const { propriedadeAtual } = useGlobal()
   const { safraSelecionada } = useSafraContext()
+  const navigate = useNavigate()
+
+  // Verifica plano e flag de super admin
+  const { data: planoInfo, isLoading: carregandoPlano } = useQuery({
+    queryKey: ['plano-ativo-ia'],
+    queryFn: async () => {
+      const { data: userData } = await supabase.auth.getUser()
+      const userId = userData.user?.id
+      let isSuperAdmin = false
+      if (userId) {
+        const { data: perfil } = await supabase
+          .from('user_profiles' as any)
+          .select('is_super_admin')
+          .eq('id', userId)
+          .maybeSingle()
+        isSuperAdmin = (perfil as any)?.is_super_admin === true
+      }
+      const { data, error } = await supabase.rpc('get_plano_ativo_usuario' as any)
+      if (error) throw error
+      const plano = (Array.isArray(data) ? data[0] : data) as PlanoAtivo | null
+      return { plano, isSuperAdmin }
+    },
+    enabled: aberto,
+    staleTime: 60_000,
+  })
+
+  const isSuperAdmin = planoInfo?.isSuperAdmin === true
+  const limiteIA = Number(planoInfo?.plano?.limite_ia ?? 0)
+  const temAcessoIA = isSuperAdmin || limiteIA > 0
+
 
   const buscarContexto = useCallback(async () => {
     if (!propriedadeAtual?.id) return 'Nenhuma propriedade selecionada.'
@@ -290,8 +328,33 @@ ${(sanitario || []).map((s: any) =>
             )}
           </div>
 
+          {/* Bloqueio por plano sem IA */}
+          {!carregandoPlano && !temAcessoIA && (
+            <div className="border-t border-border p-4 space-y-3 bg-muted/30">
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">Assistente de IA bloqueado</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    O Assistente de IA está disponível nos planos <strong>Profissional</strong> e <strong>Avançado</strong>.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => { setAberto(false); navigate('/planos') }}
+                className="w-full"
+                size="sm"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Ver planos e fazer upgrade
+              </Button>
+            </div>
+          )}
+
           {/* Sugestões rápidas */}
-          {mensagens.filter(m => m.role === 'user').length === 0 && (
+          {temAcessoIA && mensagens.filter(m => m.role === 'user').length === 0 && (
             <div className="flex flex-wrap gap-1.5 px-4 pb-2">
               {[
                 'Como está meu estoque?',
@@ -311,43 +374,52 @@ ${(sanitario || []).map((s: any) =>
           )}
 
           {/* Input */}
-          <div className="flex items-center gap-2 px-3 py-3 border-t border-border">
-            <Input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  enviarMensagem(input)
-                }
-              }}
-              placeholder={gravando ? '🎙️ Ouvindo...' : 'Pergunte algo...'}
-              disabled={carregando || gravando}
-              className="flex-1 text-sm"
-            />
+          {temAcessoIA && (
+            <div className="px-3 py-3 border-t border-border space-y-1">
+              {!isSuperAdmin && limiteIA > 0 && (
+                <p className="text-[10px] text-muted-foreground px-1">
+                  {limiteIA} consultas disponíveis no seu plano
+                </p>
+              )}
+              <div className="flex items-center gap-2">
+                <Input
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      enviarMensagem(input)
+                    }
+                  }}
+                  placeholder={gravando ? '🎙️ Ouvindo...' : 'Pergunte algo...'}
+                  disabled={carregando || gravando}
+                  className="flex-1 text-sm"
+                />
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 shrink-0"
-              onClick={gravando ? pararGravacao : iniciarGravacao}
-            >
-              {gravando
-                ? <MicOff className="h-4 w-4 text-destructive" />
-                : <Mic className="h-4 w-4 text-muted-foreground" />}
-            </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={gravando ? pararGravacao : iniciarGravacao}
+                >
+                  {gravando
+                    ? <MicOff className="h-4 w-4 text-destructive" />
+                    : <Mic className="h-4 w-4 text-muted-foreground" />}
+                </Button>
 
-            <Button
-              size="icon"
-              className="h-9 w-9 shrink-0"
-              onClick={() => enviarMensagem(input)}
-              disabled={!input.trim() || carregando}
-            >
-              {carregando
-                ? <Loader2 className="h-4 w-4 animate-spin" />
-                : <Send className="h-4 w-4" />}
-            </Button>
-          </div>
+                <Button
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => enviarMensagem(input)}
+                  disabled={!input.trim() || carregando}
+                >
+                  {carregando
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
