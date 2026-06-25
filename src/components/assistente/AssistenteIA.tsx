@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useSafraContext } from '@/contexts/SafraContext'
@@ -7,9 +9,15 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import {
-  Bot, X, Send, Mic, MicOff, Loader2, Sprout
+  Bot, X, Send, Mic, MicOff, Loader2, Sprout, Lock, Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+interface PlanoAtivo {
+  limite_ia?: number | null
+  plano_nome?: string | null
+  [k: string]: any
+}
 
 interface Mensagem {
   id: string
