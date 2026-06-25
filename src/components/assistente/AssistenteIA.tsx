@@ -42,6 +42,36 @@ export function AssistenteIA() {
 
   const { propriedadeAtual } = useGlobal()
   const { safraSelecionada } = useSafraContext()
+  const navigate = useNavigate()
+
+  // Verifica plano e flag de super admin
+  const { data: planoInfo, isLoading: carregandoPlano } = useQuery({
+    queryKey: ['plano-ativo-ia'],
+    queryFn: async () => {
+      const { data: userData } = await supabase.auth.getUser()
+      const userId = userData.user?.id
+      let isSuperAdmin = false
+      if (userId) {
+        const { data: perfil } = await supabase
+          .from('user_profiles' as any)
+          .select('is_super_admin')
+          .eq('id', userId)
+          .maybeSingle()
+        isSuperAdmin = (perfil as any)?.is_super_admin === true
+      }
+      const { data, error } = await supabase.rpc('get_plano_ativo_usuario' as any)
+      if (error) throw error
+      const plano = (Array.isArray(data) ? data[0] : data) as PlanoAtivo | null
+      return { plano, isSuperAdmin }
+    },
+    enabled: aberto,
+    staleTime: 60_000,
+  })
+
+  const isSuperAdmin = planoInfo?.isSuperAdmin === true
+  const limiteIA = Number(planoInfo?.plano?.limite_ia ?? 0)
+  const temAcessoIA = isSuperAdmin || limiteIA > 0
+
 
   const buscarContexto = useCallback(async () => {
     if (!propriedadeAtual?.id) return 'Nenhuma propriedade selecionada.'
