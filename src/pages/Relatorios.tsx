@@ -153,7 +153,7 @@ export function Relatorios() {
 /* ════════════════════════════════════════════════
    ABA 1 — OPERACIONAL
    ════════════════════════════════════════════════ */
-function AbaOperacional({ propId, safraId }: { propId: string; safraId: string }) {
+function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
   const lancQ = useQuery({
     queryKey: ['rel-op-lanc', propId, safraId],
     queryFn: async () => {
@@ -365,7 +365,7 @@ function AbaOperacional({ propId, safraId }: { propId: string; safraId: string }
 /* ════════════════════════════════════════════════
    ABA 2 — FINANCEIRO
    ════════════════════════════════════════════════ */
-function AbaFinanceiro({ propId, safraId }: { propId: string; safraId: string }) {
+function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
   const evolQ = useQuery({
     queryKey: ['rel-fin-evol', propId, safraId],
     queryFn: async () => {
@@ -520,7 +520,7 @@ function AbaFinanceiro({ propId, safraId }: { propId: string; safraId: string })
 /* ════════════════════════════════════════════════
    ABA 3 — POR TALHÃO
    ════════════════════════════════════════════════ */
-function AbaPorTalhao({ propId, safraId }: { propId: string; safraId: string }) {
+function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
   const talhaoQ = useQuery({
     queryKey: ['rel-talhao', propId, safraId],
     queryFn: async () => {
@@ -654,7 +654,7 @@ function AbaPorTalhao({ propId, safraId }: { propId: string; safraId: string }) 
 /* ════════════════════════════════════════════════
    ABA 4 — COMPARATIVO DE SAFRAS
    ════════════════════════════════════════════════ */
-function AbaComparativo({ propId, safraAtualId }: { propId: string; safraAtualId: string }) {
+function AbaComparativo({ propId, safraAtualId, propriedadeNome }: { propId: string; safraAtualId: string; propriedadeNome: string }) {
   const compQ = useQuery({
     queryKey: ['rel-comp-safras', propId],
     queryFn: async () => {
@@ -763,7 +763,7 @@ function AbaComparativo({ propId, safraAtualId }: { propId: string; safraAtualId
 /* ════════════════════════════════════════════════
    ABA 5 — INSUMOS
    ════════════════════════════════════════════════ */
-function AbaInsumos({ propId, safraId }: { propId: string; safraId: string }) {
+function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
   const insQ = useQuery({
     queryKey: ['rel-insumos', propId, safraId],
     queryFn: async () => {
