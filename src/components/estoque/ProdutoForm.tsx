@@ -35,12 +35,16 @@ const CATEGORIAS = [
 
 const UNIDADES = [
   { value: 'kg', label: 'Quilograma (kg)' },
-  { value: 'L', label: 'Litro (L)' },
-  { value: 'un', label: 'Unidade (un)' },
-  { value: 'sc', label: 'Saca (sc)' },
-  { value: 't', label: 'Tonelada (t)' },
-  { value: 'g', label: 'Grama (g)' },
+  { value: 'ton', label: 'Tonelada (ton)' },
+  { value: 'litro', label: 'Litro (L)' },
   { value: 'ml', label: 'Mililitro (ml)' },
+  { value: 'saca', label: 'Saca (60kg)' },
+  { value: 'hora', label: 'Hora (h)' },
+  { value: 'dia', label: 'Dia' },
+  { value: 'diaria', label: 'Diária' },
+  { value: 'ha', label: 'Hectare (ha)' },
+  { value: 'unidade', label: 'Unidade (un)' },
+  { value: 'servico', label: 'Serviço' },
 ];
 
 export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
