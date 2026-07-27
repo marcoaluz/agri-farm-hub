@@ -163,6 +163,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Limpa cache e storage ANTES do signOut para evitar vazamento entre sessões
+    queryClient.clear();
+    clearClientStorage();
+
     try {
       const { error } = await supabase.auth.signOut();
       if (error && !error.message?.includes("session missing") && !error.message?.includes("Failed to fetch"))
@@ -170,12 +174,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.warn("Erro ao sair (ignorado):", error);
     } finally {
-      // Sempre limpar estado local, mesmo se a chamada falhar
       setUser(null);
       setSession(null);
       setUserStatus(null);
-      localStorage.removeItem("sga_propriedade_id");
-      localStorage.removeItem("sga_safra_id");
 
       toast({
         title: "Logout realizado",
