@@ -102,6 +102,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Invalida todas as queries quando o usuário muda (evita vazamento entre sessões)
+  const prevUserIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentId = user?.id ?? null;
+    if (prevUserIdRef.current !== currentId) {
+      if (prevUserIdRef.current && currentId && prevUserIdRef.current !== currentId) {
+        queryClient.clear();
+      }
+      if (currentId) {
+        void queryClient.invalidateQueries();
+      }
+      prevUserIdRef.current = currentId;
+    }
+  }, [user?.id]);
+
   const signIn = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
