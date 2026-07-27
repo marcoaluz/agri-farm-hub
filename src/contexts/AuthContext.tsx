@@ -1,8 +1,22 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { User, Session, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
+
+const PRESERVE_STORAGE_KEYS = ["theme", "language"];
+
+function clearClientStorage() {
+  try {
+    Object.keys(localStorage).forEach((k) => {
+      if (!PRESERVE_STORAGE_KEYS.includes(k)) localStorage.removeItem(k);
+    });
+    sessionStorage.clear();
+  } catch {
+    // ignore
+  }
+}
 
 type UserStatus = "pendente" | "ativo" | "inativo" | null;
 
