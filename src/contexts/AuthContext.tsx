@@ -1,8 +1,22 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { User, Session, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
+
+const PRESERVE_STORAGE_KEYS = ["theme", "language"];
+
+function clearClientStorage() {
+  try {
+    Object.keys(localStorage).forEach((k) => {
+      if (!PRESERVE_STORAGE_KEYS.includes(k)) localStorage.removeItem(k);
+    });
+    sessionStorage.clear();
+  } catch {
+    // ignore
+  }
+}
 
 type UserStatus = "pendente" | "ativo" | "inativo" | null;
 
@@ -88,6 +102,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Invalida todas as queries quando o usuário muda (evita vazamento entre sessões)
+  const prevUserIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentId = user?.id ?? null;
+    if (prevUserIdRef.current !== currentId) {
+      if (prevUserIdRef.current && currentId && prevUserIdRef.current !== currentId) {
+        queryClient.clear();
+      }
+      if (currentId) {
+        void queryClient.invalidateQueries();
+      }
+      prevUserIdRef.current = currentId;
+    }
+  }, [user?.id]);
+
   const signIn = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -149,6 +178,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Limpa cache e storage ANTES do signOut para evitar vazamento entre sessões
+    queryClient.clear();
+    clearClientStorage();
+
     try {
       const { error } = await supabase.auth.signOut();
       if (error && !error.message?.includes("session missing") && !error.message?.includes("Failed to fetch"))
@@ -156,12 +189,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.warn("Erro ao sair (ignorado):", error);
     } finally {
-      // Sempre limpar estado local, mesmo se a chamada falhar
       setUser(null);
       setSession(null);
       setUserStatus(null);
-      localStorage.removeItem("sga_propriedade_id");
-      localStorage.removeItem("sga_safra_id");
 
       toast({
         title: "Logout realizado",
