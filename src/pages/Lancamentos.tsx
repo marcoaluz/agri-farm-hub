@@ -497,6 +497,81 @@ export function Lancamentos() {
           </TableBody>
         </Table>
         </div>
+
+        {/* Mobile: cards */}
+        <div className="block md:hidden p-3 space-y-2">
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
+          ) : filteredLancamentos.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {!safraAtual
+                ? 'Selecione uma safra para ver os lançamentos'
+                : searchTerm || filterTalhaoId !== 'all'
+                  ? 'Nenhum lançamento encontrado com os filtros aplicados'
+                  : !showAllDates
+                    ? `Nenhum lançamento em ${format(selectedDate, 'dd/MM/yyyy')}`
+                    : 'Nenhum lançamento cadastrado nesta safra'}
+            </p>
+          ) : (
+            filteredLancamentos.map((lancamento) => (
+              <Card
+                key={lancamento.id}
+                className="cursor-pointer transition-colors hover:bg-muted/50"
+                onClick={() => handleVerDetalhes(lancamento.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">
+                        {lancamento.servico?.nome || 'Serviço não encontrado'}
+                      </div>
+                      <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                        <div>
+                          {formatDate(lancamento.data_execucao)}
+                          {lancamento.talhao?.nome ? ` · ${lancamento.talhao.nome}` : ''}
+                        </div>
+                        <div>
+                          {lancamento.abastecimento
+                            ? `${lancamento.abastecimento?.quantidade_litros || 0}L ${lancamento.abastecimento?.combustivel_tipo || ''}`
+                            : `${lancamento.lancamentos_itens?.length || 0} ${(lancamento.lancamentos_itens?.length || 0) === 1 ? 'item' : 'itens'}`}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="font-medium">{formatCurrency(lancamento.custo_total || 0)}</div>
+                      {lancamento.abastecimento && (
+                        <Badge variant="secondary" className="mt-1 gap-1 text-[10px]">
+                          <Fuel className="h-3 w-3" />
+                          Abastecimento
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-11"
+                      disabled={safraFechada || !!lancamento.abastecimento}
+                      onClick={(e) => { e.stopPropagation(); handleEditar(lancamento.id) }}
+                    >
+                      <Edit className="mr-1 h-4 w-4" /> Editar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-11 text-destructive"
+                      disabled={safraFechada || !!lancamento.abastecimento}
+                      onClick={(e) => { e.stopPropagation(); setDeleteDialog({ open: true, lancamento }) }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </Card>
 
       {/* Delete Confirmation Dialog */}
