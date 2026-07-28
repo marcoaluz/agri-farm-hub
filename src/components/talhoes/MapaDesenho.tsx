@@ -53,6 +53,23 @@ function computeResult(geometry: GeoJSON.Polygon): DrawResult {
   return { geometria: geometry, centro_lat, centro_lng, area_ha };
 }
 
+/** Força o Leaflet a recalcular o tamanho do container após montagem/resize */
+function InvalidateSize() {
+  const map = useMap();
+  useEffect(() => {
+    const fix = () => map.invalidateSize();
+    const t1 = setTimeout(fix, 100);
+    const t2 = setTimeout(fix, 500);
+    window.addEventListener("resize", fix);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener("resize", fix);
+    };
+  }, [map]);
+  return null;
+}
+
 /** Centraliza o mapa nas geometrias fornecidas */
 function FitBounds({ geometries }: { geometries: GeoJSON.Polygon[] }) {
   const map = useMap();
@@ -102,11 +119,12 @@ export function MapaDesenho({ initialGeometry, center, zoom, onChange, height = 
 
   return (
     <div style={{ height }} className="w-full rounded-md overflow-hidden border">
-      <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: "100%", width: "100%" }}>
+      <MapContainer center={mapCenter} zoom={mapZoom} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <InvalidateSize />
         {geom && <FitBounds geometries={[geom]} />}
         <FeatureGroup ref={fgRef as any}>
           <EditControl
@@ -150,7 +168,7 @@ interface ViewProps {
   height?: number | string;
 }
 
-export function MapaTalhoesView({ talhoes, fallbackCenter, height = "100%" }: ViewProps) {
+export function MapaTalhoesView({ talhoes, fallbackCenter, height = 600 }: ViewProps) {
   const comGeo = talhoes
     .map((t) => ({ ...t, geom: parseGeometria(t.geometria) }))
     .filter((t) => !!t.geom);
@@ -159,12 +177,13 @@ export function MapaTalhoesView({ talhoes, fallbackCenter, height = "100%" }: Vi
   const zoom = fallbackCenter ? 14 : 4;
 
   return (
-    <div style={{ height }} className="w-full rounded-md overflow-hidden border">
-      <MapContainer center={center} zoom={zoom} style={{ height: "100%", width: "100%" }}>
+    <div style={{ height, minHeight: 400 }} className="w-full rounded-md overflow-hidden border">
+      <MapContainer center={center} zoom={zoom} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <InvalidateSize />
         <FitBounds geometries={comGeo.map((t) => t.geom as GeoJSON.Polygon)} />
         {comGeo.map((t) => (
           <GeoJSON

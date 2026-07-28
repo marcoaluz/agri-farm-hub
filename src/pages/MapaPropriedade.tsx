@@ -79,7 +79,7 @@ export default function MapaPropriedade() {
             <MapaTalhoesView
               talhoes={data.talhoes as any}
               fallbackCenter={fallback}
-              height="100%"
+              height={600}
             />
           )}
         </CardContent>

@@ -1,6 +1,8 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import "leaflet/dist/leaflet.css";
+import "leaflet-draw/dist/leaflet.draw.css";
 
 // Remove qualquer PWA/cache antigo para sempre carregar a versão mais recente.
 if ('serviceWorker' in navigator) {
