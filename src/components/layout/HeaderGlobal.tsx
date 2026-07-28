@@ -364,12 +364,32 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
 
         {/* ---- Mobile: compact drawer trigger ---- */}
         {isAdmin ? (
-          <div className="sm:hidden flex-1 max-w-[200px]">
+          <div className="sm:hidden flex flex-1 items-center gap-1">
             <AdminPropertyPicker
               propriedadeSelecionada={propriedadeSelecionada}
               onSelectPropriedade={handleAdminSelectPropriedade}
-              className="w-full h-9 text-xs"
+              className="w-full min-w-0 h-11 text-xs"
             />
+            <Drawer>
+              <DrawerTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-11 shrink-0 gap-1 px-2 text-xs"
+                >
+                  <Wheat className="h-4 w-4 text-muted-foreground" />
+                  <span className="max-w-[70px] truncate">
+                    {safraSelecionada?.nome || 'Safra'}
+                  </span>
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent className="bg-background">
+                <DrawerHeader className="pb-2">
+                  <DrawerTitle>Selecionar safra</DrawerTitle>
+                </DrawerHeader>
+                <div className="p-4 pb-8">{renderSafraSelect('w-full bg-card h-11')}</div>
+              </DrawerContent>
+            </Drawer>
           </div>
         ) : (
           <Drawer>
