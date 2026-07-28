@@ -586,7 +586,8 @@ export function Maquinas() {
           </Card>
         ) : (
           <Card>
-            <CardContent className="p-0 overflow-x-auto">
+            <CardContent className="p-0">
+              <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -638,6 +639,43 @@ export function Maquinas() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
+
+              {/* Mobile: cards */}
+              <div className="block md:hidden p-3 space-y-2">
+                {manutencoes.map((m: any) => (
+                  <Card key={m.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">{m.maquina?.nome || '—'}</div>
+                          <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                            <div className="capitalize">
+                              {m.tipo?.replace(/_/g, ' ') || '—'}
+                              {' · '}
+                              {m.data_realizada
+                                ? format(new Date(m.data_realizada + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+                                : m.data_prevista
+                                ? format(new Date(m.data_prevista + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+                                : '—'}
+                            </div>
+                            <div className="truncate">{m.descricao}</div>
+                            {m.horimetro_manutencao != null && (
+                              <div>Horímetro: {fmtHorimetro(Number(m.horimetro_manutencao))}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <div className="font-medium">
+                            {m.custo != null ? fmtCurrency(Number(m.custo)) : '—'}
+                          </div>
+                          <Badge variant="outline" className="mt-1 capitalize">{m.status}</Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
