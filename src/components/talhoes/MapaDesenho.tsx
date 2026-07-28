@@ -53,6 +53,23 @@ function computeResult(geometry: GeoJSON.Polygon): DrawResult {
   return { geometria: geometry, centro_lat, centro_lng, area_ha };
 }
 
+/** Força o Leaflet a recalcular o tamanho do container após montagem/resize */
+function InvalidateSize() {
+  const map = useMap();
+  useEffect(() => {
+    const fix = () => map.invalidateSize();
+    const t1 = setTimeout(fix, 100);
+    const t2 = setTimeout(fix, 500);
+    window.addEventListener("resize", fix);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener("resize", fix);
+    };
+  }, [map]);
+  return null;
+}
+
 /** Centraliza o mapa nas geometrias fornecidas */
 function FitBounds({ geometries }: { geometries: GeoJSON.Polygon[] }) {
   const map = useMap();
