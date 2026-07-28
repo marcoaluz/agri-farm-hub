@@ -310,6 +310,27 @@ export default function Convite() {
                 </div>
               </div>
 
+              {/* Nome da propriedade (apenas novo proprietário) */}
+              {isNovoProprietario && (
+                <div className="space-y-1">
+                  <Label htmlFor="propriedade">Nome da sua propriedade *</Label>
+                  <Input
+                    id="propriedade"
+                    value={nomePropriedade}
+                    onChange={(e) => setNomePropriedade(e.target.value)}
+                    required
+                    placeholder="Ex: Fazenda São João, Sítio Boa Vista..."
+                    disabled={criando}
+                    maxLength={120}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Você pode editar depois nas configurações da propriedade.
+                  </p>
+                </div>
+              )}
+
+
+
               {/* Senha */}
               <div className="space-y-1">
                 <Label htmlFor="senha">Senha</Label>
