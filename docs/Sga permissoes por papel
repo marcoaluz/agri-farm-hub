@@ -1,0 +1,531 @@
+# SGA — Matriz oficial de permissões por papel
+
+> **Documento de decisão.** Descreve como cada perfil de usuário (`papel_usuario`) deve se comportar no sistema. Aprovado por Marco Aurélio Luz em 26/07/2026. Ainda **não implementado** — piloto inicial vai com todos os papéis tendo poderes iguais dentro da propriedade.
+
+---
+
+## Índice
+
+1. [Contexto e escopo](#1-contexto-e-escopo)
+2. [Enum `papel_usuario` no banco](#2-enum-papel_usuario-no-banco)
+3. [Matriz consolidada por menu](#3-matriz-consolidada-por-menu)
+4. [Detalhe técnico: mapeamento menu → tabelas do banco](#4-detalhe-técnico-mapeamento-menu--tabelas-do-banco)
+5. [Regras especiais](#5-regras-especiais)
+6. [Plano de implementação sugerido](#6-plano-de-implementação-sugerido)
+7. [Testes de validação](#7-testes-de-validação)
+8. [Estado do sistema no momento da decisão](#8-estado-do-sistema-no-momento-da-decisão)
+
+---
+
+## 1. Contexto e escopo
+
+### O que é este documento
+
+O SGA (agora futuramente "Roçado" ou outro nome — a decidir) usa multi-tenancy com quatro papéis de usuário: `proprietario`, `gerente`, `operador`, `visualizador`. **No momento, o sistema tem os papéis definidos no enum e usados no cadastro de membros**, mas **RLS não distingue por papel** — todos os usuários com acesso a uma propriedade têm exatamente os mesmos direitos dentro dela.
+
+Este documento define **como cada papel deve se comportar** para implementação futura. Piloto inicial (planejado para semanas seguintes) vai com o comportamento atual, sem RLS por papel.
+
+### Papéis existentes fora dessa matriz
+
+Existe também `is_admin() = true` no `user_profiles` — perfil de super administrador (Marco Luz). Admin **sempre tem bypass total** independente de papel. Não entra nesta matriz porque a regra é simples: admin faz tudo, sempre.
+
+### Legenda
+
+Ao longo do documento:
+- **V** = pode visualizar (SELECT)
+- **C** = pode criar (INSERT)
+- **E** = pode editar (UPDATE)
+- **D** = pode deletar (DELETE)
+- **Full** = V + C + E + D
+- **—** = sem acesso (nem SELECT — menu deve estar escondido no frontend)
+
+---
+
+## 2. Enum `papel_usuario` no banco
+
+Já existe no banco:
+
+```sql
+CREATE TYPE papel_usuario AS ENUM (
+  'proprietario',
+  'gerente',
+  'operador',
+  'visualizador'
+);
+```
+
+Coluna `propriedades_usuarios.papel` armazena o papel de cada membro em cada propriedade. Um mesmo usuário pode ter papéis diferentes em propriedades diferentes (ex: proprietário na fazenda dele, gerente na fazenda do cunhado).
+
+Já existe função `get_prop_ids_usuario()` que retorna as propriedades do usuário logado, mas ela **não filtra por papel** — retorna todas independente do papel.
+
+**Para implementar RLS por papel, criar função helper adicional:**
+
+```sql
+CREATE FUNCTION public.get_prop_ids_por_papel(papeis papel_usuario[])
+RETURNS uuid[]
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = 'public'
+AS $$
+  SELECT ARRAY(
+    SELECT propriedade_id FROM propriedades_usuarios
+    WHERE usuario_id = auth.uid()
+      AND status = 'ativo'
+      AND papel = ANY(papeis)
+  );
+$$;
+```
+
+Uso em policies:
+```sql
+-- "Só proprietário e gerente podem editar safras"
+CREATE POLICY safras_update ON safras FOR UPDATE
+USING (
+  is_admin()
+  OR propriedade_id = ANY(get_prop_ids_por_papel(
+    ARRAY['proprietario', 'gerente']::papel_usuario[]
+  ))
+);
+```
+
+---
+
+## 3. Matriz consolidada por menu
+
+Legenda: **V** visualizar · **C** criar · **E** editar · **D** deletar · **—** sem acesso
+
+| Menu | Proprietário | Gerente | Operador | Visualizador |
+|------|:---:|:---:|:---:|:---:|
+| Dashboard | Full | Full | V | V |
+| Propriedade | V, C, E<sup>1</sup> | V, C, E | V | V |
+| Minha Equipe | Full | V, C, E, D<sup>2</sup> | — | — |
+| Safra | Full | V, C, E | V | V |
+| Talhões | Full | V, C, E | V | V |
+| Mapa | Full | V, C, E | V | V |
+| Estoque | Full | Full | Full | V |
+| Serviços | Full | Full | Full | V |
+| Lançamentos | Full | Full | V, C, E<br>D próprios<sup>3</sup> | V |
+| Calendário | Full | Full | V | V |
+| Agenda | Full | Full | V, C, E<br>D próprios<sup>4</sup> | V |
+| Contatos | Full | Full | V, C, E | V |
+| Máquinas | Full | Full | V + lançamentos<sup>5</sup> | V |
+| Pecuária | Full | Full | V + lançamentos<sup>6</sup> | V |
+| Financeiro | Full | Full | — | — |
+| Relatórios | Full | Full | V + gerar operacionais<sup>7</sup> | V (operacionais) |
+| Auditoria | Full | V | — | — |
+| Configurações<sup>8</sup> | Full (própria) | Full (própria) | Full (própria) | Full (própria) |
+
+### Notas de rodapé
+
+<sup>1</sup> **Proprietário não deleta propriedade.** Delete de propriedade é apenas admin. Motivo: cascade destrutivo (apaga safras, lançamentos, transações, tudo). Proprietário pode "arquivar" (UPDATE `ativo = false`), o que some das listas mas preserva dados.
+
+<sup>2</sup> **Gerente pode remover membros, EXCETO proprietários.** Não pode deletar nem editar linha de `propriedades_usuarios` onde `papel = 'proprietario'`.
+
+<sup>3</sup> **Operador só deleta lançamentos que ele mesmo criou** (`lancamentos.criado_por = auth.uid()`). Não pode deletar lançamentos de outros usuários.
+
+<sup>4</sup> **Operador só deleta tarefas que ele mesmo criou** (`tarefas.criado_por = auth.uid()`). Não pode deletar tarefas dos outros.
+
+<sup>5</sup> **Operador não cadastra nem edita máquinas**, mas pode: registrar abastecimento, registrar manutenção realizada, usar máquinas em lançamentos de campo (item `tipo_ref = 'maquina'`).
+
+<sup>6</sup> **Operador não cadastra rebanhos nem animais**, mas pode: registrar movimentações de rebanho, pesagens, ordenhas, eventos sanitários.
+
+<sup>7</sup> **Relatórios financeiros bloqueados para operador.** Ele pode gerar relatórios operacionais (lançamentos, produtividade, por talhão, comparativo de safras, estoque). Relatórios que expõem dados financeiros (fluxo de caixa, custos consolidados, resumo financeiro, orçamento vs realizado) devem retornar erro 42501 para operador.
+
+<sup>8</sup> **Configurações = perfil pessoal.** Cada usuário edita: seu nome, foto, senha, preferências de notificação. NÃO significa configurações da propriedade (nome, endereço) — isso é papel do proprietário ou gerente na tela de Propriedade. NÃO significa configurações de módulos ativos por propriedade — isso é só do proprietário.
+
+---
+
+## 4. Detalhe técnico: mapeamento menu → tabelas do banco
+
+Cada linha da matriz do capítulo 3 corresponde a permissões em **uma ou mais tabelas do banco**. Este capítulo detalha, tabela por tabela, quais operações cada papel pode fazer.
+
+Convenção de escrita: `S/I/U/D` (SELECT/INSERT/UPDATE/DELETE). Marcar `—` para negado.
+
+### 4.1 Módulo Propriedade
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `propriedades` | S/I/U | S/I/U | S | S |
+| `propriedade_modulos` | S/I/U/D | S | S | S |
+| `propriedades_historico` | S | S | — | — |
+
+Nota: DELETE em `propriedades` é apenas admin.
+
+### 4.2 Módulo Minha Equipe
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `propriedades_usuarios` | S/I/U/D | S/I/U/D (exceto `papel='proprietario'`) | S da própria linha | — |
+| `convites_novos_usuarios` | S/I/U/D das da própria propriedade | S/I/U/D | — | — |
+
+**Regra especial gerente em `propriedades_usuarios`:**
+```sql
+-- Gerente NÃO pode editar nem deletar linha onde papel='proprietario'
+CREATE POLICY pu_gerente_write ON propriedades_usuarios
+  FOR UPDATE, DELETE
+  USING (
+    -- Gerente pode operar em linha onde papel NÃO é proprietário
+    propriedade_id = ANY(get_prop_ids_por_papel(ARRAY['gerente']::papel_usuario[]))
+    AND papel != 'proprietario'
+  );
+```
+
+### 4.3 Módulo Safra
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `safras` | S/I/U/D | S/I/U | S | S |
+| `orcamento_safra` | S/I/U/D | S/I/U | S | S |
+
+Nota: a RPC `fechar_safra` já valida internamente admin/proprietario/gerente — não precisa mudar.
+
+### 4.4 Módulo Talhões
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `talhoes` | S/I/U/D | S/I/U | S | S |
+| `talhao_culturas` | S/I/U/D | S/I/U | S | S |
+
+### 4.5 Módulo Mapa
+
+Usa `talhoes.geometria`, `centro_lat`, `centro_lng`. Herda as permissões de talhões acima. Nenhuma tabela adicional.
+
+### 4.6 Módulo Estoque
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `produtos` | S/I/U/D | S/I/U/D | S/I/U/D | S |
+| `lotes` | S/I/U/D | S/I/U/D | S/I/U/D | S |
+| `lotes_historico` | S | S | — | — |
+| `estoque_producao` | S/I/U/D | S/I/U/D | S/I/U/D | S |
+
+### 4.7 Módulo Serviços
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `servicos` | S/I/U/D | S/I/U/D | S/I/U/D | S |
+| `servicos_itens` | S/I/U/D | S/I/U/D | S/I/U/D | S |
+
+### 4.8 Módulo Lançamentos
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `lancamentos` | S/I/U/D | S/I/U/D | S/I/U + D onde `criado_por = auth.uid()` | S |
+| `lancamentos_itens` | S/I/U/D | S/I/U/D | S/I/U + D onde lançamento pai é dele | S |
+| `lancamentos_historico` | S | S | — | — |
+
+**Regra especial operador em `lancamentos`:**
+```sql
+CREATE POLICY lanc_operador_delete ON lancamentos FOR DELETE
+USING (
+  propriedade_id = ANY(get_prop_ids_por_papel(ARRAY['operador']::papel_usuario[]))
+  AND criado_por = (SELECT auth.uid())
+);
+```
+
+### 4.9 Módulo Agenda
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `tarefas` | S/I/U/D | S/I/U/D | S/I/U + D onde `criado_por = auth.uid()` | S |
+
+### 4.10 Módulo Contatos
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `contatos` | S/I/U/D | S/I/U/D | S/I/U | S |
+
+Nota: operador **pode editar qualquer contato da propriedade** (não só os que criou). Se no futuro quiser restringir "operador só edita os próprios contatos", adicionar coluna `criado_por` em `contatos` primeiro.
+
+### 4.11 Módulo Máquinas
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `maquinas` | S/I/U/D | S/I/U/D | S | S |
+| `abastecimentos` | S/I/U/D | S/I/U/D | S/I/U | S |
+| `maquina_manutencoes` | S/I/U/D | S/I/U/D | S/I/U | S |
+
+Nota: operador não deleta abastecimento nem manutenção (mesmo que ele tenha criado). Motivo: são dados financeiros que geram transação — deletar sem controle bagunça o financeiro.
+
+### 4.12 Módulo Pecuária
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `rebanhos` | S/I/U/D | S/I/U/D | S | S |
+| `animais` | S/I/U/D | S/I/U/D | S | S |
+| `rebanho_movimentacoes` | S/I/U/D | S/I/U/D | S/I | S |
+| `pesagens` | S/I/U/D | S/I/U/D | S/I | S |
+| `ordenhas` | S/I/U/D | S/I/U/D | S/I | S |
+| `sanitario_eventos` | S/I/U/D | S/I/U/D | S/I | S |
+
+Nota: operador em pecuária só INSERT + SELECT. Não pode UPDATE nem DELETE (por serem eventos que geram transações financeiras).
+
+### 4.13 Módulo Financeiro
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `transacoes` | S/I/U/D | S/I/U/D | — | — |
+
+**Importante:** os triggers financeiros (`fn_lancamento_para_financeiro`, `fn_abastecimento_para_financeiro`, etc.) rodam com `SECURITY DEFINER`, então continuam funcionando mesmo quando um operador cria um lançamento. O trigger insere na `transacoes` como superuser, contornando a RLS. Isso é intencional.
+
+### 4.14 Módulo Relatórios
+
+Não tem tabela dedicada — usa RPCs. Cada RPC deve incluir check de papel no início se for relatório financeiro:
+
+**RPCs financeiras que devem bloquear operador e visualizador:**
+- `get_fluxo_caixa_mensal`
+- `get_custos_por_mes`
+- `get_breakdown_custos`
+- `get_custo_por_insumo`
+- `get_rentabilidade_por_talhao`
+- `get_rentabilidade_safra`
+- `get_orcamento_vs_realizado`
+- `get_evolucao_mensal`
+- `get_relatorio_por_categoria`
+
+Adicionar no início de cada uma:
+```sql
+IF NOT (is_admin() OR p_propriedade_id = ANY(
+  get_prop_ids_por_papel(ARRAY['proprietario','gerente']::papel_usuario[])
+)) THEN
+  RAISE EXCEPTION 'Acesso negado a relatório financeiro' USING ERRCODE = '42501';
+END IF;
+```
+
+**RPCs operacionais** (podem ser chamadas por qualquer papel com acesso à propriedade):
+- `get_relatorio_lancamentos`
+- `get_relatorio_por_talhao`
+- `get_comparativo_safras`
+- `get_estoque_producao`
+- `get_dashboard_kpis_completo`
+- `get_alertas_detalhados`
+- `get_resumo_clima` (já com check de propriedade)
+
+### 4.15 Módulo Auditoria
+
+| Tabela | Proprietário | Gerente | Operador | Visualizador |
+|---|---|---|---|---|
+| `lancamentos_historico` | S | S | — | — |
+| `lotes_historico` | S | S | — | — |
+| `propriedades_historico` | S | S | — | — |
+
+### 4.16 Configurações (perfil pessoal)
+
+| Tabela | Todos os papéis |
+|---|---|
+| `user_profiles` | S/U só onde `id = auth.uid()` |
+| `notificacoes` | S/U/D só onde `usuario_id = auth.uid()` |
+| `anexos` | Depende da entidade que anexa — herda permissão da entidade pai |
+
+---
+
+## 5. Regras especiais
+
+Consolidando o que já foi mencionado nas notas:
+
+### 5.1 Delete de propriedade
+
+**Só admin.** Proprietário pode arquivar via UPDATE `ativo = false` — a propriedade some das listas mas os dados são preservados. Isso protege contra clique errado ou usuário mal-intencionado que queira apagar tudo.
+
+Implementação:
+```sql
+-- Sem policy DELETE pra proprietário em propriedades.
+-- Só admin tem, via is_admin()
+CREATE POLICY prop_admin_delete ON propriedades FOR DELETE
+USING (is_admin());
+```
+
+### 5.2 Gerente não deleta/edita proprietário
+
+Em `propriedades_usuarios`, gerente não pode fazer UPDATE nem DELETE em linhas com `papel = 'proprietario'`. Ver 4.2.
+
+### 5.3 Operador só deleta o que criou
+
+Aplica em duas tabelas:
+- `lancamentos` (via `criado_por`)
+- `tarefas` (via `criado_por`)
+
+Não aplica em contatos, abastecimentos, manutenções, pesagens, ordenhas, movimentações, eventos sanitários — nesses casos operador não deleta nada, mesmo os próprios.
+
+### 5.4 Operador em máquinas e pecuária
+
+Vê máquinas e rebanhos mas não cadastra. Registra a operação (abastecimento, pesagem, aplicação de vacina, etc.).
+
+### 5.5 Financeiro totalmente bloqueado para operador e visualizador
+
+Não podem: acessar tela de Financeiro, ver `transacoes`, gerar relatórios financeiros.
+
+Podem indiretamente: criar lançamento que gera transação via trigger — mas não conseguem VER a transação criada.
+
+### 5.6 Auditoria sem acesso para operador e visualizador
+
+Menu deve estar escondido no frontend para esses dois papéis. Tabelas de histórico bloqueiam SELECT para eles.
+
+### 5.7 Configurações = perfil pessoal
+
+Cada usuário edita só o próprio `user_profiles` (nome, foto, senha, preferências). Ninguém edita configurações de outro usuário exceto admin.
+
+---
+
+## 6. Plano de implementação sugerido
+
+Ordem de execução recomendada para não quebrar nada:
+
+### Fase 1 — Preparação (1h)
+1. Backup do banco antes de qualquer coisa: `pg_dump` completo em local seguro
+2. Criar função `get_prop_ids_por_papel(papeis papel_usuario[])` no banco
+3. Verificar que `propriedades_usuarios` está sincronizado (todos os donos como membros ativos com `papel='proprietario'`)
+
+### Fase 2 — RLS das tabelas (4-6h)
+Aplicar policies em blocos, testando entre cada:
+- Bloco A: `propriedades`, `propriedades_usuarios`, `convites_novos_usuarios`
+- Bloco B: `safras`, `talhoes`, `orcamento_safra`, `talhao_culturas`
+- Bloco C: `produtos`, `lotes`, `servicos`, `contatos`
+- Bloco D: `lancamentos`, `lancamentos_itens`, `tarefas`
+- Bloco E: `maquinas`, `abastecimentos`, `maquina_manutencoes`
+- Bloco F: `rebanhos`, `animais`, `rebanho_movimentacoes`, `pesagens`, `ordenhas`, `sanitario_eventos`
+- Bloco G: `transacoes`
+- Bloco H: `lancamentos_historico`, `lotes_historico`, `propriedades_historico`
+
+### Fase 3 — RPCs financeiras (1h)
+Adicionar check de papel no início das 9 RPCs listadas em 4.14.
+
+### Fase 4 — Frontend (Lovable) (2-4h)
+Prompt para a Lovable esconder menus/botões conforme papel. O frontend precisa ler o papel do usuário na propriedade ativa e usar isso pra:
+- Esconder itens de menu (`Minha Equipe`, `Financeiro`, `Auditoria`) para papéis sem acesso
+- Esconder botões `Excluir`, `Editar`, `Novo` conforme regra
+- Bloquear rotas por papel (redirect + toast quando entra em rota sem permissão)
+
+### Fase 5 — Testes (4-6h)
+Criar 4 usuários de teste no Supabase Auth. Cada um em uma propriedade (ou na mesma, com papéis diferentes). Executar checklist do capítulo 7 pra cada perfil.
+
+**Estimativa total: 12-18 horas de trabalho (banco + frontend + testes).**
+
+---
+
+## 7. Testes de validação
+
+Ao implementar, executar TODOS esses testes. Criar 4 contas de teste com esses e-mails:
+- `teste.proprietario@sga.dev`
+- `teste.gerente@sga.dev`
+- `teste.operador@sga.dev`
+- `teste.visualizador@sga.dev`
+
+### 7.1 Testes de proprietário
+
+- [ ] Faz login e vê Dashboard
+- [ ] Cria uma safra nova
+- [ ] Cria um talhão novo com geometria
+- [ ] Convida um novo usuário como gerente
+- [ ] Convida um novo usuário como operador
+- [ ] Edita um contato
+- [ ] Cria um lançamento
+- [ ] Vê o Financeiro completo
+- [ ] Gera todos os relatórios (operacionais e financeiros)
+- [ ] Vê a Auditoria
+- [ ] Edita suas configurações pessoais
+- [ ] **Tenta deletar a propriedade** → deve dar erro (só admin faz isso)
+
+### 7.2 Testes de gerente
+
+- [ ] Faz login e vê Dashboard (igual ao proprietário)
+- [ ] Cria uma safra → OK
+- [ ] Edita uma safra existente → OK
+- [ ] **Tenta deletar a safra** → deve dar erro
+- [ ] Convida um operador → OK
+- [ ] **Tenta remover o proprietário da equipe** → deve dar erro
+- [ ] **Tenta alterar o papel do proprietário** → deve dar erro
+- [ ] Faz tudo em Estoque, Lançamentos, Máquinas, Pecuária, Financeiro (Full)
+- [ ] Gera todos os relatórios (Full)
+- [ ] Vê Auditoria (só V, não modifica)
+
+### 7.3 Testes de operador
+
+- [ ] Faz login e vê Dashboard (só V)
+- [ ] **Menu "Minha Equipe" não aparece** ou está desabilitado
+- [ ] **Menu "Financeiro" não aparece** ou está desabilitado
+- [ ] **Menu "Auditoria" não aparece** ou está desabilitado
+- [ ] Vê safras (só V) — não vê botão "Nova Safra"
+- [ ] Vê talhões (só V)
+- [ ] **Em Estoque**: cria produto → OK, edita produto → OK, deleta produto → OK
+- [ ] **Em Lançamentos**: cria lançamento → OK
+- [ ] **Cria segundo lançamento como outro usuário** (fazendo login como proprietário, cria um lançamento) → logar de volta como operador
+- [ ] **Tenta deletar o lançamento do proprietário** → deve dar erro
+- [ ] **Deleta o próprio lançamento** → OK
+- [ ] **Em Máquinas**: vê máquinas → OK, tenta criar máquina → deve dar erro
+- [ ] **Em Máquinas**: cria abastecimento → OK
+- [ ] **Em Máquinas**: cria manutenção realizada → OK
+- [ ] **Em Pecuária**: vê rebanho → OK, tenta criar rebanho → deve dar erro
+- [ ] **Em Pecuária**: registra pesagem → OK
+- [ ] **Em Pecuária**: registra evento sanitário → OK
+- [ ] **Em Relatórios**: gera relatório de lançamentos (operacional) → OK
+- [ ] **Em Relatórios**: tenta gerar fluxo de caixa (financeiro) → deve dar erro
+- [ ] **Em Agenda**: cria tarefa → OK
+- [ ] **Cria segunda tarefa como proprietário** → operador vê mas não deleta a do proprietário
+- [ ] **Deleta a própria tarefa** → OK
+
+### 7.4 Testes de visualizador
+
+- [ ] Faz login e vê Dashboard (só V)
+- [ ] **Menu "Minha Equipe" não aparece**
+- [ ] **Menu "Financeiro" não aparece**
+- [ ] **Menu "Auditoria" não aparece**
+- [ ] Vê todas as outras telas em modo somente leitura
+- [ ] **Tenta criar qualquer coisa em qualquer menu** → deve dar erro ou botão sequer aparece
+- [ ] **Tenta editar qualquer coisa** → deve dar erro ou botão sequer aparece
+- [ ] Gera relatórios operacionais → OK
+- [ ] **Tenta gerar relatório financeiro** → deve dar erro
+- [ ] Edita suas configurações pessoais → OK
+
+---
+
+## 8. Estado do sistema no momento da decisão
+
+Contexto pra quem for implementar depois. Estado do banco em **26/07/2026**:
+
+- **41 tabelas** com RLS habilitada em todas
+- **191 advisors do Supabase** (4 ERROR restantes são falsos-positivos práticos das 2 views que consultam `auth.users`)
+- **131 funções RPC**, 92 com SECURITY DEFINER
+- **45 triggers ativos**
+- **68 policies RLS** (algumas ainda usam padrão antigo de "prop = ANY(get_prop_ids_usuario())" sem distinguir papel)
+- **18 MB de banco**, 3 propriedades ativas, 2 usuários ativos
+
+### O que já foi feito e não precisa refazer
+
+- ✅ Bugs P1 corrigidos: `fechar_safra` com validação de admin/proprietário/gerente, triggers de horímetro usando `lancamentos_itens.tipo_ref='maquina'`, UNIQUE em `transacoes.origem`, `get_comparativo_safras` sem `SUM(DISTINCT)`
+- ✅ Triggers financeiros nos 5 fluxos com `ON CONFLICT (origem) WHERE origem IS NOT NULL DO NOTHING`
+- ✅ Triggers FIFO removidos (frontend é fonte da verdade)
+- ✅ Central de notificações + helper `criar_notificacao_propriedade` unindo dono + junção
+- ✅ Anexos, agenda de tarefas, contatos, mapa com geometria, clima histórico com cron
+- ✅ Views públicas com `security_invoker = on`
+- ✅ 4 RPCs minhas com check de propriedade (`get_resumo_clima`, `get_serie_clima_diaria`, `listar_tarefas_periodo`, `recalcular_coordenadas_propriedade`)
+- ✅ 50 funções com `search_path = 'public'` fixado
+- ✅ 43 índices em FKs, índice duplicado removido, policies de RLS otimizadas com `(SELECT auth.uid())`
+- ✅ Fluxo de convite: validação de email do logado, `aceitar_convite_novo_usuario` aceita `p_propriedade_nome` opcional
+- ✅ 3 funções de convite com `search_path = 'public', 'extensions'` (pgcrypto está em extensions)
+- ✅ Rotas hardcoded em RPCs corrigidas (`/estoque` em vez de `/estoque/produtos`)
+- ✅ Donos sincronizados em `propriedades_usuarios` via backfill + trigger `trg_sincronizar_dono_propriedade`
+
+### O que ainda pode aparecer como bug no piloto
+
+- Frontend pode ter pontos onde não invalida cache do React Query ao trocar de usuário (parcialmente corrigido — `queryClient.clear()` no logout + `invalidateQueries()` na troca de user já feito, mas nem todos os hooks têm `userId` no queryKey ainda)
+- Alguns fluxos podem ter bugs de UX no mobile
+- Nome do sistema ainda é "SGA" — a decidir novo nome (candidatos: Roçado, Semear, Vareda)
+
+### Ordem esperada de próximos passos (nesta ordem)
+
+1. Aplicar prompts pendentes na Lovable (convite, mapa, mobile, identidade visual)
+2. Chamar piloto com 3-5 produtores donos (sem gerente/operador)
+3. Coletar feedback e ajustar
+4. **Aí sim** implementar RLS por papel conforme este documento
+5. Testar com 4 contas internas
+6. Abrir piloto para múltiplos usuários por fazenda
+
+---
+
+## Encerramento
+
+Este documento é a **fonte da verdade** sobre permissões por papel. Se houver conflito entre este documento e alguma decisão do dia-a-dia, prevalece este documento.
+
+**Para implementar:** basta enviar este documento para Claude (ou outro dev) em uma nova sessão dizendo "implemente conforme este documento". Não deve haver ambiguidade a resolver.
+
+Última atualização: 26/07/2026
+Aprovado por: Marco Aurélio Luz (marco.luz1994@gmail.com)
