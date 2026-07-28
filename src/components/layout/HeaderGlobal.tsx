@@ -397,7 +397,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
               <Button
                 variant="outline"
                 size="sm"
-                className="sm:hidden flex-1 max-w-[200px] justify-between text-xs h-9 px-2"
+                className="sm:hidden flex-1 max-w-[200px] justify-between text-xs h-11 px-2"
               >
                 <div className="flex flex-col items-start truncate">
                   <span className="font-medium truncate max-w-[140px]">

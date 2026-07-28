@@ -195,9 +195,9 @@ export function Lancamentos() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Lançamentos</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Lançamentos</h1>
           <p className="text-muted-foreground">
             {safraAtual 
               ? `Lançamentos da ${safraAtual.nome}`
@@ -205,7 +205,7 @@ export function Lancamentos() {
             }
           </p>
         </div>
-        <Button className="gap-2" onClick={handleNovoLancamento} disabled={!safraAtual || safraFechada}>
+        <Button className="gap-2 h-11 md:h-9 w-full sm:w-auto" onClick={handleNovoLancamento} disabled={!safraAtual || safraFechada}>
           <Plus className="h-4 w-4" />
           Novo Lançamento
         </Button>
