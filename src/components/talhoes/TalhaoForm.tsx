@@ -144,6 +144,7 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
         <MapaDesenho
           initialGeometry={geo.geometria}
           center={initialCenter}
+          zoom={initialZoom}
           onChange={handleDraw}
           height={320}
         />
