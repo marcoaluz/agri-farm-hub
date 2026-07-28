@@ -20,6 +20,7 @@ import { FileDown } from 'lucide-react'
 import { DashboardKPIs } from '@/components/dashboard/DashboardKPIs'
 import { DashboardKPIsV2 } from '@/components/dashboard/DashboardKPIsV2'
 import { PainelAlertas } from '@/components/dashboard/PainelAlertas'
+import { CardAlertas } from '@/components/dashboard/CardAlertas'
 import { TabelaConsolidada } from '@/components/dashboard/TabelaConsolidada'
 import { TabelaConsolidadaV2 } from '@/components/dashboard/TabelaConsolidadaV2'
 import { EstoqueProducao } from '@/components/dashboard/EstoqueProducao'
@@ -678,26 +679,11 @@ export default function Dashboard() {
               )}
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-card-foreground">Alertas do Sistema</h3>
-              </div>
-              {(kpisV2?.alertas?.total_alertas ?? 0) === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <CheckCircle className="h-10 w-10 text-success mb-3" />
-                  <p className="text-sm text-muted-foreground">Nenhum alerta no momento</p>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <AlertTriangle className="h-10 w-10 text-warning mb-3" />
-                  <p className="text-2xl font-bold text-foreground mb-1">{kpisV2?.alertas?.total_alertas ?? 0}</p>
-                  <p className="text-sm text-muted-foreground">alertas ativos</p>
-                  <Button variant="outline" size="sm" className="mt-3" onClick={() => setAlertsOpen(true)}>
-                    Ver detalhes
-                  </Button>
-                </div>
-              )}
-            </div>
+            <CardAlertas
+              propriedadeId={propId || null}
+              totalAlertas={kpisV2?.alertas?.total_alertas ?? 0}
+            />
+
           </div>
         </>
       )}

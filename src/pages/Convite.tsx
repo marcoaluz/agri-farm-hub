@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { queryClient } from '@/lib/queryClient'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -58,6 +59,7 @@ export default function Convite() {
   const [tokenValido, setTokenValido] = useState(false)
 
   const [nome, setNome] = useState('')
+  const [nomePropriedade, setNomePropriedade] = useState('')
   const [senha, setSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -68,7 +70,11 @@ export default function Convite() {
   const strength = useMemo(() => getPasswordStrength(senha), [senha])
 
   const senhasIguais = senha === confirmarSenha && confirmarSenha.length > 0
-  const formValido = nome.trim().length >= 3 && senha.length >= 8 && senhasIguais
+  const formValido =
+    nome.trim().length >= 3 &&
+    senha.length >= 8 &&
+    senhasIguais &&
+    (!isNovoProprietario || nomePropriedade.trim().length >= 2)
 
   useEffect(() => {
     async function validar() {
@@ -96,6 +102,10 @@ export default function Convite() {
       toast.error('Token inválido.')
       return
     }
+    if (isNovoProprietario && !nomePropriedade.trim()) {
+      toast.error('Preencha todos os campos')
+      return
+    }
 
     setCriando(true)
     try {
@@ -107,21 +117,20 @@ export default function Convite() {
       if (authError) throw authError
 
       const rpcName = isNovoProprietario ? 'aceitar_convite_novo_usuario' : 'aceitar_convite'
-      const { error: conviteError } = await supabase.rpc(rpcName as any, {
+      const params: Record<string, string> = {
         p_token: token,
         p_nome: nome.trim(),
-      })
+      }
+      if (isNovoProprietario) params.p_propriedade_nome = nomePropriedade.trim()
+
+      const { error: conviteError } = await supabase.rpc(rpcName as any, params)
       if (conviteError) throw conviteError
 
+      queryClient.invalidateQueries()
       setSucesso(true)
 
-      if (isNovoProprietario) {
-        toast.success('Conta criada! Agora cadastre sua primeira propriedade.')
-        setTimeout(() => navigate('/propriedades'), 2000)
-      } else {
-        toast.success('Conta criada com sucesso! Bem-vindo ao SGA.')
-        setTimeout(() => navigate('/'), 2000)
-      }
+      toast.success('Convite aceito! Bem-vindo ao sistema.')
+      setTimeout(() => navigate('/'), 2000)
     } catch (err: any) {
       toast.error(err.message || 'Erro ao criar conta.')
     } finally {
@@ -300,6 +309,27 @@ export default function Convite() {
                   />
                 </div>
               </div>
+
+              {/* Nome da propriedade (apenas novo proprietário) */}
+              {isNovoProprietario && (
+                <div className="space-y-1">
+                  <Label htmlFor="propriedade">Nome da sua propriedade *</Label>
+                  <Input
+                    id="propriedade"
+                    value={nomePropriedade}
+                    onChange={(e) => setNomePropriedade(e.target.value)}
+                    required
+                    placeholder="Ex: Fazenda São João, Sítio Boa Vista..."
+                    disabled={criando}
+                    maxLength={120}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Você pode editar depois nas configurações da propriedade.
+                  </p>
+                </div>
+              )}
+
+
 
               {/* Senha */}
               <div className="space-y-1">
