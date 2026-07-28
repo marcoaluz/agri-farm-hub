@@ -366,6 +366,7 @@ export function Financeiro() {
 
           {/* Tabela */}
           <Card>
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -425,6 +426,53 @@ export function Financeiro() {
                 })}
               </TableBody>
             </Table>
+            </div>
+
+            {/* Mobile: cards */}
+            <div className="block md:hidden p-3 space-y-2">
+              {isLoading ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">Carregando...</p>
+              ) : transacoesPag.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma transação encontrada.</p>
+              ) : transacoesPag.map(t => {
+                const st = statusEfetivo(t)
+                return (
+                  <Card
+                    key={t.id}
+                    className={cn('cursor-pointer transition-colors hover:bg-muted/50', st === 'vencido' && 'bg-destructive/5')}
+                    onClick={() => { setEditando(t); setFormOpen(true) }}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">{t.descricao}</div>
+                          <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                            <div>{categoriasLabel[t.categoria] || t.categoria} · {format(parseISO(t.data_vencimento), 'dd/MM/yy')}</div>
+                            {t.parcela_numero && <div>Parcela {t.parcela_numero}/{t.parcela_total}</div>}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <div className={cn('font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
+                            {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
+                          </div>
+                          <div className="mt-1"><StatusBadge status={st} /></div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex justify-end gap-2">
+                        {(st === 'pendente' || st === 'vencido') && (
+                          <Button size="sm" variant="outline" className="h-11" onClick={e => { e.stopPropagation(); marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') }) }}>
+                            <Check className="mr-1 h-4 w-4" /> Pago
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" className="h-11 text-destructive" onClick={e => { e.stopPropagation(); setDeletandoId(t.id) }}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
 
             {/* Totalizadores + Paginação */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-2 p-4 border-t">
