@@ -384,7 +384,7 @@ export function Lancamentos() {
 
       {/* Table */}
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto w-full">
+        <div className="hidden md:block overflow-x-auto w-full">
         <Table>
           <TableHeader>
             <TableRow>
