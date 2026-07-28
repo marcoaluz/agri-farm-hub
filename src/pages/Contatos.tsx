@@ -204,43 +204,82 @@ export default function Contatos() {
               Nenhum contato cadastrado.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Documento</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>E-mail</TableHead>
-                    <TableHead className="w-24 text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtrados.map(c => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.nome}</TableCell>
-                      <TableCell>
-                        <Badge className={badgeTipo(c.tipo)} variant="secondary">
-                          {TIPOS.find(t => t.v === c.tipo)?.l ?? c.tipo}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{c.documento ?? '—'}</TableCell>
-                      <TableCell>{c.telefone ?? '—'}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">{c.email ?? '—'}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => abrirEdicao(c)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setExcluir(c)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
+            <>
+              {/* Desktop: tabela */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Documento</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>E-mail</TableHead>
+                      <TableHead className="w-24 text-right">Ações</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filtrados.map(c => (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-medium">{c.nome}</TableCell>
+                        <TableCell>
+                          <Badge className={badgeTipo(c.tipo)} variant="secondary">
+                            {TIPOS.find(t => t.v === c.tipo)?.l ?? c.tipo}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{c.documento ?? '—'}</TableCell>
+                        <TableCell>{c.telefone ?? '—'}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{c.email ?? '—'}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => abrirEdicao(c)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setExcluir(c)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile: cards */}
+              <div className="block md:hidden space-y-2">
+                {filtrados.map(c => (
+                  <Card
+                    key={c.id}
+                    className="cursor-pointer transition-colors hover:bg-muted/50"
+                    onClick={() => abrirEdicao(c)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">{c.nome}</div>
+                          <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                            <div>{TIPOS.find(t => t.v === c.tipo)?.l ?? c.tipo}{c.telefone ? ` · ${c.telefone}` : ''}</div>
+                            {c.email && <div className="truncate">{c.email}</div>}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Badge className={badgeTipo(c.tipo)} variant="secondary">
+                            {TIPOS.find(t => t.v === c.tipo)?.l ?? c.tipo}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-11 w-11"
+                            onClick={e => { e.stopPropagation(); setExcluir(c) }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
