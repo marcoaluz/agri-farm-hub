@@ -137,13 +137,6 @@ export default function Convite() {
     }
   }
 
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao criar conta.')
-    } finally {
-      setCriando(false)
-    }
-  }
-
   // Loading
   if (validando) {
     return (
