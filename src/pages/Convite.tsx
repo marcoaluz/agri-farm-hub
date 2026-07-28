@@ -101,6 +101,10 @@ export default function Convite() {
       toast.error('Token inválido.')
       return
     }
+    if (isNovoProprietario && !nomePropriedade.trim()) {
+      toast.error('Preencha todos os campos')
+      return
+    }
 
     setCriando(true)
     try {
@@ -112,21 +116,27 @@ export default function Convite() {
       if (authError) throw authError
 
       const rpcName = isNovoProprietario ? 'aceitar_convite_novo_usuario' : 'aceitar_convite'
-      const { error: conviteError } = await supabase.rpc(rpcName as any, {
+      const params: Record<string, string> = {
         p_token: token,
         p_nome: nome.trim(),
-      })
+      }
+      if (isNovoProprietario) params.p_propriedade_nome = nomePropriedade.trim()
+
+      const { error: conviteError } = await supabase.rpc(rpcName as any, params)
       if (conviteError) throw conviteError
 
+      queryClient.invalidateQueries()
       setSucesso(true)
 
-      if (isNovoProprietario) {
-        toast.success('Conta criada! Agora cadastre sua primeira propriedade.')
-        setTimeout(() => navigate('/propriedades'), 2000)
-      } else {
-        toast.success('Conta criada com sucesso! Bem-vindo ao SGA.')
-        setTimeout(() => navigate('/'), 2000)
-      }
+      toast.success('Convite aceito! Bem-vindo ao sistema.')
+      setTimeout(() => navigate('/'), 2000)
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao criar conta.')
+    } finally {
+      setCriando(false)
+    }
+  }
+
     } catch (err: any) {
       toast.error(err.message || 'Erro ao criar conta.')
     } finally {
