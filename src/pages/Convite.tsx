@@ -58,6 +58,7 @@ export default function Convite() {
   const [tokenValido, setTokenValido] = useState(false)
 
   const [nome, setNome] = useState('')
+  const [nomePropriedade, setNomePropriedade] = useState('')
   const [senha, setSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -68,7 +69,11 @@ export default function Convite() {
   const strength = useMemo(() => getPasswordStrength(senha), [senha])
 
   const senhasIguais = senha === confirmarSenha && confirmarSenha.length > 0
-  const formValido = nome.trim().length >= 3 && senha.length >= 8 && senhasIguais
+  const formValido =
+    nome.trim().length >= 3 &&
+    senha.length >= 8 &&
+    senhasIguais &&
+    (!isNovoProprietario || nomePropriedade.trim().length >= 2)
 
   useEffect(() => {
     async function validar() {
