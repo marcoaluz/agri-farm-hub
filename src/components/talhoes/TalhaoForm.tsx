@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapaDesenho, DrawResult } from "./MapaDesenho";
+import { MapaDesenho, DrawResult, parseGeometria } from "./MapaDesenho";
 
 interface Talhao {
   id: string;
@@ -41,9 +41,9 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
     centro_lat: number | null;
     centro_lng: number | null;
   }>({
-    geometria: talhao?.geometria || null,
-    centro_lat: talhao?.centro_lat || null,
-    centro_lng: talhao?.centro_lng || null,
+    geometria: parseGeometria(talhao?.geometria),
+    centro_lat: talhao?.centro_lat ?? null,
+    centro_lng: talhao?.centro_lng ?? null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -61,9 +61,13 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
   });
 
   const initialCenter: [number, number] | undefined =
-    propriedade?.latitude && propriedade?.longitude
-      ? [Number(propriedade.latitude), Number(propriedade.longitude)]
-      : undefined;
+    talhao?.centro_lat && talhao?.centro_lng
+      ? [Number(talhao.centro_lat), Number(talhao.centro_lng)]
+      : propriedade?.latitude && propriedade?.longitude
+        ? [Number(propriedade.latitude), Number(propriedade.longitude)]
+        : undefined;
+
+  const initialZoom = talhao?.centro_lat ? 15 : propriedade?.latitude ? 14 : 4;
 
   const handleDraw = (r: DrawResult | null) => {
     if (!r) {
@@ -105,6 +109,9 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
     onSuccess: () => {
       toast({ title: `Talhão ${talhao ? "atualizado" : "criado"} com sucesso` });
       queryClient.invalidateQueries({ queryKey: ["talhoes"] });
+      queryClient.invalidateQueries({ queryKey: ["mapa-talhoes"] });
+      queryClient.invalidateQueries({ queryKey: ["mapa-propriedade"] });
+      queryClient.invalidateQueries({ queryKey: ["talhoes-com-geometria"] });
       onSuccess();
     },
     onError: (error: Error) => {
@@ -137,6 +144,7 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
         <MapaDesenho
           initialGeometry={geo.geometria}
           center={initialCenter}
+          zoom={initialZoom}
           onChange={handleDraw}
           height={320}
         />

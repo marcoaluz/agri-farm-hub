@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, FeatureGroup, Polygon, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, FeatureGroup, GeoJSON, Popup, useMap } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
 import area from "@turf/area";
@@ -21,9 +21,23 @@ export interface DrawResult {
   area_ha: number;
 }
 
+/** Aceita geometria vinda como objeto ou string JSON do banco */
+export function parseGeometria(g: any): GeoJSON.Polygon | null {
+  if (!g) return null;
+  try {
+    const obj = typeof g === "string" ? JSON.parse(g) : g;
+    if (obj?.type === "Feature") return obj.geometry ?? null;
+    if (obj?.type === "Polygon" || obj?.type === "MultiPolygon") return obj;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 interface Props {
-  initialGeometry?: GeoJSON.Polygon | null;
+  initialGeometry?: any;
   center?: [number, number];
+  zoom?: number;
   onChange: (r: DrawResult | null) => void;
   height?: number;
 }
@@ -39,28 +53,37 @@ function computeResult(geometry: GeoJSON.Polygon): DrawResult {
   return { geometria: geometry, centro_lat, centro_lng, area_ha };
 }
 
-export function MapaDesenho({ initialGeometry, center, onChange, height = 360 }: Props) {
-  const fgRef = useRef<L.FeatureGroup>(null);
+/** Centraliza o mapa nas geometrias fornecidas */
+function FitBounds({ geometries }: { geometries: GeoJSON.Polygon[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!geometries.length) return;
+    try {
+      const grupo = L.featureGroup(geometries.map((g) => L.geoJSON(g as any)));
+      const bounds = grupo.getBounds();
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50] });
+    } catch {
+      /* ignore */
+    }
+  }, [geometries, map]);
+  return null;
+}
 
-  // Center: initial polygon's centroid > prop center > Brazil
-  let mapCenter: [number, number] = center || [-15.78, -47.92];
-  if (initialGeometry) {
-    const r = computeResult(initialGeometry);
+export function MapaDesenho({ initialGeometry, center, zoom, onChange, height = 360 }: Props) {
+  const fgRef = useRef<L.FeatureGroup>(null);
+  const geom = parseGeometria(initialGeometry);
+
+  let mapCenter: [number, number] = center || [-14.235, -51.925];
+  let mapZoom = zoom ?? (center ? 14 : 4);
+  if (geom) {
+    const r = computeResult(geom as GeoJSON.Polygon);
     mapCenter = [r.centro_lat, r.centro_lng];
+    mapZoom = 15;
   }
 
-  useEffect(() => {
-    if (initialGeometry && fgRef.current && fgRef.current.getLayers().length === 0) {
-      const layer = L.geoJSON(initialGeometry);
-      layer.eachLayer((l) => fgRef.current!.addLayer(l));
-    }
-  }, [initialGeometry]);
-
   const handleCreated = (e: any) => {
-    // Only allow one polygon: clear previous
     if (fgRef.current) {
-      const layers = fgRef.current.getLayers();
-      layers.forEach((l) => {
+      fgRef.current.getLayers().forEach((l) => {
         if (l !== e.layer) fgRef.current!.removeLayer(l);
       });
     }
@@ -75,17 +98,16 @@ export function MapaDesenho({ initialGeometry, center, onChange, height = 360 }:
     });
   };
 
-  const handleDeleted = () => {
-    onChange(null);
-  };
+  const handleDeleted = () => onChange(null);
 
   return (
     <div style={{ height }} className="w-full rounded-md overflow-hidden border">
-      <MapContainer center={mapCenter} zoom={15} style={{ height: "100%", width: "100%" }}>
+      <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: "100%", width: "100%" }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        {geom && <FitBounds geometries={[geom]} />}
         <FeatureGroup ref={fgRef as any}>
           <EditControl
             position="topright"
@@ -101,6 +123,13 @@ export function MapaDesenho({ initialGeometry, center, onChange, height = 360 }:
               polygon: { allowIntersection: false, showArea: true },
             }}
           />
+          {geom && (
+            <GeoJSON
+              key={JSON.stringify(geom)}
+              data={geom as any}
+              pathOptions={{ color: "#1F3A2E", weight: 2, fillOpacity: 0.3 }}
+            />
+          )}
         </FeatureGroup>
       </MapContainer>
     </div>
@@ -113,7 +142,7 @@ interface ViewProps {
     nome: string;
     area_ha: number;
     cultura_atual?: string | null;
-    geometria: GeoJSON.Polygon;
+    geometria: any;
     centro_lat?: number | null;
     centro_lng?: number | null;
   }>;
@@ -122,38 +151,36 @@ interface ViewProps {
 }
 
 export function MapaTalhoesView({ talhoes, fallbackCenter, height = "100%" }: ViewProps) {
-  const centers = talhoes
-    .map((t) => (t.centro_lat && t.centro_lng ? [t.centro_lat, t.centro_lng] as [number, number] : null))
-    .filter(Boolean) as [number, number][];
-  let center: [number, number] = fallbackCenter || [-15.78, -47.92];
-  if (centers.length > 0) {
-    center = [
-      centers.reduce((a, b) => a + b[0], 0) / centers.length,
-      centers.reduce((a, b) => a + b[1], 0) / centers.length,
-    ];
-  }
+  const comGeo = talhoes
+    .map((t) => ({ ...t, geom: parseGeometria(t.geometria) }))
+    .filter((t) => !!t.geom);
+
+  const center: [number, number] = fallbackCenter || [-14.235, -51.925];
+  const zoom = fallbackCenter ? 14 : 4;
 
   return (
     <div style={{ height }} className="w-full rounded-md overflow-hidden border">
-      <MapContainer center={center} zoom={13} style={{ height: "100%", width: "100%" }}>
+      <MapContainer center={center} zoom={zoom} style={{ height: "100%", width: "100%" }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {talhoes.map((t) => {
-          const positions = t.geometria.coordinates[0].map((c) => [c[1], c[0]] as [number, number]);
-          return (
-            <Polygon key={t.id} positions={positions} pathOptions={{ color: "#16a34a", weight: 2 }}>
-              <Popup>
-                <div className="space-y-1">
-                  <div className="font-semibold">{t.nome}</div>
-                  <div className="text-sm">Área: {t.area_ha?.toFixed(2)} ha</div>
-                  {t.cultura_atual && <div className="text-sm">Cultura: {t.cultura_atual}</div>}
-                </div>
-              </Popup>
-            </Polygon>
-          );
-        })}
+        <FitBounds geometries={comGeo.map((t) => t.geom as GeoJSON.Polygon)} />
+        {comGeo.map((t) => (
+          <GeoJSON
+            key={t.id}
+            data={t.geom as any}
+            pathOptions={{ color: "#16a34a", weight: 2, fillOpacity: 0.3 }}
+          >
+            <Popup>
+              <div className="space-y-1">
+                <div className="font-semibold">{t.nome}</div>
+                {t.area_ha != null && <div className="text-sm">Área: {Number(t.area_ha).toFixed(2)} ha</div>}
+                {t.cultura_atual && <div className="text-sm">Cultura: {t.cultura_atual}</div>}
+              </div>
+            </Popup>
+          </GeoJSON>
+        ))}
       </MapContainer>
     </div>
   );
