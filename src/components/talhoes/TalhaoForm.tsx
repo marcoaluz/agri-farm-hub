@@ -41,9 +41,9 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
     centro_lat: number | null;
     centro_lng: number | null;
   }>({
-    geometria: talhao?.geometria || null,
-    centro_lat: talhao?.centro_lat || null,
-    centro_lng: talhao?.centro_lng || null,
+    geometria: parseGeometria(talhao?.geometria),
+    centro_lat: talhao?.centro_lat ?? null,
+    centro_lng: talhao?.centro_lng ?? null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -61,9 +61,13 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
   });
 
   const initialCenter: [number, number] | undefined =
-    propriedade?.latitude && propriedade?.longitude
-      ? [Number(propriedade.latitude), Number(propriedade.longitude)]
-      : undefined;
+    talhao?.centro_lat && talhao?.centro_lng
+      ? [Number(talhao.centro_lat), Number(talhao.centro_lng)]
+      : propriedade?.latitude && propriedade?.longitude
+        ? [Number(propriedade.latitude), Number(propriedade.longitude)]
+        : undefined;
+
+  const initialZoom = talhao?.centro_lat ? 15 : propriedade?.latitude ? 14 : 4;
 
   const handleDraw = (r: DrawResult | null) => {
     if (!r) {
