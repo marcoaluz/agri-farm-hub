@@ -109,6 +109,9 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
     onSuccess: () => {
       toast({ title: `Talhão ${talhao ? "atualizado" : "criado"} com sucesso` });
       queryClient.invalidateQueries({ queryKey: ["talhoes"] });
+      queryClient.invalidateQueries({ queryKey: ["mapa-talhoes"] });
+      queryClient.invalidateQueries({ queryKey: ["mapa-propriedade"] });
+      queryClient.invalidateQueries({ queryKey: ["talhoes-com-geometria"] });
       onSuccess();
     },
     onError: (error: Error) => {
