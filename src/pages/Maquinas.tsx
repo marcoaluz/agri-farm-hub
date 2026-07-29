@@ -498,75 +498,23 @@ export function Maquinas() {
                     )}
                   </div>
 
-                  <div className="flex gap-2 pt-4 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => {
-                        setAbastecimentoMaquina(maquina);
-                        setAbastecimentoDialogOpen(true);
-                      }}
-                    >
-                      <Fuel className="h-4 w-4 mr-1" />
-                      Abastecer
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setMaquinaManutencao(maquina);
-                        setManutencaoDialog(true);
-                      }}
-                    >
-                      <Wrench className="h-4 w-4 mr-1" />
-                      Manutenção
-                    </Button>
-                    <Sheet>
-                      <SheetTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <History className="h-4 w-4" />
-                        </Button>
-                      </SheetTrigger>
-                      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-                        <HistoricoAbastecimentos maquina={maquina} />
-                      </SheetContent>
-                    </Sheet>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setMaquinaEditando(maquina);
-                        setDialogOpen(true);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação irá desativar a máquina "{maquina.nome}".
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteMutation.mutate(maquina.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Remover
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                  <MaquinaCardAcoes
+                    maquina={maquina}
+                    onAbastecer={() => {
+                      setAbastecimentoMaquina(maquina);
+                      setAbastecimentoDialogOpen(true);
+                    }}
+                    onManutencao={() => {
+                      setMaquinaManutencao(maquina);
+                      setManutencaoDialog(true);
+                    }}
+                    onEditar={() => {
+                      setMaquinaEditando(maquina);
+                      setDialogOpen(true);
+                    }}
+                    onExcluir={() => deleteMutation.mutate(maquina.id)}
+                  />
+
                 </CardContent>
               </Card>
             );
