@@ -18,6 +18,7 @@ import { Plus, Tractor, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, Hi
 import { MaquinaForm } from '@/components/maquinas/MaquinaForm';
 import { AbastecimentoForm } from '@/components/maquinas/AbastecimentoForm';
 import { HistoricoAbastecimentos } from '@/components/maquinas/HistoricoAbastecimentos';
+import { MaquinaCardAcoes } from '@/components/maquinas/MaquinaCardAcoes';
 import { ManutencaoDialog } from '@/components/maquinas/ManutencaoDialog';
 import { cn } from '@/lib/utils';
 
@@ -402,7 +403,7 @@ export function Maquinas() {
 
       {/* Grid */}
       {isLoading ? (
-        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-60 sm:h-72 w-full" />
           ))}
@@ -426,7 +427,7 @@ export function Maquinas() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
           {maquinasFiltradas?.map((maquina) => {
             const analise = analiseMap.get(maquina.id);
             return (
