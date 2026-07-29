@@ -7,6 +7,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
+import { PizzaCategoria } from '@/components/charts/PizzaCategoria'
 import {
   ClipboardList, Wheat, CheckCircle, AlertTriangle, ArrowRight,
   Coffee, Apple, Sprout, Leaf, Beef, Syringe,
