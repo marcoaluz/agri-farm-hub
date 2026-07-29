@@ -253,20 +253,28 @@ ${(sanitario || []).map((s: any) =>
 
   return (
     <>
-      {/* Botão flutuante */}
-      <Button
-        onClick={() => setAberto(prev => !prev)}
-        className={cn(
-          'fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg',
-          'flex items-center justify-center transition-all duration-200',
-          'bg-primary text-primary-foreground hover:bg-primary/90'
-        )}
-        title="Assistente SGA"
-        size="icon"
-      >
-        {aberto ? <X className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
-        <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary border-2 border-background" />
-      </Button>
+      {/* Botão flutuante — discreto em repouso, opaco em hover/toque */}
+      {!aberto && (
+        <Button
+          onClick={() => setAberto(prev => !prev)}
+          className={cn(
+            'fixed bottom-4 right-4 z-40',
+            'h-12 w-12 md:h-14 md:w-14',
+            'rounded-full',
+            'bg-primary/40 hover:bg-primary text-primary-foreground',
+            'backdrop-blur-sm',
+            'shadow-md hover:shadow-lg',
+            'transition-all duration-200',
+            'hover:scale-105',
+            'flex items-center justify-center'
+          )}
+          title="Assistente SGA"
+          size="icon"
+        >
+          <Bot className="h-5 w-5 md:h-6 md:w-6" />
+          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary border-2 border-background" />
+        </Button>
+      )}
 
       {/* Painel do chat */}
       {aberto && (
