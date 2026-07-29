@@ -10,6 +10,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
   LineChart, Line,
 } from 'recharts'
+import { PizzaCategoria } from '@/components/charts/PizzaCategoria'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -248,17 +249,7 @@ export function Financeiro() {
             <Card className="p-4">
               <CardHeader className="px-0 pt-0"><CardTitle className="text-base">Despesas por Categoria</CardTitle></CardHeader>
               <CardContent className="px-0 pb-0">
-                {pieDespesas.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <PieChart>
-                      <Pie data={pieDespesas} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={11}>
-                        {pieDespesas.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                      </Pie>
-                      <ReTooltip formatter={(v: number) => fmt(v)} />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : <div className="h-[280px] flex items-center justify-center text-muted-foreground">Sem despesas</div>}
+                <PizzaCategoria dados={pieDespesas} emptyLabel="Sem despesas" />
               </CardContent>
             </Card>
           </div>

@@ -13,6 +13,7 @@ import {
   BarChart, Bar, ComposedChart, Line, PieChart, Pie, Cell, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
+import { PizzaCategoria } from '@/components/charts/PizzaCategoria'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -544,24 +545,9 @@ function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; s
 
         <Card>
           <CardHeader><CardTitle className="text-base">Breakdown de Custos</CardTitle></CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent>
             {breakChart.length === 0 ? <EmptyChart /> : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={breakChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={95}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}
-                  >
-                    {breakChart.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
-                  </Pie>
-                  <Tooltip
-                    formatter={(v: number, _: any, item: any) => [
-                      `${fmt(Number(v))} (${item.payload.pct.toFixed(1)}%)`,
-                      item.payload.origem ? `${item.payload.name} · ${item.payload.origem}` : item.payload.name,
-                    ]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <PizzaCategoria dados={breakChart} emptyLabel="Sem custos" />
             )}
           </CardContent>
         </Card>

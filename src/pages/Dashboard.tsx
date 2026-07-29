@@ -7,6 +7,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
+import { PizzaCategoria } from '@/components/charts/PizzaCategoria'
 import {
   ClipboardList, Wheat, CheckCircle, AlertTriangle, ArrowRight,
   Coffee, Apple, Sprout, Leaf, Beef, Syringe,
@@ -609,40 +610,15 @@ export default function Dashboard() {
 
             <ChartCard title="Distribuição por Categoria" description="Custos por tipo de serviço" className="lg:col-span-3">
               {isLoadingCatRender ? (
-                <Skeleton className="h-[280px] rounded-lg" />
+                <Skeleton className="h-[350px] md:h-[400px] rounded-lg" />
               ) : (
-                <div className="h-[280px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={dadosCatRender || []}
-                        cx="50%"
-                        cy="45%"
-                        innerRadius={55}
-                        outerRadius={85}
-                        paddingAngle={3}
-                        dataKey="custo_total"
-                        nameKey="categoria"
-                      >
-                        {(dadosCatRender || []).map((_: any, i: number) => (
-                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => [fmt(value), 'Custo']} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="mt-2 grid grid-cols-2 gap-1.5">
-                    {(dadosCatRender || []).map((item: any, i: number) => {
-                      const pct = totalCategoria > 0 ? ((Number(item.custo_total || 0) / totalCategoria) * 100).toFixed(1) : '0.0'
-                      return (
-                        <div key={i} className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                          <span className="text-xs text-muted-foreground truncate">{item.categoria} ({pct}%)</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
+                <PizzaCategoria
+                  dados={dadosCatRender || []}
+                  nameKey="categoria"
+                  valueKey="custo_total"
+                  donut
+                  emptyLabel="Sem custos no período"
+                />
               )}
             </ChartCard>
           </div>
