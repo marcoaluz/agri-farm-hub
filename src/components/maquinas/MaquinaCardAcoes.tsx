@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import HistoricoAbastecimentos from './HistoricoAbastecimentos';
+import { HistoricoAbastecimentos } from './HistoricoAbastecimentos';
 
 interface MaquinaCardAcoesProps {
   maquina: any;
