@@ -296,32 +296,35 @@ export default function Pecuaria() {
       <h1 className="text-2xl font-bold flex items-center gap-2"><Beef className="h-6 w-6" /> Pecuária</h1>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full grid grid-cols-5">
-          <TabsTrigger value="rebanho">🐄 Rebanho</TabsTrigger>
-          <TabsTrigger value="sanidade">💉 Sanidade</TabsTrigger>
-          <TabsTrigger value="leite">🥛 Leite</TabsTrigger>
-          <TabsTrigger value="movimentacoes">↔️ Movimentações</TabsTrigger>
-          <TabsTrigger value="pesagens">⚖️ Pesagens</TabsTrigger>
-        </TabsList>
+        <div className="-mx-1 overflow-x-auto pb-1">
+          <TabsList className="w-max min-w-full">
+            <TabsTrigger value="rebanho" className="whitespace-nowrap">🐄 <span className="ml-1">Rebanho</span></TabsTrigger>
+            <TabsTrigger value="sanidade" className="whitespace-nowrap">💉 <span className="ml-1">Sanidade</span></TabsTrigger>
+            <TabsTrigger value="leite" className="whitespace-nowrap">🥛 <span className="ml-1">Leite</span></TabsTrigger>
+            <TabsTrigger value="movimentacoes" className="whitespace-nowrap">↔️ <span className="ml-1">Movimentações</span></TabsTrigger>
+            <TabsTrigger value="pesagens" className="whitespace-nowrap">⚖️ <span className="ml-1">Pesagens</span></TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ========= ABA REBANHO ========= */}
         <TabsContent value="rebanho" className="space-y-4">
           {/* KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {loadingRebanhos ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />) : (
               <>
-                <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total de Animais</p><p className="text-2xl font-bold">{totalAnimais}</p></CardContent></Card>
-                <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Lotes Ativos</p><p className="text-2xl font-bold">{totalLotes}</p></CardContent></Card>
-                <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Valor do Rebanho</p><p className="text-2xl font-bold">R$ {valorRebanho.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p><p className="text-xs text-muted-foreground mt-1">baseado em compras e vendas registradas</p></CardContent></Card>
-                <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Eventos Sanitários</p><p className="text-2xl font-bold">{eventosProximos}<span className="text-sm font-normal text-muted-foreground ml-1">próx. 30d</span></p></CardContent></Card>
+                <Card><CardContent className="p-3 sm:p-4"><p className="text-xs sm:text-sm text-muted-foreground leading-tight">Total de Animais</p><p className="text-lg sm:text-xl lg:text-2xl font-bold break-words">{totalAnimais}</p></CardContent></Card>
+                <Card><CardContent className="p-3 sm:p-4"><p className="text-xs sm:text-sm text-muted-foreground leading-tight">Lotes Ativos</p><p className="text-lg sm:text-xl lg:text-2xl font-bold break-words">{totalLotes}</p></CardContent></Card>
+                <Card><CardContent className="p-3 sm:p-4"><p className="text-xs sm:text-sm text-muted-foreground leading-tight">Valor do Rebanho</p><p className="text-lg sm:text-xl lg:text-2xl font-bold break-words">R$ {valorRebanho.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p><p className="text-xs text-muted-foreground mt-1 hidden sm:block">baseado em compras e vendas registradas</p></CardContent></Card>
+                <Card><CardContent className="p-3 sm:p-4"><p className="text-xs sm:text-sm text-muted-foreground leading-tight">Eventos Sanitários</p><p className="text-lg sm:text-xl lg:text-2xl font-bold break-words">{eventosProximos}<span className="text-xs sm:text-sm font-normal text-muted-foreground ml-1">próx. 30d</span></p></CardContent></Card>
               </>
             )}
           </div>
 
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={() => setRacaoDialog(true)}><Wheat className="h-4 w-4 mr-1" /> Registrar Ração</Button>
-            <Button onClick={() => { setEditLote(null); setLoteDialog(true) }}><Plus className="h-4 w-4 mr-1" /> Novo Lote</Button>
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setRacaoDialog(true)}><Wheat className="h-4 w-4 mr-1" /> Registrar Ração</Button>
+            <Button className="w-full sm:w-auto" onClick={() => { setEditLote(null); setLoteDialog(true) }}><Plus className="h-4 w-4 mr-1" /> Novo Lote</Button>
           </div>
+
 
           {loadingRebanhos ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32" />) : !rebanhos?.length ? (
             <Card><CardContent className="py-12 text-center text-muted-foreground"><Beef className="h-12 w-12 mx-auto mb-2 opacity-40" /><p>Nenhum lote cadastrado.</p></CardContent></Card>
