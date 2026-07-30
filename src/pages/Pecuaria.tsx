@@ -527,6 +527,7 @@ export default function Pecuaria() {
       {/* Dialogs */}
       <LoteDialog open={loteDialog} onOpenChange={setLoteDialog} propriedadeId={propId} lote={editLote} />
       <MovimentacaoDialog open={movDialog} onOpenChange={setMovDialog} propriedadeId={propId} rebanhos={rebanhos || []} rebanhoIdInicial={movRebanhoId} />
+      <CompraAnimaisDialog open={compraDialog} onOpenChange={setCompraDialog} propriedadeId={propId} rebanho={compraRebanho} />
       <EventoSanitarioDialog open={sanitarioDialog} onOpenChange={setSanitarioDialog} propriedadeId={propId} rebanhos={rebanhos || []} />
       <OrdenhaDialog open={ordenhaDialog} onOpenChange={setOrdenhaDialog} propriedadeId={propId} rebanhosLeite={rebanhosLeite} />
       <RacaoDialog open={racaoDialog} onOpenChange={setRacaoDialog} propriedadeId={propId || ''} safraId={safraSelecionada?.id || ''} rebanhos={rebanhos || []} />
