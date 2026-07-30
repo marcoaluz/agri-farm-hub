@@ -109,31 +109,22 @@ export function LotesDialog({ produto, onClose, highlightLoteId }: LotesDialogPr
 
   const deleteMutation = useMutation({
     mutationFn: async (lote: Lote) => {
-      // Delete lote (only if fully available) — usa select() para saber se realmente excluiu
       const { data: deletadas, error: delError } = await supabase
         .from('lotes')
         .delete()
         .eq('id', lote.id)
-        .eq('quantidade_disponivel', lote.quantidade_original)
         .select('id')
 
       if (delError) throw delError
 
       if (!deletadas || deletadas.length === 0) {
-        throw new Error('CONSUMIDO')
+        throw new Error('Nenhum lote foi excluído')
       }
-
-      // Update produto saldo
-      const { error: updError } = await supabase
-        .from('produtos')
-        .update({ saldo_atual: produto.saldo_atual - lote.quantidade_original })
-        .eq('id', produto.id)
-
-      if (updError) throw updError
     },
 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lotes'] })
+      queryClient.invalidateQueries({ queryKey: ['produtos'] })
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
       queryClient.invalidateQueries({ queryKey: ['transacoes'] })
       queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
@@ -142,13 +133,12 @@ export function LotesDialog({ produto, onClose, highlightLoteId }: LotesDialogPr
     },
     onError: (err: any) => {
       const msg = String(err?.message || '')
-      const consumido = msg === 'CONSUMIDO'
-      const fk = msg.includes('foreign key') || err?.code === '23503'
+      const fk = msg.toLowerCase().includes('foreign key') || err?.code === '23503'
       toast({
-        title: consumido || fk
-          ? 'Não é possível excluir: este lote já foi usado em lançamentos'
+        title: fk
+          ? 'Este lote já foi usado em lançamentos'
           : 'Erro ao excluir lote',
-        description: consumido || fk
+        description: fk
           ? 'Exclua primeiro os lançamentos que consumiram este lote.'
           : msg,
         variant: 'destructive',

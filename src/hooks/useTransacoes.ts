@@ -196,11 +196,13 @@ export function useDeleteTransacao() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('transacoes').delete().eq('id', id)
+      const { data, error } = await supabase.from('transacoes').delete().eq('id', id).select('id')
       if (error) throw error
+      if (!data?.length) throw new Error('A transação não foi encontrada ou você não tem permissão para excluí-la.')
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+      queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
       queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
       queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] })
     },

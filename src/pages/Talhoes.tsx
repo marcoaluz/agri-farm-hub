@@ -229,15 +229,16 @@ function TalhaoCard({ talhao, onClick }: { talhao: Talhao; onClick: () => void }
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("talhoes").update({ ativo: false }).eq("id", talhao.id);
+      const { data, error } = await supabase.from("talhoes").update({ ativo: false }).eq("id", talhao.id).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("O talhão não foi encontrado ou você não tem permissão para removê-lo.");
     },
     onSuccess: () => {
       toast({ title: "Talhão removido com sucesso" });
       queryClient.invalidateQueries({ queryKey: ["talhoes"] });
     },
-    onError: () => {
-      toast({ title: "Erro ao remover talhão", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Erro ao remover talhão", description: error.message, variant: "destructive" });
     },
   });
 
