@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Loader2, Save, X, Lock, Paperclip, Trash2 } from 'lucide-react'
+import { Loader2, Save, X, Lock } from 'lucide-react'
 import { uploadAnexoNF, listarAnexos, removerAnexo, MAX_ANEXO_BYTES } from '@/lib/anexoNF'
 import { AnexoManager } from '@/components/shared/AnexoManager'
 
@@ -51,7 +51,7 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
   const [dataVencimento, setDataVencimento] = useState(lote.data_vencimento || '')
   const [arquivoNF, setArquivoNF] = useState<File | null>(null)
 
-  const { data: anexos = [], refetch: refetchAnexos } = useQuery({
+  const { data: anexos = [] } = useQuery({
     queryKey: ['anexos', 'lote', lote.id],
     queryFn: () => listarAnexos('lote', lote.id),
   })
@@ -126,14 +126,6 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
       toast({ title: 'Erro ao atualizar lote', description: err.message, variant: 'destructive' })
     },
   })
-
-  async function handleRemoverAnexo() {
-    if (!anexoAtual) return
-    await removerAnexo(anexoAtual)
-    await refetchAnexos()
-    queryClient.invalidateQueries({ queryKey: ['anexos'] })
-    toast({ title: 'Anexo removido' })
-  }
 
   const valorTotal = form.quantidade * form.custo_unitario
 
