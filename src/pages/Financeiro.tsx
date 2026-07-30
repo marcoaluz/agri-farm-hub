@@ -443,6 +443,7 @@ export function Financeiro() {
                             <div>{categoriasLabel[t.categoria] || t.categoria} · {format(parseISO(t.data_vencimento), 'dd/MM/yy')}</div>
                             {t.parcela_numero && <div>Parcela {t.parcela_numero}/{t.parcela_total}</div>}
                           </div>
+                          <TransacaoOrigemAcoes origem={t.origem} compact />
                         </div>
                         <div className="shrink-0 text-right">
                           <div className={cn('font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
