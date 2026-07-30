@@ -109,14 +109,19 @@ export function LotesDialog({ produto, onClose, highlightLoteId }: LotesDialogPr
 
   const deleteMutation = useMutation({
     mutationFn: async (lote: Lote) => {
-      // Delete lote (only if fully available)
-      const { error: delError } = await supabase
+      // Delete lote (only if fully available) — usa select() para saber se realmente excluiu
+      const { data: deletadas, error: delError } = await supabase
         .from('lotes')
         .delete()
         .eq('id', lote.id)
         .eq('quantidade_disponivel', lote.quantidade_original)
+        .select('id')
 
       if (delError) throw delError
+
+      if (!deletadas || deletadas.length === 0) {
+        throw new Error('CONSUMIDO')
+      }
 
       // Update produto saldo
       const { error: updError } = await supabase
@@ -126,6 +131,7 @@ export function LotesDialog({ produto, onClose, highlightLoteId }: LotesDialogPr
 
       if (updError) throw updError
     },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lotes'] })
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
@@ -135,13 +141,20 @@ export function LotesDialog({ produto, onClose, highlightLoteId }: LotesDialogPr
       setDeleteDialog({ open: false, lote: null })
     },
     onError: (err: any) => {
-      const fk = String(err?.message || '').includes('foreign key')
+      const msg = String(err?.message || '')
+      const consumido = msg === 'CONSUMIDO'
+      const fk = msg.includes('foreign key') || err?.code === '23503'
       toast({
-        title: fk ? 'Não é possível excluir: este lote já foi usado em lançamentos' : 'Erro ao excluir lote',
-        description: fk ? undefined : err.message,
+        title: consumido || fk
+          ? 'Não é possível excluir: este lote já foi usado em lançamentos'
+          : 'Erro ao excluir lote',
+        description: consumido || fk
+          ? 'Exclua primeiro os lançamentos que consumiram este lote.'
+          : msg,
         variant: 'destructive',
       })
     },
+
   })
 
   const handleNavigateToLancamento = (lancamentoId: string) => {

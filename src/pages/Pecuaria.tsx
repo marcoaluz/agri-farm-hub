@@ -230,12 +230,30 @@ export default function Pecuaria() {
   // Delete rebanho
   async function handleExcluirMovimentacao() {
     if (!deleteMovId) return
-    const { error } = await supabase.from('rebanho_movimentacoes' as any).delete().eq('id', deleteMovId)
+    const { data: removidas, error } = await supabase
+      .from('rebanho_movimentacoes' as any)
+      .delete()
+      .eq('id', deleteMovId)
+      .select('id')
     setDeleteMovId(null)
     if (error) {
-      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
+      const fk = String(error.message || '').includes('foreign key') || (error as any).code === '23503'
+      toast({
+        title: fk ? 'Não é possível excluir: já existem registros vinculados' : 'Erro ao excluir',
+        description: fk ? 'Exclua primeiro os registros vinculados a esta movimentação.' : error.message,
+        variant: 'destructive',
+      })
       return
     }
+    if (!removidas || (removidas as any[]).length === 0) {
+      toast({
+        title: 'Nada foi excluído',
+        description: 'A movimentação não foi encontrada ou você não tem permissão para excluí-la.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     queryClient.invalidateQueries({ queryKey: ['rebanho-movimentacoes'] })
     queryClient.invalidateQueries({ queryKey: ['rebanho_movimentacoes'] })
     queryClient.invalidateQueries({ queryKey: ['transacoes'] })
