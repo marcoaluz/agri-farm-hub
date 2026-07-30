@@ -129,11 +129,18 @@ export function LotesDialog({ produto, onClose, highlightLoteId }: LotesDialogPr
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lotes'] })
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
-      toast({ title: 'Lote excluído com sucesso' })
+      queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+      queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
+      toast({ title: 'Lote excluído. Despesa correspondente removida do Financeiro.' })
       setDeleteDialog({ open: false, lote: null })
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao excluir lote', description: err.message, variant: 'destructive' })
+      const fk = String(err?.message || '').includes('foreign key')
+      toast({
+        title: fk ? 'Não é possível excluir: este lote já foi usado em lançamentos' : 'Erro ao excluir lote',
+        description: fk ? undefined : err.message,
+        variant: 'destructive',
+      })
     },
   })
 
@@ -399,7 +406,7 @@ function LoteCard({
           </div>
 
           {/* Action buttons for disponivel */}
-          {isDisponivel && !isEditing && (
+          {(isDisponivel || consumoStatus.status === 'parcial') && !isEditing && (
             <div className="flex gap-1">
               <Button variant="outline" size="sm" onClick={onEdit}>
                 <Pencil className="h-3 w-3 mr-1" /> Editar
