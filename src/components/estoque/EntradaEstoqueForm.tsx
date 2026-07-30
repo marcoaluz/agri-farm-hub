@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { uploadAnexoNF, MAX_ANEXO_BYTES } from '@/lib/anexoNF';
 import { Loader2, Info } from 'lucide-react';
 
 interface Produto {
@@ -28,15 +30,20 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   const queryClient = useQueryClient();
   const safraFechada = (safraAtual as any)?.fechada === true;
 
+  const hoje = new Date().toISOString().split('T')[0];
+
   const [formData, setFormData] = useState({
     produto_id: '',
     nota_fiscal: '',
     fornecedor: '',
     quantidade: 0,
     custo_unitario: 0,
-    data_entrada: new Date().toISOString().split('T')[0],
+    data_entrada: hoje,
     data_validade: ''
   });
+  const [statusPagamento, setStatusPagamento] = useState('pago');
+  const [dataVencimento, setDataVencimento] = useState('');
+  const [arquivoNF, setArquivoNF] = useState<File | null>(null);
 
   // Buscar produtos
   const {
@@ -70,8 +77,15 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   // Mutation para salvar
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Inserir lote
-      const { error } = await supabase
+      if (statusPagamento === 'pendente' && !dataVencimento) {
+        throw new Error('Informe a data de vencimento');
+      }
+      if (arquivoNF && arquivoNF.size > MAX_ANEXO_BYTES) {
+        throw new Error('Arquivo muito grande (máx. 5MB)');
+      }
+
+      // Inserir lote (o trigger cria a transação financeira automaticamente)
+      const { data: novoLote, error } = await supabase
         .from('lotes')
         .insert({
           propriedade_id: propriedadeAtual?.id,
@@ -82,21 +96,45 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
           quantidade_disponivel: formData.quantidade,
           custo_unitario: formData.custo_unitario,
           data_entrada: formData.data_entrada,
-          data_validade: formData.data_validade || null
-        });
+          data_validade: formData.data_validade || null,
+          status_pagamento: statusPagamento,
+          data_vencimento: statusPagamento === 'pendente' ? dataVencimento : null,
+        } as any)
+        .select()
+        .single();
 
       if (error) throw error;
+
+      if (arquivoNF && novoLote) {
+        const { error: erroAnexo } = await uploadAnexoNF({
+          propriedadeId: propriedadeAtual!.id,
+          entidadeTipo: 'lote',
+          entidadeId: (novoLote as any).id,
+          arquivo: arquivoNF,
+        });
+        if (erroAnexo) {
+          toast({
+            title: 'Lote criado, mas erro ao anexar arquivo',
+            description: erroAnexo,
+            variant: 'destructive',
+          });
+        }
+      }
 
       // O trigger atualizar_saldo_produto já atualizará o saldo automaticamente
     },
     onSuccess: () => {
-      toast({ 
+      toast({
         title: 'Entrada de estoque registrada com sucesso!',
-        description: 'O saldo do produto foi atualizado automaticamente.'
+        description: statusPagamento === 'pago'
+          ? 'Despesa criada no Financeiro e saldo atualizado.'
+          : `Despesa a vencer em ${new Date(dataVencimento + 'T12:00:00').toLocaleDateString('pt-BR')}.`,
       });
       queryClient.invalidateQueries({ queryKey: ['produtos'] });
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] });
       queryClient.invalidateQueries({ queryKey: ['lotes'] });
+      queryClient.invalidateQueries({ queryKey: ['transacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['anexos'] });
       onSuccess();
     },
     onError: (error: Error) => {
@@ -305,7 +343,60 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
             />
           </div>
         </div>
+
+        {/* Pagamento */}
+        <div>
+          <Label>Pagamento *</Label>
+          <RadioGroup value={statusPagamento} onValueChange={setStatusPagamento} className="flex gap-4 mt-2">
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="pago" id="pago" />
+              <Label htmlFor="pago" className="font-normal cursor-pointer">À vista (pago hoje)</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="pendente" id="pendente" />
+              <Label htmlFor="pendente" className="font-normal cursor-pointer">A prazo</Label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        {statusPagamento === 'pendente' && (
+          <div>
+            <Label htmlFor="data_vencimento">Data de vencimento *</Label>
+            <Input
+              id="data_vencimento"
+              type="date"
+              value={dataVencimento}
+              onChange={(e) => setDataVencimento(e.target.value)}
+              min={hoje}
+              required
+            />
+          </div>
+        )}
+
+        {/* Anexo da nota fiscal */}
+        <div>
+          <Label htmlFor="anexo_nf">Anexar nota fiscal (opcional)</Label>
+          <Input
+            id="anexo_nf"
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={(e) => setArquivoNF(e.target.files?.[0] || null)}
+            className="cursor-pointer"
+          />
+          <p className="text-xs text-muted-foreground mt-1">PDF, JPG ou PNG (máx. 5MB)</p>
+          {arquivoNF && <p className="text-xs mt-1">Arquivo selecionado: {arquivoNF.name}</p>}
+        </div>
+
+        {valorTotal > 0 && (
+          <Alert className="bg-blue-50 border-blue-200">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-sm text-blue-900">
+              Ao salvar, será criada automaticamente uma despesa no Financeiro no valor de R$ {valorTotal.toFixed(2)}
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
+
 
       </div>{/* end scrollable area */}
       {/* Botões */}

@@ -35,6 +35,7 @@ import {
   statusEfetivo, type Transacao, type FiltrosTransacao,
 } from '@/hooks/useTransacoes'
 import { TransacaoForm } from '@/components/financeiro/TransacaoForm'
+import { TransacaoOrigemAcoes } from '@/components/financeiro/TransacaoOrigemAcoes'
 import { toast } from 'sonner'
 
 const PIE_COLORS = [
@@ -384,6 +385,7 @@ export function Financeiro() {
                         <div className="min-w-0">
                           <p className="truncate max-w-[200px] font-medium">{t.descricao}</p>
                           {t.parcela_numero && <span className="text-xs text-muted-foreground">Parcela {t.parcela_numero}/{t.parcela_total}</span>}
+                          <TransacaoOrigemAcoes origem={t.origem} />
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{categoriasLabel[t.categoria] || t.categoria}</TableCell>
@@ -441,6 +443,7 @@ export function Financeiro() {
                             <div>{categoriasLabel[t.categoria] || t.categoria} · {format(parseISO(t.data_vencimento), 'dd/MM/yy')}</div>
                             {t.parcela_numero && <div>Parcela {t.parcela_numero}/{t.parcela_total}</div>}
                           </div>
+                          <TransacaoOrigemAcoes origem={t.origem} compact />
                         </div>
                         <div className="shrink-0 text-right">
                           <div className={cn('font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>

@@ -12,12 +12,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Beef, Syringe, Milk, ArrowLeftRight, MapPin, Pencil, Trash2, AlertTriangle, Wheat, Scale } from 'lucide-react'
+import { Plus, Beef, Syringe, Milk, ArrowLeftRight, MapPin, Pencil, Trash2, AlertTriangle, Wheat, Scale, ShoppingCart } from 'lucide-react'
 import { format, addDays, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { LoteDialog } from '@/components/pecuaria/LoteDialog'
 import { MovimentacaoDialog } from '@/components/pecuaria/MovimentacaoDialog'
+import { CompraAnimaisDialog } from '@/components/pecuaria/CompraAnimaisDialog'
 import { EventoSanitarioDialog } from '@/components/pecuaria/EventoSanitarioDialog'
 import { OrdenhaDialog } from '@/components/pecuaria/OrdenhaDialog'
 import { RacaoDialog } from '@/components/pecuaria/RacaoDialog'
@@ -49,6 +50,8 @@ export default function Pecuaria() {
   const [loteDialog, setLoteDialog] = useState(false)
   const [editLote, setEditLote] = useState<any>(null)
   const [movDialog, setMovDialog] = useState(false)
+  const [compraDialog, setCompraDialog] = useState(false)
+  const [compraRebanho, setCompraRebanho] = useState<any>(null)
   const [movRebanhoId, setMovRebanhoId] = useState<string | undefined>()
   const [sanitarioDialog, setSanitarioDialog] = useState(false)
   const [ordenhaDialog, setOrdenhaDialog] = useState(false)
@@ -265,6 +268,9 @@ export default function Pecuaria() {
                       {r.localizacao && <div className="flex items-center gap-1"><MapPin className="h-3 w-3 text-muted-foreground" />{r.localizacao}</div>}
                     </div>
                     <div className="flex gap-2 pt-2 flex-wrap">
+                      <Button size="sm" variant="outline" onClick={() => { setCompraRebanho(r); setCompraDialog(true) }}>
+                        <ShoppingCart className="h-3 w-3 mr-1" /> Registrar compra
+                      </Button>
                       <Button size="sm" variant="outline" onClick={() => { setMovRebanhoId(r.id); setMovDialog(true) }}>
                         <ArrowLeftRight className="h-3 w-3 mr-1" /> Movimentação
                       </Button>
@@ -521,6 +527,7 @@ export default function Pecuaria() {
       {/* Dialogs */}
       <LoteDialog open={loteDialog} onOpenChange={setLoteDialog} propriedadeId={propId} lote={editLote} />
       <MovimentacaoDialog open={movDialog} onOpenChange={setMovDialog} propriedadeId={propId} rebanhos={rebanhos || []} rebanhoIdInicial={movRebanhoId} />
+      <CompraAnimaisDialog open={compraDialog} onOpenChange={setCompraDialog} propriedadeId={propId} rebanho={compraRebanho} />
       <EventoSanitarioDialog open={sanitarioDialog} onOpenChange={setSanitarioDialog} propriedadeId={propId} rebanhos={rebanhos || []} />
       <OrdenhaDialog open={ordenhaDialog} onOpenChange={setOrdenhaDialog} propriedadeId={propId} rebanhosLeite={rebanhosLeite} />
       <RacaoDialog open={racaoDialog} onOpenChange={setRacaoDialog} propriedadeId={propId || ''} safraId={safraSelecionada?.id || ''} rebanhos={rebanhos || []} />
