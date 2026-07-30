@@ -132,13 +132,16 @@ export function Relatorios() {
       </div>
 
       <Tabs defaultValue="operacional" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
-          <TabsTrigger value="operacional"><ClipboardList className="h-4 w-4 mr-1" />Operacional</TabsTrigger>
-          <TabsTrigger value="financeiro"><DollarSign className="h-4 w-4 mr-1" />Financeiro</TabsTrigger>
-          <TabsTrigger value="talhao"><Sprout className="h-4 w-4 mr-1" />Por Talhão</TabsTrigger>
-          <TabsTrigger value="comparativo"><TrendingUp className="h-4 w-4 mr-1" />Comparativo</TabsTrigger>
-          <TabsTrigger value="insumos"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
-        </TabsList>
+        <div className="-mx-1 overflow-x-auto pb-1">
+          <TabsList className="w-max min-w-full">
+            <TabsTrigger value="operacional" className="whitespace-nowrap"><ClipboardList className="h-4 w-4 mr-1" />Operacional</TabsTrigger>
+            <TabsTrigger value="financeiro" className="whitespace-nowrap"><DollarSign className="h-4 w-4 mr-1" />Financeiro</TabsTrigger>
+            <TabsTrigger value="talhao" className="whitespace-nowrap"><Sprout className="h-4 w-4 mr-1" />Por Talhão</TabsTrigger>
+            <TabsTrigger value="comparativo" className="whitespace-nowrap"><TrendingUp className="h-4 w-4 mr-1" />Comparativo</TabsTrigger>
+            <TabsTrigger value="insumos" className="whitespace-nowrap"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
+          </TabsList>
+        </div>
+
 
         <TabsContent value="operacional"><AbaOperacional propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="financeiro"><AbaFinanceiro propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
