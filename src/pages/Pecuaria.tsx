@@ -235,7 +235,6 @@ export default function Pecuaria() {
       .delete()
       .eq('id', deleteMovId)
       .select('id')
-    setDeleteMovId(null)
     if (error) {
       const fk = String(error.message || '').includes('foreign key') || (error as any).code === '23503'
       toast({
@@ -260,16 +259,26 @@ export default function Pecuaria() {
     queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
     queryClient.invalidateQueries({ queryKey: ['rebanhos'] })
     toast({ title: 'Movimentação excluída. Despesa correspondente removida do Financeiro.' })
+    setDeleteMovId(null)
   }
 
   async function handleDelete() {
     if (!deleteId) return
-    const { error } = await supabase.from('rebanhos' as any).update({ ativo: false }).eq('id', deleteId)
-    if (error) toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
-    else {
-      toast({ title: 'Lote excluído' })
-      queryClient.invalidateQueries({ queryKey: ['rebanhos'] })
+    const { data: removidos, error } = await supabase
+      .from('rebanhos' as any)
+      .update({ ativo: false })
+      .eq('id', deleteId)
+      .select('id')
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
+      return
     }
+    if (!removidos || (removidos as any[]).length === 0) {
+      toast({ title: 'Nada foi excluído', description: 'O rebanho não foi encontrado ou você não tem permissão.', variant: 'destructive' })
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: ['rebanhos'] })
+    toast({ title: 'Lote excluído' })
     setDeleteId(null)
   }
 

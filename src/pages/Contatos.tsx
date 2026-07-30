@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Loader2, Search, Contact as ContactIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -55,6 +56,7 @@ const initialForm = {
 
 export default function Contatos() {
   const { propriedadeAtual } = useGlobal()
+  const queryClient = useQueryClient()
   const [contatos, setContatos] = useState<Contato[]>([])
   const [loading, setLoading] = useState(false)
   const [busca, setBusca] = useState('')
@@ -144,17 +146,25 @@ export default function Contatos() {
 
   async function confirmarExclusao() {
     if (!excluir) return
-    const { error } = await supabase
+    setSaving(true)
+    const { data, error } = await supabase
       .from('contatos' as any)
       .update({ ativo: false })
       .eq('id', excluir.id)
+      .select('id')
+    setSaving(false)
     if (error) {
-      toast.error('Erro ao excluir')
+      toast.error('Erro ao excluir: ' + error.message)
       return
     }
-    toast.success('Contato removido')
+    if (!data || (data as any[]).length === 0) {
+      toast.error('O contato não foi encontrado ou você não tem permissão para removê-lo.')
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: ['contatos'] })
     setExcluir(null)
-    fetchContatos()
+    await fetchContatos()
+    toast.success('Contato removido')
   }
 
   const filtrados = busca
@@ -350,8 +360,8 @@ export default function Contatos() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmarExclusao}>Excluir</AlertDialogAction>
+            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarExclusao} disabled={saving}>{saving ? 'Excluindo...' : 'Excluir'}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

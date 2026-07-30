@@ -207,15 +207,16 @@ export function Maquinas() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('maquinas').update({ ativo: false }).eq('id', id);
+      const { data, error } = await supabase.from('maquinas').update({ ativo: false }).eq('id', id).select('id');
       if (error) throw error;
+      if (!data?.length) throw new Error('A máquina não foi encontrada ou você não tem permissão para removê-la.');
     },
     onSuccess: () => {
       toast({ title: 'Máquina removida com sucesso' });
       queryClient.invalidateQueries({ queryKey: ['maquinas'] });
     },
-    onError: () => {
-      toast({ title: 'Erro ao remover máquina', variant: 'destructive' });
+    onError: (error: Error) => {
+      toast({ title: 'Erro ao remover máquina', description: error.message, variant: 'destructive' });
     },
   });
 

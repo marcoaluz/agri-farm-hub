@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useQueryClient } from '@tanstack/react-query'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
@@ -19,8 +20,12 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
-import { ChevronLeft, ChevronRight, Plus, Loader2, Play, Check, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Loader2, Play, Check, X, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Tarefa {
@@ -72,11 +77,13 @@ function corStatus(s: string) {
 export default function Agenda() {
   const { propriedadeAtual } = useGlobal()
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const [mesAtual, setMesAtual] = useState(new Date())
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [loading, setLoading] = useState(false)
   const [novaOpen, setNovaOpen] = useState(false)
   const [detalhe, setDetalhe] = useState<Tarefa | null>(null)
+  const [tarefaParaExcluir, setTarefaParaExcluir] = useState<Tarefa | null>(null)
   const [saving, setSaving] = useState(false)
 
   // Opções
@@ -210,6 +217,30 @@ export default function Agenda() {
     toast.success('Tarefa atualizada')
     setDetalhe(null)
     fetchTarefas()
+  }
+
+  async function excluirTarefa() {
+    if (!tarefaParaExcluir) return
+    setSaving(true)
+    const { data, error } = await supabase
+      .from('tarefas' as any)
+      .delete()
+      .eq('id', tarefaParaExcluir.id)
+      .select('id')
+    setSaving(false)
+    if (error) {
+      toast.error('Erro ao excluir tarefa: ' + error.message)
+      return
+    }
+    if (!data || (data as any[]).length === 0) {
+      toast.error('A tarefa não foi encontrada ou você não tem permissão para excluí-la.')
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: ['tarefas'] })
+    setTarefaParaExcluir(null)
+    setDetalhe(null)
+    await fetchTarefas()
+    toast.success('Tarefa excluída')
   }
 
   return (
@@ -405,6 +436,14 @@ export default function Agenda() {
                 )}
               </div>
               <DialogFooter className="gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  onClick={() => setTarefaParaExcluir(detalhe)}
+                  disabled={saving}
+                  className="text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" /> Excluir
+                </Button>
                 {detalhe.status === 'pendente' && (
                   <Button onClick={() => atualizarStatus('em_andamento')} disabled={saving}>
                     <Play className="h-4 w-4 mr-1" /> Iniciar
@@ -425,6 +464,21 @@ export default function Agenda() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!tarefaParaExcluir} onOpenChange={open => !open && setTarefaParaExcluir(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir tarefa?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação é permanente e não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={excluirTarefa} disabled={saving} className="bg-destructive text-destructive-foreground">
+              {saving ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

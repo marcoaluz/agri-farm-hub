@@ -348,14 +348,18 @@ export function useExcluirLancamento() {
 
       // ETAPA 5: EXCLUIR O LANÇAMENTO
       console.log('🗑️ Excluindo lançamento...')
-      const { error } = await supabase
+      const { data: lancamentosExcluidos, error } = await supabase
         .from('lancamentos')
         .delete()
         .eq('id', lancamentoId)
+        .select('id')
 
       if (error) {
         console.error('❌ Erro ao excluir lançamento:', error)
         throw error
+      }
+      if (!lancamentosExcluidos?.length) {
+        throw new Error('O lançamento não foi encontrado ou você não tem permissão para excluí-lo.')
       }
 
       console.log('✅ Lançamento excluído com sucesso!')

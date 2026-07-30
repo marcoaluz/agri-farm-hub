@@ -177,8 +177,12 @@ export function Lancamentos() {
 
   const handleExcluir = async () => {
     if (!deleteDialog.lancamento) return
-    await excluirLancamento.mutateAsync(deleteDialog.lancamento.id)
-    setDeleteDialog({ open: false, lancamento: null })
+    try {
+      await excluirLancamento.mutateAsync(deleteDialog.lancamento.id)
+      setDeleteDialog({ open: false, lancamento: null })
+    } catch {
+      // O hook já exibe o erro; mantém o diálogo aberto para não simular sucesso.
+    }
   }
 
   const formatDate = (dateStr: string) => {

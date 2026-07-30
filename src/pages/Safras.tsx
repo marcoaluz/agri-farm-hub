@@ -155,17 +155,19 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("safras").delete().eq("id", safra.id);
+      const { data, error } = await supabase.from("safras").delete().eq("id", safra.id).select("id");
 
       if (error) throw error;
+      if (!data?.length) throw new Error("A safra não foi encontrada ou você não tem permissão para excluí-la.");
     },
     onSuccess: () => {
       toast({ title: "Safra excluída com sucesso" });
       queryClient.invalidateQueries({ queryKey: ["safras"] });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Erro ao excluir safra",
+        description: error.message,
         variant: "destructive",
       });
     },
