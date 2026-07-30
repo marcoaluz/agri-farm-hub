@@ -17,9 +17,11 @@ interface CompraAnimaisDialogProps {
   onOpenChange: (open: boolean) => void
   propriedadeId: string
   rebanho: { id: string; nome: string } | null
+  /** Quando informado, o diálogo entra em modo edição. */
+  movimentacao?: any | null
 }
 
-export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho }: CompraAnimaisDialogProps) {
+export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho, movimentacao }: CompraAnimaisDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
@@ -36,18 +38,32 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
   const [arquivoNF, setArquivoNF] = useState<File | null>(null)
   const [observacoes, setObservacoes] = useState('')
 
+  const editando = !!movimentacao
+
   useEffect(() => {
-    if (open) {
+    if (!open) return
+    if (movimentacao) {
+      setQuantidade(String(movimentacao.quantidade ?? ''))
+      setValorUnitario(movimentacao.valor_unitario != null ? String(movimentacao.valor_unitario) : '')
+      setDataCompra(movimentacao.data_evento || hoje)
+      setPesoMedio(movimentacao.peso_medio_kg != null ? String(movimentacao.peso_medio_kg) : '')
+      setFornecedor(movimentacao.fornecedor_comprador || '')
+      setNumeroNF(movimentacao.numero_nota_fiscal || '')
+      setStatusPagamento(movimentacao.status_pagamento || 'pago')
+      setDataVencimento(movimentacao.data_vencimento || '')
+      setArquivoNF(null)
+      setObservacoes(movimentacao.observacoes || '')
+    } else {
       setQuantidade(''); setValorUnitario(''); setDataCompra(hoje); setPesoMedio('')
       setFornecedor(''); setNumeroNF(''); setStatusPagamento('pago'); setDataVencimento('')
       setArquivoNF(null); setObservacoes('')
     }
-  }, [open])
+  }, [open, movimentacao])
 
   const valorTotal = (Number(quantidade) || 0) * (Number(valorUnitario) || 0)
 
   async function handleSave() {
-    if (!rebanho) return
+    if (!rebanho && !editando) return
     if (!quantidade || Number(quantidade) < 1) {
       toast({ title: 'Informe a quantidade de animais', variant: 'destructive' }); return
     }
@@ -62,12 +78,7 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
     }
 
     setLoading(true)
-    const { data: movimentacao, error } = await supabase
-      .from('rebanho_movimentacoes' as any)
-      .insert({
-        rebanho_id: rebanho.id,
-        propriedade_id: propriedadeId,
-        tipo: 'compra',
+    const dados: any = {
         quantidade: Number(quantidade),
         valor_unitario: Number(valorUnitario),
         data_evento: dataCompra,
@@ -77,21 +88,34 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
         status_pagamento: statusPagamento,
         data_vencimento: statusPagamento === 'pendente' ? dataVencimento : null,
         observacoes: observacoes || null,
-      })
-      .select()
-      .single()
+    }
+
+    let registroId = movimentacao?.id as string | undefined
+    let error: any = null
+    if (editando) {
+      const res = await supabase.from('rebanho_movimentacoes' as any).update(dados).eq('id', movimentacao.id)
+      error = res.error
+    } else {
+      const res = await supabase
+        .from('rebanho_movimentacoes' as any)
+        .insert({ ...dados, rebanho_id: rebanho!.id, propriedade_id: propriedadeId, tipo: 'compra' })
+        .select()
+        .single()
+      error = res.error
+      registroId = (res.data as any)?.id
+    }
 
     if (error) {
       setLoading(false)
-      toast({ title: 'Erro ao registrar compra', description: error.message, variant: 'destructive' })
+      toast({ title: editando ? 'Erro ao atualizar' : 'Erro ao registrar compra', description: error.message, variant: 'destructive' })
       return
     }
 
-    if (arquivoNF && movimentacao) {
+    if (arquivoNF && registroId) {
       const { error: erroAnexo } = await uploadAnexoNF({
         propriedadeId,
         entidadeTipo: 'rebanho_movimentacao',
-        entidadeId: (movimentacao as any).id,
+        entidadeId: registroId,
         arquivo: arquivoNF,
         pasta: 'compra_animal',
       })
@@ -106,7 +130,8 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
     queryClient.invalidateQueries({ queryKey: ['rebanho_movimentacoes'] })
     queryClient.invalidateQueries({ queryKey: ['transacoes'] })
     queryClient.invalidateQueries({ queryKey: ['anexos'] })
-    toast({ title: 'Compra registrada e despesa criada no Financeiro' })
+    queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
+    toast({ title: editando ? 'Movimentação atualizada. Financeiro sincronizado automaticamente.' : 'Compra registrada e despesa criada no Financeiro' })
     onOpenChange(false)
   }
 
@@ -114,10 +139,10 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Registrar compra de animais</DialogTitle>
+          <DialogTitle>{editando ? 'Editar movimentação' : 'Registrar compra de animais'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {rebanho && <p className="text-sm text-muted-foreground">Lote: <strong>{rebanho.nome}</strong></p>}
+          {rebanho && !editando && <p className="text-sm text-muted-foreground">Lote: <strong>{rebanho.nome}</strong></p>}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -191,7 +216,7 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
             <Textarea id="obs_animal" value={observacoes} onChange={e => setObservacoes(e.target.value)} />
           </div>
 
-          {valorTotal > 0 && (
+          {valorTotal > 0 && !editando && (
             <Alert className="bg-blue-50 border-blue-200">
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-sm text-blue-900">
@@ -201,7 +226,7 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
           )}
 
           <Button onClick={handleSave} disabled={loading} className="w-full">
-            {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando...</> : 'Registrar compra'}
+            {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando...</> : editando ? 'Salvar alterações' : 'Registrar compra'}
           </Button>
         </div>
       </DialogContent>
