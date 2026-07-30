@@ -91,7 +91,9 @@ export function useTransacoes(propriedadeId?: string | null, safraId?: string | 
       if (filtros?.data_fim) query = query.lte('data_vencimento', filtros.data_fim)
       if (filtros?.busca) query = query.ilike('descricao', `%${filtros.busca}%`)
 
-      const { data, error } = await query.order('data_vencimento', { ascending: true })
+      const { data, error } = await query
+        .order('data_vencimento', { ascending: false })
+        .order('created_at', { ascending: false })
       if (error) throw error
       return (data || []) as Transacao[]
     },

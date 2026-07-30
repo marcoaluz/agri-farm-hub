@@ -52,6 +52,9 @@ export default function Pecuaria() {
   const [movDialog, setMovDialog] = useState(false)
   const [compraDialog, setCompraDialog] = useState(false)
   const [compraRebanho, setCompraRebanho] = useState<any>(null)
+  const [editMov, setEditMov] = useState<any>(null)
+  const [editMovDialog, setEditMovDialog] = useState(false)
+  const [deleteMovId, setDeleteMovId] = useState<string | null>(null)
   const [movRebanhoId, setMovRebanhoId] = useState<string | undefined>()
   const [sanitarioDialog, setSanitarioDialog] = useState(false)
   const [ordenhaDialog, setOrdenhaDialog] = useState(false)
@@ -193,6 +196,22 @@ export default function Pecuaria() {
   const ordenhasPaginadas = useMemo(() => (ordenhas || []).slice(paginaOrdenha * 10, (paginaOrdenha + 1) * 10), [ordenhas, paginaOrdenha])
 
   // Delete rebanho
+  async function handleExcluirMovimentacao() {
+    if (!deleteMovId) return
+    const { error } = await supabase.from('rebanho_movimentacoes' as any).delete().eq('id', deleteMovId)
+    setDeleteMovId(null)
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: ['rebanho-movimentacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['rebanho_movimentacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
+    queryClient.invalidateQueries({ queryKey: ['rebanhos'] })
+    toast({ title: 'Movimentação excluída. Despesa correspondente removida do Financeiro.' })
+  }
+
   async function handleDelete() {
     if (!deleteId) return
     const { error } = await supabase.from('rebanhos' as any).update({ ativo: false }).eq('id', deleteId)
@@ -441,6 +460,7 @@ export default function Pecuaria() {
                     <TableHead>Qtd</TableHead>
                     <TableHead className="text-right">Valor Total</TableHead>
                     <TableHead>Obs</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -452,6 +472,16 @@ export default function Pecuaria() {
                       <TableCell>{m.quantidade}</TableCell>
                       <TableCell className="text-right">{m.valor_total ? `R$ ${Number(m.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
                       <TableCell className="max-w-[150px] truncate">{m.observacoes || '-'}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button variant="ghost" size="icon" title="Editar" onClick={() => { setEditMov(m); setEditMovDialog(true) }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" title="Excluir" className="text-destructive" onClick={() => setDeleteMovId(m.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -527,11 +557,33 @@ export default function Pecuaria() {
       {/* Dialogs */}
       <LoteDialog open={loteDialog} onOpenChange={setLoteDialog} propriedadeId={propId} lote={editLote} />
       <MovimentacaoDialog open={movDialog} onOpenChange={setMovDialog} propriedadeId={propId} rebanhos={rebanhos || []} rebanhoIdInicial={movRebanhoId} />
+      <CompraAnimaisDialog
+        open={editMovDialog}
+        onOpenChange={o => { setEditMovDialog(o); if (!o) setEditMov(null) }}
+        propriedadeId={propId}
+        rebanho={null}
+        movimentacao={editMov}
+      />
       <CompraAnimaisDialog open={compraDialog} onOpenChange={setCompraDialog} propriedadeId={propId} rebanho={compraRebanho} />
       <EventoSanitarioDialog open={sanitarioDialog} onOpenChange={setSanitarioDialog} propriedadeId={propId} rebanhos={rebanhos || []} />
       <OrdenhaDialog open={ordenhaDialog} onOpenChange={setOrdenhaDialog} propriedadeId={propId} rebanhosLeite={rebanhosLeite} />
       <RacaoDialog open={racaoDialog} onOpenChange={setRacaoDialog} propriedadeId={propId || ''} safraId={safraSelecionada?.id || ''} rebanhos={rebanhos || []} />
       <PesagemDialog open={pesagemDialog} onOpenChange={setPesagemDialog} propriedadeId={propId || ''} rebanhos={rebanhos || []} />
+
+      <AlertDialog open={!!deleteMovId} onOpenChange={o => { if (!o) setDeleteMovId(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A movimentação será removida e a despesa/receita correspondente será excluída do Financeiro. Esta ação é irreversível.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirMovimentacao} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
