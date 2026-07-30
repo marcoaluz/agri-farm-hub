@@ -35,6 +35,7 @@ import {
   statusEfetivo, type Transacao, type FiltrosTransacao,
 } from '@/hooks/useTransacoes'
 import { TransacaoForm } from '@/components/financeiro/TransacaoForm'
+import { TransacaoOrigemAcoes } from '@/components/financeiro/TransacaoOrigemAcoes'
 import { toast } from 'sonner'
 
 const PIE_COLORS = [
