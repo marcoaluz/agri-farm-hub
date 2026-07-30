@@ -343,7 +343,60 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
             />
           </div>
         </div>
+
+        {/* Pagamento */}
+        <div>
+          <Label>Pagamento *</Label>
+          <RadioGroup value={statusPagamento} onValueChange={setStatusPagamento} className="flex gap-4 mt-2">
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="pago" id="pago" />
+              <Label htmlFor="pago" className="font-normal cursor-pointer">À vista (pago hoje)</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="pendente" id="pendente" />
+              <Label htmlFor="pendente" className="font-normal cursor-pointer">A prazo</Label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        {statusPagamento === 'pendente' && (
+          <div>
+            <Label htmlFor="data_vencimento">Data de vencimento *</Label>
+            <Input
+              id="data_vencimento"
+              type="date"
+              value={dataVencimento}
+              onChange={(e) => setDataVencimento(e.target.value)}
+              min={hoje}
+              required
+            />
+          </div>
+        )}
+
+        {/* Anexo da nota fiscal */}
+        <div>
+          <Label htmlFor="anexo_nf">Anexar nota fiscal (opcional)</Label>
+          <Input
+            id="anexo_nf"
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={(e) => setArquivoNF(e.target.files?.[0] || null)}
+            className="cursor-pointer"
+          />
+          <p className="text-xs text-muted-foreground mt-1">PDF, JPG ou PNG (máx. 5MB)</p>
+          {arquivoNF && <p className="text-xs mt-1">Arquivo selecionado: {arquivoNF.name}</p>}
+        </div>
+
+        {valorTotal > 0 && (
+          <Alert className="bg-blue-50 border-blue-200">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-sm text-blue-900">
+              Ao salvar, será criada automaticamente uma despesa no Financeiro no valor de R$ {valorTotal.toFixed(2)}
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
+
 
       </div>{/* end scrollable area */}
       {/* Botões */}
