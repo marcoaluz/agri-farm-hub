@@ -268,6 +268,9 @@ export default function Pecuaria() {
                       {r.localizacao && <div className="flex items-center gap-1"><MapPin className="h-3 w-3 text-muted-foreground" />{r.localizacao}</div>}
                     </div>
                     <div className="flex gap-2 pt-2 flex-wrap">
+                      <Button size="sm" variant="outline" onClick={() => { setCompraRebanho(r); setCompraDialog(true) }}>
+                        <ShoppingCart className="h-3 w-3 mr-1" /> Registrar compra
+                      </Button>
                       <Button size="sm" variant="outline" onClick={() => { setMovRebanhoId(r.id); setMovDialog(true) }}>
                         <ArrowLeftRight className="h-3 w-3 mr-1" /> Movimentação
                       </Button>
