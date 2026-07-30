@@ -39,6 +39,10 @@ export function Estoque() {
   const [dialogLotesOpen, setDialogLotesOpen] = useState(false);
   const [dialogEntradaOpen, setDialogEntradaOpen] = useState(false);
   const [dialogProdutoOpen, setDialogProdutoOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightLoteId = searchParams.get('highlight');
+  const [loteDestacado, setLoteDestacado] = useState<string | null>(null);
+
   const { data: produtos, isLoading } = useQuery({
     queryKey: ['produtos-custos', propriedadeAtual?.id],
     queryFn: async () => {
