@@ -61,6 +61,32 @@ export function Estoque() {
     enabled: !!propriedadeAtual?.id
   });
 
+  // Abre o produto do lote destacado quando vindo do Financeiro
+  useEffect(() => {
+    if (!highlightLoteId || !produtos?.length) return;
+    let cancelado = false;
+    (async () => {
+      const { data } = await supabase
+        .from('lotes')
+        .select('id, produto_id')
+        .eq('id', highlightLoteId)
+        .maybeSingle();
+      if (cancelado || !data) return;
+      const produto = produtos.find(p => p.id === (data as any).produto_id);
+      if (produto) {
+        setProdutoSelecionado(produto);
+        setLoteDestacado(highlightLoteId);
+        setDialogLotesOpen(true);
+      }
+      setSearchParams(params => {
+        params.delete('highlight');
+        return params;
+      }, { replace: true });
+    })();
+    return () => { cancelado = true };
+  }, [highlightLoteId, produtos, setSearchParams]);
+
+
   const categorias = Array.from(new Set(produtos?.map(p => p.categoria) || []));
 
   const produtosFiltrados = produtos?.filter(produto => {
