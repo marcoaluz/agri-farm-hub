@@ -268,7 +268,7 @@ export default function Pecuaria() {
     <div className="p-4 md:p-6 space-y-6">
       <h1 className="text-2xl font-bold flex items-center gap-2"><Beef className="h-6 w-6" /> Pecuária</h1>
 
-      <Tabs defaultValue="rebanho">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="rebanho">🐄 Rebanho</TabsTrigger>
           <TabsTrigger value="sanidade">💉 Sanidade</TabsTrigger>
