@@ -1014,14 +1014,17 @@ function KpiCard({ title, value, subValue, accent }: { title: string; value: str
   const cls = accent === 'positive' ? 'text-success' : accent === 'negative' ? 'text-destructive' : 'text-foreground'
   return (
     <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader>
-      <CardContent>
-        <div className={`text-2xl font-bold ${cls} truncate`}>{value}</div>
-        {subValue && <p className="text-xs text-muted-foreground mt-0.5">{subValue}</p>}
+      <CardHeader className="pb-2 p-3 sm:p-4">
+        <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground leading-tight">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
+        <div className={`text-lg sm:text-xl lg:text-2xl font-bold break-words ${cls}`}>{value}</div>
+        {subValue && <p className="text-xs text-muted-foreground mt-0.5 break-words">{subValue}</p>}
       </CardContent>
     </Card>
   )
 }
+
 
 function SkeletonAba() {
   return (
