@@ -273,13 +273,15 @@ export function Estoque() {
       )}
 
       {/* Dialog de Lotes */}
-      <Dialog open={dialogLotesOpen} onOpenChange={setDialogLotesOpen}>
+      <Dialog open={dialogLotesOpen} onOpenChange={(open) => { setDialogLotesOpen(open); if (!open) setLoteDestacado(null); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {produtoSelecionado && (
             <LotesDialog
               produto={produtoSelecionado}
-              onClose={() => setDialogLotesOpen(false)}
+              highlightLoteId={loteDestacado}
+              onClose={() => { setDialogLotesOpen(false); setLoteDestacado(null); }}
             />
+
           )}
         </DialogContent>
       </Dialog>
