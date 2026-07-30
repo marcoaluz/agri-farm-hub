@@ -18,6 +18,7 @@ import { ptBR } from 'date-fns/locale'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { LoteDialog } from '@/components/pecuaria/LoteDialog'
 import { MovimentacaoDialog } from '@/components/pecuaria/MovimentacaoDialog'
+import { CompraAnimaisDialog } from '@/components/pecuaria/CompraAnimaisDialog'
 import { EventoSanitarioDialog } from '@/components/pecuaria/EventoSanitarioDialog'
 import { OrdenhaDialog } from '@/components/pecuaria/OrdenhaDialog'
 import { RacaoDialog } from '@/components/pecuaria/RacaoDialog'
@@ -49,6 +50,8 @@ export default function Pecuaria() {
   const [loteDialog, setLoteDialog] = useState(false)
   const [editLote, setEditLote] = useState<any>(null)
   const [movDialog, setMovDialog] = useState(false)
+  const [compraDialog, setCompraDialog] = useState(false)
+  const [compraRebanho, setCompraRebanho] = useState<any>(null)
   const [movRebanhoId, setMovRebanhoId] = useState<string | undefined>()
   const [sanitarioDialog, setSanitarioDialog] = useState(false)
   const [ordenhaDialog, setOrdenhaDialog] = useState(false)
