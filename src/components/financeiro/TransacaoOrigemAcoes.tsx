@@ -60,9 +60,10 @@ export function TransacaoOrigemAcoes({ origem, compact, idsComAnexo }: Props) {
   }
 
   const irParaOrigem = () => {
-    if (parsed.tipo === 'lote') navigate('/estoque?highlight=lote:' + parsed.id)
-    else navigate('/pecuaria?tab=movimentacoes&highlight=' + parsed.id)
+    if (parsed.tipo === 'lote') navigate(`/estoque?tab=lotes&highlight=${parsed.id}`)
+    else navigate(`/pecuaria?tab=movimentacoes&highlight=${parsed.id}`)
   }
+
 
   return (
     <span className="inline-flex items-center gap-1">
