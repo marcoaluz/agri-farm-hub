@@ -146,8 +146,9 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
           center={initialCenter}
           zoom={initialZoom}
           onChange={handleDraw}
-          height={320}
+          height={isMobile ? 420 : 340}
         />
+
       </div>
 
       <div>
