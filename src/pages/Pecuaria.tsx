@@ -107,6 +107,25 @@ export default function Pecuaria() {
     enabled: !!propId,
   })
 
+  // Rola até a movimentação destacada quando vindo do Financeiro
+  useEffect(() => {
+    if (!highlightId || activeTab !== 'movimentacoes' || !movimentacoes?.length) return
+    const timer = setTimeout(() => {
+      const elemento = document.getElementById(`mov-${highlightId}`)
+      if (elemento) {
+        elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        elemento.classList.add('bg-yellow-100')
+        setTimeout(() => elemento.classList.remove('bg-yellow-100'), 3000)
+      }
+      setSearchParams(params => {
+        params.delete('highlight')
+        return params
+      }, { replace: true })
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [highlightId, activeTab, movimentacoes, setSearchParams])
+
+
   const { data: eventosSanitarios, isLoading: loadingSan } = useQuery({
     queryKey: ['sanitario-eventos', propId],
     queryFn: async () => {
