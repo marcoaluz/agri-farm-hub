@@ -141,13 +141,20 @@ export function LotesDialog({ produto, onClose, highlightLoteId }: LotesDialogPr
       setDeleteDialog({ open: false, lote: null })
     },
     onError: (err: any) => {
-      const fk = String(err?.message || '').includes('foreign key')
+      const msg = String(err?.message || '')
+      const consumido = msg === 'CONSUMIDO'
+      const fk = msg.includes('foreign key') || err?.code === '23503'
       toast({
-        title: fk ? 'Não é possível excluir: este lote já foi usado em lançamentos' : 'Erro ao excluir lote',
-        description: fk ? undefined : err.message,
+        title: consumido || fk
+          ? 'Não é possível excluir: este lote já foi usado em lançamentos'
+          : 'Erro ao excluir lote',
+        description: consumido || fk
+          ? 'Exclua primeiro os lançamentos que consumiram este lote.'
+          : msg,
         variant: 'destructive',
       })
     },
+
   })
 
   const handleNavigateToLancamento = (lancamentoId: string) => {
