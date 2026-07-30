@@ -67,24 +67,33 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
       }
 
       const diferenca = form.quantidade - lote.quantidade_original
+      const consumido = lote.quantidade_original - lote.quantidade_disponivel
+
+      if (diferenca !== 0 && form.quantidade < consumido) {
+        throw new Error(`Quantidade não pode ser menor que o já consumido (${consumido})`)
+      }
+
+      const payload: any = {
+        nota_fiscal: form.nota_fiscal || null,
+        fornecedor: form.fornecedor || null,
+        custo_unitario: form.custo_unitario,
+        data_entrada: form.data_entrada,
+        data_validade: form.data_validade || null,
+        status_pagamento: statusPagamento,
+        data_vencimento: statusPagamento === 'pendente' ? dataVencimento : null,
+      }
+      if (diferenca !== 0) {
+        payload.quantidade_original = form.quantidade
+        payload.quantidade_disponivel = form.quantidade - consumido
+      }
 
       const { error } = await supabase
         .from('lotes')
-        .update({
-          nota_fiscal: form.nota_fiscal || null,
-          fornecedor: form.fornecedor || null,
-          custo_unitario: form.custo_unitario,
-          data_entrada: form.data_entrada,
-          data_validade: form.data_validade || null,
-          quantidade_original: form.quantidade,
-          quantidade_disponivel: form.quantidade,
-          status_pagamento: statusPagamento,
-          data_vencimento: statusPagamento === 'pendente' ? dataVencimento : null,
-        } as any)
+        .update(payload)
         .eq('id', lote.id)
-        .eq('quantidade_disponivel', lote.quantidade_original) // safety check
 
       if (error) throw error
+
 
       if (arquivoNF && propriedadeAtual?.id) {
         if (anexoAtual) await removerAnexo(anexoAtual)
