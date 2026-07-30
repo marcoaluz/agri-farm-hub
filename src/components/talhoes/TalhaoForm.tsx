@@ -31,6 +31,8 @@ interface TalhaoFormProps {
 export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
+
 
   const [formData, setFormData] = useState({
     nome: talhao?.nome || "",
