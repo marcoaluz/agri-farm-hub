@@ -385,6 +385,7 @@ export function Financeiro() {
                         <div className="min-w-0">
                           <p className="truncate max-w-[200px] font-medium">{t.descricao}</p>
                           {t.parcela_numero && <span className="text-xs text-muted-foreground">Parcela {t.parcela_numero}/{t.parcela_total}</span>}
+                          <TransacaoOrigemAcoes origem={t.origem} />
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{categoriasLabel[t.categoria] || t.categoria}</TableCell>
