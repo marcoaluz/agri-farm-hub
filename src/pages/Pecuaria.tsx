@@ -48,6 +48,17 @@ export default function Pecuaria() {
   const queryClient = useQueryClient()
   const propId = propriedadeAtual?.id
 
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabFromUrl = searchParams.get('tab')
+  const highlightId = searchParams.get('highlight')
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'rebanho')
+
+  useEffect(() => {
+    if (tabFromUrl) setActiveTab(tabFromUrl)
+  }, [tabFromUrl])
+
+
+
   // Dialogs state
   const [loteDialog, setLoteDialog] = useState(false)
   const [editLote, setEditLote] = useState<any>(null)
