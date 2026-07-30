@@ -77,8 +77,15 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   // Mutation para salvar
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Inserir lote
-      const { error } = await supabase
+      if (statusPagamento === 'pendente' && !dataVencimento) {
+        throw new Error('Informe a data de vencimento');
+      }
+      if (arquivoNF && arquivoNF.size > MAX_ANEXO_BYTES) {
+        throw new Error('Arquivo muito grande (máx. 5MB)');
+      }
+
+      // Inserir lote (o trigger cria a transação financeira automaticamente)
+      const { data: novoLote, error } = await supabase
         .from('lotes')
         .insert({
           propriedade_id: propriedadeAtual?.id,
@@ -89,21 +96,45 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
           quantidade_disponivel: formData.quantidade,
           custo_unitario: formData.custo_unitario,
           data_entrada: formData.data_entrada,
-          data_validade: formData.data_validade || null
-        });
+          data_validade: formData.data_validade || null,
+          status_pagamento: statusPagamento,
+          data_vencimento: statusPagamento === 'pendente' ? dataVencimento : null,
+        } as any)
+        .select()
+        .single();
 
       if (error) throw error;
+
+      if (arquivoNF && novoLote) {
+        const { error: erroAnexo } = await uploadAnexoNF({
+          propriedadeId: propriedadeAtual!.id,
+          entidadeTipo: 'lote',
+          entidadeId: (novoLote as any).id,
+          arquivo: arquivoNF,
+        });
+        if (erroAnexo) {
+          toast({
+            title: 'Lote criado, mas erro ao anexar arquivo',
+            description: erroAnexo,
+            variant: 'destructive',
+          });
+        }
+      }
 
       // O trigger atualizar_saldo_produto já atualizará o saldo automaticamente
     },
     onSuccess: () => {
-      toast({ 
+      toast({
         title: 'Entrada de estoque registrada com sucesso!',
-        description: 'O saldo do produto foi atualizado automaticamente.'
+        description: statusPagamento === 'pago'
+          ? 'Despesa criada no Financeiro e saldo atualizado.'
+          : `Despesa a vencer em ${new Date(dataVencimento + 'T12:00:00').toLocaleDateString('pt-BR')}.`,
       });
       queryClient.invalidateQueries({ queryKey: ['produtos'] });
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] });
       queryClient.invalidateQueries({ queryKey: ['lotes'] });
+      queryClient.invalidateQueries({ queryKey: ['transacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['anexos'] });
       onSuccess();
     },
     onError: (error: Error) => {
