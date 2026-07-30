@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
+
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
@@ -45,6 +47,17 @@ export default function Pecuaria() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const propId = propriedadeAtual?.id
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabFromUrl = searchParams.get('tab')
+  const highlightId = searchParams.get('highlight')
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'rebanho')
+
+  useEffect(() => {
+    if (tabFromUrl) setActiveTab(tabFromUrl)
+  }, [tabFromUrl])
+
+
 
   // Dialogs state
   const [loteDialog, setLoteDialog] = useState(false)
@@ -93,6 +106,25 @@ export default function Pecuaria() {
     },
     enabled: !!propId,
   })
+
+  // Rola até a movimentação destacada quando vindo do Financeiro
+  useEffect(() => {
+    if (!highlightId || activeTab !== 'movimentacoes' || !movimentacoes?.length) return
+    const timer = setTimeout(() => {
+      const elemento = document.getElementById(`mov-${highlightId}`)
+      if (elemento) {
+        elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        elemento.classList.add('bg-yellow-100')
+        setTimeout(() => elemento.classList.remove('bg-yellow-100'), 3000)
+      }
+      setSearchParams(params => {
+        params.delete('highlight')
+        return params
+      }, { replace: true })
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [highlightId, activeTab, movimentacoes, setSearchParams])
+
 
   const { data: eventosSanitarios, isLoading: loadingSan } = useQuery({
     queryKey: ['sanitario-eventos', propId],
@@ -236,7 +268,7 @@ export default function Pecuaria() {
     <div className="p-4 md:p-6 space-y-6">
       <h1 className="text-2xl font-bold flex items-center gap-2"><Beef className="h-6 w-6" /> Pecuária</h1>
 
-      <Tabs defaultValue="rebanho">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="rebanho">🐄 Rebanho</TabsTrigger>
           <TabsTrigger value="sanidade">💉 Sanidade</TabsTrigger>
@@ -465,7 +497,7 @@ export default function Pecuaria() {
                 </TableHeader>
                 <TableBody>
                   {movimentacoes.map((m: any) => (
-                    <TableRow key={m.id}>
+                    <TableRow key={m.id} id={`mov-${m.id}`} className="transition-colors">
                       <TableCell>{format(new Date(m.data_evento), 'dd/MM/yyyy')}</TableCell>
                       <TableCell><Badge className={MOV_BADGE[m.tipo] || 'bg-muted text-foreground'} variant="secondary">{m.tipo?.replace('_', ' ')}</Badge></TableCell>
                       <TableCell>{(m.rebanho as any)?.nome || '-'}</TableCell>

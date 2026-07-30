@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -56,6 +56,7 @@ interface ProdutoComCusto {
 interface LotesDialogProps {
   produto: ProdutoComCusto
   onClose: () => void
+  highlightLoteId?: string | null
 }
 
 type LoteStatus = 'disponivel' | 'parcial' | 'esgotado'
@@ -70,7 +71,7 @@ function getLoteConsumoStatus(lote: Lote): { status: LoteStatus; label: string; 
   return { status: 'disponivel', label: 'Disponível', className: 'bg-green-100 text-green-700 border-green-300' }
 }
 
-export function LotesDialog({ produto, onClose }: LotesDialogProps) {
+export function LotesDialog({ produto, onClose, highlightLoteId }: LotesDialogProps) {
   const navigate = useNavigate()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -94,6 +95,18 @@ export function LotesDialog({ produto, onClose }: LotesDialogProps) {
     enabled: !!produto.id,
   })
 
+  useEffect(() => {
+    if (!highlightLoteId || !lotes?.length) return
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`lote-${highlightLoteId}`)
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('ring-2', 'ring-yellow-400')
+      setTimeout(() => el.classList.remove('ring-2', 'ring-yellow-400'), 3000)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [highlightLoteId, lotes])
+
   const deleteMutation = useMutation({
     mutationFn: async (lote: Lote) => {
       // Delete lote (only if fully available)
@@ -116,11 +129,18 @@ export function LotesDialog({ produto, onClose }: LotesDialogProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lotes'] })
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
-      toast({ title: 'Lote excluído com sucesso' })
+      queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+      queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
+      toast({ title: 'Lote excluído. Despesa correspondente removida do Financeiro.' })
       setDeleteDialog({ open: false, lote: null })
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao excluir lote', description: err.message, variant: 'destructive' })
+      const fk = String(err?.message || '').includes('foreign key')
+      toast({
+        title: fk ? 'Não é possível excluir: este lote já foi usado em lançamentos' : 'Erro ao excluir lote',
+        description: fk ? undefined : err.message,
+        variant: 'destructive',
+      })
     },
   })
 
@@ -369,8 +389,8 @@ function LoteCard({
   const isConsumed = consumoStatus.status === 'parcial' || consumoStatus.status === 'esgotado'
 
   return (
-    <Card className={cn(
-      'border-2',
+    <Card id={`lote-${lote.id}`} className={cn(
+      'border-2 transition-all',
       consumoStatus.status === 'esgotado' && 'opacity-70',
       index === 0 && consumoStatus.status !== 'esgotado' && 'border-green-400 bg-green-50',
     )}>
@@ -386,7 +406,7 @@ function LoteCard({
           </div>
 
           {/* Action buttons for disponivel */}
-          {isDisponivel && !isEditing && (
+          {(isDisponivel || consumoStatus.status === 'parcial') && !isEditing && (
             <div className="flex gap-1">
               <Button variant="outline" size="sm" onClick={onEdit}>
                 <Pencil className="h-3 w-3 mr-1" /> Editar

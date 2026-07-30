@@ -10,7 +10,8 @@ import { Info, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useQueryClient } from '@tanstack/react-query'
-import { uploadAnexoNF, MAX_ANEXO_BYTES } from '@/lib/anexoNF'
+import { uploadAnexoNF, listarAnexos, removerAnexo, MAX_ANEXO_BYTES } from '@/lib/anexoNF'
+import { AnexoManager } from '@/components/shared/AnexoManager'
 
 interface CompraAnimaisDialogProps {
   open: boolean
@@ -112,6 +113,8 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
     }
 
     if (arquivoNF && registroId) {
+      const anteriores = await listarAnexos('rebanho_movimentacao', registroId)
+      for (const a of anteriores) await removerAnexo(a)
       const { error: erroAnexo } = await uploadAnexoNF({
         propriedadeId,
         entidadeTipo: 'rebanho_movimentacao',
@@ -131,6 +134,7 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
     queryClient.invalidateQueries({ queryKey: ['transacoes'] })
     queryClient.invalidateQueries({ queryKey: ['anexos'] })
     queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
+    queryClient.invalidateQueries({ queryKey: ['anexo', 'rebanho_movimentacao', registroId] })
     toast({ title: editando ? 'Movimentação atualizada. Financeiro sincronizado automaticamente.' : 'Compra registrada e despesa criada no Financeiro' })
     onOpenChange(false)
   }
@@ -203,13 +207,12 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
             </div>
           )}
 
-          <div>
-            <Label htmlFor="anexo_nf_animal">Anexar nota fiscal (opcional)</Label>
-            <Input id="anexo_nf_animal" type="file" accept=".pdf,.jpg,.jpeg,.png" className="cursor-pointer"
-              onChange={e => setArquivoNF(e.target.files?.[0] || null)} />
-            <p className="text-xs text-muted-foreground mt-1">PDF, JPG ou PNG (máx. 5MB)</p>
-            {arquivoNF && <p className="text-xs mt-1">Arquivo selecionado: {arquivoNF.name}</p>}
-          </div>
+          <AnexoManager
+            entidadeTipo="rebanho_movimentacao"
+            entidadeId={movimentacao?.id ?? null}
+            novoArquivo={arquivoNF}
+            onArquivoNovoSelecionado={setArquivoNF}
+          />
 
           <div>
             <Label htmlFor="obs_animal">Observações</Label>

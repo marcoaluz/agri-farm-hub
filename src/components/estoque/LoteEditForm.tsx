@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Loader2, Save, X, Lock, Paperclip, Trash2 } from 'lucide-react'
-import { uploadAnexoNF, listarAnexos, removerAnexo, abrirAnexoEmNovaAba, MAX_ANEXO_BYTES } from '@/lib/anexoNF'
+import { Loader2, Save, X, Lock } from 'lucide-react'
+import { uploadAnexoNF, listarAnexos, removerAnexo, MAX_ANEXO_BYTES } from '@/lib/anexoNF'
+import { AnexoManager } from '@/components/shared/AnexoManager'
 
 interface Lote {
   id: string
@@ -49,9 +50,8 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
   const [statusPagamento, setStatusPagamento] = useState(lote.status_pagamento || 'pago')
   const [dataVencimento, setDataVencimento] = useState(lote.data_vencimento || '')
   const [arquivoNF, setArquivoNF] = useState<File | null>(null)
-  const [substituindo, setSubstituindo] = useState(false)
 
-  const { data: anexos = [], refetch: refetchAnexos } = useQuery({
+  const { data: anexos = [] } = useQuery({
     queryKey: ['anexos', 'lote', lote.id],
     queryFn: () => listarAnexos('lote', lote.id),
   })
@@ -67,24 +67,33 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
       }
 
       const diferenca = form.quantidade - lote.quantidade_original
+      const consumido = lote.quantidade_original - lote.quantidade_disponivel
+
+      if (diferenca !== 0 && form.quantidade < consumido) {
+        throw new Error(`Quantidade não pode ser menor que o já consumido (${consumido})`)
+      }
+
+      const payload: any = {
+        nota_fiscal: form.nota_fiscal || null,
+        fornecedor: form.fornecedor || null,
+        custo_unitario: form.custo_unitario,
+        data_entrada: form.data_entrada,
+        data_validade: form.data_validade || null,
+        status_pagamento: statusPagamento,
+        data_vencimento: statusPagamento === 'pendente' ? dataVencimento : null,
+      }
+      if (diferenca !== 0) {
+        payload.quantidade_original = form.quantidade
+        payload.quantidade_disponivel = form.quantidade - consumido
+      }
 
       const { error } = await supabase
         .from('lotes')
-        .update({
-          nota_fiscal: form.nota_fiscal || null,
-          fornecedor: form.fornecedor || null,
-          custo_unitario: form.custo_unitario,
-          data_entrada: form.data_entrada,
-          data_validade: form.data_validade || null,
-          quantidade_original: form.quantidade,
-          quantidade_disponivel: form.quantidade,
-          status_pagamento: statusPagamento,
-          data_vencimento: statusPagamento === 'pendente' ? dataVencimento : null,
-        } as any)
+        .update(payload)
         .eq('id', lote.id)
-        .eq('quantidade_disponivel', lote.quantidade_original) // safety check
 
       if (error) throw error
+
 
       if (arquivoNF && propriedadeAtual?.id) {
         if (anexoAtual) await removerAnexo(anexoAtual)
@@ -117,6 +126,8 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
       queryClient.invalidateQueries({ queryKey: ['transacoes'] })
       queryClient.invalidateQueries({ queryKey: ['anexos'] })
+      queryClient.invalidateQueries({ queryKey: ['anexo', 'lote', lote.id] })
+      queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
       toast({ title: 'Lote atualizado com sucesso!' })
       onClose()
     },
@@ -124,14 +135,6 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
       toast({ title: 'Erro ao atualizar lote', description: err.message, variant: 'destructive' })
     },
   })
-
-  async function handleRemoverAnexo() {
-    if (!anexoAtual) return
-    await removerAnexo(anexoAtual)
-    await refetchAnexos()
-    queryClient.invalidateQueries({ queryKey: ['anexos'] })
-    toast({ title: 'Anexo removido' })
-  }
 
   const valorTotal = form.quantidade * form.custo_unitario
 
@@ -212,36 +215,13 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
       )}
 
       {/* Anexo */}
-      <div>
-        <Label className="text-xs">Nota fiscal anexada</Label>
-        {anexoAtual && !substituindo ? (
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => abrirAnexoEmNovaAba(anexoAtual.storage_path)}>
-              <Paperclip className="h-3 w-3 mr-1" /> Anexo atual: {anexoAtual.nome_arquivo}
-            </Button>
-            <Button variant="outline" size="sm" disabled={safraFechada} onClick={() => setSubstituindo(true)}>Substituir</Button>
-            <Button variant="outline" size="sm" className="text-destructive" disabled={safraFechada} onClick={handleRemoverAnexo}>
-              <Trash2 className="h-3 w-3 mr-1" /> Remover
-            </Button>
-          </div>
-        ) : (
-          <>
-            <Input
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="cursor-pointer"
-              disabled={safraFechada}
-              onChange={e => setArquivoNF(e.target.files?.[0] || null)}
-            />
-            <p className="text-xs text-muted-foreground mt-1">PDF, JPG ou PNG (máx. 5MB)</p>
-            {substituindo && (
-              <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => { setSubstituindo(false); setArquivoNF(null) }}>
-                Cancelar substituição
-              </Button>
-            )}
-          </>
-        )}
-      </div>
+      <AnexoManager
+        entidadeTipo="lote"
+        entidadeId={lote.id}
+        novoArquivo={arquivoNF}
+        onArquivoNovoSelecionado={setArquivoNF}
+        disabled={safraFechada}
+      />
 
       {form.quantidade !== lote.quantidade_original && !safraFechada && (
         <p className="text-xs text-muted-foreground">

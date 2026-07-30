@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+
 import { supabase } from '@/lib/supabase';
 import { useGlobal } from '@/contexts/GlobalContext';
 import { Button } from '@/components/ui/button';
@@ -37,6 +39,10 @@ export function Estoque() {
   const [dialogLotesOpen, setDialogLotesOpen] = useState(false);
   const [dialogEntradaOpen, setDialogEntradaOpen] = useState(false);
   const [dialogProdutoOpen, setDialogProdutoOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightLoteId = searchParams.get('highlight');
+  const [loteDestacado, setLoteDestacado] = useState<string | null>(null);
+
   const { data: produtos, isLoading } = useQuery({
     queryKey: ['produtos-custos', propriedadeAtual?.id],
     queryFn: async () => {
@@ -54,6 +60,32 @@ export function Estoque() {
     },
     enabled: !!propriedadeAtual?.id
   });
+
+  // Abre o produto do lote destacado quando vindo do Financeiro
+  useEffect(() => {
+    if (!highlightLoteId || !produtos?.length) return;
+    let cancelado = false;
+    (async () => {
+      const { data } = await supabase
+        .from('lotes')
+        .select('id, produto_id')
+        .eq('id', highlightLoteId)
+        .maybeSingle();
+      if (cancelado || !data) return;
+      const produto = produtos.find(p => p.id === (data as any).produto_id);
+      if (produto) {
+        setProdutoSelecionado(produto);
+        setLoteDestacado(highlightLoteId);
+        setDialogLotesOpen(true);
+      }
+      setSearchParams(params => {
+        params.delete('highlight');
+        return params;
+      }, { replace: true });
+    })();
+    return () => { cancelado = true };
+  }, [highlightLoteId, produtos, setSearchParams]);
+
 
   const categorias = Array.from(new Set(produtos?.map(p => p.categoria) || []));
 
@@ -241,13 +273,15 @@ export function Estoque() {
       )}
 
       {/* Dialog de Lotes */}
-      <Dialog open={dialogLotesOpen} onOpenChange={setDialogLotesOpen}>
+      <Dialog open={dialogLotesOpen} onOpenChange={(open) => { setDialogLotesOpen(open); if (!open) setLoteDestacado(null); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {produtoSelecionado && (
             <LotesDialog
               produto={produtoSelecionado}
-              onClose={() => setDialogLotesOpen(false)}
+              highlightLoteId={loteDestacado}
+              onClose={() => { setDialogLotesOpen(false); setLoteDestacado(null); }}
             />
+
           )}
         </DialogContent>
       </Dialog>
