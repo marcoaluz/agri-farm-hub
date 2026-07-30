@@ -476,7 +476,7 @@ function SafraForm({
         </Alert>
       </div>
 
-      <div className="flex justify-end gap-2 pt-4">
+      <div className="sticky bottom-0 z-10 -mb-2 mt-2 flex justify-end gap-2 border-t bg-background py-3">
         <Button variant="outline" onClick={onSuccess}>
           Cancelar
         </Button>
