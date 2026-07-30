@@ -30,15 +30,20 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   const queryClient = useQueryClient();
   const safraFechada = (safraAtual as any)?.fechada === true;
 
+  const hoje = new Date().toISOString().split('T')[0];
+
   const [formData, setFormData] = useState({
     produto_id: '',
     nota_fiscal: '',
     fornecedor: '',
     quantidade: 0,
     custo_unitario: 0,
-    data_entrada: new Date().toISOString().split('T')[0],
+    data_entrada: hoje,
     data_validade: ''
   });
+  const [statusPagamento, setStatusPagamento] = useState('pago');
+  const [dataVencimento, setDataVencimento] = useState('');
+  const [arquivoNF, setArquivoNF] = useState<File | null>(null);
 
   // Buscar produtos
   const {
