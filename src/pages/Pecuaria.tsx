@@ -497,7 +497,7 @@ export default function Pecuaria() {
                 </TableHeader>
                 <TableBody>
                   {movimentacoes.map((m: any) => (
-                    <TableRow key={m.id}>
+                    <TableRow key={m.id} id={`mov-${m.id}`} className="transition-colors">
                       <TableCell>{format(new Date(m.data_evento), 'dd/MM/yyyy')}</TableCell>
                       <TableCell><Badge className={MOV_BADGE[m.tipo] || 'bg-muted text-foreground'} variant="secondary">{m.tipo?.replace('_', ' ')}</Badge></TableCell>
                       <TableCell>{(m.rebanho as any)?.nome || '-'}</TableCell>
