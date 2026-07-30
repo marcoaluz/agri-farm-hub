@@ -1,10 +1,24 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, FeatureGroup, GeoJSON, Popup, useMap } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
 import area from "@turf/area";
+import { Pencil, Check, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
+
 
 // Fix default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -88,6 +102,7 @@ function FitBounds({ geometries }: { geometries: GeoJSON.Polygon[] }) {
 
 export function MapaDesenho({ initialGeometry, center, zoom, onChange, height = 360 }: Props) {
   const fgRef = useRef<L.FeatureGroup>(null);
+  const [modoEdicao, setModoEdicao] = useState(false);
   const geom = parseGeometria(initialGeometry);
 
   let mapCenter: [number, number] = center || [-14.235, -51.925];
@@ -97,6 +112,21 @@ export function MapaDesenho({ initialGeometry, center, zoom, onChange, height = 
     mapCenter = [r.centro_lat, r.centro_lng];
     mapZoom = 15;
   }
+
+  /** Encontra a primeira camada de polígono editável dentro do FeatureGroup */
+  const getPolygonLayer = (): any | null => {
+    const fg = fgRef.current as any;
+    if (!fg) return null;
+    const layers: any[] = fg.getLayers();
+    for (const l of layers) {
+      if (l?.editing) return l;
+      if (typeof l?.getLayers === "function") {
+        const sub = l.getLayers().find((s: any) => s?.editing);
+        if (sub) return sub;
+      }
+    }
+    return null;
+  };
 
   const handleCreated = (e: any) => {
     if (fgRef.current) {
@@ -117,42 +147,113 @@ export function MapaDesenho({ initialGeometry, center, zoom, onChange, height = 
 
   const handleDeleted = () => onChange(null);
 
+  const iniciarEdicao = () => {
+    const layer = getPolygonLayer();
+    if (!layer?.editing) return;
+    layer.editing.enable();
+    setModoEdicao(true);
+  };
+
+  const confirmarEdicao = () => {
+    const layer = getPolygonLayer();
+    if (!layer?.editing) return;
+    layer.editing.disable();
+    const gj = layer.toGeoJSON() as GeoJSON.Feature<GeoJSON.Polygon>;
+    onChange(computeResult(gj.geometry));
+    setModoEdicao(false);
+  };
+
+  const apagarPoligono = () => {
+    setModoEdicao(false);
+    onChange(null);
+  };
+
   return (
-    <div style={{ height }} className="w-full rounded-md overflow-hidden border">
-      <MapContainer center={mapCenter} zoom={mapZoom} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <InvalidateSize />
-        {geom && <FitBounds geometries={[geom]} />}
-        <FeatureGroup ref={fgRef as any}>
-          <EditControl
-            position="topright"
-            onCreated={handleCreated}
-            onEdited={handleEdited}
-            onDeleted={handleDeleted}
-            draw={{
-              rectangle: false,
-              circle: false,
-              circlemarker: false,
-              marker: false,
-              polyline: false,
-              polygon: { allowIntersection: false, showArea: true },
-            }}
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="min-h-[44px] flex-1 sm:flex-none"
+          onClick={iniciarEdicao}
+          disabled={!geom || modoEdicao}
+        >
+          <Pencil className="h-4 w-4 mr-1" /> Editar polígono
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          className="min-h-[44px] flex-1 sm:flex-none"
+          onClick={confirmarEdicao}
+          disabled={!modoEdicao}
+        >
+          <Check className="h-4 w-4 mr-1" /> Confirmar edição
+        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-h-[44px] text-destructive"
+              disabled={!geom || modoEdicao}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Apagar o polígono desenhado?</AlertDialogTitle>
+              <AlertDialogDescription>
+                A área desenhada será removida e você poderá desenhar novamente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={apagarPoligono}>Apagar</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      <div style={{ height }} className="w-full rounded-md overflow-hidden border">
+        <MapContainer center={mapCenter} zoom={mapZoom} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {geom && (
-            <GeoJSON
-              key={JSON.stringify(geom)}
-              data={geom as any}
-              pathOptions={{ color: "#1F3A2E", weight: 2, fillOpacity: 0.3 }}
+          <InvalidateSize />
+          {geom && <FitBounds geometries={[geom]} />}
+          <FeatureGroup ref={fgRef as any}>
+            <EditControl
+              position="topright"
+              onCreated={handleCreated}
+              onEdited={handleEdited}
+              onDeleted={handleDeleted}
+              draw={{
+                rectangle: false,
+                circle: false,
+                circlemarker: false,
+                marker: false,
+                polyline: false,
+                polygon: { allowIntersection: false, showArea: true },
+              }}
             />
-          )}
-        </FeatureGroup>
-      </MapContainer>
+            {geom && (
+              <GeoJSON
+                key={JSON.stringify(geom)}
+                data={geom as any}
+                pathOptions={{ color: "#1F3A2E", weight: 2, fillOpacity: 0.3 }}
+              />
+            )}
+          </FeatureGroup>
+        </MapContainer>
+      </div>
     </div>
   );
 }
+
 
 interface ViewProps {
   talhoes: Array<{

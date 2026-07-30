@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MapaDesenho, DrawResult, parseGeometria } from "./MapaDesenho";
+
 
 interface Talhao {
   id: string;
@@ -29,6 +31,8 @@ interface TalhaoFormProps {
 export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
+
 
   const [formData, setFormData] = useState({
     nome: talhao?.nome || "",
@@ -146,8 +150,9 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
           center={initialCenter}
           zoom={initialZoom}
           onChange={handleDraw}
-          height={320}
+          height={isMobile ? 420 : 340}
         />
+
       </div>
 
       <div>
@@ -173,7 +178,7 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
         />
       </div>
 
-      <div className="flex justify-end gap-2 pt-4">
+      <div className="sticky bottom-0 z-10 -mb-2 mt-2 flex justify-end gap-2 border-t bg-background py-3">
         <Button variant="outline" onClick={onSuccess}>Cancelar</Button>
         <Button onClick={handleSubmit} disabled={mutation.isPending}>
           {mutation.isPending ? "Salvando..." : "Salvar"}

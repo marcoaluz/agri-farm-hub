@@ -85,20 +85,21 @@ function ExportButtons({
 }) {
   const disabled = !linhas || linhas.length === 0
   return (
-    <div className="flex justify-end gap-2 mb-2">
+    <div className="flex flex-wrap justify-end gap-2 mb-2">
       <Button
-        variant="outline" size="sm" disabled={disabled}
+        variant="outline" size="sm" disabled={disabled} className="flex-1 sm:flex-none min-w-[140px]"
         onClick={() => exportarPDF({ nomeArquivo, propriedadeNome, nomeAba, colunas, linhas })}
       >
         <FileText className="h-4 w-4 mr-1" /> Exportar PDF
       </Button>
       <Button
-        variant="outline" size="sm" disabled={disabled}
+        variant="outline" size="sm" disabled={disabled} className="flex-1 sm:flex-none min-w-[140px]"
         onClick={() => exportarExcel({ nomeArquivo, nomeAba, colunas, linhas })}
       >
         <FileSpreadsheet className="h-4 w-4 mr-1" /> Exportar Excel
       </Button>
     </div>
+
   )
 }
 
@@ -132,13 +133,16 @@ export function Relatorios() {
       </div>
 
       <Tabs defaultValue="operacional" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
-          <TabsTrigger value="operacional"><ClipboardList className="h-4 w-4 mr-1" />Operacional</TabsTrigger>
-          <TabsTrigger value="financeiro"><DollarSign className="h-4 w-4 mr-1" />Financeiro</TabsTrigger>
-          <TabsTrigger value="talhao"><Sprout className="h-4 w-4 mr-1" />Por Talhão</TabsTrigger>
-          <TabsTrigger value="comparativo"><TrendingUp className="h-4 w-4 mr-1" />Comparativo</TabsTrigger>
-          <TabsTrigger value="insumos"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
-        </TabsList>
+        <div className="-mx-1 overflow-x-auto pb-1">
+          <TabsList className="w-max min-w-full">
+            <TabsTrigger value="operacional" className="whitespace-nowrap"><ClipboardList className="h-4 w-4 mr-1" />Operacional</TabsTrigger>
+            <TabsTrigger value="financeiro" className="whitespace-nowrap"><DollarSign className="h-4 w-4 mr-1" />Financeiro</TabsTrigger>
+            <TabsTrigger value="talhao" className="whitespace-nowrap"><Sprout className="h-4 w-4 mr-1" />Por Talhão</TabsTrigger>
+            <TabsTrigger value="comparativo" className="whitespace-nowrap"><TrendingUp className="h-4 w-4 mr-1" />Comparativo</TabsTrigger>
+            <TabsTrigger value="insumos" className="whitespace-nowrap"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
+          </TabsList>
+        </div>
+
 
         <TabsContent value="operacional"><AbaOperacional propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="financeiro"><AbaFinanceiro propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
@@ -1014,14 +1018,17 @@ function KpiCard({ title, value, subValue, accent }: { title: string; value: str
   const cls = accent === 'positive' ? 'text-success' : accent === 'negative' ? 'text-destructive' : 'text-foreground'
   return (
     <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader>
-      <CardContent>
-        <div className={`text-2xl font-bold ${cls} truncate`}>{value}</div>
-        {subValue && <p className="text-xs text-muted-foreground mt-0.5">{subValue}</p>}
+      <CardHeader className="pb-2 p-3 sm:p-4">
+        <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground leading-tight">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
+        <div className={`text-lg sm:text-xl lg:text-2xl font-bold break-words ${cls}`}>{value}</div>
+        {subValue && <p className="text-xs text-muted-foreground mt-0.5 break-words">{subValue}</p>}
       </CardContent>
     </Card>
   )
 }
+
 
 function SkeletonAba() {
   return (
