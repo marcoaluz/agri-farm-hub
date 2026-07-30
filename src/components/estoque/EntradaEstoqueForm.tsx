@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { uploadAnexoNF, MAX_ANEXO_BYTES } from '@/lib/anexoNF';
 import { Loader2, Info } from 'lucide-react';
 
 interface Produto {
