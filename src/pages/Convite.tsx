@@ -101,25 +101,49 @@ export default function Convite() {
   }, [token, isNovoProprietario])
 
   const handleCriarConta = async () => {
-    if (!formValido) return
     if (!tokenData?.email || !token) {
       toast.error('Token inválido.')
       return
     }
+    if (!nome.trim()) { toast.error('Informe seu nome completo'); return }
     if (isNovoProprietario && !nomePropriedade.trim()) {
-      toast.error('Preencha todos os campos')
+      toast.error('Informe o nome da sua propriedade')
       return
     }
+    if (senha.length < 10) { toast.error('A senha deve ter pelo menos 10 caracteres'); return }
+    if (!/[a-zA-Z]/.test(senha) || !/[0-9]/.test(senha)) {
+      toast.error('A senha deve conter letras e números')
+      return
+    }
+    if (senha !== confirmarSenha) { toast.error('As senhas não conferem'); return }
 
     setCriando(true)
     try {
+      // PASSO 1: criar conta no Auth
       const { error: authError } = await supabase.auth.signUp({
         email: tokenData.email,
         password: senha,
         options: { data: { name: nome.trim() } },
       })
-      if (authError) throw authError
+      if (authError) {
+        toast.error(traduzirErroSupabase(authError.message))
+        setCriando(false)
+        return
+      }
 
+      // PASSO 2: garantir sessão ativa antes de chamar a RPC
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData?.session) {
+        localStorage.setItem('convite_token_pendente', token)
+        localStorage.setItem('convite_tipo', isNovoProprietario ? 'novo' : 'existente')
+        localStorage.setItem('convite_nome', nome.trim())
+        if (isNovoProprietario) localStorage.setItem('convite_propriedade', nomePropriedade.trim())
+        toast.success('Conta criada! Verifique seu e-mail para confirmar o cadastro.')
+        setCriando(false)
+        return
+      }
+
+      // PASSO 3: aceitar convite (cria propriedade / vínculo)
       const rpcName = isNovoProprietario ? 'aceitar_convite_novo_usuario' : 'aceitar_convite'
       const params: Record<string, string> = {
         p_token: token,
@@ -128,19 +152,24 @@ export default function Convite() {
       if (isNovoProprietario) params.p_propriedade_nome = nomePropriedade.trim()
 
       const { error: conviteError } = await supabase.rpc(rpcName as any, params)
-      if (conviteError) throw conviteError
+      if (conviteError) {
+        toast.error('Erro ao aceitar convite: ' + traduzirErroSupabase(conviteError.message))
+        setCriando(false)
+        return
+      }
 
+      // PASSO 4: sucesso
       queryClient.invalidateQueries()
       setSucesso(true)
-
-      toast.success('Convite aceito! Bem-vindo ao sistema.')
-      setTimeout(() => navigate('/'), 2000)
+      toast.success('Conta criada com sucesso! Bem-vindo ao sistema.', { duration: 5000 })
+      setTimeout(() => navigate('/'), 3000)
     } catch (err: any) {
       toast.error(traduzirErroAuth(err, 'Erro ao criar conta.'))
     } finally {
       setCriando(false)
     }
   }
+
 
   // Loading
   if (validando) {
