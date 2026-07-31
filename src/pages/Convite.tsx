@@ -72,11 +72,13 @@ export default function Convite() {
   const strength = useMemo(() => getPasswordStrength(senha), [senha])
 
   const senhasIguais = senha === confirmarSenha && confirmarSenha.length > 0
+  const senhaForte = senha.length >= 10 && /[a-zA-Z]/.test(senha) && /[0-9]/.test(senha)
   const formValido =
     nome.trim().length >= 3 &&
-    senha.length >= 8 &&
+    senhaForte &&
     senhasIguais &&
     (!isNovoProprietario || nomePropriedade.trim().length >= 2)
+
 
   useEffect(() => {
     async function validar() {
