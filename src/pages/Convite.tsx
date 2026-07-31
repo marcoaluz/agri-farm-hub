@@ -51,7 +51,8 @@ export default function Convite() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
-  const tipo = searchParams.get('tipo') || 'existente' // 'novo' ou 'existente'
+  // Aceita ?tipo=novo ou ?novo=true
+  const tipo = searchParams.get('novo') === 'true' ? 'novo' : (searchParams.get('tipo') || 'existente')
 
   const isNovoProprietario = tipo === 'novo'
 
