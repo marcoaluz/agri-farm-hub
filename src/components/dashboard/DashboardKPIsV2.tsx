@@ -56,6 +56,7 @@ export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
         description={`R$ ${((data.custo_por_ha ?? 0)).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}/ha`}
         icon={DollarSign}
         variant="primary"
+        className="border-l-[3px] border-l-accent"
       />
       <StatCard
         title="Receita Recebida"
@@ -63,6 +64,7 @@ export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
         description="receitas pagas"
         icon={Landmark}
         variant={(data.receita_paga ?? 0) > 0 ? 'success' : 'default'}
+        className="border-l-[3px] border-l-accent"
       />
       <StatCard
         title={isPositivo ? 'Lucro Parcial' : 'Prejuízo Parcial'}
@@ -72,6 +74,7 @@ export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
           : '0.0'}%`}
         icon={isPositivo ? TrendingUp : TrendingDown}
         variant={isPositivo ? 'success' : 'warning'}
+        className="border-l-[3px] border-l-accent"
       />
       <div onClick={onAlertClick} className={onAlertClick ? 'cursor-pointer' : ''}>
         <StatCard
@@ -80,6 +83,7 @@ export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
           description={alertBreakdown.length > 0 ? alertBreakdown.join(' · ') : 'Tudo certo!'}
           icon={totalAlertas > 0 ? AlertTriangle : BarChart3}
           variant={totalAlertas > 0 ? 'warning' : 'success'}
+          className="border-l-[3px] border-l-accent"
         />
       </div>
     </div>
