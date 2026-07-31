@@ -235,7 +235,7 @@ export default function Convite() {
             <h2 className="text-2xl font-bold text-foreground">Conta criada com sucesso!</h2>
             <p className="text-muted-foreground">
               {isNovoProprietario
-                ? 'Redirecionando para cadastrar sua propriedade...'
+                ? `Sua propriedade "${nomePropriedade.trim()}" foi cadastrada. Redirecionando para o painel...`
                 : 'Redirecionando para o sistema...'}
             </p>
           </CardContent>
