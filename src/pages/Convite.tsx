@@ -375,7 +375,7 @@ export default function Convite() {
                     type={showPassword ? 'text' : 'password'}
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder="Mínimo 10 caracteres com letras e números"
                     className="pl-10 pr-10"
                     disabled={criando}
                   />
