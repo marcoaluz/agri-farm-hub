@@ -173,7 +173,7 @@ export function Configuracoes() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-1">
-                <p className="font-semibold text-foreground">SGA — Sistema de Gestão Agropecuária</p>
+                <p className="font-semibold text-foreground">Terralis — ERP Inteligente para Gestão Agropecuária</p>
                 <p className="text-sm text-muted-foreground">Versão 1.0.0</p>
               </div>
               <p className="text-sm text-muted-foreground">

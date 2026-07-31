@@ -71,8 +71,8 @@ export function RecuperarSenhaPage() {
             <Leaf className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">SGA</h1>
-            <p className="text-primary-foreground/70 text-sm">Sistema de Gestão Agropecuária</p>
+            <h1 className="text-3xl font-bold">Terralis</h1>
+            <p className="text-primary-foreground/70 text-sm">ERP Inteligente para Gestão Agropecuária</p>
           </div>
         </div>
 
@@ -104,7 +104,7 @@ export function RecuperarSenhaPage() {
         </div>
 
         <p className="text-primary-foreground/60 text-sm">
-          © 2024 SGA - Sistema de Gestão Agropecuária. Todos os direitos reservados.
+          © 2024 Terralis — ERP Inteligente para Gestão Agropecuária. Todos os direitos reservados.
         </p>
       </div>
 
@@ -118,8 +118,8 @@ export function RecuperarSenhaPage() {
                 <Leaf className="h-8 w-8 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-foreground">SGA</h1>
-                <p className="text-muted-foreground text-sm">Sistema de Gestão Agropecuária</p>
+                <h1 className="text-3xl font-bold text-foreground">Terralis</h1>
+                <p className="text-muted-foreground text-sm">ERP Inteligente para Gestão Agropecuária</p>
               </div>
             </div>
           </div>

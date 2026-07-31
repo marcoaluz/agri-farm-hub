@@ -70,7 +70,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             <Leaf className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
           </div>
           <span className="hidden sm:inline-block font-bold text-lg text-foreground">
-            SGA
+            Terralis
           </span>
         </div>
 
