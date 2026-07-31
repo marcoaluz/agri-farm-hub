@@ -388,6 +388,9 @@ export default function Convite() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Mínimo 10 caracteres com letras e números
+                </p>
                 {senha && (
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
