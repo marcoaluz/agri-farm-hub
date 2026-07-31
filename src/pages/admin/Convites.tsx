@@ -219,6 +219,26 @@ export default function Convites() {
     }
   };
 
+  const buildConviteLink = (convite: ConvitePendente) => {
+    const baseUrl = window.location.origin;
+    const sufixo = convite.tipo === "novo_proprietario" ? "&tipo=novo" : "&tipo=existente";
+    return `${baseUrl}/convite?token=${convite.token}${sufixo}`;
+  };
+
+  const handleCopiarLink = (convite: ConvitePendente) => {
+    const link = buildConviteLink(convite);
+    navigator.clipboard.writeText(link);
+    toast.success("Link copiado! Cole no WhatsApp ou email.");
+  };
+
+  const handleWhatsApp = (convite: ConvitePendente) => {
+    const link = buildConviteLink(convite);
+    const texto = encodeURIComponent(
+      `Olá! Você foi convidado para o sistema. Acesse: ${link}`
+    );
+    window.open(`https://wa.me/?text=${texto}`, "_blank");
+  };
+
   const papelSelecionado = papel ? PAPEL_OPTIONS[papel] : null;
 
   const getStatusBadge = (c: ConvitePendente) => {
