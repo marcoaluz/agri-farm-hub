@@ -42,7 +42,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        'hover-lift rounded-xl border p-6 shadow-sm',
+        'hover-lift rounded-lg border p-6 shadow-[0_1px_3px_rgba(31,58,46,0.08)]',
         variantStyles[variant],
         className
       )}
@@ -51,7 +51,7 @@ export function StatCard({
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <div className="flex items-baseline gap-2">
-            <h3 className="text-3xl font-bold tracking-tight text-foreground">{value}</h3>
+            <h3 className="font-display text-3xl font-bold tracking-tight text-foreground">{value}</h3>
             {trend && (
               <span
                 className={cn(

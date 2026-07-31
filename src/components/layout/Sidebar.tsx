@@ -172,7 +172,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
               <Leaf className="h-4 w-4 text-sidebar-primary-foreground" />
             </div>
-            <span className="font-semibold text-sidebar-foreground">SGA</span>
+            <span className="font-display font-bold text-sidebar-foreground">Terralis</span>
           </div>
           <Button 
             variant="ghost" 
@@ -215,10 +215,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <Button
                     variant="ghost"
                     className={cn(
-                      'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200',
+                      'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200 border-l-[3px]',
                       isActive
-                        ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                        ? 'bg-sidebar-accent/20 border-l-sidebar-accent text-sidebar-foreground'
+                        : 'border-l-transparent text-sidebar-foreground/70 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground'
                     )}
                   >
                     <route.icon className={cn(
@@ -245,8 +245,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     className={cn(
                       'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200 mt-1',
                       location.pathname === '/admin'
-                        ? 'bg-destructive/20 text-sidebar-accent-foreground'
-                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                        ? 'bg-destructive/20 text-sidebar-foreground'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground'
                     )}
                   >
                     <Shield className="h-4 w-4 text-destructive" />
@@ -262,8 +262,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     className={cn(
                       'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200',
                       location.pathname === '/admin/usuarios'
-                        ? 'bg-destructive/20 text-sidebar-accent-foreground'
-                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                        ? 'bg-destructive/20 text-sidebar-foreground'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground'
                     )}
                   >
                     <Users className="h-4 w-4 text-destructive" />
@@ -281,8 +281,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     className={cn(
                       'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200',
                       location.pathname === '/admin/modulos'
-                        ? 'bg-destructive/20 text-sidebar-accent-foreground'
-                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                        ? 'bg-destructive/20 text-sidebar-foreground'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground'
                     )}
                   >
                     <Puzzle className="h-4 w-4 text-destructive" />
@@ -295,8 +295,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     className={cn(
                       'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200',
                       location.pathname === '/admin/convites'
-                        ? 'bg-destructive/20 text-sidebar-accent-foreground'
-                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                        ? 'bg-destructive/20 text-sidebar-foreground'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground'
                     )}
                   >
                     <UserPlus className="h-4 w-4 text-destructive" />
@@ -310,7 +310,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           {/* Footer da Sidebar */}
           <div className="border-t border-sidebar-border px-3 py-2">
             <div className="text-[10px] text-sidebar-foreground/40 text-center">
-              SGA v1.0.0
+              Terralis v1.0.0
             </div>
           </div>
         </ScrollArea>
