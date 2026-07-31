@@ -490,88 +490,161 @@ export default function Convites() {
                 <p>Nenhum convite pendente</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>E-mail</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Papel</TableHead>
-                      <TableHead>Criado em</TableHead>
-                      <TableHead>Expira em</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[80px]">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {convites.map((c) => {
-                      const papelInfo = c.papel
-                        ? PAPEL_OPTIONS[c.papel] || { label: c.papel, variant: "secondary" as const }
-                        : null;
-                      return (
-                        <TableRow key={c.id}>
-                          <TableCell className="font-medium">{c.email}</TableCell>
-                          <TableCell>{getTipoBadge(c)}</TableCell>
-                          <TableCell>
-                            {papelInfo ? (
-                              <Badge variant={papelInfo.variant}>{papelInfo.label}</Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {format(new Date(c.criado_em), "dd/MM/yy HH:mm", { locale: ptBR })}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {format(new Date(c.expira_em), "dd/MM/yy HH:mm", { locale: ptBR })}
-                          </TableCell>
-                          <TableCell>{getStatusBadge(c)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              {c.token && !c.expirado && (
-                                <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleCopiarLink(c)}
-                                    title="Copiar link do convite"
-                                  >
-                                    <Copy className="h-4 w-4 mr-1.5" />
-                                    Copiar
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleWhatsApp(c)}
-                                    title="Compartilhar no WhatsApp"
-                                  >
-                                    <MessageCircle className="h-4 w-4 mr-1.5" />
-                                    WhatsApp
-                                  </Button>
-                                </>
+              <>
+                {/* Desktop: tabela normal (md e acima) */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>E-mail</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Papel</TableHead>
+                        <TableHead>Criado em</TableHead>
+                        <TableHead>Expira em</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right w-[80px]">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {convites.map((c) => {
+                        const papelInfo = c.papel
+                          ? PAPEL_OPTIONS[c.papel] || { label: c.papel, variant: "secondary" as const }
+                          : null;
+                        return (
+                          <TableRow key={c.id}>
+                            <TableCell className="font-medium break-all">{c.email}</TableCell>
+                            <TableCell>{getTipoBadge(c)}</TableCell>
+                            <TableCell>
+                              {papelInfo ? (
+                                <Badge variant={papelInfo.variant}>{papelInfo.label}</Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">—</span>
                               )}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRevogar(c.id)}
-                                disabled={revogando === c.id || c.status === "ativo"}
-                                className="text-destructive hover:text-destructive"
-                                title="Cancelar convite"
-                              >
-                                {revogando === c.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4" />
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {format(new Date(c.criado_em), "dd/MM/yy HH:mm", { locale: ptBR })}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {format(new Date(c.expira_em), "dd/MM/yy HH:mm", { locale: ptBR })}
+                            </TableCell>
+                            <TableCell>{getStatusBadge(c)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1 justify-end">
+                                {c.token && !c.expirado && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleCopiarLink(c)}
+                                      title="Copiar link do convite"
+                                    >
+                                      <Copy className="h-4 w-4 mr-1.5" />
+                                      Copiar
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleWhatsApp(c)}
+                                      title="Compartilhar no WhatsApp"
+                                    >
+                                      <MessageCircle className="h-4 w-4 mr-1.5" />
+                                      WhatsApp
+                                    </Button>
+                                  </>
                                 )}
-                              </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRevogar(c.id)}
+                                  disabled={revogando === c.id || c.status === "ativo"}
+                                  className="text-destructive hover:text-destructive"
+                                  title="Cancelar convite"
+                                >
+                                  {revogando === c.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile: cards empilhados (abaixo de md) */}
+                <div className="block md:hidden space-y-3">
+                  {convites.map((c) => {
+                    const papelInfo = c.papel
+                      ? PAPEL_OPTIONS[c.papel] || { label: c.papel, variant: "secondary" as const }
+                      : null;
+                    return (
+                      <Card key={c.id} className="border-border/60">
+                        <CardContent className="p-4">
+                          <div className="mb-3">
+                            <p className="font-medium text-sm break-all">{c.email}</p>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              {getTipoBadge(c)}
+                              {papelInfo && (
+                                <Badge variant={papelInfo.variant} className="text-xs">
+                                  {papelInfo.label}
+                                </Badge>
+                              )}
+                              {getStatusBadge(c)}
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                              <span>Criado {format(new Date(c.criado_em), "dd/MM/yy HH:mm", { locale: ptBR })}</span>
+                              <span>Expira {format(new Date(c.expira_em), "dd/MM/yy HH:mm", { locale: ptBR })}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 flex-wrap pt-3 border-t">
+                            {c.token && !c.expirado && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleCopiarLink(c)}
+                                  className="flex-1 min-w-[110px]"
+                                >
+                                  <Copy className="h-4 w-4 mr-2" />
+                                  Copiar link
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleWhatsApp(c)}
+                                  className="flex-1 min-w-[110px]"
+                                >
+                                  <MessageCircle className="h-4 w-4 mr-2" />
+                                  WhatsApp
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRevogar(c.id)}
+                              disabled={revogando === c.id || c.status === "ativo"}
+                              className="text-destructive hover:text-destructive shrink-0"
+                              title="Cancelar convite"
+                            >
+                              {revogando === c.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
