@@ -118,6 +118,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.id]);
 
+  // Retoma aceite de convite pendente (caso o e-mail precise ser confirmado antes)
+  useEffect(() => {
+    const tokenPendente = localStorage.getItem("convite_token_pendente");
+    if (!tokenPendente || !user?.id) return;
+
+    const nome = localStorage.getItem("convite_nome") || "";
+    const propriedade = localStorage.getItem("convite_propriedade") || "";
+    const tipo = localStorage.getItem("convite_tipo") || (propriedade ? "novo" : "existente");
+
+    const rpcName = tipo === "novo" ? "aceitar_convite_novo_usuario" : "aceitar_convite";
+    const params: Record<string, string> = { p_token: tokenPendente, p_nome: nome };
+    if (tipo === "novo") params.p_propriedade_nome = propriedade;
+
+    void supabase.rpc(rpcName as any, params).then(({ error }) => {
+      if (!error) {
+        localStorage.removeItem("convite_token_pendente");
+        localStorage.removeItem("convite_tipo");
+        localStorage.removeItem("convite_nome");
+        localStorage.removeItem("convite_propriedade");
+        void queryClient.invalidateQueries();
+        toast({ title: "Convite aceito!", description: "Sua propriedade foi criada." });
+      }
+    });
+  }, [user?.id]);
+
   const signIn = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({

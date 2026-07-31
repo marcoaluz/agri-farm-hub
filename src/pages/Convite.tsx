@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { traduzirErroAuth } from '@/lib/authErrors'
+import { traduzirErroSupabase } from '@/lib/traducoes'
 import { queryClient } from '@/lib/queryClient'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -51,7 +52,8 @@ export default function Convite() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
-  const tipo = searchParams.get('tipo') || 'existente' // 'novo' ou 'existente'
+  // Aceita ?tipo=novo ou ?novo=true
+  const tipo = searchParams.get('novo') === 'true' ? 'novo' : (searchParams.get('tipo') || 'existente')
 
   const isNovoProprietario = tipo === 'novo'
 
@@ -71,11 +73,13 @@ export default function Convite() {
   const strength = useMemo(() => getPasswordStrength(senha), [senha])
 
   const senhasIguais = senha === confirmarSenha && confirmarSenha.length > 0
+  const senhaForte = senha.length >= 10 && /[a-zA-Z]/.test(senha) && /[0-9]/.test(senha)
   const formValido =
     nome.trim().length >= 3 &&
-    senha.length >= 8 &&
+    senhaForte &&
     senhasIguais &&
     (!isNovoProprietario || nomePropriedade.trim().length >= 2)
+
 
   useEffect(() => {
     async function validar() {
@@ -98,25 +102,49 @@ export default function Convite() {
   }, [token, isNovoProprietario])
 
   const handleCriarConta = async () => {
-    if (!formValido) return
     if (!tokenData?.email || !token) {
       toast.error('Token inválido.')
       return
     }
+    if (!nome.trim()) { toast.error('Informe seu nome completo'); return }
     if (isNovoProprietario && !nomePropriedade.trim()) {
-      toast.error('Preencha todos os campos')
+      toast.error('Informe o nome da sua propriedade')
       return
     }
+    if (senha.length < 10) { toast.error('A senha deve ter pelo menos 10 caracteres'); return }
+    if (!/[a-zA-Z]/.test(senha) || !/[0-9]/.test(senha)) {
+      toast.error('A senha deve conter letras e números')
+      return
+    }
+    if (senha !== confirmarSenha) { toast.error('As senhas não conferem'); return }
 
     setCriando(true)
     try {
+      // PASSO 1: criar conta no Auth
       const { error: authError } = await supabase.auth.signUp({
         email: tokenData.email,
         password: senha,
         options: { data: { name: nome.trim() } },
       })
-      if (authError) throw authError
+      if (authError) {
+        toast.error(traduzirErroSupabase(authError.message))
+        setCriando(false)
+        return
+      }
 
+      // PASSO 2: garantir sessão ativa antes de chamar a RPC
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData?.session) {
+        localStorage.setItem('convite_token_pendente', token)
+        localStorage.setItem('convite_tipo', isNovoProprietario ? 'novo' : 'existente')
+        localStorage.setItem('convite_nome', nome.trim())
+        if (isNovoProprietario) localStorage.setItem('convite_propriedade', nomePropriedade.trim())
+        toast.success('Conta criada! Verifique seu e-mail para confirmar o cadastro.')
+        setCriando(false)
+        return
+      }
+
+      // PASSO 3: aceitar convite (cria propriedade / vínculo)
       const rpcName = isNovoProprietario ? 'aceitar_convite_novo_usuario' : 'aceitar_convite'
       const params: Record<string, string> = {
         p_token: token,
@@ -125,19 +153,24 @@ export default function Convite() {
       if (isNovoProprietario) params.p_propriedade_nome = nomePropriedade.trim()
 
       const { error: conviteError } = await supabase.rpc(rpcName as any, params)
-      if (conviteError) throw conviteError
+      if (conviteError) {
+        toast.error('Erro ao aceitar convite: ' + traduzirErroSupabase(conviteError.message))
+        setCriando(false)
+        return
+      }
 
+      // PASSO 4: sucesso
       queryClient.invalidateQueries()
       setSucesso(true)
-
-      toast.success('Convite aceito! Bem-vindo ao sistema.')
-      setTimeout(() => navigate('/'), 2000)
+      toast.success('Conta criada com sucesso! Bem-vindo ao sistema.', { duration: 5000 })
+      setTimeout(() => navigate('/'), 3000)
     } catch (err: any) {
       toast.error(traduzirErroAuth(err, 'Erro ao criar conta.'))
     } finally {
       setCriando(false)
     }
   }
+
 
   // Loading
   if (validando) {
@@ -202,7 +235,7 @@ export default function Convite() {
             <h2 className="text-2xl font-bold text-foreground">Conta criada com sucesso!</h2>
             <p className="text-muted-foreground">
               {isNovoProprietario
-                ? 'Redirecionando para cadastrar sua propriedade...'
+                ? `Sua propriedade "${nomePropriedade.trim()}" foi cadastrada. Redirecionando para o painel...`
                 : 'Redirecionando para o sistema...'}
             </p>
           </CardContent>
@@ -342,7 +375,7 @@ export default function Convite() {
                     type={showPassword ? 'text' : 'password'}
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder="Mínimo 10 caracteres com letras e números"
                     className="pl-10 pr-10"
                     disabled={criando}
                   />
@@ -355,6 +388,9 @@ export default function Convite() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Mínimo 10 caracteres com letras e números
+                </p>
                 {senha && (
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
