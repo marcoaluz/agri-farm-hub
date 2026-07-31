@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { traduzirErroAuth } from "@/lib/authErrors";
 
 const PRESERVE_STORAGE_KEYS = ["theme", "language"];
 
@@ -136,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const authError = error as AuthError;
       toast({
         title: "Erro ao fazer login",
-        description: authError.message,
+        description: traduzirErroAuth(authError),
         variant: "destructive",
       });
       throw error;
@@ -170,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const authError = error as AuthError;
       toast({
         title: "Erro ao criar conta",
-        description: authError.message,
+        description: traduzirErroAuth(authError),
         variant: "destructive",
       });
       throw error;
@@ -218,7 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const authError = error as AuthError;
       toast({
         title: "Erro ao enviar email",
-        description: authError.message,
+        description: traduzirErroAuth(authError),
         variant: "destructive",
       });
       throw error;

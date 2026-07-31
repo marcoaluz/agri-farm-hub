@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { traduzirErroAuth } from '@/lib/authErrors'
 import { queryClient } from '@/lib/queryClient'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -87,7 +88,7 @@ export default function Convite() {
         setTokenData(result)
         setTokenValido(result.valido)
       } catch (err: any) {
-        setTokenData({ valido: false, motivo: err.message || 'Erro ao validar convite', expira_em: '' })
+        setTokenData({ valido: false, motivo: traduzirErroAuth(err, 'Erro ao validar convite'), expira_em: '' })
         setTokenValido(false)
       } finally {
         setValidando(false)
@@ -132,7 +133,7 @@ export default function Convite() {
       toast.success('Convite aceito! Bem-vindo ao sistema.')
       setTimeout(() => navigate('/'), 2000)
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao criar conta.')
+      toast.error(traduzirErroAuth(err, 'Erro ao criar conta.'))
     } finally {
       setCriando(false)
     }

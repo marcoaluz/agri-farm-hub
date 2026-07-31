@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { traduzirErroAuth } from '@/lib/authErrors'
 import { toast } from 'sonner'
 import { Leaf, Lock, Eye, EyeOff, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -67,7 +68,7 @@ export default function RedefinirSenha() {
       toast.success('Senha redefinida com sucesso!')
       setTimeout(() => navigate('/login'), 3000)
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao redefinir senha.')
+      toast.error(traduzirErroAuth(err, 'Erro ao redefinir senha.'))
     } finally {
       setSalvando(false)
     }
