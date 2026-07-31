@@ -19,6 +19,7 @@ import {
   Info,
   Building2,
   User,
+  MessageCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -216,6 +217,26 @@ export default function Convites() {
     } finally {
       setRevogando(null);
     }
+  };
+
+  const buildConviteLink = (convite: ConvitePendente) => {
+    const baseUrl = window.location.origin;
+    const sufixo = convite.tipo === "novo_proprietario" ? "&tipo=novo" : "&tipo=existente";
+    return `${baseUrl}/convite?token=${convite.token}${sufixo}`;
+  };
+
+  const handleCopiarLink = (convite: ConvitePendente) => {
+    const link = buildConviteLink(convite);
+    navigator.clipboard.writeText(link);
+    toast.success("Link copiado! Cole no WhatsApp ou email.");
+  };
+
+  const handleWhatsApp = (convite: ConvitePendente) => {
+    const link = buildConviteLink(convite);
+    const texto = encodeURIComponent(
+      `Olá! Você foi convidado para o sistema. Acesse: ${link}`
+    );
+    window.open(`https://wa.me/?text=${texto}`, "_blank");
   };
 
   const papelSelecionado = papel ? PAPEL_OPTIONS[papel] : null;
@@ -508,26 +529,34 @@ export default function Convites() {
                           <TableCell>
                             <div className="flex items-center gap-1">
                               {c.token && !c.expirado && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    const sufixo = c.tipo === 'novo_proprietario' ? '&tipo=novo' : '&tipo=existente';
-                                    const link = `${window.location.origin}/convite?token=${c.token}${sufixo}`;
-                                    navigator.clipboard.writeText(link);
-                                    toast.success("Link copiado!");
-                                  }}
-                                  title="Copiar link do convite"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleCopiarLink(c)}
+                                    title="Copiar link do convite"
+                                  >
+                                    <Copy className="h-4 w-4 mr-1.5" />
+                                    Copiar
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleWhatsApp(c)}
+                                    title="Compartilhar no WhatsApp"
+                                  >
+                                    <MessageCircle className="h-4 w-4 mr-1.5" />
+                                    WhatsApp
+                                  </Button>
+                                </>
                               )}
                               <Button
                                 variant="ghost"
-                                size="sm"
+                                size="icon"
                                 onClick={() => handleRevogar(c.id)}
                                 disabled={revogando === c.id || c.status === "ativo"}
                                 className="text-destructive hover:text-destructive"
+                                title="Cancelar convite"
                               >
                                 {revogando === c.id ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
