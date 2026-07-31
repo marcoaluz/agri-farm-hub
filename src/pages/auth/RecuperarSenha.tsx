@@ -71,7 +71,7 @@ export function RecuperarSenhaPage() {
             <Leaf className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">Terralis</h1>
+            <h1 className="font-display text-3xl font-bold">Terralis</h1>
             <p className="text-primary-foreground/70 text-sm">ERP Inteligente para Gestão Agropecuária</p>
           </div>
         </div>
@@ -118,7 +118,7 @@ export function RecuperarSenhaPage() {
                 <Leaf className="h-8 w-8 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-foreground">Terralis</h1>
+                <h1 className="font-display text-3xl font-bold text-foreground">Terralis</h1>
                 <p className="text-muted-foreground text-sm">ERP Inteligente para Gestão Agropecuária</p>
               </div>
             </div>
