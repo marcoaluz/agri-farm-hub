@@ -136,56 +136,42 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Lado Esquerdo */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary/70 p-12 flex-col justify-between text-primary-foreground">
-        <div className="flex flex-col items-start gap-3">
-          <div className="rounded-2xl bg-background p-4">
-            <img src="/logo-complete.png" alt="Agro GFI" className="w-full max-w-[320px] h-auto" />
-          </div>
-        </div>
-
-
-
-        <div className="space-y-6">
-
-          <h2 className="text-4xl font-bold mb-4">Toda a gestão da sua fazenda em um único lugar.</h2>
-          <p className="text-primary-foreground/70 text-lg">
-            Controle a lavoura, a pecuária, o financeiro, o estoque, as máquinas e tenha uma assistente de IA para consultar informações e apoiar suas decisões.
+      {/* Painel esquerdo */}
+      <div className="hidden lg:flex lg:w-1/2 bg-primary flex-col items-center justify-center p-12 relative">
+        <div className="flex flex-col items-center max-w-md">
+          <img
+            src="/logo-complete.png"
+            alt="Agro GFI"
+            className="w-full max-w-[380px] h-auto mb-8 drop-shadow-2xl"
+          />
+          <h2 className="text-xl font-bold text-primary-foreground text-center mb-3">
+            Toda a gestão da sua fazenda em um único lugar.
+          </h2>
+          <p className="text-primary-foreground/70 text-center text-sm leading-relaxed">
+            Controle a lavoura, a pecuária, o financeiro, o estoque, as máquinas
+            e tenha uma assistente de IA para apoiar suas decisões.
           </p>
-          <div className="grid grid-cols-2 gap-4">
-            {features.map((f) => (
-              <div key={f.label} className="bg-primary-foreground/10 backdrop-blur-sm rounded-lg p-4">
-                <p className="font-bold text-lg">{f.label}</p>
-                <p className="text-primary-foreground/70 text-sm">{f.description}</p>
-              </div>
-            ))}
-          </div>
         </div>
-
-        <p className="text-primary-foreground/60 text-sm">
-          © 2025 Agro GFI — Gestão de Fazenda Inteligente. Todos os direitos reservados.
-        </p>
+        <div className="absolute bottom-6 text-primary-foreground/40 text-xs">
+          © 2026 Agro GFI — Gestão de Fazenda Inteligente
+        </div>
       </div>
 
-      {/* Lado Direito */}
-      <div className="w-full lg:w-1/2 bg-background flex items-center justify-center p-8">
-        <div className="max-w-md w-full space-y-8">
-          {/* Logo mobile */}
-          <div className="lg:hidden flex flex-col items-center mb-8">
-            <img src="/logo-full.png" alt="Agro GFI" className="w-full max-w-[200px] h-auto" />
-            <p className="text-center text-sm text-muted-foreground mt-2">
-              Toda a gestão da sua fazenda em um único lugar.
+      {/* Painel direito */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 bg-background">
+        <div className="w-full max-w-md">
+          <div className="flex justify-center mb-8 lg:hidden">
+            <img src="/logo-full.png" alt="Agro GFI" className="w-full max-w-[220px] h-auto" />
+          </div>
+
+          <div className="space-y-2 mb-8">
+            <h1 className="text-2xl font-bold text-foreground">Entrar na sua conta</h1>
+            <p className="text-sm text-muted-foreground">
+              Digite seu email e senha para acessar o sistema
             </p>
           </div>
 
-
-          {/* Card */}
-          <Card className="border-border shadow-lg">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold">Entrar na sua conta</CardTitle>
-              <CardDescription>Digite seu email e senha para acessar o sistema</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <div>
               {/* Alertas */}
               {isBlocked && (
                 <Alert variant="destructive" className="mb-4">
@@ -201,6 +187,7 @@ export function LoginPage() {
                   <AlertDescription className="text-warning">Tentativa {loginAttempts} de 5</AlertDescription>
                 </Alert>
               )}
+
 
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
