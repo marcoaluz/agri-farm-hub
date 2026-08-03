@@ -1,3 +1,4 @@
+import { Logo } from '@/components/Logo'
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -152,7 +153,7 @@ export function LoginPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 bg-background">
         <div className="w-full max-w-md">
           <div className="flex justify-center mb-8 lg:hidden">
-            <img src="/logo-full.png" alt="Agro GFI" className="w-full max-w-[220px] h-auto" />
+            <Logo variant="full" className="scale-110" />
           </div>
 
           <div className="space-y-2 mb-8">

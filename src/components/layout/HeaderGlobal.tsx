@@ -1,3 +1,4 @@
+import { Logo } from '@/components/Logo'
 import { Wordmark } from '@/components/brand/Wordmark'
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
@@ -355,7 +356,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
 
         {/* Logo */}
         <Link to="/" className="flex items-center shrink-0">
-          <img src="/logo-full.png" alt="Agro GFI" className="h-8 w-auto sm:h-9" />
+          <Logo variant="full" />
         </Link>
 
 
