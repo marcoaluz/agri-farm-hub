@@ -1,4 +1,4 @@
-import { Logo } from '@/components/Logo'
+import { Wordmark } from '@/components/brand/Wordmark'
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -169,8 +169,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       >
         {/* Header Mobile */}
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4 md:hidden">
-          <div className="flex items-center">
-            <Logo variant="full" darkMode />
+          <div className="flex items-center rounded-lg bg-background px-2 py-1">
+            <img src="/logo-full.png" alt="Agro GFI" className="h-10 w-auto" />
           </div>
 
           <Button 

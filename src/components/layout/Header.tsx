@@ -1,4 +1,3 @@
-import { Logo } from '@/components/Logo'
 import { Wordmark } from '@/components/brand/Wordmark'
 import { useState } from 'react'
 import { useGlobal } from '@/contexts/GlobalContext'
@@ -68,7 +67,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         {/* Logo */}
         <div className="flex items-center shrink-0">
-          <Logo variant="full" />
+          <img src="/logo-full.png" alt="Agro GFI" className="h-8 w-auto sm:h-9" />
         </div>
 
 

@@ -1,4 +1,3 @@
-import { Logo } from '@/components/Logo'
 import { Wordmark } from '@/components/brand/Wordmark'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
@@ -257,7 +256,9 @@ export default function Convite() {
       {/* Lado Esquerdo */}
       <div className="hidden lg:flex lg:w-2/5 bg-gradient-to-br from-primary to-primary/70 p-12 flex-col justify-between text-primary-foreground">
         <div className="flex flex-col items-start gap-2">
-          <Logo variant="full" darkMode className="scale-110 origin-left" />
+          <div className="rounded-xl bg-background p-3">
+            <img src="/logo-full.png" alt="Agro GFI" className="h-16 w-auto" />
+          </div>
           <p className="text-primary-foreground/70 text-sm">Gestão de Fazenda Inteligente</p>
         </div>
 
@@ -282,7 +283,7 @@ export default function Convite() {
         </div>
 
         <p className="text-primary-foreground/60 text-sm">
-          © 2026 Agro GFI — Gestão de Fazenda Inteligente
+          © 2024 Agro GFI — Gestão de Fazenda Inteligente
         </p>
       </div>
 
@@ -291,7 +292,7 @@ export default function Convite() {
         <div className="max-w-md w-full">
           {/* Logo mobile */}
           <div className="lg:hidden flex flex-col items-center mb-6">
-            <Logo variant="full" className="scale-110 mb-2" />
+            <img src="/logo-full.png" alt="Agro GFI" className="w-full max-w-[200px] h-auto mx-auto mb-2" />
             <p className="text-center text-sm text-muted-foreground">
               Toda a gestão da sua fazenda em um único lugar.
             </p>
