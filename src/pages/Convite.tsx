@@ -255,15 +255,13 @@ export default function Convite() {
     <div className="h-screen flex overflow-hidden">
       {/* Lado Esquerdo */}
       <div className="hidden lg:flex lg:w-2/5 bg-gradient-to-br from-primary to-primary/70 p-12 flex-col justify-between text-primary-foreground">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary-foreground/10 backdrop-blur-sm p-3 rounded-xl">
-            <Leaf className="h-8 w-8" />
+        <div className="flex flex-col items-start gap-2">
+          <div className="rounded-xl bg-background p-3">
+            <img src="/logo-full.png" alt="Agro GFI" className="h-16 w-auto" />
           </div>
-          <div>
-            <Wordmark onDark className="block text-3xl" />
-            <p className="text-primary-foreground/70 text-sm">Gestão de Fazenda Inteligente</p>
-          </div>
+          <p className="text-primary-foreground/70 text-sm">Gestão de Fazenda Inteligente</p>
         </div>
+
 
         <div className="space-y-6">
           <h2 className="text-3xl font-bold">Você foi convidado!</h2>
