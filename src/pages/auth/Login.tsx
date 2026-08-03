@@ -349,10 +349,14 @@ export function LoginPage() {
             </CardContent>
             <CardFooter className="flex-col gap-2 pt-0">
               <Separator />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground text-center">
+                Toda a gestão da sua fazenda em um único lugar.
+              </p>
+              <p className="text-sm text-muted-foreground text-center">
                 O acesso ao Agro GFI é feito apenas por convite. Fale com o administrador.
               </p>
             </CardFooter>
+
           </Card>
         </div>
       </div>
