@@ -173,18 +173,13 @@ export function LoginPage() {
       <div className="w-full lg:w-1/2 bg-background flex items-center justify-center p-8">
         <div className="max-w-md w-full space-y-8">
           {/* Logo mobile */}
-          <div className="lg:hidden flex flex-col items-center gap-2 mb-8">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary p-3 rounded-xl">
-                <Leaf className="h-8 w-8 text-primary-foreground" />
-              </div>
-              <div>
-                <Wordmark className="block text-3xl" />
-                <p className="text-muted-foreground text-sm">Gestão de Fazenda Inteligente</p>
-
-              </div>
-            </div>
+          <div className="lg:hidden flex flex-col items-center mb-8">
+            <img src="/logo-full.png" alt="Agro GFI" className="w-full max-w-[200px] h-auto" />
+            <p className="text-center text-sm text-muted-foreground mt-2">
+              Toda a gestão da sua fazenda em um único lugar.
+            </p>
           </div>
+
 
           {/* Card */}
           <Card className="border-border shadow-lg">
