@@ -150,7 +150,7 @@ export function LoginPage() {
         </div>
 
         <div className="space-y-6">
-        <div className="space-y-6">
+
           <h2 className="text-4xl font-bold mb-4">Toda a gestão da sua fazenda em um único lugar.</h2>
           <p className="text-primary-foreground/70 text-lg">
             Controle a lavoura, a pecuária, o financeiro, o estoque, as máquinas e tenha uma assistente de IA para consultar informações e apoiar suas decisões.
