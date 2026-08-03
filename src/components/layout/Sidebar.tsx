@@ -169,7 +169,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       >
         {/* Header Mobile */}
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4 md:hidden">
-          <div className="flex items-center rounded-lg bg-background px-2 py-1">
+          <div className="flex items-center">
             <img src="/logo-full.png" alt="Agro GFI" className="h-10 w-auto" />
           </div>
 

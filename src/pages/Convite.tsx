@@ -256,9 +256,7 @@ export default function Convite() {
       {/* Lado Esquerdo */}
       <div className="hidden lg:flex lg:w-2/5 bg-gradient-to-br from-primary to-primary/70 p-12 flex-col justify-between text-primary-foreground">
         <div className="flex flex-col items-start gap-2">
-          <div className="rounded-xl bg-background p-3">
-            <img src="/logo-full.png" alt="Agro GFI" className="h-16 w-auto" />
-          </div>
+          <img src="/logo-full.png" alt="Agro GFI" className="h-16 w-auto drop-shadow-2xl" />
           <p className="text-primary-foreground/70 text-sm">Gestão de Fazenda Inteligente</p>
         </div>
 
@@ -283,7 +281,7 @@ export default function Convite() {
         </div>
 
         <p className="text-primary-foreground/60 text-sm">
-          © 2024 Agro GFI — Gestão de Fazenda Inteligente
+          © 2026 Agro GFI — Gestão de Fazenda Inteligente
         </p>
       </div>
 
