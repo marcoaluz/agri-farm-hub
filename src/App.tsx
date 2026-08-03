@@ -19,6 +19,7 @@ function App() {
               <AppRoutes />
               <Toaster />
               <Sonner />
+              <InstallPrompt />
             </GlobalProvider>
           </AuthProvider>
         </TooltipProvider>
