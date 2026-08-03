@@ -59,6 +59,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // Detecta link de recuperação de senha (#access_token=...&type=recovery)
+    // ANTES de qualquer redirect para o dashboard
+    const hash = window.location.hash || "";
+    const isRecoveryLink = hash.includes("type=recovery");
+    if (isRecoveryLink && window.location.pathname !== "/reset-password") {
+      navigate("/reset-password" + hash, { replace: true });
+    }
+
     const initializeAuth = async () => {
       const {
         data: { session },
@@ -82,8 +90,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
+
+      // PRIMEIRO: evento de recuperação de senha tem prioridade
+      if (event === "PASSWORD_RECOVERY") {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+        navigate("/reset-password", { replace: true });
+        return;
+      }
 
       setSession(session);
       setUser(session?.user ?? null);
@@ -102,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
 
   // Invalida todas as queries quando o usuário muda (evita vazamento entre sessões)
   const prevUserIdRef = useRef<string | null>(null);
