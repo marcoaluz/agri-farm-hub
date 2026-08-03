@@ -31,7 +31,7 @@ export function AssistenteIA() {
   const [mensagens, setMensagens] = useState<Mensagem[]>([{
     id: '0',
     role: 'assistant',
-    content: '👋 Olá! Sou o assistente do Terralis. Pergunte sobre estoque, rebanho, lançamentos, financeiro ou qualquer dado da sua propriedade.',
+    content: '👋 Olá! Sou o assistente do Agro GFI. Pergunte sobre estoque, rebanho, lançamentos, financeiro ou qualquer dado da sua propriedade.',
     timestamp: new Date()
   }])
   const [input, setInput] = useState('')
@@ -268,7 +268,7 @@ ${(sanitario || []).map((s: any) =>
             'hover:scale-105',
             'flex items-center justify-center'
           )}
-          title="Assistente Terralis"
+          title="Assistente Agro GFI"
           size="icon"
         >
           <Bot className="h-5 w-5 md:h-6 md:w-6" />
@@ -287,7 +287,7 @@ ${(sanitario || []).map((s: any) =>
               <Sprout className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">Assistente Terralis</p>
+              <p className="text-sm font-semibold text-foreground">Assistente Agro GFI</p>
               <p className="text-xs text-muted-foreground truncate">
                 {propriedadeAtual?.nome || 'Selecione uma propriedade'}
               </p>

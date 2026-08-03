@@ -358,7 +358,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
             <Leaf className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
           </div>
           <span className="hidden sm:inline-block font-display font-bold text-lg text-primary">
-            Terralis
+            Agro GFI
           </span>
         </Link>
 

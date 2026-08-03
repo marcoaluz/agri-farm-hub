@@ -142,7 +142,7 @@ export function LoginPage() {
             <Leaf className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="font-display text-3xl font-bold">Terralis</h1>
+            <h1 className="font-display text-3xl font-bold">Agro GFI</h1>
             <p className="text-primary-foreground/70 text-sm">Tecnologia que cultiva resultados</p>
           </div>
         </div>
@@ -163,7 +163,7 @@ export function LoginPage() {
         </div>
 
         <p className="text-primary-foreground/60 text-sm">
-          © 2025 Terralis — ERP Inteligente para Gestão Agropecuária. Todos os direitos reservados.
+          © 2025 Agro GFI — Gestão de Fazenda Inteligente. Todos os direitos reservados.
         </p>
       </div>
 
@@ -177,7 +177,7 @@ export function LoginPage() {
                 <Leaf className="h-8 w-8 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="font-display text-3xl font-bold text-foreground">Terralis</h1>
+                <h1 className="font-display text-3xl font-bold text-foreground">Agro GFI</h1>
                 <p className="text-muted-foreground text-sm">Tecnologia que cultiva resultados</p>
               </div>
             </div>
@@ -346,7 +346,7 @@ export function LoginPage() {
             <CardFooter className="flex-col gap-2 pt-0">
               <Separator />
               <p className="text-sm text-muted-foreground">
-                O acesso ao Terralis é feito apenas por convite. Fale com o administrador.
+                O acesso ao Agro GFI é feito apenas por convite. Fale com o administrador.
               </p>
             </CardFooter>
           </Card>

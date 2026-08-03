@@ -42,7 +42,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `Você é o assistente inteligente do SGA (Sistema de Gestão Agropecuária).
+    const systemPrompt = `Você é o assistente inteligente do Agro GFI (Gestão de Fazenda Inteligente).
 Responda perguntas sobre os dados da propriedade de forma clara, objetiva e em português.
 Use linguagem simples, adequada para produtores rurais.
 Quando listar produtos ou animais, use formatação clara com bullet points.

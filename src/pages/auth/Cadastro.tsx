@@ -145,8 +145,8 @@ export function CadastroPage() {
             <Leaf className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="font-display text-3xl font-bold">Terralis</h1>
-            <p className="text-primary-foreground/70 text-sm">ERP Inteligente para Gestão Agropecuária</p>
+            <h1 className="font-display text-3xl font-bold">Agro GFI</h1>
+            <p className="text-primary-foreground/70 text-sm">Gestão de Fazenda Inteligente</p>
           </div>
         </div>
 
@@ -171,7 +171,7 @@ export function CadastroPage() {
         </div>
 
         <p className="text-primary-foreground/60 text-sm">
-          © 2024 Terralis — ERP Inteligente para Gestão Agropecuária. Todos os direitos reservados.
+          © 2024 Agro GFI — Gestão de Fazenda Inteligente. Todos os direitos reservados.
         </p>
       </div>
 
@@ -185,8 +185,8 @@ export function CadastroPage() {
                 <Leaf className="h-8 w-8 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="font-display text-3xl font-bold text-foreground">Terralis</h1>
-                <p className="text-muted-foreground text-sm">ERP Inteligente para Gestão Agropecuária</p>
+                <h1 className="font-display text-3xl font-bold text-foreground">Agro GFI</h1>
+                <p className="text-muted-foreground text-sm">Gestão de Fazenda Inteligente</p>
               </div>
             </div>
           </div>
@@ -195,7 +195,7 @@ export function CadastroPage() {
           <Card className="border-border shadow-lg">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold">Criar nova conta</CardTitle>
-              <CardDescription>Preencha os dados abaixo para começar a usar o Terralis</CardDescription>
+              <CardDescription>Preencha os dados abaixo para começar a usar o Agro GFI</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>

@@ -49,7 +49,7 @@ export function exportarPDFCompleto(dados: {
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text('Terralis — ERP Inteligente para Gestão Agropecuária', 14, 13)
+  doc.text('Agro GFI — Gestão de Fazenda Inteligente', 14, 13)
   doc.setFontSize(10)
   doc.text(dados.titulo, 297 - 14, 13, { align: 'right' })
 
@@ -138,7 +138,7 @@ export function exportarPDFSintetico(dados: {
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
-  doc.text('Terralis — ERP Inteligente para Gestão Agropecuária', 14, 12)
+  doc.text('Agro GFI — Gestão de Fazenda Inteligente', 14, 12)
   doc.setFontSize(9)
   doc.text(dados.titulo, 14, 19)
 
@@ -213,7 +213,7 @@ export function exportarResumoDashboard(dados: {
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
-  doc.text('Terralis — Resumo Mensal', 14, 13)
+  doc.text('Agro GFI — Resumo Mensal', 14, 13)
   doc.setFontSize(9)
   doc.text(dados.mes, 196, 13, { align: 'right' })
 
