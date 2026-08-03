@@ -1,3 +1,4 @@
+import { Wordmark } from '@/components/brand/Wordmark'
 import { useState } from 'react'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useAuth } from '@/contexts/AuthContext'
