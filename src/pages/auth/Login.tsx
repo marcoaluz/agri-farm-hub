@@ -142,10 +142,8 @@ export function LoginPage() {
           <div className="rounded-2xl bg-background p-4">
             <img src="/logo-complete.png" alt="Agro GFI" className="w-full max-w-[320px] h-auto" />
           </div>
-          <p className="text-primary-foreground/70 text-sm">
-            Toda a gestão da sua fazenda em um único lugar.
-          </p>
         </div>
+
 
 
         <div className="space-y-6">
