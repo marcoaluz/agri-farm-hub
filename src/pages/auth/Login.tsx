@@ -138,16 +138,13 @@ export function LoginPage() {
     <div className="min-h-screen flex">
       {/* Lado Esquerdo */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary/70 p-12 flex-col justify-between text-primary-foreground">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary-foreground/10 backdrop-blur-sm p-3 rounded-xl">
-            <Leaf className="h-8 w-8" />
-          </div>
-          <div>
-            <Wordmark onDark className="block text-3xl" />
-            <p className="text-primary-foreground/70 text-sm">Gestão de Fazenda Inteligente</p>
-
+        <div className="flex flex-col items-start gap-3">
+          <div className="rounded-2xl bg-background p-4">
+            <img src="/logo-complete.png" alt="Agro GFI" className="w-full max-w-[320px] h-auto" />
           </div>
         </div>
+
+
 
         <div className="space-y-6">
 
@@ -174,18 +171,13 @@ export function LoginPage() {
       <div className="w-full lg:w-1/2 bg-background flex items-center justify-center p-8">
         <div className="max-w-md w-full space-y-8">
           {/* Logo mobile */}
-          <div className="lg:hidden flex flex-col items-center gap-2 mb-8">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary p-3 rounded-xl">
-                <Leaf className="h-8 w-8 text-primary-foreground" />
-              </div>
-              <div>
-                <Wordmark className="block text-3xl" />
-                <p className="text-muted-foreground text-sm">Gestão de Fazenda Inteligente</p>
-
-              </div>
-            </div>
+          <div className="lg:hidden flex flex-col items-center mb-8">
+            <img src="/logo-full.png" alt="Agro GFI" className="w-full max-w-[200px] h-auto" />
+            <p className="text-center text-sm text-muted-foreground mt-2">
+              Toda a gestão da sua fazenda em um único lugar.
+            </p>
           </div>
+
 
           {/* Card */}
           <Card className="border-border shadow-lg">

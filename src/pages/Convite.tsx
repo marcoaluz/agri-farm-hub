@@ -255,15 +255,13 @@ export default function Convite() {
     <div className="h-screen flex overflow-hidden">
       {/* Lado Esquerdo */}
       <div className="hidden lg:flex lg:w-2/5 bg-gradient-to-br from-primary to-primary/70 p-12 flex-col justify-between text-primary-foreground">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary-foreground/10 backdrop-blur-sm p-3 rounded-xl">
-            <Leaf className="h-8 w-8" />
+        <div className="flex flex-col items-start gap-2">
+          <div className="rounded-xl bg-background p-3">
+            <img src="/logo-full.png" alt="Agro GFI" className="h-16 w-auto" />
           </div>
-          <div>
-            <Wordmark onDark className="block text-3xl" />
-            <p className="text-primary-foreground/70 text-sm">Gestão de Fazenda Inteligente</p>
-          </div>
+          <p className="text-primary-foreground/70 text-sm">Gestão de Fazenda Inteligente</p>
         </div>
+
 
         <div className="space-y-6">
           <h2 className="text-3xl font-bold">Você foi convidado!</h2>
@@ -293,17 +291,13 @@ export default function Convite() {
       <div className="w-full lg:w-3/5 bg-background flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
         <div className="max-w-md w-full">
           {/* Logo mobile */}
-          <div className="lg:hidden flex flex-col items-center gap-2 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary p-3 rounded-xl">
-                <Leaf className="h-8 w-8 text-primary-foreground" />
-              </div>
-              <div>
-                <Wordmark className="block text-3xl" />
-                <p className="text-muted-foreground text-sm">Gestão de Fazenda Inteligente</p>
-              </div>
-            </div>
+          <div className="lg:hidden flex flex-col items-center mb-6">
+            <img src="/logo-full.png" alt="Agro GFI" className="w-full max-w-[200px] h-auto mx-auto mb-2" />
+            <p className="text-center text-sm text-muted-foreground">
+              Toda a gestão da sua fazenda em um único lugar.
+            </p>
           </div>
+
 
           {/* Banner convite mobile */}
           <div className="lg:hidden bg-primary/5 border border-primary/20 rounded-lg p-4 mb-4 text-center">

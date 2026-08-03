@@ -354,13 +354,10 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
         )}
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 shrink-0">
-          <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-primary">
-            <Leaf className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
-          </div>
-          <Wordmark className="hidden sm:inline-block text-lg" />
-
+        <Link to="/" className="flex items-center shrink-0">
+          <img src="/logo-full.png" alt="Agro GFI" className="h-8 w-auto sm:h-9" />
         </Link>
+
 
         {/* ---- Mobile: compact drawer trigger ---- */}
         {isAdmin ? (
