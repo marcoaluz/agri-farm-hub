@@ -127,35 +127,34 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Painel esquerdo — verde escuro com logo centralizado */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary flex-col items-center justify-center p-12 relative overflow-hidden">
-        {/* Logo centralizado vertical e horizontalmente */}
-        <div className="flex flex-col items-center max-w-md">
+      {/* Painel esquerdo — fundo claro com a arte da marca */}
+      <div className="hidden lg:flex lg:w-1/2 bg-background flex-col items-center justify-center p-12 relative overflow-hidden">
+        <div className="flex flex-col items-center max-w-xl">
           <img
-            src="/logo-complete.png"
-            alt="Agro GFI"
-            className="w-full max-w-[380px] h-auto mb-8 rounded-2xl shadow-2xl"
+            src="/og-image.png"
+            alt="Agro GFI — Um sistema de gestão de fazendas inteligente"
+            className="w-full max-w-[520px] h-auto"
           />
 
-          <h2 className="text-xl font-display font-bold text-primary-foreground text-center mb-3">
+          <h2 className="text-xl font-display font-bold text-foreground text-center mt-8 mb-3">
             Toda a gestão da sua fazenda em um único lugar.
           </h2>
 
-          <p className="text-primary-foreground/70 text-center text-sm leading-relaxed">
+          <p className="text-muted-foreground text-center text-sm leading-relaxed">
             Controle a lavoura, a pecuária, o financeiro, o estoque, as máquinas
             e tenha uma assistente de IA para apoiar suas decisões.
           </p>
         </div>
 
         {/* Rodapé do painel esquerdo */}
-        <div className="absolute bottom-6 text-primary-foreground/40 text-xs">
+        <div className="absolute bottom-6 text-muted-foreground text-xs">
           © 2026 Agro GFI — Gestão de Fazenda Inteligente
         </div>
       </div>
 
-      {/* Painel direito — formulário de login */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 bg-background">
-        <div className="w-full max-w-md">
+      {/* Painel direito — formulário de login sobre fundo verde */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 bg-primary">
+        <div className="w-full max-w-md bg-card rounded-2xl shadow-2xl p-6 md:p-8">
           {/* Logo mobile (só aparece em telas sem painel esquerdo) */}
           <div className="flex justify-center mb-8 lg:hidden">
             <img
@@ -164,6 +163,7 @@ export function LoginPage() {
               className="w-full max-w-[220px] h-auto"
             />
           </div>
+
 
           <div className="space-y-2 mb-8">
             <h1 className="text-2xl font-display font-bold text-foreground">
@@ -291,7 +291,7 @@ export function LoginPage() {
               {/* Separador */}
               <div className="relative my-4">
                 <Separator />
-                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-3 text-xs text-muted-foreground">
+                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs text-muted-foreground">
                   ou continue com
                 </span>
               </div>
