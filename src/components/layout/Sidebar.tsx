@@ -1,3 +1,4 @@
+import { Wordmark } from '@/components/brand/Wordmark'
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -172,7 +173,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
               <Leaf className="h-4 w-4 text-sidebar-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-sidebar-foreground">Terralis</span>
+            <Wordmark onDark className="text-base" />
           </div>
           <Button 
             variant="ghost" 
@@ -310,7 +311,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           {/* Footer da Sidebar */}
           <div className="border-t border-sidebar-border px-3 py-2">
             <div className="text-[10px] text-sidebar-foreground/40 text-center">
-              Terralis v1.0.0
+              Agro GFI v1.0.0
             </div>
           </div>
         </ScrollArea>

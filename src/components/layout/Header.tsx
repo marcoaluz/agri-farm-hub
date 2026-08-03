@@ -1,3 +1,4 @@
+import { Wordmark } from '@/components/brand/Wordmark'
 import { useState } from 'react'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -69,9 +70,8 @@ export function Header({ onMenuClick }: HeaderProps) {
           <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-primary">
             <Leaf className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
           </div>
-          <span className="hidden sm:inline-block font-display font-bold text-lg text-primary">
-            Terralis
-          </span>
+          <Wordmark className="hidden sm:inline-block text-lg" />
+
         </div>
 
         {/* Seletor Mobile de Propriedade e Safra */}

@@ -1,3 +1,4 @@
+import { Wordmark } from '@/components/brand/Wordmark'
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -142,15 +143,17 @@ export function LoginPage() {
             <Leaf className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="font-display text-3xl font-bold">Terralis</h1>
-            <p className="text-primary-foreground/70 text-sm">Tecnologia que cultiva resultados</p>
+            <Wordmark onDark className="block text-3xl" />
+            <p className="text-primary-foreground/70 text-sm">Gestão de Fazenda Inteligente</p>
+
           </div>
         </div>
 
         <div className="space-y-6">
-          <h2 className="text-4xl font-bold mb-4">Gerencie sua fazenda com inteligência</h2>
+
+          <h2 className="text-4xl font-bold mb-4">Toda a gestão da sua fazenda em um único lugar.</h2>
           <p className="text-primary-foreground/70 text-lg">
-            Controle completo de operações, estoque, custos e resultados em uma única plataforma.
+            Controle a lavoura, a pecuária, o financeiro, o estoque, as máquinas e tenha uma assistente de IA para consultar informações e apoiar suas decisões.
           </p>
           <div className="grid grid-cols-2 gap-4">
             {features.map((f) => (
@@ -163,7 +166,7 @@ export function LoginPage() {
         </div>
 
         <p className="text-primary-foreground/60 text-sm">
-          © 2025 Terralis — ERP Inteligente para Gestão Agropecuária. Todos os direitos reservados.
+          © 2025 Agro GFI — Gestão de Fazenda Inteligente. Todos os direitos reservados.
         </p>
       </div>
 
@@ -177,8 +180,9 @@ export function LoginPage() {
                 <Leaf className="h-8 w-8 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="font-display text-3xl font-bold text-foreground">Terralis</h1>
-                <p className="text-muted-foreground text-sm">Tecnologia que cultiva resultados</p>
+                <Wordmark className="block text-3xl" />
+                <p className="text-muted-foreground text-sm">Gestão de Fazenda Inteligente</p>
+
               </div>
             </div>
           </div>
@@ -345,10 +349,14 @@ export function LoginPage() {
             </CardContent>
             <CardFooter className="flex-col gap-2 pt-0">
               <Separator />
-              <p className="text-sm text-muted-foreground">
-                O acesso ao Terralis é feito apenas por convite. Fale com o administrador.
+              <p className="text-sm text-muted-foreground text-center">
+                Toda a gestão da sua fazenda em um único lugar.
+              </p>
+              <p className="text-sm text-muted-foreground text-center">
+                O acesso ao Agro GFI é feito apenas por convite. Fale com o administrador.
               </p>
             </CardFooter>
+
           </Card>
         </div>
       </div>

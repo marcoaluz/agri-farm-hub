@@ -1,3 +1,4 @@
+import { Wordmark } from '@/components/brand/Wordmark'
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useSafraContext } from '@/contexts/SafraContext'
@@ -357,9 +358,8 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
           <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-primary">
             <Leaf className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
           </div>
-          <span className="hidden sm:inline-block font-display font-bold text-lg text-primary">
-            Terralis
-          </span>
+          <Wordmark className="hidden sm:inline-block text-lg" />
+
         </Link>
 
         {/* ---- Mobile: compact drawer trigger ---- */}

@@ -1,3 +1,4 @@
+import { Wordmark } from '@/components/brand/Wordmark'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
@@ -162,7 +163,7 @@ export default function Convite() {
       // PASSO 4: sucesso
       queryClient.invalidateQueries()
       setSucesso(true)
-      toast.success('Conta criada com sucesso! Bem-vindo ao sistema.', { duration: 5000 })
+      toast.success('Conta criada com sucesso! Bem-vindo ao Agro GFI.', { duration: 5000 })
       setTimeout(() => navigate('/'), 3000)
     } catch (err: any) {
       toast.error(traduzirErroAuth(err, 'Erro ao criar conta.'))
@@ -246,7 +247,7 @@ export default function Convite() {
 
   // Banner text
   const bannerText = isNovoProprietario
-    ? 'Você foi convidado para criar sua conta no Terralis e cadastrar sua propriedade.'
+    ? 'Você foi convidado para criar sua conta no Agro GFI e cadastrar sua propriedade.'
     : `Você foi convidado para ${tokenData?.propriedade_nome || '—'} como ${PAPEL_LABELS[tokenData?.papel || ''] || tokenData?.papel}`
 
   // Formulário
@@ -259,8 +260,8 @@ export default function Convite() {
             <Leaf className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="font-display text-3xl font-bold">Terralis</h1>
-            <p className="text-primary-foreground/70 text-sm">ERP Inteligente para Gestão Agropecuária</p>
+            <Wordmark onDark className="block text-3xl" />
+            <p className="text-primary-foreground/70 text-sm">Gestão de Fazenda Inteligente</p>
           </div>
         </div>
 
@@ -284,7 +285,7 @@ export default function Convite() {
         </div>
 
         <p className="text-primary-foreground/60 text-sm">
-          © 2024 Terralis — ERP Inteligente para Gestão Agropecuária
+          © 2024 Agro GFI — Gestão de Fazenda Inteligente
         </p>
       </div>
 
@@ -298,8 +299,8 @@ export default function Convite() {
                 <Leaf className="h-8 w-8 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="font-display text-3xl font-bold text-foreground">Terralis</h1>
-                <p className="text-muted-foreground text-sm">ERP Inteligente para Gestão Agropecuária</p>
+                <Wordmark className="block text-3xl" />
+                <p className="text-muted-foreground text-sm">Gestão de Fazenda Inteligente</p>
               </div>
             </div>
           </div>
@@ -312,7 +313,7 @@ export default function Convite() {
           <Card className="border-border shadow-lg">
             <CardHeader className="space-y-1 pb-3 pt-4 px-4 sm:px-6 sm:pt-6">
               <CardTitle className="text-2xl font-bold">Criar sua conta</CardTitle>
-              <CardDescription>Preencha os dados abaixo para acessar o Terralis</CardDescription>
+              <CardDescription>Preencha os dados abaixo para acessar o Agro GFI</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 px-4 sm:px-6">
               {/* Banner desktop */}
