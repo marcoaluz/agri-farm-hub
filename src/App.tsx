@@ -7,6 +7,7 @@ import { queryClient } from "@/lib/queryClient";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GlobalProvider } from "@/contexts/GlobalContext";
 import { AppRoutes } from "@/routes";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 function App() {
   return (
