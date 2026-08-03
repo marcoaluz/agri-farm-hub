@@ -173,7 +173,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
               <Leaf className="h-4 w-4 text-sidebar-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-sidebar-foreground">Agro GFI</span>
+            <Wordmark onDark className="text-base" />
           </div>
           <Button 
             variant="ghost" 
