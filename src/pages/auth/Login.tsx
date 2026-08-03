@@ -179,8 +179,9 @@ export function LoginPage() {
                 <Leaf className="h-8 w-8 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="font-display text-3xl font-bold text-foreground">Agro GFI</h1>
-                <p className="text-muted-foreground text-sm">Tecnologia que cultiva resultados</p>
+                <Wordmark className="block text-3xl" />
+                <p className="text-muted-foreground text-sm">Gestão de Fazenda Inteligente</p>
+
               </div>
             </div>
           </div>
