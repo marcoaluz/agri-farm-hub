@@ -325,20 +325,19 @@ export function LoginPage() {
                   </Button>
                 </form>
               </Form>
-            </CardContent>
-            <CardFooter className="flex-col gap-2 pt-0">
-              <Separator />
-              <p className="text-sm text-muted-foreground text-center">
-                Toda a gestão da sua fazenda em um único lugar.
-              </p>
-              <p className="text-sm text-muted-foreground text-center">
-                O acesso ao Agro GFI é feito apenas por convite. Fale com o administrador.
-              </p>
-            </CardFooter>
+          </div>
 
-          </Card>
+          <div className="mt-8 text-center space-y-1">
+            <p className="text-xs text-muted-foreground">
+              Toda a gestão da sua fazenda em um único lugar.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              O acesso ao Agro GFI é feito apenas por convite. Fale com o administrador.
+            </p>
+          </div>
         </div>
       </div>
     </div>
+
   );
 }
