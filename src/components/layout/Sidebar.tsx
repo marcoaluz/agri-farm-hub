@@ -169,12 +169,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       >
         {/* Header Mobile */}
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4 md:hidden">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
-              <Leaf className="h-4 w-4 text-sidebar-primary-foreground" />
-            </div>
-            <Wordmark onDark className="text-base" />
+          <div className="flex items-center rounded-lg bg-background px-2 py-1">
+            <img src="/logo-full.png" alt="Agro GFI" className="h-10 w-auto" />
           </div>
+
           <Button 
             variant="ghost" 
             size="icon" 
