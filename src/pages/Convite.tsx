@@ -293,17 +293,13 @@ export default function Convite() {
       <div className="w-full lg:w-3/5 bg-background flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
         <div className="max-w-md w-full">
           {/* Logo mobile */}
-          <div className="lg:hidden flex flex-col items-center gap-2 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary p-3 rounded-xl">
-                <Leaf className="h-8 w-8 text-primary-foreground" />
-              </div>
-              <div>
-                <Wordmark className="block text-3xl" />
-                <p className="text-muted-foreground text-sm">Gestão de Fazenda Inteligente</p>
-              </div>
-            </div>
+          <div className="lg:hidden flex flex-col items-center mb-6">
+            <img src="/logo-full.png" alt="Agro GFI" className="w-full max-w-[200px] h-auto mx-auto mb-2" />
+            <p className="text-center text-sm text-muted-foreground">
+              Toda a gestão da sua fazenda em um único lugar.
+            </p>
           </div>
+
 
           {/* Banner convite mobile */}
           <div className="lg:hidden bg-primary/5 border border-primary/20 rounded-lg p-4 mb-4 text-center">
