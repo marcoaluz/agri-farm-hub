@@ -163,7 +163,7 @@ export default function Convite() {
       // PASSO 4: sucesso
       queryClient.invalidateQueries()
       setSucesso(true)
-      toast.success('Conta criada com sucesso! Bem-vindo ao sistema.', { duration: 5000 })
+      toast.success('Conta criada com sucesso! Bem-vindo ao Agro GFI.', { duration: 5000 })
       setTimeout(() => navigate('/'), 3000)
     } catch (err: any) {
       toast.error(traduzirErroAuth(err, 'Erro ao criar conta.'))
