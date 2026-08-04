@@ -421,8 +421,9 @@ export function Financeiro() {
                   const st = statusEfetivo(t)
                   const expandido = expandidos.includes(t.id)
                   return (
-                    <>
-                    <TableRow key={t.id} className={cn(st === 'vencido' && 'bg-destructive/5')}>
+                    <Fragment key={t.id}>
+                    <TableRow className={cn(st === 'vencido' && 'bg-destructive/5')}>
+
                       <TableCell className="whitespace-nowrap">{format(parseISO(t.data_vencimento), 'dd/MM/yy')}</TableCell>
                       <TableCell>
                         <div className="flex items-start gap-1 min-w-0">
