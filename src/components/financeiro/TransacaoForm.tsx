@@ -125,6 +125,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       observacoes: '',
       parcelar: false,
       num_parcelas: '' as any,
+      data_primeira_parcela: '',
     },
   })
 
@@ -134,9 +135,29 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const watchCategoria = form.watch('categoria')
   const watchValor = form.watch('valor')
   const watchQuantidade = form.watch('quantidade_produzida')
+  const watchNumParcelas = form.watch('num_parcelas')
+  const watchDataPrimeira = form.watch('data_primeira_parcela')
   const isEditing = !!transacao
 
+  const parcelasPreview = useMemo(() => {
+    const n = Number(watchNumParcelas) || 0
+    const total = Number(watchValor) || 0
+    if (n < 2 || total <= 0 || !watchDataPrimeira) return []
+    const base = Math.floor((total / n) * 100) / 100
+    return Array.from({ length: n }, (_, i) => {
+      const d = new Date(watchDataPrimeira + 'T12:00:00')
+      d.setMonth(d.getMonth() + i)
+      return {
+        numero: i + 1,
+        data: d,
+        valor: i === n - 1 ? Math.round((total - base * (n - 1)) * 100) / 100 : base,
+      }
+    })
+  }, [watchNumParcelas, watchValor, watchDataPrimeira])
+
+  const [salvandoParcelado, setSalvandoParcelado] = useState(false)
   const [unidadeLabel, setUnidadeLabel] = useState('')
+
 
   const showCulturaFields = watchTipo === 'receita' && watchCategoria === 'venda_producao'
 
