@@ -344,12 +344,13 @@ export default function Calendario() {
                 <Card key={i} className="border">
                   <CardContent className="p-3 space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className={cn('h-2.5 w-2.5 rounded-full', dotColor[ev.tipo])} />
-                      <Badge variant="outline" className={cn('text-xs', badgeColor[ev.tipo])}>
-                        {tipoLabel[ev.tipo]}
+                      <span className={cn('h-2.5 w-2.5 rounded-full', ev.pago ? 'bg-green-500' : dotColor[ev.tipo])} />
+                      <Badge variant="outline" className={cn('text-xs', ev.pago ? 'bg-green-100 text-green-800 border-green-200' : badgeColor[ev.tipo])}>
+                        {tipoLabel[ev.tipo]}{ev.pago ? ' — Pago' : ''}
                       </Badge>
                     </div>
-                    <p className="font-medium text-sm text-foreground">{ev.titulo}</p>
+                    <p className={cn('font-medium text-sm text-foreground', ev.pago && 'line-through text-muted-foreground')}>{ev.titulo}</p>
+
                     {ev.detalhe && (
                       <p className="text-xs text-muted-foreground">{ev.detalhe}</p>
                     )}
