@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
 import { Loader2, Save, X, Lock } from 'lucide-react'
 import { uploadAnexoNF, listarAnexos, removerAnexo, MAX_ANEXO_BYTES } from '@/lib/anexoNF'
 import { AnexoManager } from '@/components/shared/AnexoManager'
