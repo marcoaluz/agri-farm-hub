@@ -105,6 +105,8 @@ interface Props {
 export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const { propriedadeAtual, safraAtual } = useGlobal()
   const propId = typeof propriedadeAtual === 'object' ? propriedadeAtual?.id : propriedadeAtual
+  const queryClient = useQueryClient()
+
   const { data: talhoes } = useTalhoes(propId || undefined)
   const createMutation = useCreateTransacao()
   const updateMutation = useUpdateTransacao()
