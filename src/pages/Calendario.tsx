@@ -237,6 +237,8 @@ export default function Calendario() {
           { color: 'bg-yellow-500', label: 'Sanitário 💉' },
           { color: 'bg-blue-500', label: 'Manutenção 🔧' },
           { color: 'bg-red-500', label: 'Transações 💰' },
+          { color: 'bg-amber-500', label: 'Parcelas 📆' },
+
         ].map(l => (
           <div key={l.label} className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <span className={cn('h-3 w-3 rounded-full', l.color)} />
