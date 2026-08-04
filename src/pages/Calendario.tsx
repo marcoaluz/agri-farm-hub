@@ -13,11 +13,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { cn } from '@/lib/utils'
 
 interface CalEvent {
-  tipo: 'lancamento' | 'sanitario' | 'manutencao' | 'transacao'
+  tipo: 'lancamento' | 'sanitario' | 'manutencao' | 'transacao' | 'parcela'
   data: string
   titulo: string
   detalhe?: string
+  pago?: boolean
 }
+
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
