@@ -419,14 +419,23 @@ export function Financeiro() {
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma transação encontrada.</TableCell></TableRow>
                 ) : transacoesPag.map(t => {
                   const st = statusEfetivo(t)
+                  const expandido = expandidos.includes(t.id)
                   return (
+                    <>
                     <TableRow key={t.id} className={cn(st === 'vencido' && 'bg-destructive/5')}>
                       <TableCell className="whitespace-nowrap">{format(parseISO(t.data_vencimento), 'dd/MM/yy')}</TableCell>
                       <TableCell>
-                        <div className="min-w-0">
-                          <p className="truncate max-w-[200px] font-medium">{t.descricao}</p>
-                          {t.parcela_numero && <span className="text-xs text-muted-foreground">Parcela {t.parcela_numero}/{t.parcela_total}</span>}
-                          <TransacaoOrigemAcoes origem={t.origem} idsComAnexo={idsComAnexo} />
+                        <div className="flex items-start gap-1 min-w-0">
+                          {t.parcelado && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => toggleExpandido(t.id)} title="Ver parcelas">
+                              <ChevronDown className={cn('h-4 w-4 transition-transform', expandido && 'rotate-180')} />
+                            </Button>
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate max-w-[200px] font-medium">{t.descricao}</p>
+                            {t.parcela_numero && <span className="text-xs text-muted-foreground">Parcela {t.parcela_numero}/{t.parcela_total}</span>}
+                            <TransacaoOrigemAcoes origem={t.origem} idsComAnexo={idsComAnexo} />
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{categoriasLabel[t.categoria] || t.categoria}</TableCell>
@@ -437,22 +446,15 @@ export function Financeiro() {
                       <TableCell>
                         <span className="inline-flex items-center">
                           <StatusBadge status={st} />
-                          {t.parcelado && (
-                            <span className="text-xs text-muted-foreground ml-1">({t.numero_parcelas}x)</span>
-                          )}
+                          {t.parcelado && <ParcelasIndicador n={t.numero_parcelas} />}
                         </span>
                       </TableCell>
 
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          {st === 'pendente' && (
-                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Marcar como pago" onClick={() => marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') })}>
-                              <Check className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                          {st === 'vencido' && (
-                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Marcar como pago" onClick={() => marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') })}>
-                              <Check className="h-3.5 w-3.5" />
+                          {!t.parcelado && (st === 'pendente' || st === 'vencido') && (
+                            <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title="Marcar como pago" onClick={() => marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') })}>
+                              <Check className="h-4 w-4 mr-1" /> Pagar
                             </Button>
                           )}
                           <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => { setEditando(t); setFormOpen(true) }}>
@@ -464,8 +466,17 @@ export function Financeiro() {
                         </div>
                       </TableCell>
                     </TableRow>
+                    {t.parcelado && expandido && (
+                      <TableRow key={t.id + '-parcelas'} className="hover:bg-transparent">
+                        <TableCell colSpan={7} className="p-0">
+                          <ParcelasExpansivel transacaoId={t.id} />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </>
                   )
                 })}
+
               </TableBody>
             </Table>
             </div>
