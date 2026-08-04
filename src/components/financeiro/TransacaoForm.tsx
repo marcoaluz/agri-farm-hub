@@ -249,18 +249,49 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       if (isEditing) {
         await updateMutation.mutateAsync({ id: transacao!.id, ...payload })
         toast.success('Transação atualizada')
-      } else {
-        await createMutation.mutateAsync({
-          ...payload,
-          parcelas: data.parcelar ? data.num_parcelas : undefined,
+      } else if (data.parcelar && data.num_parcelas && data.data_primeira_parcela) {
+        setSalvandoParcelado(true)
+        const { data: novaTransacao, error } = await supabase
+          .from('transacoes')
+          .insert({
+            ...payload,
+            data_vencimento: data.data_primeira_parcela,
+            data_pagamento: null,
+            status: 'pendente',
+            parcelado: true,
+            numero_parcelas: data.num_parcelas,
+          } as any)
+          .select()
+          .single()
+
+        if (error) throw error
+
+        const { error: parcError } = await supabase.rpc('gerar_parcelas' as any, {
+          p_transacao_id: (novaTransacao as any).id,
+          p_num_parcelas: data.num_parcelas,
+          p_data_primeira: data.data_primeira_parcela,
         })
-        toast.success(data.parcelar ? `${data.num_parcelas} parcelas criadas` : 'Transação criada')
+
+        if (parcError) {
+          toast.error('Transação criada, mas erro ao gerar parcelas: ' + parcError.message)
+        } else {
+          toast.success(`Transação criada em ${data.num_parcelas}x de R$ ${(Number(data.valor) / data.num_parcelas).toFixed(2)}`)
+        }
+        queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+        queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
+        queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] })
+      } else {
+        await createMutation.mutateAsync(payload)
+        toast.success('Transação criada')
       }
       onOpenChange(false)
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao salvar')
+    } finally {
+      setSalvandoParcelado(false)
     }
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
