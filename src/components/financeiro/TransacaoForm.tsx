@@ -566,11 +566,16 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
               </div>
             )}
 
+            {isEditing && transacao && (transacao as any).parcelado && (
+              <ParcelasList transacaoId={transacao.id} />
+            )}
+
             {isEditing && transacao && propId && (
               <div className="pt-3 border-t">
                 <Anexos entidadeTipo="transacao" entidadeId={transacao.id} propriedadeId={propId} />
               </div>
             )}
+
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
