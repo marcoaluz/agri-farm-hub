@@ -683,8 +683,9 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                {(createMutation.isPending || updateMutation.isPending) ? 'Salvando...' : 'Salvar'}
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || salvandoParcelado}>
+                {(createMutation.isPending || updateMutation.isPending || salvandoParcelado) ? 'Salvando...' : 'Salvar'}
+
               </Button>
             </DialogFooter>
 
