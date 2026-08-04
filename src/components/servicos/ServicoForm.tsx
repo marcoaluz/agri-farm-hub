@@ -49,6 +49,7 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
   const [nome, setNome] = useState(servico?.nome || '');
   const [descricao, setDescricao] = useState(servico?.descricao || '');
   const [categoria, setCategoria] = useState(servico?.categoria || '');
+  const [compartilhado, setCompartilhado] = useState(!!servico?.compartilhado);
   const [requerTalhao, setRequerTalhao] = useState(servico?.requer_talhao ?? true);
   const [tipoServico, setTipoServico] = useState<'simples' | 'composto'>(servico?.tipo_servico || 'composto');
   const [custoPadrao, setCustoPadrao] = useState(servico?.custo_padrao?.toString() || '');
