@@ -289,6 +289,26 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
         />
       )}
 
+      {/* Dialog Vender Produção */}
+      {vendaItem && (() => {
+        const prod = Array.isArray(vendaItem.producao) ? vendaItem.producao[0] : vendaItem.producao;
+        if (!prod?.id) return null;
+        return (
+          <VenderProducaoDialog
+            open={!!vendaItem}
+            onOpenChange={(open) => { if (!open) setVendaItem(null); }}
+            producaoId={prod.id}
+            culturaNome={vendaItem.cultura?.nome_exibicao || "Cultura"}
+            safraNome={safraAtual.nome}
+            unidade={vendaItem.cultura?.unidade_label || "un"}
+            disponivel={Number(prod.quantidade_disponivel || 0)}
+            vendido={Number(prod.quantidade_vendida || 0)}
+          />
+        );
+      })()}
+
+
+
       {/* Confirmação de exclusão */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>
