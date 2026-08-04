@@ -59,13 +59,14 @@ export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
         className="border-l-[3px] border-l-accent"
       />
       <StatCard
-        title="Receita Recebida"
+        title="Receitas"
         value={fmt(data.receita_paga ?? 0)}
-        description="receitas pagas"
+        description="total de receitas"
         icon={Landmark}
         variant={(data.receita_paga ?? 0) > 0 ? 'success' : 'default'}
         className="border-l-[3px] border-l-accent"
       />
+
       <StatCard
         title={isPositivo ? 'Lucro Parcial' : 'Prejuízo Parcial'}
         value={fmt(resultado)}
