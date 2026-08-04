@@ -21,6 +21,8 @@ import { Plus, Edit, Trash2, Wheat, Sprout, PackageCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AdicionarCulturaForm } from "./AdicionarCulturaForm";
 import { RegistrarColheitaDialog } from "./RegistrarColheitaDialog";
+import { VenderProducaoDialog } from "./VenderProducaoDialog";
+
 import { format } from "date-fns";
 
 interface Talhao {
