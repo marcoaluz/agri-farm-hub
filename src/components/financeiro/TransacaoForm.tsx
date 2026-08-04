@@ -530,28 +530,74 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
               </FormItem>
             )} />
 
-            {/* Parcelamento */}
+            {/* Forma de pagamento / Parcelamento */}
             {!isEditing && (
-              <div className="space-y-2 rounded-lg border border-border p-3">
-                <FormField control={form.control} name="parcelar" render={({ field }) => (
-                  <FormItem className="flex items-center gap-2 space-y-0">
-                    <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                    <FormLabel className="cursor-pointer">Parcelar em várias vezes</FormLabel>
-                  </FormItem>
-                )} />
+              <div className="space-y-3">
+                <Label>Forma de pagamento *</Label>
+                <RadioGroup
+                  value={watchParcelar ? 'parcelado' : 'avista'}
+                  onValueChange={(v) => {
+                    const parcelado = v === 'parcelado'
+                    form.setValue('parcelar', parcelado)
+                    if (parcelado) {
+                      if (!form.getValues('num_parcelas')) form.setValue('num_parcelas', 2 as any)
+                      if (!form.getValues('data_primeira_parcela')) {
+                        const base = form.getValues('data_vencimento') || new Date()
+                        form.setValue('data_primeira_parcela', format(base, 'yyyy-MM-dd'))
+                      }
+                    }
+                  }}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="avista" id="avista" />
+                    <Label htmlFor="avista" className="font-normal cursor-pointer">À vista</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="parcelado" id="parcelado" />
+                    <Label htmlFor="parcelado" className="font-normal cursor-pointer">Parcelado</Label>
+                  </div>
+                </RadioGroup>
+
                 {watchParcelar && (
-                  <FormField control={form.control} name="num_parcelas" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Número de parcelas (2-48)</FormLabel>
-                      <FormControl><Input type="number" min={2} max={48} {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  <div className="space-y-3 p-4 border rounded-md bg-muted/30">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <FormField control={form.control} name="num_parcelas" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número de parcelas *</FormLabel>
+                          <FormControl><Input type="number" min={2} max={36} {...field} value={field.value ?? ''} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="data_primeira_parcela" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Data 1ª parcela *</FormLabel>
+                          <FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+
+                    {parcelasPreview.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-sm font-medium mb-2">
+                          {parcelasPreview.length}x de R$ {(Number(watchValor) / parcelasPreview.length).toFixed(2)}
+                        </p>
+                        <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                          {parcelasPreview.map(p => (
+                            <div key={p.numero} className="flex justify-between text-sm text-muted-foreground">
+                              <span>Parcela {p.numero}</span>
+                              <span>R$ {p.valor.toFixed(2)} — {p.data.toLocaleDateString('pt-BR')}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
+
 
             {/* Resumo da venda */}
             {showCulturaFields && valorTotal > 0 && nomeCultura && (
