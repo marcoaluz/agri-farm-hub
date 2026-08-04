@@ -73,8 +73,11 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
     if (!valorUnitario || Number(valorUnitario) <= 0) {
       toast({ title: 'Informe o valor unitário', variant: 'destructive' }); return
     }
-    if (statusPagamento === 'pendente' && !dataVencimento) {
-      toast({ title: 'Informe a data de vencimento', variant: 'destructive' }); return
+    if (statusPagamento !== 'pago' && !dataVencimento) {
+      toast({ title: statusPagamento === 'parcelado' ? 'Informe a data da 1ª parcela' : 'Informe a data de vencimento', variant: 'destructive' }); return
+    }
+    if (statusPagamento === 'parcelado' && (numParcelas < 2 || numParcelas > 36)) {
+      toast({ title: 'Informe entre 2 e 36 parcelas', variant: 'destructive' }); return
     }
     if (arquivoNF && arquivoNF.size > MAX_ANEXO_BYTES) {
       toast({ title: 'Arquivo muito grande (máx. 5MB)', variant: 'destructive' }); return
@@ -88,10 +91,11 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
         peso_medio_kg: pesoMedio ? Number(pesoMedio) : null,
         fornecedor_comprador: fornecedor || null,
         numero_nota_fiscal: numeroNF || null,
-        status_pagamento: statusPagamento,
-        data_vencimento: statusPagamento === 'pendente' ? dataVencimento : null,
+        status_pagamento: statusPagamento === 'pago' ? 'pago' : 'pendente',
+        data_vencimento: statusPagamento === 'pago' ? null : dataVencimento,
         observacoes: observacoes || null,
     }
+
 
     let registroId = movimentacao?.id as string | undefined
     let error: any = null
