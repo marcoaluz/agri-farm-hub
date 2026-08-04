@@ -347,7 +347,7 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
         {/* Pagamento */}
         <div>
           <Label>Pagamento *</Label>
-          <RadioGroup value={statusPagamento} onValueChange={setStatusPagamento} className="flex gap-4 mt-2">
+          <RadioGroup value={statusPagamento} onValueChange={setStatusPagamento} className="flex flex-wrap gap-4 mt-2">
             <div className="flex items-center gap-2">
               <RadioGroupItem value="pago" id="pago" />
               <Label htmlFor="pago" className="font-normal cursor-pointer">À vista (pago hoje)</Label>
@@ -356,22 +356,49 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
               <RadioGroupItem value="pendente" id="pendente" />
               <Label htmlFor="pendente" className="font-normal cursor-pointer">A prazo</Label>
             </div>
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="parcelado" id="parcelado" />
+              <Label htmlFor="parcelado" className="font-normal cursor-pointer">Parcelado</Label>
+            </div>
           </RadioGroup>
         </div>
 
-        {statusPagamento === 'pendente' && (
-          <div>
-            <Label htmlFor="data_vencimento">Data de vencimento *</Label>
-            <Input
-              id="data_vencimento"
-              type="date"
-              value={dataVencimento}
-              onChange={(e) => setDataVencimento(e.target.value)}
-              min={hoje}
-              required
-            />
+        {statusPagamento !== 'pago' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="data_vencimento">
+                {statusPagamento === 'parcelado' ? 'Data da 1ª parcela *' : 'Data de vencimento *'}
+              </Label>
+              <Input
+                id="data_vencimento"
+                type="date"
+                value={dataVencimento}
+                onChange={(e) => setDataVencimento(e.target.value)}
+                min={hoje}
+                required
+              />
+            </div>
+            {statusPagamento === 'parcelado' && (
+              <div>
+                <Label htmlFor="num_parcelas">Número de parcelas *</Label>
+                <Input
+                  id="num_parcelas"
+                  type="number"
+                  min={2}
+                  max={36}
+                  value={numParcelas}
+                  onChange={(e) => setNumParcelas(Number(e.target.value))}
+                />
+                {valorTotal > 0 && numParcelas >= 2 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {numParcelas}x de R$ {(valorTotal / numParcelas).toFixed(2)}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
+
 
         {/* Anexo da nota fiscal */}
         <div>
