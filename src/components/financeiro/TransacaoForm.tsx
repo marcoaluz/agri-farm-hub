@@ -72,7 +72,8 @@ const schema = z.object({
   talhao_id: z.string().optional(),
   observacoes: z.string().optional(),
   parcelar: z.boolean().default(false),
-  num_parcelas: z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().min(2).max(48).optional()),
+  num_parcelas: z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().min(2).max(36).optional()),
+  data_primeira_parcela: z.string().optional(),
   cultura_id: z.string().optional(),
   quantidade_produzida: z.preprocess((v) => (v === '' || v === undefined || v === null ? undefined : Number(v)), z.number().positive().optional()),
 }).refine((d) => {
@@ -80,9 +81,14 @@ const schema = z.object({
   return true
 }, { message: 'Data de pagamento obrigatória quando status é Pago', path: ['data_pagamento'] })
 .refine((d) => {
-  if (d.parcelar && (!d.num_parcelas || d.num_parcelas < 2)) return false
+  if (d.parcelar && (!d.num_parcelas || d.num_parcelas < 2 || d.num_parcelas > 36)) return false
   return true
-}, { message: 'Informe entre 2 e 48 parcelas', path: ['num_parcelas'] })
+}, { message: 'Informe entre 2 e 36 parcelas', path: ['num_parcelas'] })
+.refine((d) => {
+  if (d.parcelar && !d.data_primeira_parcela) return false
+  return true
+}, { message: 'Informe a data da 1ª parcela', path: ['data_primeira_parcela'] })
+
 
 type FormData = z.infer<typeof schema>
 
