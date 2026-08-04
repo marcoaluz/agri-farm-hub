@@ -13,11 +13,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { cn } from '@/lib/utils'
 
 interface CalEvent {
-  tipo: 'lancamento' | 'sanitario' | 'manutencao' | 'transacao'
+  tipo: 'lancamento' | 'sanitario' | 'manutencao' | 'transacao' | 'parcela'
   data: string
   titulo: string
   detalhe?: string
+  pago?: boolean
 }
+
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
@@ -95,6 +97,20 @@ export default function Calendario() {
     enabled: !!propId,
   })
 
+  const { data: parcelas } = useQuery({
+    queryKey: ['parcelas-calendario', propId, rangeStart, rangeEnd],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from('parcelas')
+        .select('id, numero_parcela, valor, data_vencimento, status, transacao:transacoes!inner(id, descricao, tipo, categoria, propriedade_id)')
+        .eq('transacoes.propriedade_id', propId)
+        .gte('data_vencimento', rangeStart)
+        .lte('data_vencimento', rangeEnd)
+      return (data || []) as any[]
+    },
+    enabled: !!propId,
+  })
+
+
   // Build event map by date string
   const eventMap = useMemo(() => {
     const map = new Map<string, CalEvent[]>()
@@ -133,8 +149,16 @@ export default function Calendario() {
       detalhe: `${t.tipo === 'receita' ? 'Receita' : 'Despesa'} — R$ ${Number(t.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
     }))
 
+    parcelas?.forEach((p: any) => push(p.data_vencimento, {
+      tipo: 'parcela',
+      data: p.data_vencimento,
+      titulo: `P${p.numero_parcela}: R$ ${Number(p.valor || 0).toFixed(2)}`,
+      detalhe: `${p.transacao?.descricao || 'Parcela'} — ${p.status === 'pago' ? 'Pago' : 'Pendente'}`,
+      pago: p.status === 'pago',
+    }))
+
     return map
-  }, [lancamentos, sanitarios, manutencoes, transacoes])
+  }, [lancamentos, sanitarios, manutencoes, transacoes, parcelas])
 
   // Build calendar grid days
   const calendarDays = useMemo(() => {
@@ -155,6 +179,7 @@ export default function Calendario() {
     sanitario: 'bg-yellow-500',
     manutencao: 'bg-blue-500',
     transacao: 'bg-red-500',
+    parcela: 'bg-amber-500',
   }
 
   const badgeColor: Record<string, string> = {
@@ -162,6 +187,7 @@ export default function Calendario() {
     sanitario: 'bg-yellow-100 text-yellow-700 border-yellow-300',
     manutencao: 'bg-blue-100 text-blue-700 border-blue-300',
     transacao: 'bg-red-100 text-red-700 border-red-300',
+    parcela: 'bg-amber-100 text-amber-800 border-amber-200',
   }
 
   const tipoLabel: Record<string, string> = {
@@ -169,7 +195,9 @@ export default function Calendario() {
     sanitario: 'Sanitário',
     manutencao: 'Manutenção',
     transacao: 'Transação',
+    parcela: 'Parcela',
   }
+
 
   if (!propId) {
     return (
@@ -209,6 +237,8 @@ export default function Calendario() {
           { color: 'bg-yellow-500', label: 'Sanitário 💉' },
           { color: 'bg-blue-500', label: 'Manutenção 🔧' },
           { color: 'bg-red-500', label: 'Transações 💰' },
+          { color: 'bg-amber-500', label: 'Parcelas 📆' },
+
         ].map(l => (
           <div key={l.label} className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <span className={cn('h-3 w-3 rounded-full', l.color)} />
@@ -314,12 +344,13 @@ export default function Calendario() {
                 <Card key={i} className="border">
                   <CardContent className="p-3 space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className={cn('h-2.5 w-2.5 rounded-full', dotColor[ev.tipo])} />
-                      <Badge variant="outline" className={cn('text-xs', badgeColor[ev.tipo])}>
-                        {tipoLabel[ev.tipo]}
+                      <span className={cn('h-2.5 w-2.5 rounded-full', ev.pago ? 'bg-green-500' : dotColor[ev.tipo])} />
+                      <Badge variant="outline" className={cn('text-xs', ev.pago ? 'bg-green-100 text-green-800 border-green-200' : badgeColor[ev.tipo])}>
+                        {tipoLabel[ev.tipo]}{ev.pago ? ' — Pago' : ''}
                       </Badge>
                     </div>
-                    <p className="font-medium text-sm text-foreground">{ev.titulo}</p>
+                    <p className={cn('font-medium text-sm text-foreground', ev.pago && 'line-through text-muted-foreground')}>{ev.titulo}</p>
+
                     {ev.detalhe && (
                       <p className="text-xs text-muted-foreground">{ev.detalhe}</p>
                     )}

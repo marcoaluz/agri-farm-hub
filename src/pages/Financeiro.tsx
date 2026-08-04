@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react'
-import { format, addDays, parseISO } from 'date-fns'
+import { useState, useMemo, Fragment } from 'react'
+import { format, addDays, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle,
   Plus, Search, Check, Pencil, Trash2, CalendarIcon,
+  ChevronDown, ChevronLeft, ChevronRight,
 } from 'lucide-react'
+
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -35,8 +37,10 @@ import {
   statusEfetivo, type Transacao, type FiltrosTransacao,
 } from '@/hooks/useTransacoes'
 import { TransacaoForm } from '@/components/financeiro/TransacaoForm'
+import { ParcelasExpansivel } from '@/components/financeiro/ParcelasExpansivel'
 import { TransacaoOrigemAcoes, useIdsComAnexo } from '@/components/financeiro/TransacaoOrigemAcoes'
 import { toast } from 'sonner'
+
 
 const PIE_COLORS = [
   'hsl(142, 45%, 28%)', 'hsl(42, 85%, 55%)', 'hsl(199, 89%, 48%)',
@@ -56,13 +60,22 @@ const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    pendente: { label: '🟡 Pendente', cls: 'bg-warning/15 text-warning-foreground border-warning/30' },
-    pago: { label: '🟢 Pago', cls: 'bg-success/15 text-success border-success/30' },
-    vencido: { label: '🔴 Vencido', cls: 'bg-destructive/15 text-destructive border-destructive/30' },
-    cancelado: { label: '⚫ Cancelado', cls: 'bg-muted text-muted-foreground border-border' },
+    pendente: { label: 'Pendente', cls: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100' },
+    pago: { label: 'Pago', cls: 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100' },
+    vencido: { label: 'Vencido', cls: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100' },
+    cancelado: { label: 'Cancelado', cls: 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100' },
   }
   const s = map[status] || map.pendente
   return <Badge variant="outline" className={s.cls}>{s.label}</Badge>
+}
+
+function ParcelasIndicador({ n }: { n?: number | null }) {
+  if (!n) return null
+  return (
+    <span className="bg-primary/10 text-primary text-xs font-medium px-1.5 py-0.5 rounded ml-1">
+      {n}x
+    </span>
+  )
 }
 
 export function Financeiro() {
@@ -77,12 +90,25 @@ export function Financeiro() {
   const [dataInicio, setDataInicio] = useState<Date | undefined>()
   const [dataFim, setDataFim] = useState<Date | undefined>()
 
+  // Navegação por mês (mês corrente por padrão)
+  const [mesAtual, setMesAtual] = useState(new Date())
+  const inicioMes = startOfMonth(mesAtual)
+  const fimMes = endOfMonth(mesAtual)
+
+  // Parcelas expandidas
+  const [expandidos, setExpandidos] = useState<string[]>([])
+  const toggleExpandido = (id: string) => {
+    setExpandidos(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
   const filtrosAtivos: FiltrosTransacao = {
     ...filtros,
     busca: busca || undefined,
-    data_inicio: dataInicio ? format(dataInicio, 'yyyy-MM-dd') : undefined,
-    data_fim: dataFim ? format(dataFim, 'yyyy-MM-dd') : undefined,
+    data_inicio: dataInicio ? format(dataInicio, 'yyyy-MM-dd') : format(inicioMes, 'yyyy-MM-dd'),
+    data_fim: dataFim ? format(dataFim, 'yyyy-MM-dd') : format(fimMes, 'yyyy-MM-dd'),
   }
+
+
 
   const { data: transacoes = [], isLoading } = useTransacoes(propId, safraId, filtrosAtivos)
   const { data: todasTransacoes = [] } = useTransacoes(propId, safraId)
@@ -297,7 +323,21 @@ export function Financeiro() {
 
         {/* ═══ ABA TRANSAÇÕES ═══ */}
         <TabsContent value="transacoes" className="space-y-4">
+          {/* Navegação por mês */}
+          <div className="flex items-center justify-between mb-4">
+            <Button variant="outline" size="icon" onClick={() => { setMesAtual(prev => subMonths(prev, 1)); setPage(0) }}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h3 className="text-lg font-bold capitalize">
+              {format(mesAtual, "MMMM 'de' yyyy", { locale: ptBR })}
+            </h3>
+            <Button variant="outline" size="icon" onClick={() => { setMesAtual(prev => addMonths(prev, 1)); setPage(0) }}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
           {/* Filtros */}
+
           <div className="flex flex-wrap gap-2 items-end">
             <Select value={filtros.tipo || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, tipo: v === 'todos' ? undefined : v })); setPage(0) }}>
               <SelectTrigger className="w-[130px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
@@ -379,14 +419,24 @@ export function Financeiro() {
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma transação encontrada.</TableCell></TableRow>
                 ) : transacoesPag.map(t => {
                   const st = statusEfetivo(t)
+                  const expandido = expandidos.includes(t.id)
                   return (
-                    <TableRow key={t.id} className={cn(st === 'vencido' && 'bg-destructive/5')}>
+                    <Fragment key={t.id}>
+                    <TableRow className={cn(st === 'vencido' && 'bg-destructive/5')}>
+
                       <TableCell className="whitespace-nowrap">{format(parseISO(t.data_vencimento), 'dd/MM/yy')}</TableCell>
                       <TableCell>
-                        <div className="min-w-0">
-                          <p className="truncate max-w-[200px] font-medium">{t.descricao}</p>
-                          {t.parcela_numero && <span className="text-xs text-muted-foreground">Parcela {t.parcela_numero}/{t.parcela_total}</span>}
-                          <TransacaoOrigemAcoes origem={t.origem} idsComAnexo={idsComAnexo} />
+                        <div className="flex items-start gap-1 min-w-0">
+                          {t.parcelado && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => toggleExpandido(t.id)} title="Ver parcelas">
+                              <ChevronDown className={cn('h-4 w-4 transition-transform', expandido && 'rotate-180')} />
+                            </Button>
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate max-w-[200px] font-medium">{t.descricao}</p>
+                            {t.parcela_numero && <span className="text-xs text-muted-foreground">Parcela {t.parcela_numero}/{t.parcela_total}</span>}
+                            <TransacaoOrigemAcoes origem={t.origem} idsComAnexo={idsComAnexo} />
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{categoriasLabel[t.categoria] || t.categoria}</TableCell>
@@ -397,22 +447,15 @@ export function Financeiro() {
                       <TableCell>
                         <span className="inline-flex items-center">
                           <StatusBadge status={st} />
-                          {t.parcelado && (
-                            <span className="text-xs text-muted-foreground ml-1">({t.numero_parcelas}x)</span>
-                          )}
+                          {t.parcelado && <ParcelasIndicador n={t.numero_parcelas} />}
                         </span>
                       </TableCell>
 
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          {st === 'pendente' && (
-                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Marcar como pago" onClick={() => marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') })}>
-                              <Check className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                          {st === 'vencido' && (
-                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Marcar como pago" onClick={() => marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') })}>
-                              <Check className="h-3.5 w-3.5" />
+                          {!t.parcelado && (st === 'pendente' || st === 'vencido') && (
+                            <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title="Marcar como pago" onClick={() => marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') })}>
+                              <Check className="h-4 w-4 mr-1" /> Pagar
                             </Button>
                           )}
                           <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => { setEditando(t); setFormOpen(true) }}>
@@ -424,8 +467,18 @@ export function Financeiro() {
                         </div>
                       </TableCell>
                     </TableRow>
+                    {t.parcelado && expandido && (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={7} className="p-0">
+                          <ParcelasExpansivel transacaoId={t.id} />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </Fragment>
+
                   )
                 })}
+
               </TableBody>
             </Table>
             </div>
@@ -438,9 +491,10 @@ export function Financeiro() {
                 <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma transação encontrada.</p>
               ) : transacoesPag.map(t => {
                 const st = statusEfetivo(t)
+                const expandido = expandidos.includes(t.id)
                 return (
+                  <Fragment key={t.id}>
                   <Card
-                    key={t.id}
                     className={cn('cursor-pointer transition-colors hover:bg-muted/50', st === 'vencido' && 'bg-destructive/5')}
                     onClick={() => { setEditando(t); setFormOpen(true) }}
                   >
@@ -460,17 +514,19 @@ export function Financeiro() {
                           </div>
                           <div className="mt-1 inline-flex items-center">
                             <StatusBadge status={st} />
-                            {t.parcelado && (
-                              <span className="text-xs text-muted-foreground ml-1">({t.numero_parcelas}x)</span>
-                            )}
+                            {t.parcelado && <ParcelasIndicador n={t.numero_parcelas} />}
                           </div>
 
                         </div>
                       </div>
                       <div className="mt-3 flex justify-end gap-2">
-                        {(st === 'pendente' || st === 'vencido') && (
-                          <Button size="sm" variant="outline" className="h-11" onClick={e => { e.stopPropagation(); marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') }) }}>
-                            <Check className="mr-1 h-4 w-4" /> Pago
+                        {t.parcelado ? (
+                          <Button size="sm" variant="outline" className="h-11" onClick={e => { e.stopPropagation(); toggleExpandido(t.id) }}>
+                            <ChevronDown className={cn('mr-1 h-4 w-4 transition-transform', expandido && 'rotate-180')} /> Parcelas
+                          </Button>
+                        ) : (st === 'pendente' || st === 'vencido') && (
+                          <Button size="sm" variant="outline" className="h-11 text-green-700 border-green-300 hover:bg-green-50" onClick={e => { e.stopPropagation(); marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') }) }}>
+                            <Check className="mr-1 h-4 w-4" /> Pagar
                           </Button>
                         )}
                         <Button size="sm" variant="outline" className="h-11 text-destructive" onClick={e => { e.stopPropagation(); setDeletandoId(t.id) }}>
@@ -479,8 +535,11 @@ export function Financeiro() {
                       </div>
                     </CardContent>
                   </Card>
+                  {t.parcelado && expandido && <ParcelasExpansivel transacaoId={t.id} />}
+                  </Fragment>
                 )
               })}
+
             </div>
 
             {/* Totalizadores + Paginação */}
