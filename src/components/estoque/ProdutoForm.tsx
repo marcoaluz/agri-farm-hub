@@ -19,6 +19,7 @@ interface ProdutoFormProps {
     categoria: string;
     unidade_medida: string;
     nivel_minimo: number;
+    compartilhado?: boolean;
   } | null;
 }
 
