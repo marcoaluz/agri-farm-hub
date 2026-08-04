@@ -264,6 +264,23 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
             </Select>
             {errors.categoria && <p className="text-xs text-destructive mt-1">{errors.categoria}</p>}
           </div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="compartilhado"
+                checked={compartilhado}
+                onCheckedChange={(v) => setCompartilhado(v === true)}
+              />
+              <Label htmlFor="compartilhado" className="text-sm font-normal cursor-pointer">
+                Usar em todas as propriedades
+              </Label>
+            </div>
+            {compartilhado && (
+              <p className="text-xs text-muted-foreground">
+                Este serviço será disponível em todas as suas propriedades.
+              </p>
+            )}
+          </div>
           <div>
             <Label>Tipo *</Label>
             <Select value={tipoServico} onValueChange={v => setTipoServico(v as 'simples' | 'composto')}>
