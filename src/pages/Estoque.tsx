@@ -28,6 +28,7 @@ interface ProdutoComCusto {
   custo_medio: number;
   valor_imobilizado: number;
   total_lotes: number;
+  compartilhado?: boolean;
 }
 
 
@@ -46,17 +47,42 @@ export function Estoque() {
   const { data: produtos, isLoading } = useQuery({
     queryKey: ['produtos-custos', propriedadeAtual?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Lista via RPC (inclui produtos compartilhados entre propriedades)
+      const { data: lista, error: erroLista } = await supabase.rpc('listar_produtos_usuario', {
+        p_propriedade_id: propriedadeAtual?.id,
+      });
+
+      // Dados de custo/saldo continuam vindo da view FIFO
+      const { data: custos, error: erroCustos } = await supabase
         .from('vw_produtos_custos')
         .select('*')
         .eq('propriedade_id', propriedadeAtual?.id)
         .order('nome');
 
-      if (error) throw error;
-      return (data || []).map((d: any) => ({
-        ...d,
-        id: d.id || d.produto_id,
-      })) as ProdutoComCusto[];
+      if (erroLista && erroCustos) throw erroLista;
+
+      const mapaCustos = new Map<string, any>();
+      (custos || []).forEach((c: any) => mapaCustos.set(c.id || c.produto_id, c));
+
+      if (erroLista || !lista) {
+        return (custos || []).map((d: any) => ({ ...d, id: d.id || d.produto_id })) as ProdutoComCusto[];
+      }
+
+      return (lista as any[])
+        .map((p: any) => {
+          const id = p.id || p.produto_id;
+          return {
+            saldo_atual: 0,
+            nivel_minimo: 0,
+            custo_medio: 0,
+            valor_imobilizado: 0,
+            total_lotes: 0,
+            ...(mapaCustos.get(id) || {}),
+            ...p,
+            id,
+          } as ProdutoComCusto;
+        })
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
     },
     enabled: !!propriedadeAtual?.id
   });
@@ -331,9 +357,17 @@ function ProdutoCard({
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h3 className="text-xl font-bold text-foreground mb-2">
-              {produto.nome}
-            </h3>
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-xl font-bold text-foreground">
+                {produto.nome}
+              </h3>
+              {produto.compartilhado && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                  Global
+                </Badge>
+              )}
+            </div>
+
             
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline" className="text-xs">

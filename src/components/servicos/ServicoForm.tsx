@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,6 +50,7 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
   const [nome, setNome] = useState(servico?.nome || '');
   const [descricao, setDescricao] = useState(servico?.descricao || '');
   const [categoria, setCategoria] = useState(servico?.categoria || '');
+  const [compartilhado, setCompartilhado] = useState(!!servico?.compartilhado);
   const [requerTalhao, setRequerTalhao] = useState(servico?.requer_talhao ?? true);
   const [tipoServico, setTipoServico] = useState<'simples' | 'composto'>(servico?.tipo_servico || 'composto');
   const [custoPadrao, setCustoPadrao] = useState(servico?.custo_padrao?.toString() || '');
@@ -144,6 +146,7 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
         tipo_servico: tipoServico,
         custo_padrao: tipoServico === 'simples' ? parseFloat(custoPadrao) : null,
         unidade_medida: tipoServico === 'simples' ? unidadeMedida : null,
+        compartilhado,
       };
 
       let servicoId = servico?.id;
@@ -152,12 +155,25 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
         if (error) throw error;
         await supabase.from('servicos_itens').delete().eq('servico_id', servico.id);
       } else {
-        const { data, error } = await supabase
-          .from('servicos')
-          .insert({ ...payload, propriedade_id: propriedadeId, ativo: true })
-          .select().single();
+        const { data, error } = await supabase.rpc('criar_servico_compartilhado', {
+          p_propriedade_id: propriedadeId,
+          p_nome: nome.trim(),
+          p_categoria: categoria,
+          p_compartilhado: compartilhado,
+          p_descricao: descricao.trim() || null,
+          p_preco_estimado: tipoServico === 'simples' && custoPadrao ? parseFloat(custoPadrao) : null,
+        });
         if (error) throw error;
-        servicoId = data.id;
+        servicoId = typeof data === 'string' ? data : (data as any)?.id;
+
+        // Completa os campos específicos do serviço
+        if (servicoId) {
+          const { error: erroUpdate } = await supabase
+            .from('servicos')
+            .update(payload)
+            .eq('id', servicoId);
+          if (erroUpdate) throw erroUpdate;
+        }
       }
 
       if (tipoServico === 'composto' && itens.length > 0) {
@@ -247,6 +263,23 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
               </SelectContent>
             </Select>
             {errors.categoria && <p className="text-xs text-destructive mt-1">{errors.categoria}</p>}
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="compartilhado"
+                checked={compartilhado}
+                onCheckedChange={(v) => setCompartilhado(v === true)}
+              />
+              <Label htmlFor="compartilhado" className="text-sm font-normal cursor-pointer">
+                Usar em todas as propriedades
+              </Label>
+            </div>
+            {compartilhado && (
+              <p className="text-xs text-muted-foreground">
+                Este serviço será disponível em todas as suas propriedades.
+              </p>
+            )}
           </div>
           <div>
             <Label>Tipo *</Label>

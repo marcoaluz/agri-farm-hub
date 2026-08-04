@@ -5,6 +5,7 @@ import { useGlobal } from '@/contexts/GlobalContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Loader2, Package } from 'lucide-react';
@@ -18,6 +19,7 @@ interface ProdutoFormProps {
     categoria: string;
     unidade_medida: string;
     nivel_minimo: number;
+    compartilhado?: boolean;
   } | null;
 }
 
@@ -58,6 +60,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
     unidade_medida: '',
     nivel_minimo: 0,
   });
+  const [compartilhado, setCompartilhado] = useState(false);
 
   useEffect(() => {
     if (produto) {
@@ -67,6 +70,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
         unidade_medida: produto.unidade_medida || '',
         nivel_minimo: produto.nivel_minimo || 0,
       });
+      setCompartilhado(!!produto.compartilhado);
     } else {
       setFormData({
         nome: '',
@@ -74,6 +78,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
         unidade_medida: '',
         nivel_minimo: 0,
       });
+      setCompartilhado(false);
     }
   }, [produto]);
 
@@ -83,32 +88,38 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
         throw new Error('Nenhuma propriedade selecionada');
       }
 
-      const payload = {
-        propriedade_id: propriedadeAtual.id,
-        nome: data.nome.trim(),
-        categoria: data.categoria,
-        unidade_medida: data.unidade_medida,
-        nivel_minimo: data.nivel_minimo,
-        ativo: true,
-      };
-
       if (isEditing && produto) {
         const { error } = await supabase
           .from('produtos')
-          .update(payload)
+          .update({
+            propriedade_id: propriedadeAtual.id,
+            nome: data.nome.trim(),
+            categoria: data.categoria,
+            unidade_medida: data.unidade_medida,
+            nivel_minimo: data.nivel_minimo,
+            compartilhado,
+            ativo: true,
+          })
           .eq('id', produto.id);
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('produtos')
-          .insert(payload);
+        const { error } = await supabase.rpc('criar_produto_compartilhado', {
+          p_propriedade_id: propriedadeAtual.id,
+          p_nome: data.nome.trim(),
+          p_categoria: data.categoria,
+          p_unidade: data.unidade_medida,
+          p_compartilhado: compartilhado,
+          p_descricao: null,
+          p_preco_estimado: null,
+        });
 
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['produtos'] });
+
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] });
       toast.success(isEditing ? 'Produto atualizado!' : 'Produto cadastrado com sucesso!');
       onSuccess();
@@ -183,6 +194,27 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Compartilhado */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="compartilhado"
+              checked={compartilhado}
+              onCheckedChange={(v) => setCompartilhado(v === true)}
+            />
+            <Label htmlFor="compartilhado" className="text-sm font-normal cursor-pointer">
+              Usar em todas as propriedades
+            </Label>
+          </div>
+          {compartilhado && (
+            <p className="text-xs text-muted-foreground">
+              Este produto será disponível em todas as suas propriedades.
+            </p>
+          )}
+        </div>
+
+
 
         {/* Unidade de Medida */}
         <div className="space-y-2">
