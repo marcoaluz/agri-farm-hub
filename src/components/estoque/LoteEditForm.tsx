@@ -208,11 +208,36 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
       </div>
 
       {statusPagamento === 'pendente' && (
-        <div>
-          <Label className="text-xs">Data de vencimento *</Label>
-          <Input disabled={safraFechada} type="date" min={hoje} value={dataVencimento} onChange={e => setDataVencimento(e.target.value)} />
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Parcelas</Label>
+              <Select value={numParcelas.toString()} onValueChange={v => setNumParcelas(parseInt(v))} disabled={safraFechada}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5, 6, 10, 12].map(n => (
+                    <SelectItem key={n} value={n.toString()}>
+                      {n === 1 ? '1x (prazo único)' : `${n}x`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Vencimento 1ª parcela *</Label>
+              <Input disabled={safraFechada} type="date" value={dataVencimento} onChange={e => setDataVencimento(e.target.value)} />
+            </div>
+          </div>
+          {numParcelas > 1 && valorTotal > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {numParcelas}x de R$ {(valorTotal / numParcelas).toFixed(2)}
+            </p>
+          )}
         </div>
       )}
+
 
       {/* Anexo */}
       <AnexoManager
