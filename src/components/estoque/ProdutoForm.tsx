@@ -195,6 +195,27 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
           </Select>
         </div>
 
+        {/* Compartilhado */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="compartilhado"
+              checked={compartilhado}
+              onCheckedChange={(v) => setCompartilhado(v === true)}
+            />
+            <Label htmlFor="compartilhado" className="text-sm font-normal cursor-pointer">
+              Usar em todas as propriedades
+            </Label>
+          </div>
+          {compartilhado && (
+            <p className="text-xs text-muted-foreground">
+              Este produto será disponível em todas as suas propriedades.
+            </p>
+          )}
+        </div>
+
+
+
         {/* Unidade de Medida */}
         <div className="space-y-2">
           <Label>Unidade de Medida *</Label>
