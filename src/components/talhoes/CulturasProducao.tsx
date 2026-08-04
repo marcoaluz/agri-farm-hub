@@ -65,7 +65,7 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
         .from("talhao_culturas")
         .select(`*,
           cultura:culturas_config(id, nome_exibicao, unidade_label, icone),
-          producao:producoes(quantidade_colhida, quantidade_vendida, quantidade_disponivel)`)
+          producao:producoes(id, quantidade_colhida, quantidade_vendida, quantidade_disponivel)`)
         .eq("talhao_id", talhao.id)
         .eq("safra_id", safraAtual!.id)
         .eq("ativo", true);
