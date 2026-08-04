@@ -36,6 +36,8 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
   const [numeroNF, setNumeroNF] = useState('')
   const [statusPagamento, setStatusPagamento] = useState('pago')
   const [dataVencimento, setDataVencimento] = useState('')
+  const [numParcelas, setNumParcelas] = useState(2)
+
   const [arquivoNF, setArquivoNF] = useState<File | null>(null)
   const [observacoes, setObservacoes] = useState('')
 
