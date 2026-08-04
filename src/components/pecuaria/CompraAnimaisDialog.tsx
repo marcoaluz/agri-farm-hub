@@ -188,7 +188,7 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
 
           <div>
             <Label>Pagamento *</Label>
-            <RadioGroup value={statusPagamento} onValueChange={setStatusPagamento} className="flex gap-4 mt-2">
+            <RadioGroup value={statusPagamento} onValueChange={setStatusPagamento} className="flex flex-wrap gap-4 mt-2">
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="pago" id="animal_pago" />
                 <Label htmlFor="animal_pago" className="font-normal cursor-pointer">À vista (pago hoje)</Label>
@@ -197,15 +197,37 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
                 <RadioGroupItem value="pendente" id="animal_pendente" />
                 <Label htmlFor="animal_pendente" className="font-normal cursor-pointer">A prazo</Label>
               </div>
+              {!editando && (
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="parcelado" id="animal_parcelado" />
+                  <Label htmlFor="animal_parcelado" className="font-normal cursor-pointer">Parcelado</Label>
+                </div>
+              )}
             </RadioGroup>
           </div>
 
-          {statusPagamento === 'pendente' && (
-            <div>
-              <Label htmlFor="venc_animal">Data de vencimento *</Label>
-              <Input id="venc_animal" type="date" min={hoje} value={dataVencimento} onChange={e => setDataVencimento(e.target.value)} required />
+          {statusPagamento !== 'pago' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="venc_animal">
+                  {statusPagamento === 'parcelado' ? 'Data da 1ª parcela *' : 'Data de vencimento *'}
+                </Label>
+                <Input id="venc_animal" type="date" min={hoje} value={dataVencimento} onChange={e => setDataVencimento(e.target.value)} required />
+              </div>
+              {statusPagamento === 'parcelado' && (
+                <div>
+                  <Label htmlFor="parcelas_animal">Número de parcelas *</Label>
+                  <Input id="parcelas_animal" type="number" min={2} max={36} value={numParcelas} onChange={e => setNumParcelas(Number(e.target.value))} />
+                  {valorTotal > 0 && numParcelas >= 2 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {numParcelas}x de R$ {(valorTotal / numParcelas).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
+
 
           <AnexoManager
             entidadeTipo="rebanho_movimentacao"
