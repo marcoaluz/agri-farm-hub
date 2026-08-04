@@ -36,6 +36,8 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
   const [numeroNF, setNumeroNF] = useState('')
   const [statusPagamento, setStatusPagamento] = useState('pago')
   const [dataVencimento, setDataVencimento] = useState('')
+  const [numParcelas, setNumParcelas] = useState(2)
+
   const [arquivoNF, setArquivoNF] = useState<File | null>(null)
   const [observacoes, setObservacoes] = useState('')
 
@@ -71,8 +73,11 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
     if (!valorUnitario || Number(valorUnitario) <= 0) {
       toast({ title: 'Informe o valor unitário', variant: 'destructive' }); return
     }
-    if (statusPagamento === 'pendente' && !dataVencimento) {
-      toast({ title: 'Informe a data de vencimento', variant: 'destructive' }); return
+    if (statusPagamento !== 'pago' && !dataVencimento) {
+      toast({ title: statusPagamento === 'parcelado' ? 'Informe a data da 1ª parcela' : 'Informe a data de vencimento', variant: 'destructive' }); return
+    }
+    if (statusPagamento === 'parcelado' && (numParcelas < 2 || numParcelas > 36)) {
+      toast({ title: 'Informe entre 2 e 36 parcelas', variant: 'destructive' }); return
     }
     if (arquivoNF && arquivoNF.size > MAX_ANEXO_BYTES) {
       toast({ title: 'Arquivo muito grande (máx. 5MB)', variant: 'destructive' }); return
@@ -86,10 +91,11 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
         peso_medio_kg: pesoMedio ? Number(pesoMedio) : null,
         fornecedor_comprador: fornecedor || null,
         numero_nota_fiscal: numeroNF || null,
-        status_pagamento: statusPagamento,
-        data_vencimento: statusPagamento === 'pendente' ? dataVencimento : null,
+        status_pagamento: statusPagamento === 'pago' ? 'pago' : 'pendente',
+        data_vencimento: statusPagamento === 'pago' ? null : dataVencimento,
         observacoes: observacoes || null,
     }
+
 
     let registroId = movimentacao?.id as string | undefined
     let error: any = null
@@ -111,6 +117,35 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
       toast({ title: editando ? 'Erro ao atualizar' : 'Erro ao registrar compra', description: error.message, variant: 'destructive' })
       return
     }
+
+    // Parcelamento: localiza a transação gerada pelo trigger e cria as parcelas
+    if (!editando && statusPagamento === 'parcelado' && registroId) {
+      const { data: transacao } = await supabase
+        .from('transacoes')
+        .select('id')
+        .eq('propriedade_id', propriedadeId)
+        .like('origem', `%${registroId}%`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (transacao) {
+        await supabase.from('transacoes')
+          .update({ parcelado: true, numero_parcelas: numParcelas } as any)
+          .eq('id', (transacao as any).id)
+
+        const { error: parcError } = await supabase.rpc('gerar_parcelas' as any, {
+          p_transacao_id: (transacao as any).id,
+          p_num_parcelas: numParcelas,
+          p_data_primeira: dataVencimento,
+        })
+        if (parcError) {
+          toast({ title: 'Compra registrada, mas erro ao gerar parcelas', description: parcError.message, variant: 'destructive' })
+        }
+      }
+    }
+
+
 
     if (arquivoNF && registroId) {
       const anteriores = await listarAnexos('rebanho_movimentacao', registroId)
@@ -188,7 +223,7 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
 
           <div>
             <Label>Pagamento *</Label>
-            <RadioGroup value={statusPagamento} onValueChange={setStatusPagamento} className="flex gap-4 mt-2">
+            <RadioGroup value={statusPagamento} onValueChange={setStatusPagamento} className="flex flex-wrap gap-4 mt-2">
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="pago" id="animal_pago" />
                 <Label htmlFor="animal_pago" className="font-normal cursor-pointer">À vista (pago hoje)</Label>
@@ -197,15 +232,37 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
                 <RadioGroupItem value="pendente" id="animal_pendente" />
                 <Label htmlFor="animal_pendente" className="font-normal cursor-pointer">A prazo</Label>
               </div>
+              {!editando && (
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="parcelado" id="animal_parcelado" />
+                  <Label htmlFor="animal_parcelado" className="font-normal cursor-pointer">Parcelado</Label>
+                </div>
+              )}
             </RadioGroup>
           </div>
 
-          {statusPagamento === 'pendente' && (
-            <div>
-              <Label htmlFor="venc_animal">Data de vencimento *</Label>
-              <Input id="venc_animal" type="date" min={hoje} value={dataVencimento} onChange={e => setDataVencimento(e.target.value)} required />
+          {statusPagamento !== 'pago' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="venc_animal">
+                  {statusPagamento === 'parcelado' ? 'Data da 1ª parcela *' : 'Data de vencimento *'}
+                </Label>
+                <Input id="venc_animal" type="date" min={hoje} value={dataVencimento} onChange={e => setDataVencimento(e.target.value)} required />
+              </div>
+              {statusPagamento === 'parcelado' && (
+                <div>
+                  <Label htmlFor="parcelas_animal">Número de parcelas *</Label>
+                  <Input id="parcelas_animal" type="number" min={2} max={36} value={numParcelas} onChange={e => setNumParcelas(Number(e.target.value))} />
+                  {valorTotal > 0 && numParcelas >= 2 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {numParcelas}x de R$ {(valorTotal / numParcelas).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
+
 
           <AnexoManager
             entidadeTipo="rebanho_movimentacao"

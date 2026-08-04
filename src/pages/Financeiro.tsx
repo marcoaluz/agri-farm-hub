@@ -394,7 +394,15 @@ export function Financeiro() {
                       <TableCell className={cn('text-right font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
                         {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
                       </TableCell>
-                      <TableCell><StatusBadge status={st} /></TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center">
+                          <StatusBadge status={st} />
+                          {t.parcelado && (
+                            <span className="text-xs text-muted-foreground ml-1">({t.numero_parcelas}x)</span>
+                          )}
+                        </span>
+                      </TableCell>
+
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           {st === 'pendente' && (
@@ -450,7 +458,13 @@ export function Financeiro() {
                           <div className={cn('font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
                             {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
                           </div>
-                          <div className="mt-1"><StatusBadge status={st} /></div>
+                          <div className="mt-1 inline-flex items-center">
+                            <StatusBadge status={st} />
+                            {t.parcelado && (
+                              <span className="text-xs text-muted-foreground ml-1">({t.numero_parcelas}x)</span>
+                            )}
+                          </div>
+
                         </div>
                       </div>
                       <div className="mt-3 flex justify-end gap-2">

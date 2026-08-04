@@ -43,7 +43,9 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   });
   const [statusPagamento, setStatusPagamento] = useState('pago');
   const [dataVencimento, setDataVencimento] = useState('');
+  const [numParcelas, setNumParcelas] = useState(2);
   const [arquivoNF, setArquivoNF] = useState<File | null>(null);
+
 
   // Buscar produtos
   const {
@@ -77,8 +79,11 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   // Mutation para salvar
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (statusPagamento === 'pendente' && !dataVencimento) {
-        throw new Error('Informe a data de vencimento');
+      if (statusPagamento !== 'pago' && !dataVencimento) {
+        throw new Error(statusPagamento === 'parcelado' ? 'Informe a data da 1ª parcela' : 'Informe a data de vencimento');
+      }
+      if (statusPagamento === 'parcelado' && (numParcelas < 2 || numParcelas > 36)) {
+        throw new Error('Informe entre 2 e 36 parcelas');
       }
       if (arquivoNF && arquivoNF.size > MAX_ANEXO_BYTES) {
         throw new Error('Arquivo muito grande (máx. 5MB)');
@@ -97,13 +102,45 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
           custo_unitario: formData.custo_unitario,
           data_entrada: formData.data_entrada,
           data_validade: formData.data_validade || null,
-          status_pagamento: statusPagamento,
-          data_vencimento: statusPagamento === 'pendente' ? dataVencimento : null,
+          status_pagamento: statusPagamento === 'pago' ? 'pago' : 'pendente',
+          data_vencimento: statusPagamento === 'pago' ? null : dataVencimento,
         } as any)
         .select()
         .single();
 
       if (error) throw error;
+
+      // Parcelamento: localizar a transação criada pelo trigger e gerar parcelas
+      if (statusPagamento === 'parcelado' && novoLote) {
+        const { data: transacao } = await supabase
+          .from('transacoes')
+          .select('id')
+          .eq('propriedade_id', propriedadeAtual!.id)
+          .like('origem', `%${(novoLote as any).id}%`)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (transacao) {
+          await supabase.from('transacoes')
+            .update({ parcelado: true, numero_parcelas: numParcelas } as any)
+            .eq('id', (transacao as any).id);
+
+          const { error: parcError } = await supabase.rpc('gerar_parcelas' as any, {
+            p_transacao_id: (transacao as any).id,
+            p_num_parcelas: numParcelas,
+            p_data_primeira: dataVencimento,
+          });
+          if (parcError) {
+            toast({
+              title: 'Lote criado, mas erro ao gerar parcelas',
+              description: parcError.message,
+              variant: 'destructive',
+            });
+          }
+        }
+      }
+
 
       if (arquivoNF && novoLote) {
         const { error: erroAnexo } = await uploadAnexoNF({
@@ -128,7 +165,10 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
         title: 'Entrada de estoque registrada com sucesso!',
         description: statusPagamento === 'pago'
           ? 'Despesa criada no Financeiro e saldo atualizado.'
-          : `Despesa a vencer em ${new Date(dataVencimento + 'T12:00:00').toLocaleDateString('pt-BR')}.`,
+          : statusPagamento === 'parcelado'
+            ? `Despesa parcelada em ${numParcelas}x a partir de ${new Date(dataVencimento + 'T12:00:00').toLocaleDateString('pt-BR')}.`
+            : `Despesa a vencer em ${new Date(dataVencimento + 'T12:00:00').toLocaleDateString('pt-BR')}.`,
+
       });
       queryClient.invalidateQueries({ queryKey: ['produtos'] });
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] });
@@ -347,7 +387,7 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
         {/* Pagamento */}
         <div>
           <Label>Pagamento *</Label>
-          <RadioGroup value={statusPagamento} onValueChange={setStatusPagamento} className="flex gap-4 mt-2">
+          <RadioGroup value={statusPagamento} onValueChange={setStatusPagamento} className="flex flex-wrap gap-4 mt-2">
             <div className="flex items-center gap-2">
               <RadioGroupItem value="pago" id="pago" />
               <Label htmlFor="pago" className="font-normal cursor-pointer">À vista (pago hoje)</Label>
@@ -356,22 +396,49 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
               <RadioGroupItem value="pendente" id="pendente" />
               <Label htmlFor="pendente" className="font-normal cursor-pointer">A prazo</Label>
             </div>
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="parcelado" id="parcelado" />
+              <Label htmlFor="parcelado" className="font-normal cursor-pointer">Parcelado</Label>
+            </div>
           </RadioGroup>
         </div>
 
-        {statusPagamento === 'pendente' && (
-          <div>
-            <Label htmlFor="data_vencimento">Data de vencimento *</Label>
-            <Input
-              id="data_vencimento"
-              type="date"
-              value={dataVencimento}
-              onChange={(e) => setDataVencimento(e.target.value)}
-              min={hoje}
-              required
-            />
+        {statusPagamento !== 'pago' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="data_vencimento">
+                {statusPagamento === 'parcelado' ? 'Data da 1ª parcela *' : 'Data de vencimento *'}
+              </Label>
+              <Input
+                id="data_vencimento"
+                type="date"
+                value={dataVencimento}
+                onChange={(e) => setDataVencimento(e.target.value)}
+                min={hoje}
+                required
+              />
+            </div>
+            {statusPagamento === 'parcelado' && (
+              <div>
+                <Label htmlFor="num_parcelas">Número de parcelas *</Label>
+                <Input
+                  id="num_parcelas"
+                  type="number"
+                  min={2}
+                  max={36}
+                  value={numParcelas}
+                  onChange={(e) => setNumParcelas(Number(e.target.value))}
+                />
+                {valorTotal > 0 && numParcelas >= 2 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {numParcelas}x de R$ {(valorTotal / numParcelas).toFixed(2)}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
+
 
         {/* Anexo da nota fiscal */}
         <div>

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { format } from 'date-fns'
@@ -11,6 +11,10 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Calendar } from '@/components/ui/calendar'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { ParcelasList } from '@/components/financeiro/ParcelasList'
+
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
@@ -72,7 +76,8 @@ const schema = z.object({
   talhao_id: z.string().optional(),
   observacoes: z.string().optional(),
   parcelar: z.boolean().default(false),
-  num_parcelas: z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().min(2).max(48).optional()),
+  num_parcelas: z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().min(2).max(36).optional()),
+  data_primeira_parcela: z.string().optional(),
   cultura_id: z.string().optional(),
   quantidade_produzida: z.preprocess((v) => (v === '' || v === undefined || v === null ? undefined : Number(v)), z.number().positive().optional()),
 }).refine((d) => {
@@ -80,9 +85,14 @@ const schema = z.object({
   return true
 }, { message: 'Data de pagamento obrigatória quando status é Pago', path: ['data_pagamento'] })
 .refine((d) => {
-  if (d.parcelar && (!d.num_parcelas || d.num_parcelas < 2)) return false
+  if (d.parcelar && (!d.num_parcelas || d.num_parcelas < 2 || d.num_parcelas > 36)) return false
   return true
-}, { message: 'Informe entre 2 e 48 parcelas', path: ['num_parcelas'] })
+}, { message: 'Informe entre 2 e 36 parcelas', path: ['num_parcelas'] })
+.refine((d) => {
+  if (d.parcelar && !d.data_primeira_parcela) return false
+  return true
+}, { message: 'Informe a data da 1ª parcela', path: ['data_primeira_parcela'] })
+
 
 type FormData = z.infer<typeof schema>
 
@@ -95,6 +105,8 @@ interface Props {
 export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const { propriedadeAtual, safraAtual } = useGlobal()
   const propId = typeof propriedadeAtual === 'object' ? propriedadeAtual?.id : propriedadeAtual
+  const queryClient = useQueryClient()
+
   const { data: talhoes } = useTalhoes(propId || undefined)
   const createMutation = useCreateTransacao()
   const updateMutation = useUpdateTransacao()
@@ -119,6 +131,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       observacoes: '',
       parcelar: false,
       num_parcelas: '' as any,
+      data_primeira_parcela: '',
     },
   })
 
@@ -128,9 +141,29 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const watchCategoria = form.watch('categoria')
   const watchValor = form.watch('valor')
   const watchQuantidade = form.watch('quantidade_produzida')
+  const watchNumParcelas = form.watch('num_parcelas')
+  const watchDataPrimeira = form.watch('data_primeira_parcela')
   const isEditing = !!transacao
 
+  const parcelasPreview = useMemo(() => {
+    const n = Number(watchNumParcelas) || 0
+    const total = Number(watchValor) || 0
+    if (n < 2 || total <= 0 || !watchDataPrimeira) return []
+    const base = Math.floor((total / n) * 100) / 100
+    return Array.from({ length: n }, (_, i) => {
+      const d = new Date(watchDataPrimeira + 'T12:00:00')
+      d.setMonth(d.getMonth() + i)
+      return {
+        numero: i + 1,
+        data: d,
+        valor: i === n - 1 ? Math.round((total - base * (n - 1)) * 100) / 100 : base,
+      }
+    })
+  }, [watchNumParcelas, watchValor, watchDataPrimeira])
+
+  const [salvandoParcelado, setSalvandoParcelado] = useState(false)
   const [unidadeLabel, setUnidadeLabel] = useState('')
+
 
   const showCulturaFields = watchTipo === 'receita' && watchCategoria === 'venda_producao'
 
@@ -243,18 +276,49 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       if (isEditing) {
         await updateMutation.mutateAsync({ id: transacao!.id, ...payload })
         toast.success('Transação atualizada')
-      } else {
-        await createMutation.mutateAsync({
-          ...payload,
-          parcelas: data.parcelar ? data.num_parcelas : undefined,
+      } else if (data.parcelar && data.num_parcelas && data.data_primeira_parcela) {
+        setSalvandoParcelado(true)
+        const { data: novaTransacao, error } = await supabase
+          .from('transacoes')
+          .insert({
+            ...payload,
+            data_vencimento: data.data_primeira_parcela,
+            data_pagamento: null,
+            status: 'pendente',
+            parcelado: true,
+            numero_parcelas: data.num_parcelas,
+          } as any)
+          .select()
+          .single()
+
+        if (error) throw error
+
+        const { error: parcError } = await supabase.rpc('gerar_parcelas' as any, {
+          p_transacao_id: (novaTransacao as any).id,
+          p_num_parcelas: data.num_parcelas,
+          p_data_primeira: data.data_primeira_parcela,
         })
-        toast.success(data.parcelar ? `${data.num_parcelas} parcelas criadas` : 'Transação criada')
+
+        if (parcError) {
+          toast.error('Transação criada, mas erro ao gerar parcelas: ' + parcError.message)
+        } else {
+          toast.success(`Transação criada em ${data.num_parcelas}x de R$ ${(Number(data.valor) / data.num_parcelas).toFixed(2)}`)
+        }
+        queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+        queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
+        queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] })
+      } else {
+        await createMutation.mutateAsync(payload)
+        toast.success('Transação criada')
       }
       onOpenChange(false)
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao salvar')
+    } finally {
+      setSalvandoParcelado(false)
     }
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -524,28 +588,74 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
               </FormItem>
             )} />
 
-            {/* Parcelamento */}
+            {/* Forma de pagamento / Parcelamento */}
             {!isEditing && (
-              <div className="space-y-2 rounded-lg border border-border p-3">
-                <FormField control={form.control} name="parcelar" render={({ field }) => (
-                  <FormItem className="flex items-center gap-2 space-y-0">
-                    <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                    <FormLabel className="cursor-pointer">Parcelar em várias vezes</FormLabel>
-                  </FormItem>
-                )} />
+              <div className="space-y-3">
+                <Label>Forma de pagamento *</Label>
+                <RadioGroup
+                  value={watchParcelar ? 'parcelado' : 'avista'}
+                  onValueChange={(v) => {
+                    const parcelado = v === 'parcelado'
+                    form.setValue('parcelar', parcelado)
+                    if (parcelado) {
+                      if (!form.getValues('num_parcelas')) form.setValue('num_parcelas', 2 as any)
+                      if (!form.getValues('data_primeira_parcela')) {
+                        const base = form.getValues('data_vencimento') || new Date()
+                        form.setValue('data_primeira_parcela', format(base, 'yyyy-MM-dd'))
+                      }
+                    }
+                  }}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="avista" id="avista" />
+                    <Label htmlFor="avista" className="font-normal cursor-pointer">À vista</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="parcelado" id="parcelado" />
+                    <Label htmlFor="parcelado" className="font-normal cursor-pointer">Parcelado</Label>
+                  </div>
+                </RadioGroup>
+
                 {watchParcelar && (
-                  <FormField control={form.control} name="num_parcelas" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Número de parcelas (2-48)</FormLabel>
-                      <FormControl><Input type="number" min={2} max={48} {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  <div className="space-y-3 p-4 border rounded-md bg-muted/30">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <FormField control={form.control} name="num_parcelas" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número de parcelas *</FormLabel>
+                          <FormControl><Input type="number" min={2} max={36} {...field} value={field.value ?? ''} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="data_primeira_parcela" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Data 1ª parcela *</FormLabel>
+                          <FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+
+                    {parcelasPreview.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-sm font-medium mb-2">
+                          {parcelasPreview.length}x de R$ {(Number(watchValor) / parcelasPreview.length).toFixed(2)}
+                        </p>
+                        <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                          {parcelasPreview.map(p => (
+                            <div key={p.numero} className="flex justify-between text-sm text-muted-foreground">
+                              <span>Parcela {p.numero}</span>
+                              <span>R$ {p.valor.toFixed(2)} — {p.data.toLocaleDateString('pt-BR')}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
+
 
             {/* Resumo da venda */}
             {showCulturaFields && valorTotal > 0 && nomeCultura && (
@@ -560,16 +670,22 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
               </div>
             )}
 
+            {isEditing && transacao && (transacao as any).parcelado && (
+              <ParcelasList transacaoId={transacao.id} />
+            )}
+
             {isEditing && transacao && propId && (
               <div className="pt-3 border-t">
                 <Anexos entidadeTipo="transacao" entidadeId={transacao.id} propriedadeId={propId} />
               </div>
             )}
 
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                {(createMutation.isPending || updateMutation.isPending) ? 'Salvando...' : 'Salvar'}
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || salvandoParcelado}>
+                {(createMutation.isPending || updateMutation.isPending || salvandoParcelado) ? 'Salvando...' : 'Salvar'}
+
               </Button>
             </DialogFooter>
 

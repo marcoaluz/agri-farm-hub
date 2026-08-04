@@ -20,6 +20,9 @@ export interface Transacao {
   parcela_numero: number | null
   parcela_total: number | null
   parcela_grupo_id: string | null
+  parcelado?: boolean | null
+  numero_parcelas?: number | null
+
   lancamento_id: string | null
   origem: 'manual' | 'lancamento' | 'abastecimento'
   criado_por: string | null
