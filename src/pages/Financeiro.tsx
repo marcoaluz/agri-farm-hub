@@ -60,13 +60,22 @@ const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    pendente: { label: '🟡 Pendente', cls: 'bg-warning/15 text-warning-foreground border-warning/30' },
-    pago: { label: '🟢 Pago', cls: 'bg-success/15 text-success border-success/30' },
-    vencido: { label: '🔴 Vencido', cls: 'bg-destructive/15 text-destructive border-destructive/30' },
-    cancelado: { label: '⚫ Cancelado', cls: 'bg-muted text-muted-foreground border-border' },
+    pendente: { label: 'Pendente', cls: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100' },
+    pago: { label: 'Pago', cls: 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100' },
+    vencido: { label: 'Vencido', cls: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100' },
+    cancelado: { label: 'Cancelado', cls: 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100' },
   }
   const s = map[status] || map.pendente
   return <Badge variant="outline" className={s.cls}>{s.label}</Badge>
+}
+
+function ParcelasIndicador({ n }: { n?: number | null }) {
+  if (!n) return null
+  return (
+    <span className="bg-primary/10 text-primary text-xs font-medium px-1.5 py-0.5 rounded ml-1">
+      {n}x
+    </span>
+  )
 }
 
 export function Financeiro() {
@@ -81,12 +90,25 @@ export function Financeiro() {
   const [dataInicio, setDataInicio] = useState<Date | undefined>()
   const [dataFim, setDataFim] = useState<Date | undefined>()
 
+  // Navegação por mês (mês corrente por padrão)
+  const [mesAtual, setMesAtual] = useState(new Date())
+  const inicioMes = startOfMonth(mesAtual)
+  const fimMes = endOfMonth(mesAtual)
+
+  // Parcelas expandidas
+  const [expandidos, setExpandidos] = useState<string[]>([])
+  const toggleExpandido = (id: string) => {
+    setExpandidos(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
   const filtrosAtivos: FiltrosTransacao = {
     ...filtros,
     busca: busca || undefined,
-    data_inicio: dataInicio ? format(dataInicio, 'yyyy-MM-dd') : undefined,
-    data_fim: dataFim ? format(dataFim, 'yyyy-MM-dd') : undefined,
+    data_inicio: dataInicio ? format(dataInicio, 'yyyy-MM-dd') : format(inicioMes, 'yyyy-MM-dd'),
+    data_fim: dataFim ? format(dataFim, 'yyyy-MM-dd') : format(fimMes, 'yyyy-MM-dd'),
   }
+
+
 
   const { data: transacoes = [], isLoading } = useTransacoes(propId, safraId, filtrosAtivos)
   const { data: todasTransacoes = [] } = useTransacoes(propId, safraId)
