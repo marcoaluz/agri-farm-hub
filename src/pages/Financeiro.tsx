@@ -491,9 +491,10 @@ export function Financeiro() {
                 <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma transação encontrada.</p>
               ) : transacoesPag.map(t => {
                 const st = statusEfetivo(t)
+                const expandido = expandidos.includes(t.id)
                 return (
+                  <Fragment key={t.id}>
                   <Card
-                    key={t.id}
                     className={cn('cursor-pointer transition-colors hover:bg-muted/50', st === 'vencido' && 'bg-destructive/5')}
                     onClick={() => { setEditando(t); setFormOpen(true) }}
                   >
@@ -513,17 +514,19 @@ export function Financeiro() {
                           </div>
                           <div className="mt-1 inline-flex items-center">
                             <StatusBadge status={st} />
-                            {t.parcelado && (
-                              <span className="text-xs text-muted-foreground ml-1">({t.numero_parcelas}x)</span>
-                            )}
+                            {t.parcelado && <ParcelasIndicador n={t.numero_parcelas} />}
                           </div>
 
                         </div>
                       </div>
                       <div className="mt-3 flex justify-end gap-2">
-                        {(st === 'pendente' || st === 'vencido') && (
-                          <Button size="sm" variant="outline" className="h-11" onClick={e => { e.stopPropagation(); marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') }) }}>
-                            <Check className="mr-1 h-4 w-4" /> Pago
+                        {t.parcelado ? (
+                          <Button size="sm" variant="outline" className="h-11" onClick={e => { e.stopPropagation(); toggleExpandido(t.id) }}>
+                            <ChevronDown className={cn('mr-1 h-4 w-4 transition-transform', expandido && 'rotate-180')} /> Parcelas
+                          </Button>
+                        ) : (st === 'pendente' || st === 'vencido') && (
+                          <Button size="sm" variant="outline" className="h-11 text-green-700 border-green-300 hover:bg-green-50" onClick={e => { e.stopPropagation(); marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') }) }}>
+                            <Check className="mr-1 h-4 w-4" /> Pagar
                           </Button>
                         )}
                         <Button size="sm" variant="outline" className="h-11 text-destructive" onClick={e => { e.stopPropagation(); setDeletandoId(t.id) }}>
@@ -532,8 +535,11 @@ export function Financeiro() {
                       </div>
                     </CardContent>
                   </Card>
+                  {t.parcelado && expandido && <ParcelasExpansivel transacaoId={t.id} />}
+                  </Fragment>
                 )
               })}
+
             </div>
 
             {/* Totalizadores + Paginação */}
