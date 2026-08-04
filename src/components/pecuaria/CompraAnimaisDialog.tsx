@@ -118,6 +118,35 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
       return
     }
 
+    // Parcelamento: localiza a transação gerada pelo trigger e cria as parcelas
+    if (!editando && statusPagamento === 'parcelado' && registroId) {
+      const { data: transacao } = await supabase
+        .from('transacoes')
+        .select('id')
+        .eq('propriedade_id', propriedadeId)
+        .like('origem', `%${registroId}%`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (transacao) {
+        await supabase.from('transacoes')
+          .update({ parcelado: true, numero_parcelas: numParcelas } as any)
+          .eq('id', (transacao as any).id)
+
+        const { error: parcError } = await supabase.rpc('gerar_parcelas' as any, {
+          p_transacao_id: (transacao as any).id,
+          p_num_parcelas: numParcelas,
+          p_data_primeira: dataVencimento,
+        })
+        if (parcError) {
+          toast({ title: 'Compra registrada, mas erro ao gerar parcelas', description: parcError.message, variant: 'destructive' })
+        }
+      }
+    }
+
+
+
     if (arquivoNF && registroId) {
       const anteriores = await listarAnexos('rebanho_movimentacao', registroId)
       for (const a of anteriores) await removerAnexo(a)
