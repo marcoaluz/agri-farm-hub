@@ -43,7 +43,9 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   });
   const [statusPagamento, setStatusPagamento] = useState('pago');
   const [dataVencimento, setDataVencimento] = useState('');
+  const [numParcelas, setNumParcelas] = useState(2);
   const [arquivoNF, setArquivoNF] = useState<File | null>(null);
+
 
   // Buscar produtos
   const {
