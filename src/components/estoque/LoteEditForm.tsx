@@ -98,6 +98,25 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
 
       if (error) throw error
 
+      if (numParcelas > 1 && statusPagamento === 'pendente') {
+        const { data: transacaoVinculada } = await supabase
+          .from('transacoes')
+          .select('id')
+          .eq('origem', 'lote:' + lote.id)
+          .maybeSingle()
+
+        if (transacaoVinculada) {
+          const { error: erroParcelas } = await (supabase as any).rpc('gerar_parcelas', {
+            p_transacao_id: (transacaoVinculada as any).id,
+            p_num_parcelas: numParcelas,
+            p_data_primeira: dataVencimento,
+          })
+          if (erroParcelas) throw new Error('Lote salvo, mas erro ao gerar parcelas: ' + erroParcelas.message)
+        }
+      }
+
+
+
 
       if (arquivoNF && propriedadeAtual?.id) {
         if (anexoAtual) await removerAnexo(anexoAtual)
