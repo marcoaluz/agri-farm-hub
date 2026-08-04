@@ -468,13 +468,14 @@ export function Financeiro() {
                       </TableCell>
                     </TableRow>
                     {t.parcelado && expandido && (
-                      <TableRow key={t.id + '-parcelas'} className="hover:bg-transparent">
+                      <TableRow className="hover:bg-transparent">
                         <TableCell colSpan={7} className="p-0">
                           <ParcelasExpansivel transacaoId={t.id} />
                         </TableCell>
                       </TableRow>
                     )}
-                    </>
+                    </Fragment>
+
                   )
                 })}
 
