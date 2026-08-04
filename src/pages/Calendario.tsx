@@ -97,6 +97,20 @@ export default function Calendario() {
     enabled: !!propId,
   })
 
+  const { data: parcelas } = useQuery({
+    queryKey: ['parcelas-calendario', propId, rangeStart, rangeEnd],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from('parcelas')
+        .select('id, numero_parcela, valor, data_vencimento, status, transacao:transacoes!inner(id, descricao, tipo, categoria, propriedade_id)')
+        .eq('transacoes.propriedade_id', propId)
+        .gte('data_vencimento', rangeStart)
+        .lte('data_vencimento', rangeEnd)
+      return (data || []) as any[]
+    },
+    enabled: !!propId,
+  })
+
+
   // Build event map by date string
   const eventMap = useMemo(() => {
     const map = new Map<string, CalEvent[]>()
