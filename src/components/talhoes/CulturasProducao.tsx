@@ -54,7 +54,9 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingCultura, setEditingCultura] = useState<any>(null);
   const [colheitaCultura, setColheitaCultura] = useState<any>(null);
+  const [vendaItem, setVendaItem] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+
 
   const { data: culturasTalhao, isLoading } = useQuery({
     queryKey: ["talhao-culturas", talhao.id, safraAtual?.id],
