@@ -79,8 +79,11 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   // Mutation para salvar
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (statusPagamento === 'pendente' && !dataVencimento) {
-        throw new Error('Informe a data de vencimento');
+      if (statusPagamento !== 'pago' && !dataVencimento) {
+        throw new Error(statusPagamento === 'parcelado' ? 'Informe a data da 1ª parcela' : 'Informe a data de vencimento');
+      }
+      if (statusPagamento === 'parcelado' && (numParcelas < 2 || numParcelas > 36)) {
+        throw new Error('Informe entre 2 e 36 parcelas');
       }
       if (arquivoNF && arquivoNF.size > MAX_ANEXO_BYTES) {
         throw new Error('Arquivo muito grande (máx. 5MB)');
@@ -99,13 +102,45 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
           custo_unitario: formData.custo_unitario,
           data_entrada: formData.data_entrada,
           data_validade: formData.data_validade || null,
-          status_pagamento: statusPagamento,
-          data_vencimento: statusPagamento === 'pendente' ? dataVencimento : null,
+          status_pagamento: statusPagamento === 'pago' ? 'pago' : 'pendente',
+          data_vencimento: statusPagamento === 'pago' ? null : dataVencimento,
         } as any)
         .select()
         .single();
 
       if (error) throw error;
+
+      // Parcelamento: localizar a transação criada pelo trigger e gerar parcelas
+      if (statusPagamento === 'parcelado' && novoLote) {
+        const { data: transacao } = await supabase
+          .from('transacoes')
+          .select('id')
+          .eq('propriedade_id', propriedadeAtual!.id)
+          .like('origem', `%${(novoLote as any).id}%`)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (transacao) {
+          await supabase.from('transacoes')
+            .update({ parcelado: true, numero_parcelas: numParcelas } as any)
+            .eq('id', (transacao as any).id);
+
+          const { error: parcError } = await supabase.rpc('gerar_parcelas' as any, {
+            p_transacao_id: (transacao as any).id,
+            p_num_parcelas: numParcelas,
+            p_data_primeira: dataVencimento,
+          });
+          if (parcError) {
+            toast({
+              title: 'Lote criado, mas erro ao gerar parcelas',
+              description: parcError.message,
+              variant: 'destructive',
+            });
+          }
+        }
+      }
+
 
       if (arquivoNF && novoLote) {
         const { error: erroAnexo } = await uploadAnexoNF({
