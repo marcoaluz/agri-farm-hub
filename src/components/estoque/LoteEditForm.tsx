@@ -51,7 +51,9 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
   })
   const [statusPagamento, setStatusPagamento] = useState(lote.status_pagamento || 'pago')
   const [dataVencimento, setDataVencimento] = useState(lote.data_vencimento || '')
+  const [numParcelas, setNumParcelas] = useState(1)
   const [arquivoNF, setArquivoNF] = useState<File | null>(null)
+
 
   const { data: anexos = [] } = useQuery({
     queryKey: ['anexos', 'lote', lote.id],
