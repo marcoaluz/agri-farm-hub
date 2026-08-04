@@ -357,9 +357,17 @@ function ProdutoCard({
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h3 className="text-xl font-bold text-foreground mb-2">
-              {produto.nome}
-            </h3>
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-xl font-bold text-foreground">
+                {produto.nome}
+              </h3>
+              {produto.compartilhado && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                  Global
+                </Badge>
+              )}
+            </div>
+
             
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline" className="text-xs">
