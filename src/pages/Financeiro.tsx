@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react'
-import { format, addDays, parseISO } from 'date-fns'
+import { format, addDays, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle,
   Plus, Search, Check, Pencil, Trash2, CalendarIcon,
+  ChevronDown, ChevronLeft, ChevronRight,
 } from 'lucide-react'
+
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
