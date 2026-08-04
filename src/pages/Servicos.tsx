@@ -28,6 +28,7 @@ interface Servico {
   tipo_servico?: 'simples' | 'composto';
   custo_padrao?: number;
   unidade_medida?: string;
+  compartilhado?: boolean;
   ativo: boolean;
   created_at: string;
   total_itens?: number;
@@ -45,13 +46,25 @@ export function Servicos() {
   const { data: servicos, isLoading, error } = useQuery({
     queryKey: ['servicos', propriedadeAtual?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('servicos')
-        .select('*')
-        .eq('propriedade_id', propriedadeAtual!.id)
-        .eq('ativo', true)
-        .order('nome');
-      if (error) throw error;
+      // RPC inclui serviços compartilhados entre propriedades
+      let data: any[] | null = null;
+      const rpc = await supabase.rpc('listar_servicos_usuario', {
+        p_propriedade_id: propriedadeAtual!.id,
+      });
+
+      if (rpc.error) {
+        const fallback = await supabase
+          .from('servicos')
+          .select('*')
+          .eq('propriedade_id', propriedadeAtual!.id)
+          .eq('ativo', true)
+          .order('nome');
+        if (fallback.error) throw fallback.error;
+        data = fallback.data;
+      } else {
+        data = (rpc.data as any[]) || [];
+      }
+
       if (!data?.length) return [];
 
       // Contagem de itens em query separada (evita falha de schema)
@@ -65,7 +78,9 @@ export function Servicos() {
         countMap[r.servico_id] = (countMap[r.servico_id] || 0) + 1;
       });
 
-      return data.map(s => ({ ...s, total_itens: countMap[s.id] || 0 })) as Servico[];
+      return data
+        .map(s => ({ ...s, total_itens: countMap[s.id] || 0 }))
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '')) as Servico[];
     },
     enabled: !!propriedadeAtual?.id,
   });
