@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
 import { Loader2, Save, X, Lock } from 'lucide-react'
 import { uploadAnexoNF, listarAnexos, removerAnexo, MAX_ANEXO_BYTES } from '@/lib/anexoNF'
 import { AnexoManager } from '@/components/shared/AnexoManager'
@@ -49,7 +51,9 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
   })
   const [statusPagamento, setStatusPagamento] = useState(lote.status_pagamento || 'pago')
   const [dataVencimento, setDataVencimento] = useState(lote.data_vencimento || '')
+  const [numParcelas, setNumParcelas] = useState(1)
   const [arquivoNF, setArquivoNF] = useState<File | null>(null)
+
 
   const { data: anexos = [] } = useQuery({
     queryKey: ['anexos', 'lote', lote.id],
@@ -93,6 +97,25 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
         .eq('id', lote.id)
 
       if (error) throw error
+
+      if (numParcelas > 1 && statusPagamento === 'pendente') {
+        const { data: transacaoVinculada } = await supabase
+          .from('transacoes')
+          .select('id')
+          .eq('origem', 'lote:' + lote.id)
+          .maybeSingle()
+
+        if (transacaoVinculada) {
+          const { error: erroParcelas } = await (supabase as any).rpc('gerar_parcelas', {
+            p_transacao_id: (transacaoVinculada as any).id,
+            p_num_parcelas: numParcelas,
+            p_data_primeira: dataVencimento,
+          })
+          if (erroParcelas) throw new Error('Lote salvo, mas erro ao gerar parcelas: ' + erroParcelas.message)
+        }
+      }
+
+
 
 
       if (arquivoNF && propriedadeAtual?.id) {
@@ -208,11 +231,36 @@ export function LoteEditForm({ lote, unidade, onClose }: LoteEditFormProps) {
       </div>
 
       {statusPagamento === 'pendente' && (
-        <div>
-          <Label className="text-xs">Data de vencimento *</Label>
-          <Input disabled={safraFechada} type="date" min={hoje} value={dataVencimento} onChange={e => setDataVencimento(e.target.value)} />
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Parcelas</Label>
+              <Select value={numParcelas.toString()} onValueChange={v => setNumParcelas(parseInt(v))} disabled={safraFechada}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5, 6, 10, 12].map(n => (
+                    <SelectItem key={n} value={n.toString()}>
+                      {n === 1 ? '1x (prazo único)' : `${n}x`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Vencimento 1ª parcela *</Label>
+              <Input disabled={safraFechada} type="date" value={dataVencimento} onChange={e => setDataVencimento(e.target.value)} />
+            </div>
+          </div>
+          {numParcelas > 1 && valorTotal > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {numParcelas}x de R$ {(valorTotal / numParcelas).toFixed(2)}
+            </p>
+          )}
         </div>
       )}
+
 
       {/* Anexo */}
       <AnexoManager

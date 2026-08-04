@@ -21,6 +21,8 @@ import { Plus, Edit, Trash2, Wheat, Sprout, PackageCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AdicionarCulturaForm } from "./AdicionarCulturaForm";
 import { RegistrarColheitaDialog } from "./RegistrarColheitaDialog";
+import { VenderProducaoDialog } from "./VenderProducaoDialog";
+
 import { format } from "date-fns";
 
 interface Talhao {
@@ -54,7 +56,9 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingCultura, setEditingCultura] = useState<any>(null);
   const [colheitaCultura, setColheitaCultura] = useState<any>(null);
+  const [vendaItem, setVendaItem] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+
 
   const { data: culturasTalhao, isLoading } = useQuery({
     queryKey: ["talhao-culturas", talhao.id, safraAtual?.id],
@@ -63,7 +67,7 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
         .from("talhao_culturas")
         .select(`*,
           cultura:culturas_config(id, nome_exibicao, unidade_label, icone),
-          producao:producoes(quantidade_colhida, quantidade_vendida, quantidade_disponivel)`)
+          producao:producoes(id, quantidade_colhida, quantidade_vendida, quantidade_disponivel)`)
         .eq("talhao_id", talhao.id)
         .eq("safra_id", safraAtual!.id)
         .eq("ativo", true);
@@ -210,20 +214,48 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
                     </div>
                   </div>
 
-                  {producao && (producao.quantidade_colhida > 0 || producao.quantidade_vendida > 0) && (
-                    <div className="flex flex-wrap items-center gap-2 text-sm border-t pt-2">
-                      <span className="text-muted-foreground">
-                        Colhido: <strong>{(producao.quantidade_colhida || 0).toLocaleString("pt-BR")}</strong>
-                      </span>
-                      <span className="text-muted-foreground">|</span>
-                      <span className="text-muted-foreground">
-                        Vendido: <strong>{(producao.quantidade_vendida || 0).toLocaleString("pt-BR")}</strong>
-                      </span>
-                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200">
-                        Disponível: {(producao.quantidade_disponivel || 0).toLocaleString("pt-BR")} {unidade}
-                      </Badge>
+                  {producao && (
+                    <div className="border-t pt-3 space-y-3">
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground text-xs">Colhido</span>
+                          <p className="font-bold">{(producao.quantidade_colhida || 0).toLocaleString("pt-BR")} {unidade}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs">Vendido</span>
+                          <p className="font-bold">{(producao.quantidade_vendida || 0).toLocaleString("pt-BR")} {unidade}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs">Disponível</span>
+                          <p className="font-bold text-emerald-700 dark:text-emerald-400">{(producao.quantidade_disponivel || 0).toLocaleString("pt-BR")} {unidade}</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="w-full bg-muted rounded-full h-2 mb-1">
+                          <div
+                            className="bg-accent h-2 rounded-full"
+                            style={{ width: `${Math.min(100, ((producao.quantidade_vendida || 0) / Math.max(producao.quantidade_colhida || 0, 1)) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          Vendido: {(((producao.quantidade_vendida || 0) / Math.max(producao.quantidade_colhida || 0, 1)) * 100).toFixed(0)}%
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setColheitaCultura(item)}>
+                          Registrar Colheita
+                        </Button>
+                        {(producao.quantidade_disponivel || 0) > 0 && producao.id && (
+                          <Button size="sm" onClick={() => setVendaItem(item)}>
+                            Vender
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )}
+
                 </CardContent>
               </Card>
             );
@@ -258,6 +290,26 @@ export function CulturasProducao({ talhao }: CulturasProducaoProps) {
           culturaItem={colheitaCultura}
         />
       )}
+
+      {/* Dialog Vender Produção */}
+      {vendaItem && (() => {
+        const prod = Array.isArray(vendaItem.producao) ? vendaItem.producao[0] : vendaItem.producao;
+        if (!prod?.id) return null;
+        return (
+          <VenderProducaoDialog
+            open={!!vendaItem}
+            onOpenChange={(open) => { if (!open) setVendaItem(null); }}
+            producaoId={prod.id}
+            culturaNome={vendaItem.cultura?.nome_exibicao || "Cultura"}
+            safraNome={safraAtual.nome}
+            unidade={vendaItem.cultura?.unidade_label || "un"}
+            disponivel={Number(prod.quantidade_disponivel || 0)}
+            vendido={Number(prod.quantidade_vendida || 0)}
+          />
+        );
+      })()}
+
+
 
       {/* Confirmação de exclusão */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>

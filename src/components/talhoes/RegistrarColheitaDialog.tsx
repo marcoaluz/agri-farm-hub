@@ -47,34 +47,39 @@ export function RegistrarColheitaDialog({ open, onOpenChange, talhaoId, culturaI
         throw new Error('Propriedade ou safra não selecionada');
       }
 
-      const novaQuantidade = colhidoAtual + Number(quantidade);
-
-      const { error } = await supabase
-        .from("producoes")
-        .upsert(
-          {
-            propriedade_id: propriedadeAtual.id,
-            talhao_id: talhaoId,
-            safra_id: safraAtual!.id,
-            cultura_id: culturaItem.cultura_id,
-            quantidade_colhida: novaQuantidade,
-            data_colheita: dataColheita ? format(dataColheita, "yyyy-MM-dd") : null,
-            observacoes: observacoes || null,
-          },
-          { onConflict: "talhao_id,safra_id,cultura_id" }
-        );
+      const { data, error } = await (supabase as any).rpc("registrar_colheita", {
+        p_propriedade_id: propriedadeAtual.id,
+        p_safra_id: safraAtual.id,
+        p_talhao_id: talhaoId,
+        p_cultura_id: culturaItem.cultura_id,
+        p_talhao_cultura_id: culturaItem.id,
+        p_quantidade: Number(quantidade),
+        p_data_colheita: dataColheita ? format(dataColheita, "yyyy-MM-dd") : null,
+        p_observacoes: observacoes || null,
+      });
 
       if (error) throw error;
+      return Array.isArray(data) ? data[0] : data;
     },
-    onSuccess: () => {
-      toast({ title: "Colheita registrada com sucesso" });
+    onSuccess: (data: any) => {
+      const total = data?.quantidade_total_colhida;
+      toast({
+        title: total != null
+          ? `Colheita registrada: ${Number(total).toLocaleString("pt-BR")} ${unidade} no total`
+          : "Colheita registrada com sucesso",
+      });
       queryClient.invalidateQueries({ queryKey: ["talhao-culturas"] });
+      queryClient.invalidateQueries({ queryKey: ["producoes"] });
+      queryClient.invalidateQueries({ queryKey: ["estoque-producao"] });
+      queryClient.invalidateQueries({ queryKey: ["dash-estoque-producao"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       onOpenChange(false);
     },
     onError: (error: Error) => {
       toast({ title: "Erro ao registrar colheita", description: error.message, variant: "destructive" });
     },
   });
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
