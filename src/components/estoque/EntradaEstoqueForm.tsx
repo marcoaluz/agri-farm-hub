@@ -165,7 +165,10 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
         title: 'Entrada de estoque registrada com sucesso!',
         description: statusPagamento === 'pago'
           ? 'Despesa criada no Financeiro e saldo atualizado.'
-          : `Despesa a vencer em ${new Date(dataVencimento + 'T12:00:00').toLocaleDateString('pt-BR')}.`,
+          : statusPagamento === 'parcelado'
+            ? `Despesa parcelada em ${numParcelas}x a partir de ${new Date(dataVencimento + 'T12:00:00').toLocaleDateString('pt-BR')}.`
+            : `Despesa a vencer em ${new Date(dataVencimento + 'T12:00:00').toLocaleDateString('pt-BR')}.`,
+
       });
       queryClient.invalidateQueries({ queryKey: ['produtos'] });
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] });
