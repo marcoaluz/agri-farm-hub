@@ -149,8 +149,16 @@ export default function Calendario() {
       detalhe: `${t.tipo === 'receita' ? 'Receita' : 'Despesa'} — R$ ${Number(t.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
     }))
 
+    parcelas?.forEach((p: any) => push(p.data_vencimento, {
+      tipo: 'parcela',
+      data: p.data_vencimento,
+      titulo: `P${p.numero_parcela}: R$ ${Number(p.valor || 0).toFixed(2)}`,
+      detalhe: `${p.transacao?.descricao || 'Parcela'} — ${p.status === 'pago' ? 'Pago' : 'Pendente'}`,
+      pago: p.status === 'pago',
+    }))
+
     return map
-  }, [lancamentos, sanitarios, manutencoes, transacoes])
+  }, [lancamentos, sanitarios, manutencoes, transacoes, parcelas])
 
   // Build calendar grid days
   const calendarDays = useMemo(() => {
@@ -171,6 +179,7 @@ export default function Calendario() {
     sanitario: 'bg-yellow-500',
     manutencao: 'bg-blue-500',
     transacao: 'bg-red-500',
+    parcela: 'bg-amber-500',
   }
 
   const badgeColor: Record<string, string> = {
@@ -178,6 +187,7 @@ export default function Calendario() {
     sanitario: 'bg-yellow-100 text-yellow-700 border-yellow-300',
     manutencao: 'bg-blue-100 text-blue-700 border-blue-300',
     transacao: 'bg-red-100 text-red-700 border-red-300',
+    parcela: 'bg-amber-100 text-amber-800 border-amber-200',
   }
 
   const tipoLabel: Record<string, string> = {
@@ -185,7 +195,9 @@ export default function Calendario() {
     sanitario: 'Sanitário',
     manutencao: 'Manutenção',
     transacao: 'Transação',
+    parcela: 'Parcela',
   }
+
 
   if (!propId) {
     return (
