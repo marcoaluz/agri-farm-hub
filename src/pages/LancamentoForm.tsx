@@ -285,7 +285,7 @@ export function LancamentoForm() {
             estoque_disponivel: si.produto?.saldo_atual || 0,
           } as ItemLancamento
         }
-        if (si.tipo_item === 'maquina' || si.tipo_ref === 'maquina') {
+        if (si.tipo_ref === 'maquina' || (!si.tipo_ref && si.maquina?.id)) {
           return {
             tipo_ref: 'maquina',
             produto_id: null,
