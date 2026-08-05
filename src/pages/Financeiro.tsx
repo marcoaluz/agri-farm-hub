@@ -521,13 +521,20 @@ export function Financeiro() {
                 return (
                   <Fragment key={t.id}>
                   <Card
-                    className={cn('cursor-pointer transition-colors hover:bg-muted/50', st === 'vencido' && 'bg-destructive/5')}
-                    onClick={() => { setEditando(t); setFormOpen(true) }}
+                    className={cn('transition-colors', isAutoGerada(t) ? 'cursor-default' : 'cursor-pointer hover:bg-muted/50', st === 'vencido' && 'bg-destructive/5')}
+                    onClick={() => { if (!isAutoGerada(t)) { setEditando(t); setFormOpen(true) } }}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium">{t.descricao}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="truncate font-medium">{t.descricao}</span>
+                            {isAutoGerada(t) && (
+                              <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border shrink-0">
+                                Auto · {origemLabel(t.origem!)}
+                              </Badge>
+                            )}
+                          </div>
                           <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                             <div>{categoriasLabel[t.categoria] || t.categoria} · {format(parseISO(t.data_vencimento), 'dd/MM/yy')}</div>
                             {t.parcela_numero && <div>Parcela {t.parcela_numero}/{t.parcela_total}</div>}
@@ -555,9 +562,13 @@ export function Financeiro() {
                             <Check className="mr-1 h-4 w-4" /> Pagar
                           </Button>
                         )}
-                        <Button size="sm" variant="outline" className="h-11 text-destructive" onClick={e => { e.stopPropagation(); setDeletandoId(t.id) }}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {isAutoGerada(t) ? (
+                          <span className="text-xs text-muted-foreground italic self-center">Via {origemLabel(t.origem!)}</span>
+                        ) : (
+                          <Button size="sm" variant="outline" className="h-11 text-destructive" onClick={e => { e.stopPropagation(); setDeletandoId(t.id) }}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
