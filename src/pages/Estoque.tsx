@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { LotesDialog } from '@/components/estoque/LotesDialog';
 import { EntradaEstoqueForm } from '@/components/estoque/EntradaEstoqueForm';
 import { ProdutoForm } from '@/components/estoque/ProdutoForm';
+import { VenderProdutoModal } from '@/components/estoque/VenderProdutoModal';
 
 interface ProdutoComCusto {
   id: string;
@@ -29,6 +30,7 @@ interface ProdutoComCusto {
   valor_imobilizado: number;
   total_lotes: number;
   compartilhado?: boolean;
+  vendavel?: boolean;
 }
 
 
@@ -40,6 +42,7 @@ export function Estoque() {
   const [dialogLotesOpen, setDialogLotesOpen] = useState(false);
   const [dialogEntradaOpen, setDialogEntradaOpen] = useState(false);
   const [dialogProdutoOpen, setDialogProdutoOpen] = useState(false);
+  const [produtoVenda, setProdutoVenda] = useState<ProdutoComCusto | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightLoteId = searchParams.get('highlight');
   const [loteDestacado, setLoteDestacado] = useState<string | null>(null);
@@ -293,6 +296,7 @@ export function Estoque() {
                 setProdutoSelecionado(produto);
                 setDialogLotesOpen(true);
               }}
+              onVender={() => setProdutoVenda(produto)}
             />
           ))}
         </div>
@@ -329,16 +333,30 @@ export function Estoque() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de Venda de Produto */}
+      <Dialog open={!!produtoVenda} onOpenChange={(open) => { if (!open) setProdutoVenda(null); }}>
+        <DialogContent className="max-w-lg">
+          {produtoVenda && (
+            <VenderProdutoModal
+              produto={produtoVenda}
+              onClose={() => setProdutoVenda(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 function ProdutoCard({ 
   produto, 
-  onVerLotes 
+  onVerLotes,
+  onVender,
 }: { 
   produto: ProdutoComCusto; 
   onVerLotes: () => void;
+  onVender: () => void;
 }) {
   const getStatusEstoque = () => {
     if (produto.saldo_atual === 0) {
@@ -364,6 +382,11 @@ function ProdutoCard({
               {produto.compartilhado && (
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                   Global
+                </Badge>
+              )}
+              {produto.vendavel && (
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  Vendável
                 </Badge>
               )}
             </div>
@@ -423,15 +446,21 @@ function ProdutoCard({
           </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t">
+        <div className="mt-4 pt-4 border-t flex gap-2">
           <Button
             variant="outline"
-            className="w-full"
+            className="flex-1"
             onClick={onVerLotes}
           >
             <Package className="h-4 w-4 mr-2" />
             Ver {produto.total_lotes} {produto.total_lotes === 1 ? 'Lote' : 'Lotes'} (FIFO)
           </Button>
+          {produto.vendavel && produto.saldo_atual > 0 && (
+            <Button size="sm" variant="default" onClick={onVender} className="gap-1">
+              <DollarSign className="h-3.5 w-3.5" />
+              Vender
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -20,6 +20,7 @@ interface ProdutoFormProps {
     unidade_medida: string;
     nivel_minimo: number;
     compartilhado?: boolean;
+    vendavel?: boolean;
   } | null;
 }
 
@@ -61,6 +62,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
     nivel_minimo: 0,
   });
   const [compartilhado, setCompartilhado] = useState(false);
+  const [vendavel, setVendavel] = useState(false);
 
   useEffect(() => {
     if (produto) {
@@ -71,6 +73,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
         nivel_minimo: produto.nivel_minimo || 0,
       });
       setCompartilhado(!!produto.compartilhado);
+      setVendavel(!!produto.vendavel);
     } else {
       setFormData({
         nome: '',
@@ -79,6 +82,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
         nivel_minimo: 0,
       });
       setCompartilhado(false);
+      setVendavel(false);
     }
   }, [produto]);
 
@@ -97,13 +101,14 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
             unidade_medida: data.unidade_medida,
             nivel_minimo: data.nivel_minimo,
             compartilhado,
+            vendavel,
             ativo: true,
-          })
+          } as any)
           .eq('id', produto.id);
 
         if (error) throw error;
       } else {
-        const { error } = await supabase.rpc('criar_produto_compartilhado', {
+        const { data: novo, error } = await supabase.rpc('criar_produto_compartilhado', {
           p_propriedade_id: propriedadeAtual.id,
           p_nome: data.nome.trim(),
           p_categoria: data.categoria,
@@ -114,6 +119,16 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
         });
 
         if (error) throw error;
+
+        const novoId =
+          typeof novo === 'string' ? novo : (novo as any)?.id || (novo as any)?.produto_id;
+
+        if (novoId && (vendavel || data.nivel_minimo)) {
+          await supabase
+            .from('produtos')
+            .update({ vendavel, nivel_minimo: data.nivel_minimo } as any)
+            .eq('id', novoId);
+        }
       }
     },
     onSuccess: () => {
@@ -258,6 +273,20 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
             Você será alertado quando o estoque ficar abaixo deste valor.
           </p>
         </div>
+
+        {/* Vendável */}
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="vendavel"
+            checked={vendavel}
+            onCheckedChange={(v) => setVendavel(v === true)}
+          />
+          <Label htmlFor="vendavel" className="text-sm font-normal cursor-pointer">
+            Produto vendável (silagem, ração, produção própria)
+          </Label>
+        </div>
+
+
 
         <DialogFooter className="pt-4">
           <Button type="submit" disabled={mutation.isPending}>
