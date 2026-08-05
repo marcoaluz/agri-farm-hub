@@ -59,20 +59,42 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
   const [addingType, setAddingType] = useState<'produto' | 'maquina' | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Busca produtos disponíveis para vincular
-  const { data: produtosDisponiveis = [] } = useQuery({
+  // Busca produtos disponíveis para vincular (RPC inclui produtos globais)
+  const { data: produtosDisponiveis = [], error: produtosError } = useQuery({
     queryKey: ['produtos-servico', propriedadeId],
     queryFn: async () => {
+      const normalizar = (lista: any[]) =>
+        lista
+          .filter(p => p.ativo !== false)
+          .map(p => ({
+            id: p.id || p.produto_id,
+            nome: p.nome,
+            unidade_medida: p.unidade_medida || p.unidade || '',
+          }))
+          .filter(p => !!p.id && !!p.nome)
+          .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+
       const { data, error } = await supabase.rpc('listar_produtos_usuario', {
         p_propriedade_id: propriedadeId!,
       })
-      if (error) throw error
-      return ((data as any[]) || [])
-        .filter(p => p.ativo !== false)
-        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '')) as { id: string; nome: string; unidade_medida: string }[]
+
+      if (!error && data) {
+        const lista = normalizar((data as any[]) || [])
+        if (lista.length > 0) return lista
+      }
+
+      // Fallback: consulta direta na propriedade atual
+      const { data: diretos, error: erroDireto } = await supabase
+        .from('produtos')
+        .select('id, nome, unidade_medida, ativo')
+        .eq('propriedade_id', propriedadeId)
+        .order('nome')
+      if (erroDireto) throw (error || erroDireto)
+      return normalizar((diretos as any[]) || [])
     },
     enabled: !!propriedadeId && tipoServico === 'composto',
   })
+
 
   // Busca máquinas disponíveis para vincular
   const { data: maquinasDisponiveis = [] } = useQuery({
