@@ -274,6 +274,20 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
           </p>
         </div>
 
+        {/* Vendável */}
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="vendavel"
+            checked={vendavel}
+            onCheckedChange={(v) => setVendavel(v === true)}
+          />
+          <Label htmlFor="vendavel" className="text-sm font-normal cursor-pointer">
+            Produto vendável (silagem, ração, produção própria)
+          </Label>
+        </div>
+
+
+
         <DialogFooter className="pt-4">
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
