@@ -256,7 +256,7 @@ export type Database = {
           id: string
           servico_id: string
           item_id: string | null
-          tipo_item: 'produto' | 'maquina' | 'servico_simples'
+          tipo_item: 'categoria_inteira' | 'produto_especifico'
           tipo_ref: 'produto' | 'maquina' | 'servico_simples'
           produto_id: string | null
           maquina_id: string | null
@@ -269,7 +269,7 @@ export type Database = {
           id?: string
           servico_id: string
           item_id?: string | null
-          tipo_item?: 'produto' | 'maquina' | 'servico_simples'
+          tipo_item?: 'categoria_inteira' | 'produto_especifico'
           tipo_ref?: 'produto' | 'maquina' | 'servico_simples'
           produto_id?: string | null
           maquina_id?: string | null
@@ -282,7 +282,7 @@ export type Database = {
           id?: string
           servico_id?: string
           item_id?: string | null
-          tipo_item?: 'produto' | 'maquina' | 'servico_simples'
+          tipo_item?: 'categoria_inteira' | 'produto_especifico'
           tipo_ref?: 'produto' | 'maquina' | 'servico_simples'
           produto_id?: string | null
           maquina_id?: string | null

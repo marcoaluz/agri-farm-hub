@@ -128,7 +128,7 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
       .then(({ data }) => {
         if (!data) return;
         setItens(data.map((si: any) => {
-          const tipoRef = si.tipo_item || si.tipo_ref;
+          const tipoRef = si.tipo_ref || (si.produto_id ? 'produto' : 'maquina');
           return {
             tipo_ref: tipoRef,
             produto_id: tipoRef === 'produto' ? (si.produto?.id || si.produto_id) : undefined,
@@ -201,7 +201,7 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
         const { error } = await supabase.from('servicos_itens').insert(
           itens.map((iv, i) => ({
             servico_id: servicoId,
-            tipo_item: iv.tipo_ref,
+            tipo_item: 'produto_especifico',
             tipo_ref: iv.tipo_ref,
             produto_id: iv.tipo_ref === 'produto' ? iv.produto_id : null,
             maquina_id: iv.tipo_ref === 'maquina' ? iv.maquina_id : null,

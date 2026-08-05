@@ -272,7 +272,7 @@ export function LancamentoForm() {
       if (error) throw error
 
       const itensFormatados: ItemLancamento[] = ((data as any[]) || []).map((si: any) => {
-        if (si.tipo_item === 'produto' || si.tipo_ref === 'produto') {
+        if (si.tipo_ref === 'produto' || (!si.tipo_ref && si.produto?.id)) {
           return {
             tipo_ref: 'produto',
             produto_id: si.produto?.id || null,
@@ -285,7 +285,7 @@ export function LancamentoForm() {
             estoque_disponivel: si.produto?.saldo_atual || 0,
           } as ItemLancamento
         }
-        if (si.tipo_item === 'maquina' || si.tipo_ref === 'maquina') {
+        if (si.tipo_ref === 'maquina' || (!si.tipo_ref && si.maquina?.id)) {
           return {
             tipo_ref: 'maquina',
             produto_id: null,
