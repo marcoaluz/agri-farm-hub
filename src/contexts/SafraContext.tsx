@@ -57,6 +57,7 @@ const STORAGE_SAFRA_KEY = 'sga_safra_id'
 
 export function SafraProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth()
+  const queryClient = useQueryClient()
 
   const [propriedades, setPropriedades] = useState<Propriedade[]>([])
   const [safras, setSafras] = useState<Safra[]>([])
