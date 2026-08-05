@@ -62,6 +62,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
     nivel_minimo: 0,
   });
   const [compartilhado, setCompartilhado] = useState(false);
+  const [vendavel, setVendavel] = useState(false);
 
   useEffect(() => {
     if (produto) {
@@ -72,6 +73,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
         nivel_minimo: produto.nivel_minimo || 0,
       });
       setCompartilhado(!!produto.compartilhado);
+      setVendavel(!!produto.vendavel);
     } else {
       setFormData({
         nome: '',
@@ -80,6 +82,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
         nivel_minimo: 0,
       });
       setCompartilhado(false);
+      setVendavel(false);
     }
   }, [produto]);
 
