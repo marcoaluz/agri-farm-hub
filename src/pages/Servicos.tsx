@@ -46,26 +46,20 @@ export function Servicos() {
   const { data: servicos, isLoading, error } = useQuery({
     queryKey: ['servicos', propriedadeAtual?.id],
     queryFn: async () => {
+      if (!propriedadeAtual?.id) return [];
+
       // RPC inclui serviços compartilhados entre propriedades
-      let data: any[] | null = null;
-      const rpc = await supabase.rpc('listar_servicos_usuario', {
-        p_propriedade_id: propriedadeAtual!.id,
+      const { data, error } = await supabase.rpc('listar_servicos_usuario', {
+        p_propriedade_id: propriedadeAtual.id,
       });
 
-      if (rpc.error) {
-        const fallback = await supabase
-          .from('servicos')
-          .select('*')
-          .eq('propriedade_id', propriedadeAtual!.id)
-          .eq('ativo', true)
-          .order('nome');
-        if (fallback.error) throw fallback.error;
-        data = fallback.data;
-      } else {
-        data = (rpc.data as any[]) || [];
+      if (error) {
+        console.error('Erro ao buscar serviços:', error);
+        throw error;
       }
 
-      if (!data?.length) return [];
+      const lista = ((data as any[]) || []).filter(s => s.ativo !== false);
+      if (!lista.length) return [];
 
       // Contagem de itens em query separada (evita falha de schema)
       const { data: counts } = await supabase
