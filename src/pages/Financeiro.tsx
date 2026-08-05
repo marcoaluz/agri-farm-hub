@@ -56,6 +56,17 @@ const categoriasLabel: Record<string, string> = {
   compra_animais: 'Compra de Animais', venda_animais: 'Venda de Animais', outros: 'Outros',
 }
 
+/** Transações geradas automaticamente por outros módulos NÃO podem ser editadas no Financeiro. */
+const isAutoGerada = (t: Transacao) => !!t.origem && t.origem !== 'manual'
+
+const origemLabel = (origem: string): string => {
+  if (origem.startsWith('lavoura_lancamento') || origem === 'lancamento') return 'Lançamento'
+  if (origem.startsWith('lote') || origem === 'abastecimento') return 'Estoque'
+  if (origem.startsWith('pecuaria')) return 'Pecuária'
+  if (origem.startsWith('venda_producao') || origem === 'venda_producao') return 'Venda'
+  return 'Sistema'
+}
+
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 function StatusBadge({ status }: { status: string }) {
