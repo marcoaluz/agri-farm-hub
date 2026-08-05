@@ -296,6 +296,7 @@ export function Estoque() {
                 setProdutoSelecionado(produto);
                 setDialogLotesOpen(true);
               }}
+              onVender={() => setProdutoVenda(produto)}
             />
           ))}
         </div>
