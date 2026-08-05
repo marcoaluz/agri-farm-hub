@@ -255,8 +255,11 @@ export type Database = {
         Row: {
           id: string
           servico_id: string
-          item_id: string
-          tipo_item: 'categoria_inteira' | 'produto_especifico'
+          item_id: string | null
+          tipo_item: 'produto' | 'maquina' | 'servico_simples'
+          tipo_ref: 'produto' | 'maquina' | 'servico_simples'
+          produto_id: string | null
+          maquina_id: string | null
           categoria: string | null
           obrigatorio: boolean
           quantidade_sugerida: number | null
@@ -265,8 +268,11 @@ export type Database = {
         Insert: {
           id?: string
           servico_id: string
-          item_id: string
-          tipo_item?: 'categoria_inteira' | 'produto_especifico'
+          item_id?: string | null
+          tipo_item?: 'produto' | 'maquina' | 'servico_simples'
+          tipo_ref?: 'produto' | 'maquina' | 'servico_simples'
+          produto_id?: string | null
+          maquina_id?: string | null
           categoria?: string | null
           obrigatorio?: boolean
           quantidade_sugerida?: number | null
@@ -275,8 +281,11 @@ export type Database = {
         Update: {
           id?: string
           servico_id?: string
-          item_id?: string
-          tipo_item?: 'categoria_inteira' | 'produto_especifico'
+          item_id?: string | null
+          tipo_item?: 'produto' | 'maquina' | 'servico_simples'
+          tipo_ref?: 'produto' | 'maquina' | 'servico_simples'
+          produto_id?: string | null
+          maquina_id?: string | null
           categoria?: string | null
           obrigatorio?: boolean
           quantidade_sugerida?: number | null
