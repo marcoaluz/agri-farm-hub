@@ -128,7 +128,7 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
       .then(({ data }) => {
         if (!data) return;
         setItens(data.map((si: any) => {
-          const tipoRef = si.tipo_item || si.tipo_ref;
+          const tipoRef = si.tipo_ref || (si.produto_id ? 'produto' : 'maquina');
           return {
             tipo_ref: tipoRef,
             produto_id: tipoRef === 'produto' ? (si.produto?.id || si.produto_id) : undefined,
