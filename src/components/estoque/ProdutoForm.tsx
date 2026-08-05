@@ -267,11 +267,11 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
           <p className="text-xs text-muted-foreground">Você será alertado quando o estoque ficar abaixo deste valor.</p>
         </div>
 
-        {/* Vendável */}
+        {/* Pode ser vendido */}
         <div className="flex items-center gap-2">
           <Checkbox id="vendavel" checked={vendavel} onCheckedChange={(v) => setVendavel(v === true)} />
           <Label htmlFor="vendavel" className="text-sm font-normal cursor-pointer">
-            Produto é de venda (silagem, ração, produção própria)
+            Este item pode ser vendido (ex: silagem, ração, produção própria)
           </Label>
         </div>
 
