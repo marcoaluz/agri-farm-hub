@@ -441,15 +441,21 @@ function ProdutoCard({
           </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t">
+        <div className="mt-4 pt-4 border-t flex gap-2">
           <Button
             variant="outline"
-            className="w-full"
+            className="flex-1"
             onClick={onVerLotes}
           >
             <Package className="h-4 w-4 mr-2" />
             Ver {produto.total_lotes} {produto.total_lotes === 1 ? 'Lote' : 'Lotes'} (FIFO)
           </Button>
+          {produto.vendavel && produto.saldo_atual > 0 && (
+            <Button size="sm" variant="default" onClick={onVender} className="gap-1">
+              <DollarSign className="h-3.5 w-3.5" />
+              Vender
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
