@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { LotesDialog } from '@/components/estoque/LotesDialog';
 import { EntradaEstoqueForm } from '@/components/estoque/EntradaEstoqueForm';
 import { ProdutoForm } from '@/components/estoque/ProdutoForm';
+import { VenderProdutoModal } from '@/components/estoque/VenderProdutoModal';
 
 interface ProdutoComCusto {
   id: string;
@@ -29,6 +30,7 @@ interface ProdutoComCusto {
   valor_imobilizado: number;
   total_lotes: number;
   compartilhado?: boolean;
+  vendavel?: boolean;
 }
 
 
