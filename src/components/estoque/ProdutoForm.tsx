@@ -119,8 +119,11 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['produtos'] });
-
+      if (propriedadeAtual?.id) {
+        queryClient.invalidateQueries({ queryKey: ['produtos', propriedadeAtual.id] });
+      }
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos-servico'] });
       toast.success(isEditing ? 'Produto atualizado!' : 'Produto cadastrado com sucesso!');
       onSuccess();
     },

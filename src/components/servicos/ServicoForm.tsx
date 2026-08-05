@@ -216,6 +216,8 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
     onSuccess: () => {
       toast({ title: `Serviço ${servico ? 'atualizado' : 'criado'} com sucesso` });
       queryClient.invalidateQueries({ queryKey: ['servicos'] });
+      queryClient.invalidateQueries({ queryKey: ['servicos', propriedadeId] });
+      queryClient.invalidateQueries({ queryKey: ['servicos-simples', propriedadeId] });
       onSuccess();
     },
     onError: (err: Error) => {
