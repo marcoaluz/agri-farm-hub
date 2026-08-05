@@ -185,29 +185,25 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
 
       let servicoId = servico?.id;
       if (servico?.id) {
+        // MODO EDIÇÃO — UPDATE direto
         const { error } = await supabase.from('servicos').update(payload).eq('id', servico.id);
         if (error) throw error;
         await supabase.from('servicos_itens').delete().eq('servico_id', servico.id);
       } else {
+        // MODO CRIAÇÃO — RPC com todos os campos
         const { data, error } = await supabase.rpc('criar_servico_compartilhado', {
           p_propriedade_id: propriedadeId,
           p_nome: nome.trim(),
           p_categoria: categoria,
           p_compartilhado: compartilhado,
+          p_tipo_servico: tipoServico,
+          p_custo_padrao: tipoServico === 'simples' && custoPadrao ? parseFloat(custoPadrao) : null,
+          p_unidade_medida: tipoServico === 'simples' ? unidadeMedida : null,
+          p_requer_talhao: requerTalhao,
           p_descricao: descricao.trim() || null,
-          p_preco_estimado: tipoServico === 'simples' && custoPadrao ? parseFloat(custoPadrao) : null,
         });
         if (error) throw error;
         servicoId = typeof data === 'string' ? data : (data as any)?.id;
-
-        // Completa os campos específicos do serviço
-        if (servicoId) {
-          const { error: erroUpdate } = await supabase
-            .from('servicos')
-            .update(payload)
-            .eq('id', servicoId);
-          if (erroUpdate) throw erroUpdate;
-        }
       }
 
       if (tipoServico === 'composto' && itens.length > 0) {
