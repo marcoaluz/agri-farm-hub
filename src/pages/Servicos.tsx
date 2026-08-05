@@ -65,14 +65,14 @@ export function Servicos() {
       const { data: counts } = await supabase
         .from('servicos_itens')
         .select('servico_id')
-        .in('servico_id', data.map(s => s.id));
+        .in('servico_id', lista.map(s => s.id));
 
       const countMap: Record<string, number> = {};
       (counts || []).forEach((r: any) => {
         countMap[r.servico_id] = (countMap[r.servico_id] || 0) + 1;
       });
 
-      return data
+      return lista
         .map(s => ({ ...s, total_itens: countMap[s.id] || 0 }))
         .sort((a, b) => (a.nome || '').localeCompare(b.nome || '')) as Servico[];
     },
