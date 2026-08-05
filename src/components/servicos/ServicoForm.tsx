@@ -201,7 +201,7 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
         const { error } = await supabase.from('servicos_itens').insert(
           itens.map((iv, i) => ({
             servico_id: servicoId,
-            tipo_item: iv.tipo_ref,
+            tipo_item: 'produto_especifico',
             tipo_ref: iv.tipo_ref,
             produto_id: iv.tipo_ref === 'produto' ? iv.produto_id : null,
             maquina_id: iv.tipo_ref === 'maquina' ? iv.maquina_id : null,
