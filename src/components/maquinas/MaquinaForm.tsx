@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 
@@ -20,6 +21,7 @@ interface Maquina {
   custo_hora?: number;
   ativo: boolean;
   created_at: string;
+  compartilhado?: boolean;
 }
 
 interface MaquinaFormProps {
@@ -40,6 +42,7 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
     horimetro_atual: 0,
     custo_hora: ''
   });
+  const [compartilhado, setCompartilhado] = useState(false);
 
   useEffect(() => {
     if (maquina) {
@@ -51,31 +54,39 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
         horimetro_atual: maquina.horimetro_atual,
         custo_hora: maquina.custo_hora?.toString() || ''
       });
+      setCompartilhado(!!maquina.compartilhado);
+    } else {
+      setCompartilhado(false);
     }
   }, [maquina]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
-        propriedade_id: propriedadeAtual?.id,
-        nome: formData.nome,
-        modelo: formData.modelo || null,
-        ano_fabricacao: formData.ano_fabricacao ? parseInt(formData.ano_fabricacao) : null,
-        horimetro_inicial: formData.horimetro_inicial,
-        horimetro_atual: formData.horimetro_atual,
-        custo_hora: formData.custo_hora ? parseFloat(formData.custo_hora) : null
-      };
-
       if (maquina) {
         const { error } = await supabase
           .from('maquinas')
-          .update(payload)
+          .update({
+            propriedade_id: propriedadeAtual?.id,
+            nome: formData.nome,
+            modelo: formData.modelo || null,
+            ano_fabricacao: formData.ano_fabricacao ? parseInt(formData.ano_fabricacao) : null,
+            horimetro_inicial: formData.horimetro_inicial,
+            horimetro_atual: formData.horimetro_atual,
+            custo_hora: formData.custo_hora ? parseFloat(formData.custo_hora) : null,
+            compartilhado,
+          } as any)
           .eq('id', maquina.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('maquinas')
-          .insert(payload);
+        const { error } = await supabase.rpc('criar_maquina_compartilhada' as any, {
+          p_propriedade_id: propriedadeAtual?.id,
+          p_nome: formData.nome,
+          p_modelo: formData.modelo || null,
+          p_ano_fabricacao: formData.ano_fabricacao ? parseInt(formData.ano_fabricacao) : null,
+          p_horimetro_inicial: formData.horimetro_inicial || 0,
+          p_custo_hora: formData.custo_hora ? parseFloat(formData.custo_hora) : null,
+          p_compartilhado: compartilhado,
+        });
         if (error) throw error;
       }
     },
@@ -94,6 +105,7 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
       });
     }
   });
+
 
   const isValid = formData.nome.trim().length > 0;
 
