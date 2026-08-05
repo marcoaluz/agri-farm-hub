@@ -333,17 +333,30 @@ export function Estoque() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de Venda de Produto */}
+      <Dialog open={!!produtoVenda} onOpenChange={(open) => { if (!open) setProdutoVenda(null); }}>
+        <DialogContent className="max-w-lg">
+          {produtoVenda && (
+            <VenderProdutoModal
+              produto={produtoVenda}
+              onClose={() => setProdutoVenda(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 function ProdutoCard({ 
   produto, 
-  onVerLotes 
+  onVerLotes,
+  onVender,
 }: { 
   produto: ProdutoComCusto; 
   onVerLotes: () => void;
-}) {
+  onVender: () => void;
   const getStatusEstoque = () => {
     if (produto.saldo_atual === 0) {
       return { label: 'ZERADO', color: 'bg-red-100 text-red-700 border-red-300' };
