@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { useGlobal } from '@/contexts/GlobalContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, Package } from 'lucide-react';
-import { toast } from 'sonner';
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { useGlobal } from "@/contexts/GlobalContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Loader2, Package } from "lucide-react";
+import { toast } from "sonner";
 
 interface ProdutoFormProps {
   onSuccess: () => void;
@@ -25,29 +25,29 @@ interface ProdutoFormProps {
 }
 
 const CATEGORIAS = [
-  'Fertilizante',
-  'Defensivo',
-  'Semente',
-  'Adubo',
-  'Herbicida',
-  'Fungicida',
-  'Inseticida',
-  'Combustível',
-  'Outros'
+  "Fertilizante",
+  "Defensivo",
+  "Semente",
+  "Adubo",
+  "Herbicida",
+  "Fungicida",
+  "Inseticida",
+  "Combustível",
+  "Outros",
 ];
 
 const UNIDADES = [
-  { value: 'kg', label: 'Quilograma (kg)' },
-  { value: 'ton', label: 'Tonelada (ton)' },
-  { value: 'litro', label: 'Litro (L)' },
-  { value: 'ml', label: 'Mililitro (ml)' },
-  { value: 'saca', label: 'Saca (60kg)' },
-  { value: 'hora', label: 'Hora (h)' },
-  { value: 'dia', label: 'Dia' },
-  { value: 'diaria', label: 'Diária' },
-  { value: 'ha', label: 'Hectare (ha)' },
-  { value: 'unidade', label: 'Unidade (un)' },
-  { value: 'servico', label: 'Serviço' },
+  { value: "kg", label: "Quilograma (kg)" },
+  { value: "ton", label: "Tonelada (ton)" },
+  { value: "litro", label: "Litro (L)" },
+  { value: "ml", label: "Mililitro (ml)" },
+  { value: "saca", label: "Saca (60kg)" },
+  { value: "hora", label: "Hora (h)" },
+  { value: "dia", label: "Dia" },
+  { value: "diaria", label: "Diária" },
+  { value: "ha", label: "Hectare (ha)" },
+  { value: "unidade", label: "Unidade (un)" },
+  { value: "servico", label: "Serviço" },
 ];
 
 export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
@@ -56,9 +56,9 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
   const isEditing = !!produto;
 
   const [formData, setFormData] = useState({
-    nome: '',
-    categoria: '',
-    unidade_medida: '',
+    nome: "",
+    categoria: "",
+    unidade_medida: "",
     nivel_minimo: 0,
   });
   const [compartilhado, setCompartilhado] = useState(false);
@@ -67,18 +67,18 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
   useEffect(() => {
     if (produto) {
       setFormData({
-        nome: produto.nome || '',
-        categoria: produto.categoria || '',
-        unidade_medida: produto.unidade_medida || '',
+        nome: produto.nome || "",
+        categoria: produto.categoria || "",
+        unidade_medida: produto.unidade_medida || "",
         nivel_minimo: produto.nivel_minimo || 0,
       });
       setCompartilhado(!!produto.compartilhado);
       setVendavel(!!produto.vendavel);
     } else {
       setFormData({
-        nome: '',
-        categoria: '',
-        unidade_medida: '',
+        nome: "",
+        categoria: "",
+        unidade_medida: "",
         nivel_minimo: 0,
       });
       setCompartilhado(false);
@@ -89,12 +89,12 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
   const mutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (!propriedadeAtual?.id) {
-        throw new Error('Nenhuma propriedade selecionada');
+        throw new Error("Nenhuma propriedade selecionada");
       }
 
       if (isEditing && produto) {
         const { error } = await supabase
-          .from('produtos')
+          .from("produtos")
           .update({
             nome: data.nome.trim(),
             categoria: data.categoria,
@@ -104,11 +104,11 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
             vendavel,
             ativo: true,
           } as any)
-          .eq('id', produto.id);
+          .eq("id", produto.id);
 
         if (error) throw error;
       } else {
-        const { data: novo, error } = await supabase.rpc('criar_produto_compartilhado', {
+        const { data: novo, error } = await supabase.rpc("criar_produto_compartilhado", {
           p_propriedade_id: propriedadeAtual.id,
           p_nome: data.nome.trim(),
           p_categoria: data.categoria,
@@ -120,26 +120,25 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
 
         if (error) throw error;
 
-        const novoId =
-          typeof novo === 'string' ? novo : (novo as any)?.id || (novo as any)?.produto_id;
+        const novoId = typeof novo === "string" ? novo : (novo as any)?.id || (novo as any)?.produto_id;
 
         if (novoId && (vendavel || data.nivel_minimo)) {
           await supabase
-            .from('produtos')
+            .from("produtos")
             .update({ vendavel, nivel_minimo: data.nivel_minimo } as any)
-            .eq('id', novoId);
+            .eq("id", novoId);
         }
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      queryClient.invalidateQueries({ queryKey: ["produtos"] });
       if (propriedadeAtual?.id) {
-        queryClient.invalidateQueries({ queryKey: ['produtos', propriedadeAtual.id] });
+        queryClient.invalidateQueries({ queryKey: ["produtos", propriedadeAtual.id] });
       }
-      queryClient.invalidateQueries({ queryKey: ['produtos-custos'] });
-      queryClient.invalidateQueries({ queryKey: ['produtos-servico'] });
-      queryClient.invalidateQueries({ queryKey: ['produtos-lancamento'] });
-      toast.success(isEditing ? 'Produto atualizado!' : 'Produto cadastrado com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ["produtos-custos"] });
+      queryClient.invalidateQueries({ queryKey: ["produtos-servico"] });
+      queryClient.invalidateQueries({ queryKey: ["produtos-lancamento"] });
+      toast.success(isEditing ? "Produto atualizado!" : "Produto cadastrado com sucesso!");
       onSuccess();
     },
     onError: (error: Error) => {
@@ -149,17 +148,17 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.nome.trim()) {
-      toast.error('Informe o nome do produto');
+      toast.error("Informe o nome do produto");
       return;
     }
     if (!formData.categoria) {
-      toast.error('Selecione a categoria');
+      toast.error("Selecione a categoria");
       return;
     }
     if (!formData.unidade_medida) {
-      toast.error('Selecione a unidade de medida');
+      toast.error("Selecione a unidade de medida");
       return;
     }
 
@@ -171,12 +170,10 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <Package className="h-5 w-5 text-blue-600" />
-          {isEditing ? 'Editar Produto' : 'Novo Produto'}
+          {isEditing ? "Editar Produto" : "Novo Produto"}
         </DialogTitle>
         <DialogDescription>
-          {isEditing
-            ? 'Atualize as informações do produto.'
-            : 'Cadastre um novo produto para controlar o estoque.'}
+          {isEditing ? "Atualize as informações do produto." : "Cadastre um novo produto para controlar o estoque."}
         </DialogDescription>
       </DialogHeader>
 
@@ -188,7 +185,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
             id="nome"
             placeholder="Ex: Ureia Granulada"
             value={formData.nome}
-            onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+            onChange={(e) => setFormData((prev) => ({ ...prev, nome: e.target.value }))}
             autoFocus
           />
         </div>
@@ -198,13 +195,13 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
           <Label>Categoria *</Label>
           <Select
             value={formData.categoria}
-            onValueChange={(value) => setFormData(prev => ({ ...prev, categoria: value }))}
+            onValueChange={(value) => setFormData((prev) => ({ ...prev, categoria: value }))}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecione a categoria" />
             </SelectTrigger>
             <SelectContent>
-              {CATEGORIAS.map(cat => (
+              {CATEGORIAS.map((cat) => (
                 <SelectItem key={cat} value={cat}>
                   {cat}
                 </SelectItem>
@@ -226,26 +223,22 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
             </Label>
           </div>
           {compartilhado && (
-            <p className="text-xs text-muted-foreground">
-              Este produto será disponível em todas as suas propriedades.
-            </p>
+            <p className="text-xs text-muted-foreground">Este produto será disponível em todas as suas propriedades.</p>
           )}
         </div>
-
-
 
         {/* Unidade de Medida */}
         <div className="space-y-2">
           <Label>Unidade de Medida *</Label>
           <Select
             value={formData.unidade_medida}
-            onValueChange={(value) => setFormData(prev => ({ ...prev, unidade_medida: value }))}
+            onValueChange={(value) => setFormData((prev) => ({ ...prev, unidade_medida: value }))}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecione a unidade" />
             </SelectTrigger>
             <SelectContent>
-              {UNIDADES.map(un => (
+              {UNIDADES.map((un) => (
                 <SelectItem key={un.value} value={un.value}>
                   {un.label}
                 </SelectItem>
@@ -263,35 +256,29 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
             min={0}
             step="0.01"
             placeholder="0"
-            value={formData.nivel_minimo || ''}
-            onChange={(e) => setFormData(prev => ({ 
-              ...prev, 
-              nivel_minimo: parseFloat(e.target.value) || 0 
-            }))}
+            value={formData.nivel_minimo || ""}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                nivel_minimo: parseFloat(e.target.value) || 0,
+              }))
+            }
           />
-          <p className="text-xs text-muted-foreground">
-            Você será alertado quando o estoque ficar abaixo deste valor.
-          </p>
+          <p className="text-xs text-muted-foreground">Você será alertado quando o estoque ficar abaixo deste valor.</p>
         </div>
 
         {/* Vendável */}
         <div className="flex items-center gap-2">
-          <Checkbox
-            id="vendavel"
-            checked={vendavel}
-            onCheckedChange={(v) => setVendavel(v === true)}
-          />
+          <Checkbox id="vendavel" checked={vendavel} onCheckedChange={(v) => setVendavel(v === true)} />
           <Label htmlFor="vendavel" className="text-sm font-normal cursor-pointer">
-            Produto vendável (silagem, ração, produção própria)
+            Produto é de venda (silagem, ração, produção própria)
           </Label>
         </div>
-
-
 
         <DialogFooter className="pt-4">
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {isEditing ? 'Salvar Alterações' : 'Cadastrar Produto'}
+            {isEditing ? "Salvar Alterações" : "Cadastrar Produto"}
           </Button>
         </DialogFooter>
       </form>
