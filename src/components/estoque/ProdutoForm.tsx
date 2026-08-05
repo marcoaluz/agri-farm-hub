@@ -101,13 +101,14 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
             unidade_medida: data.unidade_medida,
             nivel_minimo: data.nivel_minimo,
             compartilhado,
+            vendavel,
             ativo: true,
-          })
+          } as any)
           .eq('id', produto.id);
 
         if (error) throw error;
       } else {
-        const { error } = await supabase.rpc('criar_produto_compartilhado', {
+        const { data: novo, error } = await supabase.rpc('criar_produto_compartilhado', {
           p_propriedade_id: propriedadeAtual.id,
           p_nome: data.nome.trim(),
           p_categoria: data.categoria,
@@ -118,6 +119,16 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
         });
 
         if (error) throw error;
+
+        const novoId =
+          typeof novo === 'string' ? novo : (novo as any)?.id || (novo as any)?.produto_id;
+
+        if (novoId && (vendavel || data.nivel_minimo)) {
+          await supabase
+            .from('produtos')
+            .update({ vendavel, nivel_minimo: data.nivel_minimo } as any)
+            .eq('id', novoId);
+        }
       }
     },
     onSuccess: () => {
