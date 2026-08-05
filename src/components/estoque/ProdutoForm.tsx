@@ -92,7 +92,6 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
         const { error } = await supabase
           .from('produtos')
           .update({
-            propriedade_id: propriedadeAtual.id,
             nome: data.nome.trim(),
             categoria: data.categoria,
             unidade_medida: data.unidade_medida,

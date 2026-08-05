@@ -66,7 +66,6 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
         const { error } = await supabase
           .from('maquinas')
           .update({
-            propriedade_id: propriedadeAtual?.id,
             nome: formData.nome,
             modelo: formData.modelo || null,
             ano_fabricacao: formData.ano_fabricacao ? parseInt(formData.ano_fabricacao) : null,
@@ -95,6 +94,7 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
         title: maquina ? 'Máquina atualizada!' : 'Máquina cadastrada!',
       });
       queryClient.invalidateQueries({ queryKey: ['maquinas'] });
+      queryClient.invalidateQueries({ queryKey: ['maquinas-lancamento'] });
       onSuccess();
     },
     onError: (error: Error) => {
