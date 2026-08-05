@@ -20,6 +20,7 @@ interface ProdutoFormProps {
     unidade_medida: string;
     nivel_minimo: number;
     compartilhado?: boolean;
+    vendavel?: boolean;
   } | null;
 }
 
