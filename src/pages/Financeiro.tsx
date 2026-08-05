@@ -444,7 +444,14 @@ export function Financeiro() {
                             </Button>
                           )}
                           <div className="min-w-0">
-                            <p className="truncate max-w-[200px] font-medium">{t.descricao}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="truncate max-w-[200px] font-medium">{t.descricao}</p>
+                              {isAutoGerada(t) && (
+                                <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border shrink-0">
+                                  Auto · {origemLabel(t.origem!)}
+                                </Badge>
+                              )}
+                            </div>
                             {t.parcela_numero && <span className="text-xs text-muted-foreground">Parcela {t.parcela_numero}/{t.parcela_total}</span>}
                             <TransacaoOrigemAcoes origem={t.origem} idsComAnexo={idsComAnexo} />
                           </div>
@@ -469,12 +476,20 @@ export function Financeiro() {
                               <Check className="h-4 w-4 mr-1" /> Pagar
                             </Button>
                           )}
-                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => { setEditando(t); setFormOpen(true) }}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Excluir" onClick={() => setDeletandoId(t.id)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          {!isAutoGerada(t) ? (
+                            <>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => { setEditando(t); setFormOpen(true) }}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Excluir" onClick={() => setDeletandoId(t.id)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic pr-1">
+                              Via {origemLabel(t.origem!)}
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
