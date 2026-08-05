@@ -444,7 +444,11 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
               produtosFiltrados.length === 0 ? (
                 <Alert>
                   <Info className="h-4 w-4" />
-                  <AlertDescription>Nenhum produto disponível. Cadastre na tela de <strong>Estoque</strong>.</AlertDescription>
+                  <AlertDescription>
+                    {produtosError
+                      ? `Erro ao carregar produtos: ${(produtosError as Error).message}`
+                      : <>Nenhum produto disponível. Cadastre na tela de <strong>Estoque</strong>.</>}
+                  </AlertDescription>
                 </Alert>
               ) : (
                 <Select onValueChange={adicionarProduto} value="">
