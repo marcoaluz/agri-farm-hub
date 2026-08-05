@@ -88,9 +88,7 @@ export function AssistenteIA() {
       { data: maquinas },
       { data: sanitario },
     ] = await Promise.all([
-      supabase.from('produtos')
-        .select('nome, categoria, saldo_atual, unidade_medida, nivel_minimo')
-        .eq('propriedade_id', propId).eq('ativo', true),
+      supabase.rpc('listar_produtos_usuario' as any, { p_propriedade_id: propId }),
       supabase.from('rebanhos')
         .select('nome, especie, quantidade_atual, finalidade, localizacao')
         .eq('propriedade_id', propId).eq('ativo', true),
@@ -109,9 +107,7 @@ export function AssistenteIA() {
       supabase.from('talhoes')
         .select('nome, area_ha, cultura_atual')
         .eq('propriedade_id', propId).eq('ativo', true),
-      supabase.from('maquinas')
-        .select('nome, modelo, horimetro_atual, custo_hora')
-        .eq('propriedade_id', propId).eq('ativo', true),
+      supabase.rpc('listar_maquinas_usuario' as any, { p_propriedade_id: propId }),
       supabase.from('sanitario_eventos')
         .select('tipo, descricao, data_aplicacao, data_proxima, rebanho:rebanhos(nome)')
         .eq('propriedade_id', propId)
