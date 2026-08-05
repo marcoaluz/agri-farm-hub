@@ -145,11 +145,11 @@ export default function Agenda() {
     ;(async () => {
       const [t, s, m] = await Promise.all([
         supabase.from('talhoes').select('id,nome').eq('propriedade_id', propriedadeAtual.id).or('ativo.is.null,ativo.eq.true').order('nome'),
-        supabase.from('servicos').select('id,nome').eq('propriedade_id', propriedadeAtual.id).or('ativo.is.null,ativo.eq.true').order('nome'),
+        supabase.rpc('listar_servicos_usuario', { p_propriedade_id: propriedadeAtual.id }),
         supabase.rpc('listar_membros_propriedade' as any, { p_propriedade_id: propriedadeAtual.id }),
       ])
       setTalhoes((t.data as any) ?? [])
-      setServicos((s.data as any) ?? [])
+      setServicos((((s.data as any) ?? []) as any[]).filter(x => x.ativo !== false).sort((a, b) => (a.nome || '').localeCompare(b.nome || '')) as any)
       const ms = ((m.data as any) ?? []).map((x: any) => ({
         id: x.usuario_id ?? x.membro_id ?? x.id,
         nome: x.nome ?? x.email ?? 'Sem nome',
