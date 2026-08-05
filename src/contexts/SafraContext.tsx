@@ -7,6 +7,7 @@ import {
   ReactNode,
 } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 
 /* ------------------------------------------------------------------ */
@@ -220,6 +221,10 @@ export function SafraProvider({ children }: { children: ReactNode }) {
   const setPropriedadeSelecionada = useCallback(
     (p: Propriedade | null) => {
       setPropriedadeSelecionadaState(p)
+      // Forçar refresh dos dados compartilhados ao trocar de propriedade
+      queryClient.invalidateQueries({ queryKey: ['servicos'] })
+      queryClient.invalidateQueries({ queryKey: ['produtos'] })
+      queryClient.invalidateQueries({ queryKey: ['maquinas'] })
       if (p) {
         localStorage.setItem(STORAGE_PROP_KEY, p.id)
         // Aplicar safras do cache instantaneamente (sem fetch)

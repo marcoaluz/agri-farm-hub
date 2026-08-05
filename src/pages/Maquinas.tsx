@@ -73,20 +73,13 @@ export function Maquinas() {
   const { data: maquinas, isLoading } = useQuery({
     queryKey: ['maquinas', propId],
     queryFn: async () => {
-      const rpc = await supabase.rpc('listar_maquinas_usuario' as any, {
+      const { data, error } = await supabase.rpc('listar_maquinas_usuario' as any, {
         p_propriedade_id: propId,
       });
-      if (!rpc.error) {
-        return ((rpc.data as any[]) || []).filter((m: any) => m.ativo !== false) as Maquina[];
-      }
-      const { data, error } = await supabase
-        .from('maquinas')
-        .select('*')
-        .eq('propriedade_id', propId)
-        .eq('ativo', true)
-        .order('nome');
       if (error) throw error;
-      return data as Maquina[];
+      return ((data as any[]) || [])
+        .filter((m: any) => m.ativo !== false)
+        .sort((a: any, b: any) => (a.nome || '').localeCompare(b.nome || '')) as Maquina[];
     },
     enabled: !!propId,
   });

@@ -77,20 +77,8 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
       const { data, error } = await supabase.rpc('listar_produtos_usuario', {
         p_propriedade_id: propriedadeId!,
       })
-
-      if (!error && data) {
-        const lista = normalizar((data as any[]) || [])
-        if (lista.length > 0) return lista
-      }
-
-      // Fallback: consulta direta na propriedade atual
-      const { data: diretos, error: erroDireto } = await supabase
-        .from('produtos')
-        .select('id, nome, unidade_medida, ativo')
-        .eq('propriedade_id', propriedadeId)
-        .order('nome')
-      if (erroDireto) throw (error || erroDireto)
-      return normalizar((diretos as any[]) || [])
+      if (error) throw error
+      return normalizar((data as any[]) || [])
     },
     enabled: !!propriedadeId && tipoServico === 'composto',
   })

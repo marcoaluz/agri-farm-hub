@@ -125,14 +125,19 @@ export function LancamentoForm() {
   const { data: maquinas } = useQuery({
     queryKey: ['maquinas-lancamento', propriedadeAtual?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('maquinas')
-        .select('id, nome, custo_hora, horimetro_atual')
-        .eq('propriedade_id', propriedadeAtual?.id)
-        .eq('ativo', true)
-        .order('nome')
+      const { data, error } = await supabase.rpc('listar_maquinas_usuario' as any, {
+        p_propriedade_id: propriedadeAtual!.id,
+      })
       if (error) throw error
-      return data
+      return ((data as any[]) || [])
+        .filter(m => m.ativo !== false)
+        .map(m => ({
+          id: m.id || m.maquina_id,
+          nome: m.nome,
+          custo_hora: m.custo_hora ?? null,
+          horimetro_atual: m.horimetro_atual ?? 0,
+        }))
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
     },
     enabled: !!propriedadeAtual?.id
   })

@@ -164,12 +164,10 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
       }
 
       // Estoque abaixo do mínimo
-      const { data: prods } = await supabase
-        .from('produtos')
-        .select('saldo_atual, nivel_minimo')
-        .eq('ativo', true)
-        .not('nivel_minimo', 'is', null)
-      const baixo = (prods || []).filter(
+      const { data: prods } = await supabase.rpc('listar_produtos_usuario' as any, {
+        p_propriedade_id: propriedadeSelecionada?.id,
+      })
+      const baixo = ((prods as any[]) || []).filter((p: any) => p.ativo !== false).filter(
         (p: any) => p.nivel_minimo !== null && p.saldo_atual <= p.nivel_minimo
       ).length
       total += baixo

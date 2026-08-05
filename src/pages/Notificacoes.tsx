@@ -42,13 +42,10 @@ export default function Notificacoes() {
   const { data: estoqueBaixo, isLoading: loadEstoque } = useQuery({
     queryKey: ['notif-estoque', propriedadeAtual?.id],
     queryFn: async () => {
-      const { data: prods } = await supabase
-        .from('produtos')
-        .select('id, nome, saldo_atual, nivel_minimo, unidade_medida')
-        .eq('ativo', true)
-        .not('nivel_minimo', 'is', null)
-        .eq('propriedade_id', propriedadeAtual!.id)
-      return (prods || []).filter(
+      const { data: prods } = await supabase.rpc('listar_produtos_usuario' as any, {
+        p_propriedade_id: propriedadeAtual!.id,
+      })
+      return ((prods as any[]) || []).filter(p => p.ativo !== false).filter(
         (p: any) => p.nivel_minimo !== null && p.saldo_atual <= p.nivel_minimo
       )
     },
