@@ -449,9 +449,17 @@ export function Maquinas() {
                         <Tractor className="h-5 w-5 text-accent-foreground" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold">{maquina.nome}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-bold">{maquina.nome}</h3>
+                          {maquina.compartilhado && (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              Global
+                            </Badge>
+                          )}
+                        </div>
                         {maquina.modelo && <p className="text-sm text-muted-foreground">{maquina.modelo}</p>}
                       </div>
+
                     </div>
                     <Badge variant="default" className="bg-success">Ativo</Badge>
                   </div>
