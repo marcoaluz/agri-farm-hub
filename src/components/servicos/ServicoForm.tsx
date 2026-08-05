@@ -96,21 +96,34 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
   })
 
 
-  // Busca máquinas disponíveis para vincular
+  // Busca máquinas disponíveis para vincular (RPC inclui máquinas globais)
   const { data: maquinasDisponiveis = [] } = useQuery({
-    queryKey: ['maquinas-servico', propriedadeId],
+    queryKey: ['maquinas', propriedadeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('maquinas')
-        .select('id, nome, custo_hora')
-        .eq('propriedade_id', propriedadeId)
-        .eq('ativo', true)
-        .order('nome')
-      if (error) throw error
-      return data as { id: string; nome: string; custo_hora: number | null }[]
+      if (!propriedadeId) return []
+      const normalizar = (lista: any[]) =>
+        lista
+          .filter(m => m.ativo !== false)
+          .map(m => ({
+            id: m.id || m.maquina_id,
+            nome: m.nome,
+            custo_hora: m.custo_hora ?? null,
+          }))
+          .filter(m => !!m.id && !!m.nome)
+          .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+
+      const { data, error } = await supabase.rpc('listar_maquinas_usuario', {
+        p_propriedade_id: propriedadeId,
+      })
+      if (error) {
+        console.error('Erro ao buscar máquinas:', error)
+        return []
+      }
+      return normalizar((data as any[]) || []) as { id: string; nome: string; custo_hora: number | null }[]
     },
     enabled: !!propriedadeId && tipoServico === 'composto',
   })
+
 
   // Carrega itens ao editar — direto de servicos_itens
   useEffect(() => {
