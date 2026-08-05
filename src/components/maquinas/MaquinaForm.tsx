@@ -151,6 +151,26 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
           </div>
         </div>
 
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="compartilhado"
+              checked={compartilhado}
+              onCheckedChange={(v) => setCompartilhado(v === true)}
+            />
+            <Label htmlFor="compartilhado" className="text-sm font-normal cursor-pointer">
+              Usar em todas as propriedades
+            </Label>
+          </div>
+          {compartilhado && (
+            <p className="text-xs text-muted-foreground">
+              O horímetro desta máquina será único e compartilhado entre todas as propriedades.
+            </p>
+          )}
+        </div>
+
+
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Horímetro Inicial (h)</Label>
