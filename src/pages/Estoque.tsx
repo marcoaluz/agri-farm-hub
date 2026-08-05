@@ -357,6 +357,7 @@ function ProdutoCard({
   produto: ProdutoComCusto; 
   onVerLotes: () => void;
   onVender: () => void;
+}) {
   const getStatusEstoque = () => {
     if (produto.saldo_atual === 0) {
       return { label: 'ZERADO', color: 'bg-red-100 text-red-700 border-red-300' };
