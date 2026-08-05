@@ -55,17 +55,16 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   } = useQuery({
     queryKey: ['produtos', propriedadeAtual?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*')
-        .eq('propriedade_id', propriedadeAtual?.id)
-        // Alguns bancos deixam `ativo` como NULL mesmo com default true.
-        // Tratar NULL como ativo para não “sumir” produto do select.
-        .or('ativo.is.null,ativo.eq.true')
-        .order('nome');
+      // RPC inclui produtos compartilhados (globais) de outras propriedades
+      const { data, error } = await supabase.rpc('listar_produtos_usuario', {
+        p_propriedade_id: propriedadeAtual!.id,
+      });
 
       if (error) throw error;
-      return data as Produto[];
+      return ((data as any[]) || [])
+        // Alguns bancos deixam `ativo` como NULL mesmo com default true.
+        .filter(p => p.ativo !== false)
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '')) as Produto[];
     },
     enabled: !!propriedadeAtual?.id
   });

@@ -63,14 +63,13 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
   const { data: produtosDisponiveis = [] } = useQuery({
     queryKey: ['produtos-servico', propriedadeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('id, nome, unidade_medida')
-        .eq('propriedade_id', propriedadeId)
-        .eq('ativo', true)
-        .order('nome')
+      const { data, error } = await supabase.rpc('listar_produtos_usuario', {
+        p_propriedade_id: propriedadeId!,
+      })
       if (error) throw error
-      return data as { id: string; nome: string; unidade_medida: string }[]
+      return ((data as any[]) || [])
+        .filter(p => p.ativo !== false)
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '')) as { id: string; nome: string; unidade_medida: string }[]
     },
     enabled: !!propriedadeId && tipoServico === 'composto',
   })

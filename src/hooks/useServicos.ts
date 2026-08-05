@@ -11,9 +11,21 @@ interface Servico {
   custo_padrao?: number
   unidade_medida?: string
   requer_talhao: boolean
+  compartilhado?: boolean
   ativo: boolean
   created_at: string
   updated_at: string
+}
+
+/** Busca serviços da propriedade + serviços globais (compartilhados) via RPC */
+async function fetchServicosUsuario(propriedadeId: string) {
+  const { data, error } = await supabase.rpc('listar_servicos_usuario', {
+    p_propriedade_id: propriedadeId,
+  })
+  if (error) throw error
+  return ((data as any[]) || [])
+    .filter(s => s.ativo !== false)
+    .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
 }
 
 export function useServicos(propriedadeId?: string) {
@@ -21,16 +33,7 @@ export function useServicos(propriedadeId?: string) {
     queryKey: ['servicos', propriedadeId],
     queryFn: async () => {
       if (!propriedadeId) return []
-
-      const { data, error } = await supabase
-        .from('servicos')
-        .select('*')
-        .eq('propriedade_id', propriedadeId)
-        .eq('ativo', true)
-        .order('nome')
-
-      if (error) throw error
-      return data as Servico[]
+      return (await fetchServicosUsuario(propriedadeId)) as Servico[]
     },
     enabled: !!propriedadeId,
   })
@@ -41,17 +44,8 @@ export function useServicosSimples(propriedadeId?: string) {
     queryKey: ['servicos-simples', propriedadeId],
     queryFn: async () => {
       if (!propriedadeId) return []
-
-      const { data, error } = await supabase
-        .from('servicos')
-        .select('id, nome, custo_padrao, unidade_medida')
-        .eq('propriedade_id', propriedadeId)
-        .eq('tipo_servico', 'simples')
-        .eq('ativo', true)
-        .order('nome')
-
-      if (error) throw error
-      return data
+      const lista = await fetchServicosUsuario(propriedadeId)
+      return lista.filter(s => s.tipo_servico === 'simples')
     },
     enabled: !!propriedadeId,
   })

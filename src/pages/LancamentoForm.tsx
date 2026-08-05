@@ -94,14 +94,14 @@ export function LancamentoForm() {
     queryKey: ['servicos', propriedadeAtual?.id],
     queryFn: async () => {
       if (!propriedadeAtual?.id) return []
-      const { data, error } = await supabase
-        .from('servicos')
-        .select('*')
-        .eq('propriedade_id', propriedadeAtual.id)
-        .eq('ativo', true)
-        .order('nome')
+      // RPC inclui serviços compartilhados (globais) de outras propriedades
+      const { data, error } = await supabase.rpc('listar_servicos_usuario', {
+        p_propriedade_id: propriedadeAtual.id,
+      })
       if (error) throw error
-      return data as ServicoComTipo[]
+      return ((data as any[]) || [])
+        .filter(s => s.ativo !== false)
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '')) as ServicoComTipo[]
     },
     enabled: !!propriedadeAtual?.id
   })
@@ -111,14 +111,13 @@ export function LancamentoForm() {
   const { data: produtos } = useQuery({
     queryKey: ['produtos-lancamento', propriedadeAtual?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('id, nome, unidade_medida, saldo_atual')
-        .eq('propriedade_id', propriedadeAtual?.id)
-        .eq('ativo', true)
-        .order('nome')
+      const { data, error } = await supabase.rpc('listar_produtos_usuario', {
+        p_propriedade_id: propriedadeAtual!.id,
+      })
       if (error) throw error
-      return data
+      return ((data as any[]) || [])
+        .filter(p => p.ativo !== false)
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
     },
     enabled: !!propriedadeAtual?.id
   })
@@ -141,15 +140,13 @@ export function LancamentoForm() {
   const { data: servicosSimples } = useQuery({
     queryKey: ['servicos-simples-lancamento', propriedadeAtual?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('servicos')
-        .select('id, nome, custo_padrao, unidade_medida')
-        .eq('propriedade_id', propriedadeAtual?.id)
-        .eq('tipo_servico', 'simples')
-        .eq('ativo', true)
-        .order('nome')
+      const { data, error } = await supabase.rpc('listar_servicos_usuario', {
+        p_propriedade_id: propriedadeAtual!.id,
+      })
       if (error) throw error
-      return data
+      return ((data as any[]) || [])
+        .filter(s => s.ativo !== false && s.tipo_servico === 'simples')
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
     },
     enabled: !!propriedadeAtual?.id
   })
