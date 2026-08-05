@@ -203,10 +203,16 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
           p_descricao: descricao.trim() || null,
         });
         if (error) throw error;
-        servicoId = typeof data === 'string' ? data : (data as any)?.id;
+        const resultado: any = Array.isArray(data) ? data[0] : data;
+        servicoId =
+          typeof resultado === 'string'
+            ? resultado
+            : resultado?.servico_id || resultado?.id || null;
+        if (!servicoId) throw new Error('Não foi possível obter o ID do serviço criado');
       }
 
       if (tipoServico === 'composto' && itens.length > 0) {
+        if (!servicoId) throw new Error('Serviço sem ID: itens não foram salvos');
         const { error } = await supabase.from('servicos_itens').insert(
           itens.map((iv, i) => ({
             servico_id: servicoId,
