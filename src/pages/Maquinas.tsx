@@ -73,6 +73,12 @@ export function Maquinas() {
   const { data: maquinas, isLoading } = useQuery({
     queryKey: ['maquinas', propId],
     queryFn: async () => {
+      const rpc = await supabase.rpc('listar_maquinas_usuario' as any, {
+        p_propriedade_id: propId,
+      });
+      if (!rpc.error) {
+        return ((rpc.data as any[]) || []).filter((m: any) => m.ativo !== false) as Maquina[];
+      }
       const { data, error } = await supabase
         .from('maquinas')
         .select('*')
@@ -84,6 +90,7 @@ export function Maquinas() {
     },
     enabled: !!propId,
   });
+
 
   // Consumption analysis from view
   const { data: analiseConsumo } = useQuery({
