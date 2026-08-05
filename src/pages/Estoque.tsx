@@ -42,6 +42,7 @@ export function Estoque() {
   const [dialogLotesOpen, setDialogLotesOpen] = useState(false);
   const [dialogEntradaOpen, setDialogEntradaOpen] = useState(false);
   const [dialogProdutoOpen, setDialogProdutoOpen] = useState(false);
+  const [produtoVenda, setProdutoVenda] = useState<ProdutoComCusto | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightLoteId = searchParams.get('highlight');
   const [loteDestacado, setLoteDestacado] = useState<string | null>(null);
