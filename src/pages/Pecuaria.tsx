@@ -640,6 +640,14 @@ export default function Pecuaria() {
       <OrdenhaDialog open={ordenhaDialog} onOpenChange={setOrdenhaDialog} propriedadeId={propId} rebanhosLeite={rebanhosLeite} />
       <RacaoDialog open={racaoDialog} onOpenChange={setRacaoDialog} propriedadeId={propId || ''} safraId={safraSelecionada?.id || ''} rebanhos={rebanhos || []} />
       <PesagemDialog open={pesagemDialog} onOpenChange={setPesagemDialog} propriedadeId={propId || ''} rebanhos={rebanhos || []} />
+      {animaisRebanho && (
+        <AnimaisRebanhoDialog
+          open={!!animaisRebanho}
+          onOpenChange={o => { if (!o) setAnimaisRebanho(null) }}
+          propriedadeId={propId}
+          rebanho={animaisRebanho}
+        />
+      )}
 
       <AlertDialog open={!!deleteMovId} onOpenChange={o => { if (!o) setDeleteMovId(null) }}>
         <AlertDialogContent>
