@@ -44,18 +44,6 @@ const PIE_COLORS = [
 const fmt = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
-const formatMesLabel = (item: any) => {
-  try {
-    const dateStr = item.mes || item.month || item.periodo || ''
-    if (dateStr.includes('T') || dateStr.includes('-')) {
-      return format(new Date(dateStr), 'MMM/yy', { locale: ptBR })
-    }
-    return dateStr
-  } catch {
-    return item.mes || item.month || item.periodo || ''
-  }
-}
-
 function DashboardPecuaria({ propId, navigate }: { propId: string; navigate: (path: string) => void }) {
   const { data: resumoPecuaria } = useQuery({
     queryKey: ['dash-pecuaria', propId],
