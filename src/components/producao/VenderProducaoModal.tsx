@@ -117,8 +117,10 @@ export function VenderProducaoModal({ cultura, propriedadeId, safraId, onClose }
 
     setLoading(false)
     queryClient.invalidateQueries({ queryKey: ['producao-safra'] })
+    queryClient.invalidateQueries({ queryKey: ['colheitas-talhao'] })
     queryClient.invalidateQueries({ queryKey: ['historico-producao'] })
     queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+
 
     toast.success(
       `Venda: ${qtd} ${cultura.unidade_label} por R$ ${((data as any)?.valor_total ?? valorTotal).toFixed(2)}`

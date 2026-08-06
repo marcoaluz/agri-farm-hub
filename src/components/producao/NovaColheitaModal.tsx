@@ -22,20 +22,30 @@ interface Props {
   onClose: () => void
   propriedadeId: string
   safraId: string | null
+  talhaoIdInicial?: string | null
+  culturaIdInicial?: string | null
 }
 
 const hoje = () => new Date().toISOString().slice(0, 10)
 
-export function NovaColheitaModal({ open, onClose, propriedadeId, safraId }: Props) {
+export function NovaColheitaModal({
+  open,
+  onClose,
+  propriedadeId,
+  safraId,
+  talhaoIdInicial,
+  culturaIdInicial,
+}: Props) {
   const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
 
-  const [culturaId, setCulturaId] = useState('')
-  const [talhaoId, setTalhaoId] = useState('')
+  const [culturaId, setCulturaId] = useState(culturaIdInicial || '')
+  const [talhaoId, setTalhaoId] = useState(talhaoIdInicial || '')
   const [dataColheita, setDataColheita] = useState(hoje())
   const [areaColhida, setAreaColhida] = useState('')
   const [quantidade, setQuantidade] = useState('')
   const [observacoes, setObservacoes] = useState('')
+
 
   const { data: culturas } = useQuery({
     queryKey: ['culturas-config'],
@@ -97,7 +107,9 @@ export function NovaColheitaModal({ open, onClose, propriedadeId, safraId }: Pro
     }
 
     queryClient.invalidateQueries({ queryKey: ['producao-safra'] })
+    queryClient.invalidateQueries({ queryKey: ['colheitas-talhao'] })
     queryClient.invalidateQueries({ queryKey: ['historico-producao'] })
+
     toast.success(
       (data as any)?.total_safra
         ? `Colheita registrada: ${(data as any).total_safra} no total da safra`
