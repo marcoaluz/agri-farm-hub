@@ -195,25 +195,13 @@ export function Talhoes() {
           </DialogHeader>
 
           {detalheTalhao && (
-            <Tabs defaultValue="dados" className="w-full">
-              <TabsList className="w-full">
-                <TabsTrigger value="dados" className="flex-1">Dados Gerais</TabsTrigger>
-                <TabsTrigger value="culturas" className="flex-1">Culturas & Produção</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="dados">
-                <TalhaoForm
-                  talhao={detalheTalhao}
-                  propriedadeId={propriedadeAtual.id}
-                  onSuccess={() => setDetalheTalhao(null)}
-                />
-              </TabsContent>
-
-              <TabsContent value="culturas">
-                <CulturasProducao talhao={detalheTalhao} />
-              </TabsContent>
-            </Tabs>
+            <TalhaoForm
+              talhao={detalheTalhao}
+              propriedadeId={propriedadeAtual.id}
+              onSuccess={() => setDetalheTalhao(null)}
+            />
           )}
+
         </DialogContent>
       </Dialog>
     </div>
