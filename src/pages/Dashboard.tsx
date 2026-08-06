@@ -5,7 +5,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { PizzaCategoria } from '@/components/charts/PizzaCategoria'
 import {
