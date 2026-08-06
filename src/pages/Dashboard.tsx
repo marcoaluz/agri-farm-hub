@@ -360,19 +360,10 @@ export default function Dashboard() {
     : []
 
   // ── Render data (mode-aware) ──
-  const dadosMesRender = isConsolidado ? custosMesConsolidado : custosMes
   const dadosCatRender = isConsolidado ? custosCategConsolidado : custosCategoria
-  const isLoadingMesRender = isConsolidado ? loadMesConsolidado : loadMes
   const isLoadingCatRender = isConsolidado ? loadCatConsolidado : loadCat
   const ultimosLancRender = isConsolidado ? (lancConsolidado || []) : ultimosLanc
   const isLoadingLancRender = isConsolidado ? loadLancConsolidado : loadLanc
-
-  const dadosMesFormatted = useMemo(() => {
-    return (dadosMesRender || []).map((item: any) => ({
-      ...item,
-      mesLabel: formatMesLabel(item),
-    }))
-  }, [dadosMesRender])
 
   const totalCategoria = useMemo(() => {
     return (dadosCatRender || []).reduce((s: number, c: any) => s + Number(c.custo_total || 0), 0)
