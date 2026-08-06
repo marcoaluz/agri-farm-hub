@@ -536,23 +536,38 @@ export default function Dashboard() {
 
           {/* Charts */}
           <div className="grid gap-6 lg:grid-cols-3">
-            <ChartCard title="Investimento por Mês" description="Custos por mês" className="lg:col-span-2">
-              {isLoadingMesRender ? (
-                <Skeleton className="h-[280px] rounded-lg" />
-              ) : (
-                <div className="h-[280px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dadosMesFormatted}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="mesLabel" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} interval={0} stroke="hsl(var(--muted-foreground))" />
-                      <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(value: number) => [fmt(value), 'Custo']} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                      <Bar dataKey="custo_total" name="Custo" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </ChartCard>
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Investimento por Mês</CardTitle>
+                <p className="text-sm text-muted-foreground">Despesas e receitas por mês</p>
+              </CardHeader>
+              <CardContent>
+                {loadMes ? (
+                  <Skeleton className="h-[300px] rounded-lg" />
+                ) : custosMes && custosMes.length > 0 ? (
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={custosMes}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="mes_label" />
+                        <YAxis tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip
+                          formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '']}
+                          labelFormatter={(label) => label}
+                        />
+                        <Legend />
+                        <Bar dataKey="despesas" name="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="receitas" name="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhuma movimentação financeira nesta safra
+                  </p>
+                )}
+              </CardContent>
+            </Card>
 
             <CardClima />
 
