@@ -107,7 +107,9 @@ export function NovaColheitaModal({
     }
 
     queryClient.invalidateQueries({ queryKey: ['producao-safra'] })
+    queryClient.invalidateQueries({ queryKey: ['colheitas-talhao'] })
     queryClient.invalidateQueries({ queryKey: ['historico-producao'] })
+
     toast.success(
       (data as any)?.total_safra
         ? `Colheita registrada: ${(data as any).total_safra} no total da safra`
