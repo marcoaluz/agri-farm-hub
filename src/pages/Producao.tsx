@@ -56,7 +56,9 @@ export default function Producao() {
   const abrirHistoricoTalhao = (talhao: any) => {
     setCulturaHistorico({
       cultura_id: talhao.cultura_id,
-      cultura_nome: `${talhao.cultura_nome} — ${talhao.talhao_nome}`,
+      cultura_nome: talhao.cultura_nome,
+      talhao_id: talhao.talhao_id,
+      talhao_nome: talhao.talhao_nome,
     })
   }
 
@@ -314,6 +316,8 @@ export default function Producao() {
           cultura={{
             cultura_id: culturaHistorico.cultura_id,
             cultura_nome: culturaHistorico.cultura_nome,
+            talhao_id: culturaHistorico.talhao_id ?? null,
+            talhao_nome: culturaHistorico.talhao_nome ?? null,
           }}
           propriedadeId={propriedadeAtual.id}
           onClose={() => setCulturaHistorico(null)}

@@ -12,18 +12,24 @@ import {
 import { ArrowDownToLine, ArrowUpFromLine } from 'lucide-react'
 
 interface Props {
-  cultura: { cultura_id: string; cultura_nome: string }
+  cultura: {
+    cultura_id: string
+    cultura_nome: string
+    talhao_id?: string | null
+    talhao_nome?: string | null
+  }
   propriedadeId: string
   onClose: () => void
 }
 
 export function HistoricoProducaoModal({ cultura, propriedadeId, onClose }: Props) {
   const { data: historico, isLoading } = useQuery({
-    queryKey: ['historico-producao', propriedadeId, cultura.cultura_id],
+    queryKey: ['historico-producao', propriedadeId, cultura.cultura_id, cultura.talhao_id ?? null],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_historico_producao' as any, {
         p_propriedade_id: propriedadeId,
         p_cultura_id: cultura.cultura_id,
+        p_talhao_id: cultura.talhao_id || null,
       } as any)
       if (error) throw error
       return (data || []) as any[]
@@ -35,8 +41,15 @@ export function HistoricoProducaoModal({ cultura, propriedadeId, onClose }: Prop
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Histórico — {cultura.cultura_nome}</DialogTitle>
-          <DialogDescription>Colheitas e vendas registradas para esta cultura.</DialogDescription>
+          <DialogTitle>
+            Histórico — {cultura.cultura_nome}
+            {cultura.talhao_nome && ` — ${cultura.talhao_nome}`}
+          </DialogTitle>
+          <DialogDescription>
+            {cultura.talhao_id
+              ? 'Colheitas registradas neste talhão.'
+              : 'Colheitas e vendas registradas para esta cultura.'}
+          </DialogDescription>
         </DialogHeader>
 
         {isLoading && (
