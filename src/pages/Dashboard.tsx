@@ -32,7 +32,7 @@ import { EstoqueProducaoTabela } from '@/components/dashboard/EstoqueProducaoTab
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 
 const PIE_COLORS = [
