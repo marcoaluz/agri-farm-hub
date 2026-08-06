@@ -206,26 +206,6 @@ export default function Dashboard() {
   }, [consolidadoV2])
 
   // ── LEGACY QUERIES (charts, recent entries, etc.) ──
-  const { data: custosMesConsolidado, isLoading: loadMesConsolidado } = useQuery({
-    queryKey: ['dash-custos-mes-consolidado'],
-    queryFn: async () => {
-      const { data: props } = await (supabase as any).from('propriedades').select('id').eq('ativo', true)
-      if (!props?.length) return []
-      const results = await Promise.all(
-        props.map((p: any) => (supabase as any).rpc('get_custos_por_mes', { p_propriedade_id: p.id, p_safra_id: null }))
-      )
-      const mesMap = new Map<string, number>()
-      results.forEach((r: any) => {
-        (r.data || []).forEach((item: any) => {
-          const key = item.mes || item.month || item.periodo || ''
-          mesMap.set(key, (mesMap.get(key) || 0) + Number(item.custo_total || 0))
-        })
-      })
-      return Array.from(mesMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([mes, custo_total]) => ({ mes, custo_total }))
-    },
-    enabled: isConsolidado,
-  })
-
   const { data: custosCategConsolidado, isLoading: loadCatConsolidado } = useQuery({
     queryKey: ['dash-categ-consolidado'],
     queryFn: async () => {
