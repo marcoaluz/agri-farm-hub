@@ -119,6 +119,8 @@ export function AppRoutes() {
         <Route path="talhoes" element={<Talhoes />} />
         <Route path="mapa" element={<MapaPropriedade />} />
         <Route path="estoque" element={<Estoque />} />
+        <Route path="producao" element={<Producao />} />
+
         
         <Route path="servicos" element={<Servicos />} />
         <Route path="lancamentos" element={<Lancamentos />} />
