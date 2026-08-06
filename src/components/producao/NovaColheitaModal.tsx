@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
@@ -60,7 +60,7 @@ export function NovaColheitaModal({
   })
 
   const { data: talhoes } = useQuery({
-    queryKey: ['talhoes-producao', propriedadeId],
+    queryKey: ['talhoes-select', propriedadeId],
     queryFn: async () => {
       const { data } = await supabase
         .from('talhoes' as any)
@@ -72,6 +72,13 @@ export function NovaColheitaModal({
     },
     enabled: !!propriedadeId,
   })
+
+  const prePreenchido = !!(talhaoIdInicial && culturaIdInicial)
+
+  useEffect(() => {
+    if (culturaIdInicial) setCulturaId(culturaIdInicial)
+    if (talhaoIdInicial) setTalhaoId(talhaoIdInicial)
+  }, [culturaIdInicial, talhaoIdInicial])
 
   const culturaSel = culturas?.find((c) => c.id === culturaId)
   const labelQuantidade = culturaSel?.unidade_label
@@ -108,6 +115,7 @@ export function NovaColheitaModal({
 
     queryClient.invalidateQueries({ queryKey: ['producao-safra'] })
     queryClient.invalidateQueries({ queryKey: ['colheitas-talhao'] })
+    queryClient.invalidateQueries({ queryKey: ['talhoes-producao'] })
     queryClient.invalidateQueries({ queryKey: ['historico-producao'] })
 
     toast.success(
@@ -129,7 +137,7 @@ export function NovaColheitaModal({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Cultura *</Label>
-            <Select value={culturaId} onValueChange={setCulturaId}>
+            <Select value={culturaId} onValueChange={setCulturaId} disabled={prePreenchido}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione a cultura" />
               </SelectTrigger>
@@ -145,7 +153,7 @@ export function NovaColheitaModal({
 
           <div className="space-y-2">
             <Label>Talhão *</Label>
-            <Select value={talhaoId} onValueChange={setTalhaoId}>
+            <Select value={talhaoId} onValueChange={setTalhaoId} disabled={prePreenchido}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o talhão" />
               </SelectTrigger>

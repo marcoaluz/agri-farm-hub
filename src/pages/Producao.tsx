@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
@@ -35,70 +35,29 @@ export default function Producao() {
 
   const culturas: any[] = producaoData?.culturas || []
 
-  // Colheitas detalhadas (por talhão)
-  const { data: colheitas, isLoading: loadColheitas } = useQuery({
-    queryKey: ['colheitas-talhao', propriedadeAtual?.id, safraAtual?.id],
+  const { data: talhoes, isLoading: loadTalhoes } = useQuery({
+    queryKey: ['talhoes-producao', propriedadeAtual?.id, safraAtual?.id],
     queryFn: async () => {
-      const select = `
-        id, data_colheita, quantidade, area_colhida, observacoes,
-        talhao:talhoes(id, nome, area_ha),
-        cultura:culturas_config(id, nome_exibicao, unidade_label, icone)
-      `
-      const base = await (supabase as any)
-        .from('colheitas')
-        .select(select)
-        .eq('propriedade_id', propriedadeAtual!.id)
-        .eq('safra_id', safraAtual!.id)
-        .order('data_colheita', { ascending: false })
-
-      if (!base.error) return (base.data || []) as any[]
-
-      // Fallback: base legada em "producoes"
-      const alt = await (supabase as any)
-        .from('producoes')
-        .select(`
-          id, data_colheita, quantidade_colhida, area_colhida, observacoes,
-          talhao:talhoes(id, nome, area_ha),
-          cultura:culturas_config(id, nome_exibicao, unidade_label, icone)
-        `)
-        .eq('propriedade_id', propriedadeAtual!.id)
-        .eq('safra_id', safraAtual!.id)
-        .order('data_colheita', { ascending: false })
-      if (alt.error) throw alt.error
-      return (alt.data || []).map((r: any) => ({ ...r, quantidade: r.quantidade_colhida })) as any[]
+      const { data, error } = await supabase.rpc('get_talhoes_producao' as any, {
+        p_propriedade_id: propriedadeAtual!.id,
+        p_safra_id: safraAtual?.id || null,
+      } as any)
+      if (error) throw error
+      return (data || []) as any[]
     },
-    enabled: !!propriedadeAtual?.id && !!safraAtual?.id,
+    enabled: !!propriedadeAtual?.id,
   })
 
-  const talhoes = useMemo(() => {
-    if (!colheitas) return []
-    const map = new Map<string, any>()
-    colheitas.forEach((c: any) => {
-      const key = c.talhao?.id || 'sem-talhao'
-      if (!map.has(key)) {
-        map.set(key, {
-          talhao_id: c.talhao?.id || null,
-          talhao_nome: c.talhao?.nome || 'Sem talhão',
-          area_ha: Number(c.talhao?.area_ha || 0),
-          cultura_id: c.cultura?.id,
-          cultura_nome: c.cultura?.nome_exibicao,
-          unidade_label: c.cultura?.unidade_label || 'un',
-          colheitas: [],
-          total_colhido: 0,
-          area_colhida: 0,
-        })
-      }
-      const entry = map.get(key)
-      entry.colheitas.push(c)
-      entry.total_colhido += Number(c.quantidade || 0)
-      entry.area_colhida += Number(c.area_colhida || 0)
-    })
-    return Array.from(map.values())
-  }, [colheitas])
-
-  const abrirDetalhesTalhao = (talhao: any) => {
+  const abrirColheitaTalhao = (talhao: any) => {
     setTalhaoSelecionado(talhao)
     setShowNovaColheita(true)
+  }
+
+  const abrirHistoricoTalhao = (talhao: any) => {
+    setCulturaHistorico({
+      cultura_id: talhao.cultura_id,
+      cultura_nome: `${talhao.cultura_nome} — ${talhao.talhao_nome}`,
+    })
   }
 
   const fecharColheita = () => {
@@ -201,60 +160,127 @@ export default function Producao() {
       })}
 
       {/* Cards por talhão */}
-      {loadColheitas ? (
+      {loadTalhoes ? (
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Skeleton className="h-40 w-full" />
-          <Skeleton className="h-40 w-full" />
-          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-52 w-full" />
+          <Skeleton className="h-52 w-full" />
+          <Skeleton className="h-52 w-full" />
         </div>
-      ) : talhoes.length > 0 ? (
+      ) : talhoes && talhoes.length > 0 ? (
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {talhoes.map((talhao: any) => (
-            <Card
-              key={talhao.talhao_id || 'sem-talhao'}
-              className="cursor-pointer transition-shadow hover:shadow-md"
-              onClick={() => abrirDetalhesTalhao(talhao)}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-base">{talhao.talhao_nome}</CardTitle>
-                  {talhao.cultura_nome && <Badge variant="outline">{talhao.cultura_nome}</Badge>}
-                </div>
-                {talhao.area_ha > 0 && (
-                  <p className="text-xs text-muted-foreground">{talhao.area_ha} ha</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Colhido</p>
-                    <p className="text-lg font-bold text-green-700">{fmtNum(talhao.total_colhido)}</p>
-                    <p className="text-xs text-muted-foreground">{talhao.unidade_label}</p>
+          {talhoes.map((talhao: any) => {
+            const colhido = Number(talhao.colhido_safra) || 0
+            const estimativa = Number(talhao.estimativa_colheita) || 0
+            const anterior = Number(talhao.colhido_safra_anterior) || 0
+            return (
+              <Card key={talhao.talhao_id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-base">{talhao.talhao_nome}</CardTitle>
+                    {talhao.cultura_nome && <Badge variant="outline">{talhao.cultura_nome}</Badge>}
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Área colhida</p>
-                    <p className="text-lg font-bold">{talhao.area_colhida} ha</p>
+                </CardHeader>
+                <CardContent>
+                  {/* Info do talhão */}
+                  <div className="mb-3 grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <span className="text-xs text-muted-foreground">Área</span>
+                      <p className="font-semibold">{talhao.area_ha} ha</p>
+                    </div>
+                    {Number(talhao.quantidade_pes) > 0 && (
+                      <div>
+                        <span className="text-xs text-muted-foreground">
+                          {String(talhao.cultura_nome || '').toLowerCase().includes('caf') ? 'Pés' : 'Plantas'}
+                        </span>
+                        <p className="font-semibold">{fmtNum(talhao.quantidade_pes)}</p>
+                      </div>
+                    )}
+                    {estimativa > 0 && (
+                      <div>
+                        <span className="text-xs text-muted-foreground">Estimativa</span>
+                        <p className="font-semibold">
+                          {fmtNum(estimativa)} {talhao.unidade_label}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                </div>
-                {talhao.area_colhida > 0 && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Produtividade: {(talhao.total_colhido / talhao.area_colhida).toFixed(1)}{' '}
-                    {talhao.unidade_label}/ha
-                  </p>
-                )}
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {talhao.colheitas.length} colheita(s)
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+
+                  {/* Produção da safra */}
+                  <div className="mb-3 rounded-lg bg-muted/30 p-3">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-xs font-medium">Colhido na safra</span>
+                      <span className="font-bold text-green-700">
+                        {fmtNum(colhido)} {talhao.unidade_label}
+                      </span>
+                    </div>
+
+                    {estimativa > 0 && (
+                      <div>
+                        <div className="mb-1 h-2 w-full rounded-full bg-muted">
+                          <div
+                            className="h-2 rounded-full bg-green-600 transition-all"
+                            style={{ width: `${Math.min((colhido / estimativa) * 100, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {((colhido / estimativa) * 100).toFixed(0)}% da estimativa
+                        </span>
+                      </div>
+                    )}
+
+                    {anterior > 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Safra anterior: {fmtNum(anterior)} {talhao.unidade_label}
+                        {colhido > 0 && (
+                          <span className={colhido >= anterior ? 'text-green-600' : 'text-red-600'}>
+                            {' '}({colhido >= anterior ? '↑' : '↓'}
+                            {Math.abs((colhido / anterior - 1) * 100).toFixed(0)}%)
+                          </span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Botões */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 gap-1"
+                      onClick={() => abrirColheitaTalhao(talhao)}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Colheita
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="gap-1"
+                      onClick={() => abrirHistoricoTalhao(talhao)}
+                    >
+                      <History className="h-3.5 w-3.5" />
+                      Histórico
+                    </Button>
+                  </div>
+
+                  {talhao.variedade && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Variedade: {talhao.variedade}
+                      {talhao.ano_plantio && ` • Plantio: ${talhao.ano_plantio}`}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       ) : (
         <Card className="mt-6 py-12 text-center">
           <Sprout className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-          <h3 className="text-lg font-semibold">Nenhuma colheita registrada</h3>
-          <p className="mb-4 text-muted-foreground">Registre a primeira colheita desta safra</p>
-          <Button onClick={() => setShowNovaColheita(true)}>Registrar Primeira Colheita</Button>
+          <h3 className="text-lg font-semibold">Nenhum talhão com cultura cadastrada</h3>
+          <p className="mb-4 text-muted-foreground">
+            Cadastre a cultura nos talhões para acompanhar a produção
+          </p>
         </Card>
       )}
 
