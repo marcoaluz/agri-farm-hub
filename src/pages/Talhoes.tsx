@@ -12,11 +12,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Plus, Edit, Trash2, Maximize2, AlertCircle, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TalhaoForm } from "@/components/talhoes/TalhaoForm";
-import { CulturasProducao } from "@/components/talhoes/CulturasProducao";
 
 interface Talhao {
   id: string;
