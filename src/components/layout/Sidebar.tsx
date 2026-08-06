@@ -27,6 +27,7 @@ import {
   UserPlus,
   Bell,
   Contact,
+  Sprout,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -50,6 +51,7 @@ const routes = [
   { label: 'Talhões',       icon: MapPin,          href: '/talhoes',      modulo: 'lavoura' as const },
   { label: 'Mapa',          icon: MapPin,          href: '/mapa',         modulo: 'lavoura' as const },
   { label: 'Estoque',       icon: Package,         href: '/estoque',      sempre: true },
+  { label: 'Produção',      icon: Sprout,          href: '/producao',     sempre: true },
   { label: 'Serviços',      icon: Wheat,           href: '/servicos',     sempre: true },
   { label: 'Lançamentos',   icon: ClipboardList,   href: '/lancamentos',  sempre: true },
   { label: 'Calendário',    icon: CalendarDays,    href: '/calendario',   sempre: true },
