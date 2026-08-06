@@ -6,14 +6,19 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapaDesenho, DrawResult, parseGeometria } from "./MapaDesenho";
-
 
 interface Talhao {
   id: string;
   nome: string;
   area_ha: number;
   cultura_atual?: string;
+  cultura_id?: string | null;
+  quantidade_pes?: number | null;
+  estimativa_colheita?: number | null;
+  ano_plantio?: number | null;
+  variedade?: string | null;
   propriedade_id: string;
   ativo: boolean;
   created_at: string;
@@ -28,17 +33,25 @@ interface TalhaoFormProps {
   onSuccess: () => void;
 }
 
+/** Label da quantidade de plantas conforme a cultura */
+function labelQuantidadePes(nome?: string) {
+  const n = (nome || "").toLowerCase();
+  if (n.includes("café") || n.includes("cafe")) return "Pés de café";
+  return "Plantas";
+}
+
 export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
 
-
-  const [formData, setFormData] = useState({
-    nome: talhao?.nome || "",
-    area_ha: talhao?.area_ha || 0,
-    cultura_atual: talhao?.cultura_atual || "",
-  });
+  const [nome, setNome] = useState(talhao?.nome || "");
+  const [areaHa, setAreaHa] = useState(talhao?.area_ha ? String(talhao.area_ha) : "");
+  const [culturaId, setCulturaId] = useState(talhao?.cultura_id || "");
+  const [quantidadePes, setQuantidadePes] = useState(talhao?.quantidade_pes?.toString() || "");
+  const [estimativa, setEstimativa] = useState(talhao?.estimativa_colheita?.toString() || "");
+  const [anoPlantio, setAnoPlantio] = useState(talhao?.ano_plantio?.toString() || "");
+  const [variedade, setVariedade] = useState(talhao?.variedade || "");
 
   const [geo, setGeo] = useState<{
     geometria: GeoJSON.Polygon | null;
@@ -51,6 +64,20 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { data: culturas } = useQuery({
+    queryKey: ["culturas-config"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("culturas_config" as any)
+        .select("*")
+        .eq("ativo", true)
+        .order("nome_exibicao");
+      return (data || []) as any[];
+    },
+  });
+
+  const culturaSel = culturas?.find((c) => c.id === culturaId);
 
   const { data: propriedade } = useQuery({
     queryKey: ["propriedade-coords", propriedadeId],
@@ -79,13 +106,14 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
       return;
     }
     setGeo({ geometria: r.geometria, centro_lat: r.centro_lat, centro_lng: r.centro_lng });
-    setFormData((prev) => ({ ...prev, area_ha: r.area_ha }));
+    setAreaHa(String(r.area_ha));
   };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.nome.trim()) newErrors.nome = "Nome é obrigatório";
-    if (formData.area_ha <= 0) newErrors.area_ha = "Área deve ser maior que zero";
+    if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
+    if (!areaHa || parseFloat(areaHa) <= 0) newErrors.area_ha = "Área deve ser maior que zero";
+    if (!culturaId) newErrors.cultura_id = "Selecione a cultura";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -93,7 +121,14 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
   const mutation = useMutation({
     mutationFn: async () => {
       const payload: any = {
-        ...formData,
+        nome: nome.trim(),
+        area_ha: parseFloat(areaHa),
+        cultura_id: culturaId,
+        cultura_atual: culturaSel?.nome_exibicao || null,
+        quantidade_pes: quantidadePes ? parseInt(quantidadePes) : 0,
+        estimativa_colheita: estimativa ? parseFloat(estimativa) : 0,
+        ano_plantio: anoPlantio ? parseInt(anoPlantio) : null,
+        variedade: variedade || null,
         geometria: geo.geometria,
         centro_lat: geo.centro_lat,
         centro_lng: geo.centro_lng,
@@ -113,6 +148,7 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
     onSuccess: () => {
       toast({ title: `Talhão ${talhao ? "atualizado" : "criado"} com sucesso` });
       queryClient.invalidateQueries({ queryKey: ["talhoes"] });
+      queryClient.invalidateQueries({ queryKey: ["talhoes-producao"] });
       queryClient.invalidateQueries({ queryKey: ["mapa-talhoes"] });
       queryClient.invalidateQueries({ queryKey: ["mapa-propriedade"] });
       queryClient.invalidateQueries({ queryKey: ["talhoes-com-geometria"] });
@@ -132,8 +168,8 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
       <div>
         <Label>Nome do Talhão *</Label>
         <Input
-          value={formData.nome}
-          onChange={(e) => setFormData((prev) => ({ ...prev, nome: e.target.value }))}
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
           placeholder="Ex: Talhão 01, Área Norte, etc."
           className={errors.nome ? "border-destructive" : ""}
         />
@@ -152,7 +188,6 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
           onChange={handleDraw}
           height={isMobile ? 420 : 340}
         />
-
       </div>
 
       <div>
@@ -161,8 +196,8 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
           type="number"
           step="0.01"
           min="0"
-          value={formData.area_ha || ""}
-          onChange={(e) => setFormData((prev) => ({ ...prev, area_ha: parseFloat(e.target.value) || 0 }))}
+          value={areaHa}
+          onChange={(e) => setAreaHa(e.target.value)}
           placeholder="0.00"
           className={errors.area_ha ? "border-destructive" : ""}
         />
@@ -170,12 +205,70 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
       </div>
 
       <div>
-        <Label>Cultura Atual</Label>
-        <Input
-          value={formData.cultura_atual}
-          onChange={(e) => setFormData((prev) => ({ ...prev, cultura_atual: e.target.value }))}
-          placeholder="Ex: Soja, Milho, Algodão..."
-        />
+        <Label>Cultura *</Label>
+        <Select value={culturaId} onValueChange={setCulturaId}>
+          <SelectTrigger className={errors.cultura_id ? "border-destructive" : ""}>
+            <SelectValue placeholder="Selecione a cultura" />
+          </SelectTrigger>
+          <SelectContent>
+            {culturas?.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.nome_exibicao}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {errors.cultura_id && <p className="text-sm text-destructive mt-1">{errors.cultura_id}</p>}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <Label>{labelQuantidadePes(culturaSel?.nome_exibicao)}</Label>
+          <Input
+            type="number"
+            min="0"
+            step="1"
+            value={quantidadePes}
+            onChange={(e) => setQuantidadePes(e.target.value)}
+            placeholder="Opcional"
+          />
+        </div>
+
+        <div>
+          <Label>
+            Estimativa de colheita{culturaSel?.unidade_label ? ` (${culturaSel.unidade_label})` : ""}
+          </Label>
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            value={estimativa}
+            onChange={(e) => setEstimativa(e.target.value)}
+            placeholder="Opcional"
+          />
+        </div>
+
+        <div>
+          <Label>Ano de plantio</Label>
+          <Input
+            type="number"
+            min="1900"
+            max="2100"
+            step="1"
+            value={anoPlantio}
+            onChange={(e) => setAnoPlantio(e.target.value)}
+            placeholder="Ex: 2020"
+          />
+        </div>
+
+        <div>
+          <Label>Variedade</Label>
+          <Input
+            value={variedade}
+            onChange={(e) => setVariedade(e.target.value)}
+            placeholder="Ex: Catuaí Vermelho, Mundo Novo"
+          />
+        </div>
       </div>
 
       <div className="sticky bottom-0 z-10 -mb-2 mt-2 flex justify-end gap-2 border-t bg-background py-3">
