@@ -16,6 +16,7 @@ import { Propriedades } from '@/pages/Propriedades'
 import { SafrasPage } from '@/pages/Safras'
 import { Talhoes } from '@/pages/Talhoes'
 import { Estoque } from '@/pages/Estoque'
+import Producao from '@/pages/Producao'
 
 import { Servicos } from '@/pages/Servicos'
 import { Lancamentos } from '@/pages/Lancamentos'
