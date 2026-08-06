@@ -5,7 +5,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { PizzaCategoria } from '@/components/charts/PizzaCategoria'
 import {
@@ -32,7 +32,7 @@ import { EstoqueProducaoTabela } from '@/components/dashboard/EstoqueProducaoTab
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 
 const PIE_COLORS = [
@@ -43,18 +43,6 @@ const PIE_COLORS = [
 
 const fmt = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-
-const formatMesLabel = (item: any) => {
-  try {
-    const dateStr = item.mes || item.month || item.periodo || ''
-    if (dateStr.includes('T') || dateStr.includes('-')) {
-      return format(new Date(dateStr), 'MMM/yy', { locale: ptBR })
-    }
-    return dateStr
-  } catch {
-    return item.mes || item.month || item.periodo || ''
-  }
-}
 
 function DashboardPecuaria({ propId, navigate }: { propId: string; navigate: (path: string) => void }) {
   const { data: resumoPecuaria } = useQuery({
@@ -218,26 +206,6 @@ export default function Dashboard() {
   }, [consolidadoV2])
 
   // ── LEGACY QUERIES (charts, recent entries, etc.) ──
-  const { data: custosMesConsolidado, isLoading: loadMesConsolidado } = useQuery({
-    queryKey: ['dash-custos-mes-consolidado'],
-    queryFn: async () => {
-      const { data: props } = await (supabase as any).from('propriedades').select('id').eq('ativo', true)
-      if (!props?.length) return []
-      const results = await Promise.all(
-        props.map((p: any) => (supabase as any).rpc('get_custos_por_mes', { p_propriedade_id: p.id, p_safra_id: null }))
-      )
-      const mesMap = new Map<string, number>()
-      results.forEach((r: any) => {
-        (r.data || []).forEach((item: any) => {
-          const key = item.mes || item.month || item.periodo || ''
-          mesMap.set(key, (mesMap.get(key) || 0) + Number(item.custo_total || 0))
-        })
-      })
-      return Array.from(mesMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([mes, custo_total]) => ({ mes, custo_total }))
-    },
-    enabled: isConsolidado,
-  })
-
   const { data: custosCategConsolidado, isLoading: loadCatConsolidado } = useQuery({
     queryKey: ['dash-categ-consolidado'],
     queryFn: async () => {
@@ -304,15 +272,16 @@ export default function Dashboard() {
   })
 
   const { data: custosMes, isLoading: loadMes } = useQuery({
-    queryKey: ['dash-custos-mes', propId, safraId],
+    queryKey: ['custos-mes', propriedadeAtual?.id, safraAtual?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc('get_custos_por_mes', {
-        p_propriedade_id: propId, p_safra_id: safraId,
+        p_propriedade_id: propriedadeAtual?.id,
+        p_safra_id: safraAtual?.id || null,
       })
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: enabledFiltered,
+    enabled: !!propriedadeAtual?.id,
   })
 
   const { data: custosCategoria, isLoading: loadCat } = useQuery({
@@ -371,19 +340,10 @@ export default function Dashboard() {
     : []
 
   // ── Render data (mode-aware) ──
-  const dadosMesRender = isConsolidado ? custosMesConsolidado : custosMes
   const dadosCatRender = isConsolidado ? custosCategConsolidado : custosCategoria
-  const isLoadingMesRender = isConsolidado ? loadMesConsolidado : loadMes
   const isLoadingCatRender = isConsolidado ? loadCatConsolidado : loadCat
   const ultimosLancRender = isConsolidado ? (lancConsolidado || []) : ultimosLanc
   const isLoadingLancRender = isConsolidado ? loadLancConsolidado : loadLanc
-
-  const dadosMesFormatted = useMemo(() => {
-    return (dadosMesRender || []).map((item: any) => ({
-      ...item,
-      mesLabel: formatMesLabel(item),
-    }))
-  }, [dadosMesRender])
 
   const totalCategoria = useMemo(() => {
     return (dadosCatRender || []).reduce((s: number, c: any) => s + Number(c.custo_total || 0), 0)
@@ -535,23 +495,38 @@ export default function Dashboard() {
 
           {/* Charts */}
           <div className="grid gap-6 lg:grid-cols-3">
-            <ChartCard title="Investimento por Mês" description="Custos por mês" className="lg:col-span-2">
-              {isLoadingMesRender ? (
-                <Skeleton className="h-[280px] rounded-lg" />
-              ) : (
-                <div className="h-[280px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dadosMesFormatted}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="mesLabel" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} interval={0} stroke="hsl(var(--muted-foreground))" />
-                      <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(value: number) => [fmt(value), 'Custo']} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                      <Bar dataKey="custo_total" name="Custo" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </ChartCard>
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Investimento por Mês</CardTitle>
+                <p className="text-sm text-muted-foreground">Despesas e receitas por mês</p>
+              </CardHeader>
+              <CardContent>
+                {loadMes ? (
+                  <Skeleton className="h-[300px] rounded-lg" />
+                ) : custosMes && custosMes.length > 0 ? (
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={custosMes}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="mes_label" />
+                        <YAxis tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip
+                          formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '']}
+                          labelFormatter={(label) => label}
+                        />
+                        <Legend />
+                        <Bar dataKey="despesas" name="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="receitas" name="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhuma movimentação financeira nesta safra
+                  </p>
+                )}
+              </CardContent>
+            </Card>
 
             <CardClima />
 
