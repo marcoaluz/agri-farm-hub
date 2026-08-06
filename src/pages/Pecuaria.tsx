@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Beef, Syringe, Milk, ArrowLeftRight, MapPin, Pencil, Trash2, AlertTriangle, Wheat, Scale, ShoppingCart } from 'lucide-react'
+import { Plus, Beef, Syringe, Milk, ArrowLeftRight, MapPin, Pencil, Trash2, AlertTriangle, Wheat, Scale, ShoppingCart, Users } from 'lucide-react'
 import { format, addDays, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
@@ -25,6 +25,7 @@ import { EventoSanitarioDialog } from '@/components/pecuaria/EventoSanitarioDial
 import { OrdenhaDialog } from '@/components/pecuaria/OrdenhaDialog'
 import { RacaoDialog } from '@/components/pecuaria/RacaoDialog'
 import { PesagemDialog } from '@/components/pecuaria/PesagemDialog'
+import { AnimaisRebanhoDialog } from '@/components/pecuaria/AnimaisRebanhoDialog'
 
 const ESPECIE_EMOJI: Record<string, string> = {
   bovino_corte: '🐄', bovino_leite: '🐄', ave_postura: '🐔', ave_corte: '🐔',
@@ -37,6 +38,7 @@ const ESPECIE_LABEL: Record<string, string> = {
 const MOV_BADGE: Record<string, string> = {
   nascimento: 'bg-green-100 text-green-800', compra: 'bg-blue-100 text-blue-800',
   venda: 'bg-yellow-100 text-yellow-800', morte: 'bg-red-100 text-red-800',
+  transferencia: 'bg-gray-100 text-gray-800',
   transferencia_entrada: 'bg-gray-100 text-gray-800', transferencia_saida: 'bg-gray-100 text-gray-800',
   ajuste_entrada: 'bg-emerald-100 text-emerald-800', ajuste_saida: 'bg-orange-100 text-orange-800',
 }
@@ -74,6 +76,7 @@ export default function Pecuaria() {
   const [racaoDialog, setRacaoDialog] = useState(false)
   const [pesagemDialog, setPesagemDialog] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [animaisRebanho, setAnimaisRebanho] = useState<any>(null)
 
   // Filters
   const [filtroSanTipo, setFiltroSanTipo] = useState('todos')
@@ -334,7 +337,10 @@ export default function Pecuaria() {
                 <Card key={r.id}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg flex items-center gap-2">
+                      <CardTitle
+                        className="text-lg flex items-center gap-2 cursor-pointer hover:underline"
+                        onClick={() => setAnimaisRebanho(r)}
+                      >
                         <span className="text-2xl">{ESPECIE_EMOJI[r.especie] || '🐾'}</span>
                         {r.nome}
                       </CardTitle>
@@ -349,6 +355,9 @@ export default function Pecuaria() {
                       {r.localizacao && <div className="flex items-center gap-1"><MapPin className="h-3 w-3 text-muted-foreground" />{r.localizacao}</div>}
                     </div>
                     <div className="flex gap-2 pt-2 flex-wrap">
+                      <Button size="sm" variant="outline" onClick={() => setAnimaisRebanho(r)}>
+                        <Users className="h-3 w-3 mr-1" /> Animais
+                      </Button>
                       <Button size="sm" variant="outline" onClick={() => { setCompraRebanho(r); setCompraDialog(true) }}>
                         <ShoppingCart className="h-3 w-3 mr-1" /> Registrar compra
                       </Button>
@@ -631,6 +640,14 @@ export default function Pecuaria() {
       <OrdenhaDialog open={ordenhaDialog} onOpenChange={setOrdenhaDialog} propriedadeId={propId} rebanhosLeite={rebanhosLeite} />
       <RacaoDialog open={racaoDialog} onOpenChange={setRacaoDialog} propriedadeId={propId || ''} safraId={safraSelecionada?.id || ''} rebanhos={rebanhos || []} />
       <PesagemDialog open={pesagemDialog} onOpenChange={setPesagemDialog} propriedadeId={propId || ''} rebanhos={rebanhos || []} />
+      {animaisRebanho && (
+        <AnimaisRebanhoDialog
+          open={!!animaisRebanho}
+          onOpenChange={o => { if (!o) setAnimaisRebanho(null) }}
+          propriedadeId={propId}
+          rebanho={animaisRebanho}
+        />
+      )}
 
       <AlertDialog open={!!deleteMovId} onOpenChange={o => { if (!o) setDeleteMovId(null) }}>
         <AlertDialogContent>

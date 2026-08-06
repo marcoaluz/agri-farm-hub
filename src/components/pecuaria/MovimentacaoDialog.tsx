@@ -1,29 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
-import { CalendarIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useQueryClient } from '@tanstack/react-query'
-
-const TIPOS = [
-  { value: 'nascimento', label: 'Nascimento' },
-  { value: 'compra', label: 'Compra' },
-  { value: 'venda', label: 'Venda' },
-  { value: 'morte', label: 'Morte' },
-  { value: 'transferencia_entrada', label: 'Transferência Entrada' },
-  { value: 'transferencia_saida', label: 'Transferência Saída' },
-  { value: 'ajuste_entrada', label: 'Ajuste Entrada' },
-  { value: 'ajuste_saida', label: 'Ajuste Saída' },
-]
 
 interface MovimentacaoDialogProps {
   open: boolean
@@ -37,108 +22,268 @@ export function MovimentacaoDialog({ open, onOpenChange, propriedadeId, rebanhos
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({
-    rebanho_id: rebanhoIdInicial || '',
-    tipo: 'nascimento',
-    quantidade: '1',
-    data_evento: new Date(),
-    valor_unitario: '',
-    peso_medio_kg: '',
-    fornecedor_comprador: '',
-    observacoes: '',
-  })
+
+  const [rebanhoId, setRebanhoId] = useState(rebanhoIdInicial || '')
+  const [tipo, setTipo] = useState('nascimento')
+  const [quantidade, setQuantidade] = useState('1')
+  const [dataEvento, setDataEvento] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [valorUnitario, setValorUnitario] = useState('')
+  const [pesoMedio, setPesoMedio] = useState('')
+  const [fornecedor, setFornecedor] = useState('')
+  const [notaFiscal, setNotaFiscal] = useState('')
+  const [statusPagamento, setStatusPagamento] = useState('pago')
+  const [dataVencimento, setDataVencimento] = useState('')
+  const [rebanhoDestinoId, setRebanhoDestinoId] = useState('')
+  const [observacoes, setObservacoes] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      setRebanhoId(rebanhoIdInicial || '')
+      setTipo('nascimento')
+      setQuantidade('1')
+      setDataEvento(format(new Date(), 'yyyy-MM-dd'))
+      setValorUnitario('')
+      setPesoMedio('')
+      setFornecedor('')
+      setNotaFiscal('')
+      setStatusPagamento('pago')
+      setDataVencimento('')
+      setRebanhoDestinoId('')
+      setObservacoes('')
+    }
+  }, [open, rebanhoIdInicial])
 
   async function handleSave() {
-    if (!form.rebanho_id || !form.quantidade || Number(form.quantidade) < 1) {
+    if (!rebanhoId || !quantidade || Number(quantidade) < 1) {
       toast({ title: 'Preencha rebanho e quantidade', variant: 'destructive' })
       return
     }
+    if (tipo === 'transferencia' && !rebanhoDestinoId) {
+      toast({ title: 'Selecione o rebanho destino', variant: 'destructive' })
+      return
+    }
+    if (tipo === 'venda' && !valorUnitario) {
+      toast({ title: 'Informe o valor unitário da venda', variant: 'destructive' })
+      return
+    }
+
     setLoading(true)
-    const { error } = await supabase.from('rebanho_movimentacoes' as any).insert({
-      rebanho_id: form.rebanho_id,
+    const { data: userData } = await supabase.auth.getUser()
+
+    const dados: any = {
+      rebanho_id: rebanhoId,
       propriedade_id: propriedadeId,
-      tipo: form.tipo,
-      quantidade: Number(form.quantidade),
-      data_evento: format(form.data_evento, 'yyyy-MM-dd'),
-      valor_unitario: form.valor_unitario ? Number(form.valor_unitario) : null,
-      peso_medio_kg: form.peso_medio_kg ? Number(form.peso_medio_kg) : null,
-      fornecedor_comprador: form.fornecedor_comprador || null,
-      observacoes: form.observacoes || null,
-    })
+      tipo,
+      quantidade: parseInt(quantidade),
+      data_evento: dataEvento,
+      valor_unitario: valorUnitario ? parseFloat(valorUnitario) : null,
+      valor_total: valorUnitario && quantidade ? parseFloat(valorUnitario) * parseInt(quantidade) : null,
+      peso_medio_kg: pesoMedio ? parseFloat(pesoMedio) : null,
+      fornecedor_comprador: fornecedor || null,
+      numero_nota_fiscal: notaFiscal || null,
+      status_pagamento: statusPagamento || 'pago',
+      data_vencimento: dataVencimento || null,
+      rebanho_destino_id: tipo === 'transferencia' ? rebanhoDestinoId : null,
+      observacoes: observacoes || null,
+      usuario_id: userData?.user?.id || null,
+    }
+
+    const { error } = await supabase.from('rebanho_movimentacoes' as any).insert(dados)
     setLoading(false)
+
     if (error) {
       toast({ title: 'Erro ao registrar movimentação', description: error.message, variant: 'destructive' })
-    } else {
-      toast({ title: 'Movimentação registrada!' })
-      queryClient.invalidateQueries({ queryKey: ['rebanhos'] })
-      queryClient.invalidateQueries({ queryKey: ['rebanho-movimentacoes'] })
-      onOpenChange(false)
+      return
     }
+    toast({ title: 'Movimentação registrada!' })
+    queryClient.invalidateQueries({ queryKey: ['rebanhos'] })
+    queryClient.invalidateQueries({ queryKey: ['rebanho-movimentacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+    onOpenChange(false)
   }
+
+  const total = valorUnitario && quantidade ? parseFloat(valorUnitario) * parseInt(quantidade || '1') : 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Registrar Movimentação</DialogTitle>
+          <DialogTitle>Nova Movimentação</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
             <Label>Rebanho *</Label>
-            <Select value={form.rebanho_id} onValueChange={v => setForm(f => ({ ...f, rebanho_id: v }))}>
+            <Select value={rebanhoId} onValueChange={setRebanhoId}>
               <SelectTrigger><SelectValue placeholder="Selecionar rebanho" /></SelectTrigger>
               <SelectContent>
                 {rebanhos.map((r: any) => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>Tipo *</Label>
-            <Select value={form.tipo} onValueChange={v => setForm(f => ({ ...f, tipo: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {TIPOS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Quantidade *</Label>
-              <Input type="number" min="1" value={form.quantidade} onChange={e => setForm(f => ({ ...f, quantidade: e.target.value }))} />
+              <Label>Tipo *</Label>
+              <Select value={tipo} onValueChange={setTipo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nascimento">Nascimento</SelectItem>
+                  <SelectItem value="compra">Compra</SelectItem>
+                  <SelectItem value="venda">Venda</SelectItem>
+                  <SelectItem value="morte">Morte</SelectItem>
+                  <SelectItem value="transferencia">Transferência</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Data do evento</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn('w-full justify-start text-left font-normal')}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(form.data_evento, 'dd/MM/yyyy')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={form.data_evento} onSelect={d => d && setForm(f => ({ ...f, data_evento: d }))} className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
+              <Input type="date" value={dataEvento} onChange={e => setDataEvento(e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+
+          {/* COMPRA */}
+          {tipo === 'compra' && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Quantidade *</Label>
+                  <Input type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Valor unitário (R$)</Label>
+                  <Input type="number" value={valorUnitario} onChange={e => setValorUnitario(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label>Fornecedor</Label>
+                <Input value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Nota Fiscal</Label>
+                  <Input value={notaFiscal} onChange={e => setNotaFiscal(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Peso médio (kg)</Label>
+                  <Input type="number" value={pesoMedio} onChange={e => setPesoMedio(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Status pagamento</Label>
+                  <Select value={statusPagamento} onValueChange={setStatusPagamento}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pago">Pago</SelectItem>
+                      <SelectItem value="pendente">A prazo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {statusPagamento === 'pendente' && (
+                  <div>
+                    <Label>Data vencimento</Label>
+                    <Input type="date" value={dataVencimento} onChange={e => setDataVencimento(e.target.value)} />
+                  </div>
+                )}
+              </div>
+              {valorUnitario && quantidade && (
+                <p className="text-sm font-medium">
+                  Valor total: R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              )}
+            </>
+          )}
+
+          {/* VENDA */}
+          {tipo === 'venda' && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Quantidade *</Label>
+                  <Input type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Valor unitário (R$) *</Label>
+                  <Input type="number" value={valorUnitario} onChange={e => setValorUnitario(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label>Comprador</Label>
+                <Input value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Nota Fiscal</Label>
+                  <Input value={notaFiscal} onChange={e => setNotaFiscal(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Peso médio (kg)</Label>
+                  <Input type="number" value={pesoMedio} onChange={e => setPesoMedio(e.target.value)} />
+                </div>
+              </div>
+              {valorUnitario && quantidade && (
+                <p className="text-sm font-medium text-green-700">
+                  Receita: R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              )}
+            </>
+          )}
+
+          {/* NASCIMENTO */}
+          {tipo === 'nascimento' && (
             <div>
-              <Label>Valor unitário R$</Label>
-              <Input type="number" step="0.01" value={form.valor_unitario} onChange={e => setForm(f => ({ ...f, valor_unitario: e.target.value }))} />
+              <Label>Quantidade *</Label>
+              <Input type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
             </div>
-            <div>
-              <Label>Peso médio (kg)</Label>
-              <Input type="number" step="0.01" value={form.peso_medio_kg} onChange={e => setForm(f => ({ ...f, peso_medio_kg: e.target.value }))} />
-            </div>
-          </div>
-          <div>
-            <Label>Fornecedor / Comprador</Label>
-            <Input value={form.fornecedor_comprador} onChange={e => setForm(f => ({ ...f, fornecedor_comprador: e.target.value }))} />
-          </div>
+          )}
+
+          {/* MORTE */}
+          {tipo === 'morte' && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Quantidade *</Label>
+                  <Input type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Valor estimado do animal (R$)</Label>
+                  <Input type="number" value={valorUnitario} onChange={e => setValorUnitario(e.target.value)} placeholder="Opcional — registra prejuízo" />
+                </div>
+              </div>
+              {valorUnitario && (
+                <p className="text-sm text-red-600">
+                  Prejuízo: R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} — será registrado no financeiro como perda
+                </p>
+              )}
+            </>
+          )}
+
+          {/* TRANSFERÊNCIA */}
+          {tipo === 'transferencia' && (
+            <>
+              <div>
+                <Label>Quantidade *</Label>
+                <Input type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
+              </div>
+              <div>
+                <Label>Transferir para *</Label>
+                <Select value={rebanhoDestinoId} onValueChange={setRebanhoDestinoId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o rebanho destino" /></SelectTrigger>
+                  <SelectContent>
+                    {(rebanhos || []).filter((r: any) => r.id !== rebanhoId).map((r: any) => (
+                      <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
           <div>
             <Label>Observações</Label>
-            <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
+            <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} />
           </div>
+
           <Button onClick={handleSave} disabled={loading} className="w-full">
             {loading ? 'Salvando...' : 'Registrar Movimentação'}
           </Button>
