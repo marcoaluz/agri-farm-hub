@@ -304,15 +304,16 @@ export default function Dashboard() {
   })
 
   const { data: custosMes, isLoading: loadMes } = useQuery({
-    queryKey: ['dash-custos-mes', propId, safraId],
+    queryKey: ['custos-mes', propriedadeAtual?.id, safraAtual?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc('get_custos_por_mes', {
-        p_propriedade_id: propId, p_safra_id: safraId,
+        p_propriedade_id: propriedadeAtual?.id,
+        p_safra_id: safraAtual?.id || null,
       })
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: enabledFiltered,
+    enabled: !!propriedadeAtual?.id,
   })
 
   const { data: custosCategoria, isLoading: loadCat } = useQuery({
