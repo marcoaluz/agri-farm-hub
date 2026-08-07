@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
+
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   addDays, addMonths, subMonths, isSameMonth, isSameDay, parseISO,
@@ -85,6 +86,8 @@ export default function Agenda() {
   const [detalhe, setDetalhe] = useState<Tarefa | null>(null)
   const [tarefaParaExcluir, setTarefaParaExcluir] = useState<Tarefa | null>(null)
   const [saving, setSaving] = useState(false)
+  const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null)
+
 
   // Opções
   const [talhoes, setTalhoes] = useState<{ id: string; nome: string }[]>([])
@@ -168,6 +171,51 @@ export default function Agenda() {
     return map
   }, [tarefas])
 
+  // Eventos do calendário (vencimentos, parcelas, vacinações, tarefas)
+  const { data: eventosCalendario } = useQuery({
+    queryKey: ['eventos-calendario', propriedadeAtual?.id, format(inicio, 'yyyy-MM')],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc('get_eventos_calendario', {
+        p_propriedade_id: propriedadeAtual!.id,
+        p_data_inicio: format(inicio, 'yyyy-MM-dd'),
+        p_data_fim: format(fim, 'yyyy-MM-dd'),
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+    enabled: !!propriedadeAtual?.id,
+  })
+
+  const eventosPorDia = useMemo(() => {
+    const map = new Map<string, any[]>()
+    eventosCalendario?.forEach((e: any) => {
+      const key = (e.data || '').slice(0, 10)
+      if (!key) return
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(e)
+    })
+    return map
+  }, [eventosCalendario])
+
+  const eventosSelecionados = diaSelecionado ? eventosPorDia.get(diaSelecionado) ?? [] : []
+
+  function handleDiaClick(dia: Date) {
+    const key = format(dia, 'yyyy-MM-dd')
+    if ((eventosPorDia.get(key) ?? []).length > 0) {
+      setDiaSelecionado(key)
+      return
+    }
+    setForm({ ...initialForm, data_prevista: key })
+    setNovaOpen(true)
+  }
+
+  function criarTarefaNoDia(key: string) {
+    setDiaSelecionado(null)
+    setForm({ ...initialForm, data_prevista: key })
+    setNovaOpen(true)
+  }
+
+
   async function salvarNova(e: React.FormEvent) {
     e.preventDefault()
     if (!propriedadeAtual?.id || !user?.id) return
@@ -198,7 +246,9 @@ export default function Agenda() {
     toast.success('Tarefa criada')
     setNovaOpen(false)
     setForm(initialForm)
+    queryClient.invalidateQueries({ queryKey: ['eventos-calendario'] })
     fetchTarefas()
+
   }
 
   async function atualizarStatus(novoStatus: Tarefa['status']) {
@@ -287,11 +337,14 @@ export default function Agenda() {
               const lista = tarefasPorDia[key] ?? []
               const outroMes = !isSameMonth(dia, mesAtual)
               const hoje = isSameDay(dia, new Date())
+              const eventosDia = eventosPorDia.get(key) ?? []
               return (
                 <div
                   key={key}
+                  onClick={() => handleDiaClick(dia)}
                   className={cn(
                     'min-h-[96px] border rounded-md p-1 text-left flex flex-col gap-1',
+                    'cursor-pointer hover:bg-primary/5 transition-colors',
                     outroMes && 'bg-muted/30 text-muted-foreground',
                     hoje && 'border-primary',
                   )}
@@ -301,7 +354,7 @@ export default function Agenda() {
                     {lista.slice(0, 4).map(t => (
                       <button
                         key={t.id}
-                        onClick={() => setDetalhe(t)}
+                        onClick={e => { e.stopPropagation(); setDetalhe(t) }}
                         className={cn(
                           'truncate text-[10px] leading-tight px-1.5 py-0.5 rounded text-left',
                           corPrioridade(t.prioridade),
@@ -317,8 +370,19 @@ export default function Agenda() {
                       <span className="text-[10px] text-muted-foreground">+{lista.length - 4}</span>
                     )}
                   </div>
+                  {eventosDia.length > 0 && (
+                    <div className="flex gap-0.5 mt-auto justify-center">
+                      {eventosDia.slice(0, 3).map((ev: any, i: number) => (
+                        <div key={i} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ev.cor }} />
+                      ))}
+                      {eventosDia.length > 3 && (
+                        <span className="text-[9px] text-muted-foreground leading-none">+{eventosDia.length - 3}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
+
             })}
           </div>
           <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-muted-foreground">
@@ -326,9 +390,51 @@ export default function Agenda() {
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-500" /> Média</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-400" /> Baixa</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border ring-1 ring-red-600" /> Atrasada</span>
+            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-foreground" /> Vencimentos / vacinações</span>
+            <span className="ml-auto">Clique em um dia para criar uma tarefa</span>
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog Eventos do dia */}
+      <Dialog open={!!diaSelecionado} onOpenChange={o => !o && setDiaSelecionado(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {diaSelecionado ? format(parseISO(diaSelecionado + 'T12:00:00'), "dd 'de' MMMM", { locale: ptBR }) : ''}
+            </DialogTitle>
+            <DialogDescription>Eventos e vencimentos deste dia</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto">
+            {eventosSelecionados.map((ev: any, i: number) => (
+              <div key={ev.id ?? i} className="flex items-center gap-2 p-2 border-b text-sm">
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ev.cor }} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{ev.titulo}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {ev.tipo_evento === 'pagamento' || ev.tipo_evento === 'parcela'
+                      ? `R$ ${Number(ev.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                      : ev.status}
+                  </p>
+                </div>
+                {(ev.tipo_evento === 'pagamento' || ev.tipo_evento === 'parcela') && (
+                  <Badge variant="outline" className={ev.cor === '#ef4444' ? 'text-red-600' : 'text-green-600'}>
+                    {ev.cor === '#ef4444' ? 'A pagar' : 'A receber'}
+                  </Badge>
+                )}
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiaSelecionado(null)}>Fechar</Button>
+            <Button onClick={() => diaSelecionado && criarTarefaNoDia(diaSelecionado)}>
+              <Plus className="h-4 w-4 mr-1" /> Nova tarefa neste dia
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
 
       {/* Dialog Nova Tarefa */}
       <Dialog open={novaOpen} onOpenChange={setNovaOpen}>

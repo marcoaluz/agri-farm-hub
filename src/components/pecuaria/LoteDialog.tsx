@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
@@ -45,7 +47,9 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
     data_formacao: undefined as Date | undefined,
     observacoes: '',
     quantidade_inicial: '',
+    vacinavel: true,
   })
+
 
   useEffect(() => {
     if (lote) {
@@ -58,11 +62,13 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
         data_formacao: lote.data_formacao ? new Date(lote.data_formacao) : undefined,
         observacoes: lote.observacoes || '',
         quantidade_inicial: '',
+        vacinavel: lote.vacinavel !== false,
       })
     } else {
-      setForm({ nome: '', especie: 'bovino_corte', raca: '', finalidade: '', localizacao: '', data_formacao: undefined, observacoes: '', quantidade_inicial: '' })
+      setForm({ nome: '', especie: 'bovino_corte', raca: '', finalidade: '', localizacao: '', data_formacao: undefined, observacoes: '', quantidade_inicial: '', vacinavel: true })
     }
   }, [lote, open])
+
 
   async function handleSave() {
     if (!form.nome.trim()) {
@@ -78,7 +84,9 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
       localizacao: form.localizacao || null,
       data_formacao: form.data_formacao ? format(form.data_formacao, 'yyyy-MM-dd') : null,
       observacoes: form.observacoes || null,
+      vacinavel: form.vacinavel,
       propriedade_id: propriedadeId,
+
     }
 
     const { data: novoLote, error } = lote
@@ -160,6 +168,11 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
             <Label>Observações</Label>
             <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
           </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={form.vacinavel} onCheckedChange={v => setForm(f => ({ ...f, vacinavel: v }))} />
+            <Label>Participar de controle sanitário (vacinação)</Label>
+          </div>
+
           {!lote && (
             <div>
               <Label>Quantidade inicial de animais</Label>
