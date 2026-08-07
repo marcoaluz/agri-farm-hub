@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -12,7 +13,7 @@ import { CalendarIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 const TIPOS_SANITARIO = [
@@ -32,10 +33,10 @@ interface EventoSanitarioDialogProps {
 }
 
 export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, rebanhos }: EventoSanitarioDialogProps) {
-  const { toast } = useToast()
   const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
-  const [animaisVacinados, setAnimaisVacinados] = useState<string[]>([])
+  const [animaisSelecionados, setAnimaisSelecionados] = useState<string[]>([])
+  const [statusAnimais, setStatusAnimais] = useState<Record<string, any>>({})
   const [form, setForm] = useState({
     rebanho_id: '',
     tipo: 'vacina',
@@ -50,7 +51,22 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
   })
 
   // Apenas rebanhos que participam do controle sanitário
-  const rebanhosVacinaveis = (rebanhos || []).filter((r: any) => r?.vacinavel !== false)
+  const rebanhosVacinaveis = (rebanhos || []).filter((r: any) => r?.vacinavel === true)
+
+  const { data: protocolos } = useQuery({
+    queryKey: ['protocolos-sanitarios'],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('protocolos_sanitarios')
+        .select('*')
+        .eq('ativo', true)
+        .order('nome')
+      return (data || []) as any[]
+    },
+    enabled: open,
+  })
+
+  const protocoloAtual = protocolos?.find((p: any) => p.nome === form.descricao)
 
   const { data: animaisDoRebanho } = useQuery({
     queryKey: ['animais-rebanho', form.rebanho_id],
@@ -63,23 +79,38 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
     enabled: !!form.rebanho_id && open,
   })
 
-  useEffect(() => { setAnimaisVacinados([]) }, [form.rebanho_id])
+  useEffect(() => { setAnimaisSelecionados([]) }, [form.rebanho_id])
 
-  const toggleTodos = () => {
-    if (animaisVacinados.length === animaisDoRebanho?.length) {
-      setAnimaisVacinados([])
-    } else {
-      setAnimaisVacinados(animaisDoRebanho?.map((a: any) => a.id) || [])
+  useEffect(() => {
+    if (!animaisDoRebanho?.length || !form.descricao) { setStatusAnimais({}); return }
+    let cancelado = false
+    const verificar = async () => {
+      const status: Record<string, any> = {}
+      for (const animal of animaisDoRebanho) {
+        const { data } = await (supabase as any).rpc('verificar_vacinacao_animal', {
+          p_animal_id: animal.id,
+          p_protocolo_nome: form.descricao,
+        })
+        status[animal.id] = Array.isArray(data) ? data[0] : data
+      }
+      if (!cancelado) setStatusAnimais(status)
     }
-  }
+    verificar()
+    return () => { cancelado = true }
+  }, [animaisDoRebanho, form.descricao])
+
+  const animaisLiberados = (animaisDoRebanho || []).filter(
+    (a: any) => statusAnimais[a.id]?.pode_vacinar !== false
+  )
+  const bloqueados = Object.values(statusAnimais).filter((s: any) => s?.pode_vacinar === false).length
 
   async function handleSave() {
     if (!form.descricao.trim()) {
-      toast({ title: 'Descrição é obrigatória', variant: 'destructive' })
+      toast.error('Descrição / Protocolo é obrigatório')
       return
     }
     setLoading(true)
-    const { error } = await (supabase as any).rpc('registrar_vacinacao_animais', {
+    const { data: resultadoRaw, error } = await (supabase as any).rpc('registrar_vacinacao_animais', {
       p_propriedade_id: propriedadeId,
       p_rebanho_id: form.rebanho_id || null,
       p_tipo: form.tipo,
@@ -90,27 +121,37 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
       p_responsavel: form.responsavel || null,
       p_lote_produto: form.lote_produto || null,
       p_observacoes: form.observacoes || null,
-      p_animal_ids: animaisVacinados.length > 0 ? animaisVacinados : null,
+      p_animal_ids: animaisSelecionados.length > 0 ? animaisSelecionados : null,
     })
     setLoading(false)
     if (error) {
-      toast({ title: 'Erro ao registrar evento', description: error.message, variant: 'destructive' })
-    } else {
-      toast({
-        title: 'Evento sanitário registrado!',
-        description: animaisVacinados.length > 0 ? `${animaisVacinados.length} animal(is) marcado(s)` : undefined,
-      })
-      queryClient.invalidateQueries({ queryKey: ['sanitario'] })
-      queryClient.invalidateQueries({ queryKey: ['sanitario-eventos'] })
-      queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
-      setAnimaisVacinados([])
-      onOpenChange(false)
+      toast.error('Erro: ' + error.message)
+      return
     }
+    const resultado = (Array.isArray(resultadoRaw) ? resultadoRaw[0] : resultadoRaw) || {}
+    queryClient.invalidateQueries({ queryKey: ['sanitario'] })
+    queryClient.invalidateQueries({ queryKey: ['sanitario-eventos'] })
+    queryClient.invalidateQueries({ queryKey: ['sanitario-contagem'] })
+    queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
+
+    if (resultado.animais_bloqueados > 0) {
+      toast.warning(
+        `${resultado.animais_vacinados || 0} vacinado(s), ${resultado.animais_bloqueados} bloqueado(s) por intervalo mínimo`
+      )
+    } else {
+      toast.success(
+        `Evento registrado: ${resultado.animais_vacinados ?? animaisSelecionados.length} animais`
+        + (resultado.proxima_data ? ` • Próxima: ${new Date(resultado.proxima_data).toLocaleDateString('pt-BR')}` : '')
+      )
+    }
+    setAnimaisSelecionados([])
+    setStatusAnimais({})
+    onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto">
         <DialogHeader>
           <DialogTitle>Registrar Evento Sanitário</DialogTitle>
         </DialogHeader>
@@ -134,10 +175,31 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
             </Select>
           </div>
           <div>
-            <Label>Descrição *</Label>
-            <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Ex: Febre Aftosa, Ivermectina" />
+            <Label>Descrição / Protocolo *</Label>
+            <Select value={form.descricao} onValueChange={v => setForm(f => ({ ...f, descricao: v }))}>
+              <SelectTrigger><SelectValue placeholder="Selecione o protocolo" /></SelectTrigger>
+              <SelectContent>
+                {(protocolos || []).map((p: any) => (
+                  <SelectItem key={p.id} value={p.nome}>
+                    <span className="flex items-center gap-2">
+                      <span>{p.nome}</span>
+                      {p.obrigatorio && <Badge variant="destructive" className="text-xs">Obrigatória</Badge>}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {protocoloAtual && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {protocoloAtual.observacoes}
+                {' • Intervalo: '}
+                {protocoloAtual.intervalo_minimo_dias === 0
+                  ? 'Dose única'
+                  : `${protocoloAtual.intervalo_minimo_dias} dias`}
+              </p>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Data de aplicação</Label>
               <Popover>
@@ -167,7 +229,7 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
               </Popover>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Dose (ml)</Label>
               <Input type="number" step="0.01" value={form.quantidade_dose} onChange={e => setForm(f => ({ ...f, quantidade_dose: e.target.value }))} />
@@ -177,7 +239,7 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
               <Input type="number" step="0.01" value={form.custo} onChange={e => setForm(f => ({ ...f, custo: e.target.value }))} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Lote do produto</Label>
               <Input value={form.lote_produto} onChange={e => setForm(f => ({ ...f, lote_produto: e.target.value }))} />
@@ -192,41 +254,62 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
             <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
           </div>
 
-          {animaisDoRebanho && animaisDoRebanho.length > 0 && (
+          {animaisDoRebanho && animaisDoRebanho.length > 0 && form.descricao && (
             <div className="space-y-2 border-t pt-3">
               <div className="flex items-center justify-between">
-                <Label>Animais vacinados</Label>
-                <Button size="sm" variant="ghost" type="button" onClick={toggleTodos}>
-                  {animaisVacinados.length === animaisDoRebanho.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                <Label>Animais</Label>
+                <Button size="sm" variant="ghost" type="button" onClick={() => {
+                  if (animaisSelecionados.length === animaisLiberados.length) setAnimaisSelecionados([])
+                  else setAnimaisSelecionados(animaisLiberados.map((a: any) => a.id))
+                }}>
+                  Selecionar liberados
                 </Button>
               </div>
-              <div className="max-h-48 overflow-y-auto border rounded-lg p-2 space-y-1">
-                {animaisDoRebanho.map((animal: any) => (
-                  <label
-                    key={animal.id}
-                    className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={animaisVacinados.includes(animal.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) setAnimaisVacinados(prev => [...prev, animal.id])
-                        else setAnimaisVacinados(prev => prev.filter(id => id !== animal.id))
-                      }}
-                    />
-                    <span className="text-sm">
-                      {animal.nome || animal.identificador || animal.numero_brinco || 'Sem nome'}
-                    </span>
-                    {animal.peso_atual && (
-                      <span className="text-xs text-muted-foreground">{animal.peso_atual}kg</span>
-                    )}
-                  </label>
-                ))}
+              <div className="max-h-56 overflow-y-auto border rounded-lg divide-y">
+                {animaisDoRebanho.map((animal: any) => {
+                  const status = statusAnimais[animal.id]
+                  const bloqueado = status?.pode_vacinar === false
+                  return (
+                    <label
+                      key={animal.id}
+                      className={cn(
+                        'flex items-center gap-3 p-3',
+                        bloqueado ? 'opacity-50 bg-muted/30' : 'hover:bg-muted/50 cursor-pointer'
+                      )}
+                    >
+                      <Checkbox
+                        checked={animaisSelecionados.includes(animal.id)}
+                        disabled={bloqueado}
+                        onCheckedChange={(checked) => {
+                          if (bloqueado) return
+                          if (checked) setAnimaisSelecionados(prev => [...prev, animal.id])
+                          else setAnimaisSelecionados(prev => prev.filter(id => id !== animal.id))
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {animal.nome || animal.identificador || animal.numero_brinco || 'Sem nome'}
+                        </p>
+                        {bloqueado ? (
+                          <p className="text-xs text-destructive">{status?.mensagem}</p>
+                        ) : status?.ultima_aplicacao ? (
+                          <p className="text-xs text-green-600">
+                            Última: {new Date(status.ultima_aplicacao).toLocaleDateString('pt-BR')}
+                            {' • '}{status.dias_desde} dias atrás — Liberado
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Primeira aplicação</p>
+                        )}
+                      </div>
+                    </label>
+                  )
+                })}
               </div>
               <p className="text-xs text-muted-foreground">
-                {animaisVacinados.length} de {animaisDoRebanho.length} vacinados
-                {animaisVacinados.length < animaisDoRebanho.length && (
-                  <span className="text-amber-600 font-medium">
-                    {' '}— {animaisDoRebanho.length - animaisVacinados.length} pendente(s)
+                {animaisSelecionados.length} selecionado(s)
+                {bloqueados > 0 && (
+                  <span className="text-amber-600">
+                    {' • '}{bloqueados} bloqueado(s) por intervalo
                   </span>
                 )}
               </p>
