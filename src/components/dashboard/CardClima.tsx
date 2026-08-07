@@ -85,45 +85,50 @@ export function CardClima() {
           ) : climaHoje?.current ? (
             <>
               {/* Agora */}
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-start justify-between mb-4">
                 <div>
-                  <p className="text-3xl font-bold">{climaHoje.current.temperature_2m}°C</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-4xl font-bold leading-none">
+                    {Math.round(climaHoje.current.temperature_2m)}°C
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
                     {weatherDescription(climaHoje.current.weather_code).texto}
                   </p>
                 </div>
-                <div className="text-4xl">{weatherDescription(climaHoje.current.weather_code).icone}</div>
+                <span className="text-5xl">{weatherDescription(climaHoje.current.weather_code).icone}</span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-xs text-center mb-4">
+              <div className="grid grid-cols-3 gap-3 text-center p-3 bg-muted/30 rounded-lg mb-4">
                 <div>
-                  <p className="text-muted-foreground">Umidade</p>
-                  <p className="font-medium">{climaHoje.current.relative_humidity_2m}%</p>
+                  <p className="text-xs text-muted-foreground">Umidade</p>
+                  <p className="text-sm font-semibold">{climaHoje.current.relative_humidity_2m}%</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Chuva</p>
-                  <p className="font-medium">{climaHoje.current.precipitation}mm</p>
+                  <p className="text-xs text-muted-foreground">Chuva</p>
+                  <p className="text-sm font-semibold">{climaHoje.current.precipitation}mm</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Vento</p>
-                  <p className="font-medium">{climaHoje.current.wind_speed_10m}km/h</p>
+                  <p className="text-xs text-muted-foreground">Vento</p>
+                  <p className="text-sm font-semibold">{Math.round(climaHoje.current.wind_speed_10m)}km/h</p>
                 </div>
               </div>
 
               {/* Próximos dias */}
               <div className="border-t pt-3">
                 <p className="text-xs font-medium mb-2">Próximos dias</p>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   {climaHoje.daily?.time?.slice(1, 6).map((dia: string, i: number) => (
-                    <div key={dia} className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground w-16">
+                    <div key={dia} className="grid grid-cols-4 items-center text-xs">
+                      <span className="text-muted-foreground">
                         {new Date(dia + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' })}
                       </span>
-                      <span>{weatherDescription(climaHoje.daily.weather_code[i + 1]).icone}</span>
-                      <span>
-                        {climaHoje.daily.temperature_2m_min[i + 1]}° / {climaHoje.daily.temperature_2m_max[i + 1]}°
+                      <span className="text-center text-lg">
+                        {weatherDescription(climaHoje.daily.weather_code[i + 1]).icone}
                       </span>
-                      <span className="text-sky-600">
+                      <span className="text-center font-medium">
+                        {Math.round(climaHoje.daily.temperature_2m_min[i + 1])}° /{' '}
+                        {Math.round(climaHoje.daily.temperature_2m_max[i + 1])}°
+                      </span>
+                      <span className="text-right text-sky-600">
                         {climaHoje.daily.precipitation_sum[i + 1] > 0
                           ? `${climaHoje.daily.precipitation_sum[i + 1]}mm`
                           : '—'}
