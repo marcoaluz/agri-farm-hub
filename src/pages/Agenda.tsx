@@ -335,11 +335,14 @@ export default function Agenda() {
               const lista = tarefasPorDia[key] ?? []
               const outroMes = !isSameMonth(dia, mesAtual)
               const hoje = isSameDay(dia, new Date())
+              const eventosDia = eventosPorDia.get(key) ?? []
               return (
                 <div
                   key={key}
+                  onClick={() => handleDiaClick(dia)}
                   className={cn(
                     'min-h-[96px] border rounded-md p-1 text-left flex flex-col gap-1',
+                    'cursor-pointer hover:bg-primary/5 transition-colors',
                     outroMes && 'bg-muted/30 text-muted-foreground',
                     hoje && 'border-primary',
                   )}
@@ -349,7 +352,7 @@ export default function Agenda() {
                     {lista.slice(0, 4).map(t => (
                       <button
                         key={t.id}
-                        onClick={() => setDetalhe(t)}
+                        onClick={e => { e.stopPropagation(); setDetalhe(t) }}
                         className={cn(
                           'truncate text-[10px] leading-tight px-1.5 py-0.5 rounded text-left',
                           corPrioridade(t.prioridade),
@@ -365,8 +368,19 @@ export default function Agenda() {
                       <span className="text-[10px] text-muted-foreground">+{lista.length - 4}</span>
                     )}
                   </div>
+                  {eventosDia.length > 0 && (
+                    <div className="flex gap-0.5 mt-auto justify-center">
+                      {eventosDia.slice(0, 3).map((ev: any, i: number) => (
+                        <div key={i} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ev.cor }} />
+                      ))}
+                      {eventosDia.length > 3 && (
+                        <span className="text-[9px] text-muted-foreground leading-none">+{eventosDia.length - 3}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
+
             })}
           </div>
           <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-muted-foreground">
