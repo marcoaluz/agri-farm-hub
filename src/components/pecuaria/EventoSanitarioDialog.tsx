@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
@@ -12,7 +13,7 @@ import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 const TIPOS_SANITARIO = [
   { value: 'vacina', label: 'Vacina' },
@@ -34,6 +35,7 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
+  const [animaisVacinados, setAnimaisVacinados] = useState<string[]>([])
   const [form, setForm] = useState({
     rebanho_id: '',
     tipo: 'vacina',
@@ -47,31 +49,61 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
     observacoes: '',
   })
 
+  // Apenas rebanhos que participam do controle sanitário
+  const rebanhosVacinaveis = (rebanhos || []).filter((r: any) => r?.vacinavel !== false)
+
+  const { data: animaisDoRebanho } = useQuery({
+    queryKey: ['animais-rebanho', form.rebanho_id],
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc('get_animais_rebanho', {
+        p_rebanho_id: form.rebanho_id,
+      })
+      return (data || []) as any[]
+    },
+    enabled: !!form.rebanho_id && open,
+  })
+
+  useEffect(() => { setAnimaisVacinados([]) }, [form.rebanho_id])
+
+  const toggleTodos = () => {
+    if (animaisVacinados.length === animaisDoRebanho?.length) {
+      setAnimaisVacinados([])
+    } else {
+      setAnimaisVacinados(animaisDoRebanho?.map((a: any) => a.id) || [])
+    }
+  }
+
   async function handleSave() {
     if (!form.descricao.trim()) {
       toast({ title: 'Descrição é obrigatória', variant: 'destructive' })
       return
     }
     setLoading(true)
-    const { error } = await supabase.from('sanitario_eventos' as any).insert({
-      rebanho_id: form.rebanho_id || null,
-      propriedade_id: propriedadeId,
-      tipo: form.tipo,
-      descricao: form.descricao,
-      data_aplicacao: format(form.data_aplicacao, 'yyyy-MM-dd'),
-      data_proxima: form.data_proxima ? format(form.data_proxima, 'yyyy-MM-dd') : null,
-      quantidade_dose: form.quantidade_dose ? Number(form.quantidade_dose) : null,
-      custo: form.custo ? Number(form.custo) : null,
-      lote_produto: form.lote_produto || null,
-      responsavel: form.responsavel || null,
-      observacoes: form.observacoes || null,
+    const { error } = await (supabase as any).rpc('registrar_vacinacao_animais', {
+      p_propriedade_id: propriedadeId,
+      p_rebanho_id: form.rebanho_id || null,
+      p_tipo: form.tipo,
+      p_descricao: form.descricao,
+      p_data_aplicacao: format(form.data_aplicacao, 'yyyy-MM-dd'),
+      p_data_proxima: form.data_proxima ? format(form.data_proxima, 'yyyy-MM-dd') : null,
+      p_custo: form.custo ? Number(form.custo) : null,
+      p_responsavel: form.responsavel || null,
+      p_lote_produto: form.lote_produto || null,
+      p_observacoes: form.observacoes || null,
+      p_animal_ids: animaisVacinados.length > 0 ? animaisVacinados : null,
     })
     setLoading(false)
     if (error) {
       toast({ title: 'Erro ao registrar evento', description: error.message, variant: 'destructive' })
     } else {
-      toast({ title: 'Evento sanitário registrado!' })
+      toast({
+        title: 'Evento sanitário registrado!',
+        description: animaisVacinados.length > 0 ? `${animaisVacinados.length} animal(is) marcado(s)` : undefined,
+      })
+      queryClient.invalidateQueries({ queryKey: ['sanitario'] })
       queryClient.invalidateQueries({ queryKey: ['sanitario-eventos'] })
+      queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
+      setAnimaisVacinados([])
       onOpenChange(false)
     }
   }
@@ -88,7 +120,7 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
             <Select value={form.rebanho_id} onValueChange={v => setForm(f => ({ ...f, rebanho_id: v }))}>
               <SelectTrigger><SelectValue placeholder="Selecionar (opcional)" /></SelectTrigger>
               <SelectContent>
-                {rebanhos.map((r: any) => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                {rebanhosVacinaveis.map((r: any) => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -159,6 +191,48 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
             <Label>Observações</Label>
             <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
           </div>
+
+          {animaisDoRebanho && animaisDoRebanho.length > 0 && (
+            <div className="space-y-2 border-t pt-3">
+              <div className="flex items-center justify-between">
+                <Label>Animais vacinados</Label>
+                <Button size="sm" variant="ghost" type="button" onClick={toggleTodos}>
+                  {animaisVacinados.length === animaisDoRebanho.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                </Button>
+              </div>
+              <div className="max-h-48 overflow-y-auto border rounded-lg p-2 space-y-1">
+                {animaisDoRebanho.map((animal: any) => (
+                  <label
+                    key={animal.id}
+                    className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={animaisVacinados.includes(animal.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) setAnimaisVacinados(prev => [...prev, animal.id])
+                        else setAnimaisVacinados(prev => prev.filter(id => id !== animal.id))
+                      }}
+                    />
+                    <span className="text-sm">
+                      {animal.nome || animal.identificador || animal.numero_brinco || 'Sem nome'}
+                    </span>
+                    {animal.peso_atual && (
+                      <span className="text-xs text-muted-foreground">{animal.peso_atual}kg</span>
+                    )}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {animaisVacinados.length} de {animaisDoRebanho.length} vacinados
+                {animaisVacinados.length < animaisDoRebanho.length && (
+                  <span className="text-amber-600 font-medium">
+                    {' '}— {animaisDoRebanho.length - animaisVacinados.length} pendente(s)
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+
           <Button onClick={handleSave} disabled={loading} className="w-full">
             {loading ? 'Salvando...' : 'Registrar Evento'}
           </Button>
