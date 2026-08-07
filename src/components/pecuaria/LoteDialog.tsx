@@ -60,11 +60,13 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
         data_formacao: lote.data_formacao ? new Date(lote.data_formacao) : undefined,
         observacoes: lote.observacoes || '',
         quantidade_inicial: '',
+        vacinavel: lote.vacinavel !== false,
       })
     } else {
-      setForm({ nome: '', especie: 'bovino_corte', raca: '', finalidade: '', localizacao: '', data_formacao: undefined, observacoes: '', quantidade_inicial: '' })
+      setForm({ nome: '', especie: 'bovino_corte', raca: '', finalidade: '', localizacao: '', data_formacao: undefined, observacoes: '', quantidade_inicial: '', vacinavel: true })
     }
   }, [lote, open])
+
 
   async function handleSave() {
     if (!form.nome.trim()) {
