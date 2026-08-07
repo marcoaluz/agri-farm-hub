@@ -332,7 +332,7 @@ export default function Pecuaria() {
           {loadingRebanhos ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32" />) : !rebanhos?.length ? (
             <Card><CardContent className="py-12 text-center text-muted-foreground"><Beef className="h-12 w-12 mx-auto mb-2 opacity-40" /><p>Nenhum lote cadastrado.</p></CardContent></Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {rebanhos.map((r: any) => (
                 <Card key={r.id}>
                   <CardHeader className="pb-2">

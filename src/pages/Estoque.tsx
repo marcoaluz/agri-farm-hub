@@ -265,7 +265,7 @@ export function Estoque() {
 
       {/* Lista de Produtos */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map(i => (
             <Skeleton key={i} className="h-64 w-full" />
           ))}
@@ -287,7 +287,7 @@ export function Estoque() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {produtosFiltrados?.map(produto => (
             <ProdutoCard
               key={produto.id}

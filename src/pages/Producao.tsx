@@ -163,13 +163,13 @@ export default function Producao() {
 
       {/* Cards por talhão */}
       {loadTalhoes ? (
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Skeleton className="h-52 w-full" />
           <Skeleton className="h-52 w-full" />
           <Skeleton className="h-52 w-full" />
         </div>
       ) : talhoes && talhoes.length > 0 ? (
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {talhoes.map((talhao: any) => {
             const colhido = Number(talhao.colhido_safra) || 0
             const estimativa = Number(talhao.estimativa_colheita) || 0

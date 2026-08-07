@@ -406,7 +406,7 @@ export function Maquinas() {
 
       {/* Grid */}
       {isLoading ? (
-        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-60 sm:h-72 w-full" />
           ))}
@@ -430,7 +430,7 @@ export function Maquinas() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {maquinasFiltradas?.map((maquina) => {
             const analise = analiseMap.get(maquina.id);
             return (
