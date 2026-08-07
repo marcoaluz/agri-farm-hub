@@ -86,6 +86,8 @@ export default function Agenda() {
   const [detalhe, setDetalhe] = useState<Tarefa | null>(null)
   const [tarefaParaExcluir, setTarefaParaExcluir] = useState<Tarefa | null>(null)
   const [saving, setSaving] = useState(false)
+  const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null)
+
 
   // Opções
   const [talhoes, setTalhoes] = useState<{ id: string; nome: string }[]>([])
