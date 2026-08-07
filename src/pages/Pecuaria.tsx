@@ -604,7 +604,7 @@ export default function Pecuaria() {
                       <TableCell>
                         {Number(p.peso_kg).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {p.peso_anterior_kg
                           ? Number(p.peso_anterior_kg).toLocaleString('pt-BR', { minimumFractionDigits: 1 })
                           : '—'}
@@ -614,7 +614,7 @@ export default function Pecuaria() {
                           ? <Badge variant="secondary" className="bg-green-100 text-green-800">+{Number(p.gmd_kg).toFixed(3)}</Badge>
                           : '—'}
                       </TableCell>
-                      <TableCell>{p.responsavel || '—'}</TableCell>
+                      <TableCell className="hidden md:table-cell">{p.responsavel || '—'}</TableCell>
                       <TableCell className="max-w-[150px] truncate">{p.observacoes || '—'}</TableCell>
                     </TableRow>
                   ))}
