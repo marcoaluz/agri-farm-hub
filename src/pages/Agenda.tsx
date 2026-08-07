@@ -398,7 +398,7 @@ export default function Agenda() {
 
       {/* Dialog Eventos do dia */}
       <Dialog open={!!diaSelecionado} onOpenChange={o => !o && setDiaSelecionado(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] sm:w-auto max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {diaSelecionado ? format(parseISO(diaSelecionado + 'T12:00:00'), "dd 'de' MMMM", { locale: ptBR }) : ''}
@@ -438,7 +438,7 @@ export default function Agenda() {
 
       {/* Dialog Nova Tarefa */}
       <Dialog open={novaOpen} onOpenChange={setNovaOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] sm:w-auto max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nova tarefa</DialogTitle>
             <DialogDescription>Cadastre uma tarefa para o planejamento.</DialogDescription>
@@ -520,7 +520,7 @@ export default function Agenda() {
 
       {/* Dialog Detalhe */}
       <Dialog open={!!detalhe} onOpenChange={o => !o && setDetalhe(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] sm:w-auto max-w-lg max-h-[90vh] overflow-y-auto">
           {detalhe && (
             <>
               <DialogHeader>

@@ -332,7 +332,7 @@ export default function Pecuaria() {
           {loadingRebanhos ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32" />) : !rebanhos?.length ? (
             <Card><CardContent className="py-12 text-center text-muted-foreground"><Beef className="h-12 w-12 mx-auto mb-2 opacity-40" /><p>Nenhum lote cadastrado.</p></CardContent></Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {rebanhos.map((r: any) => (
                 <Card key={r.id}>
                   <CardHeader className="pb-2">
@@ -527,10 +527,10 @@ export default function Pecuaria() {
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead>Rebanho</TableHead>
+                    <TableHead className="hidden sm:table-cell">Rebanho</TableHead>
                     <TableHead>Qtd</TableHead>
                     <TableHead className="text-right">Valor Total</TableHead>
-                    <TableHead>Obs</TableHead>
+                    <TableHead className="hidden md:table-cell">Obs</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -539,10 +539,10 @@ export default function Pecuaria() {
                     <TableRow key={m.id} id={`mov-${m.id}`} className="transition-colors">
                       <TableCell>{format(new Date(m.data_evento), 'dd/MM/yyyy')}</TableCell>
                       <TableCell><Badge className={MOV_BADGE[m.tipo] || 'bg-muted text-foreground'} variant="secondary">{m.tipo?.replace('_', ' ')}</Badge></TableCell>
-                      <TableCell>{(m.rebanho as any)?.nome || '-'}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{(m.rebanho as any)?.nome || '-'}</TableCell>
                       <TableCell>{m.quantidade}</TableCell>
                       <TableCell className="text-right">{m.valor_total ? `R$ ${Number(m.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
-                      <TableCell className="max-w-[150px] truncate">{m.observacoes || '-'}</TableCell>
+                      <TableCell className="hidden md:table-cell max-w-[150px] truncate">{m.observacoes || '-'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
                           <Button variant="ghost" size="icon" title="Editar" onClick={() => { setEditMov(m); setEditMovDialog(true) }}>
@@ -588,9 +588,9 @@ export default function Pecuaria() {
                     <TableHead>Data</TableHead>
                     <TableHead>Rebanho</TableHead>
                     <TableHead>Peso (kg)</TableHead>
-                    <TableHead>Peso Anterior (kg)</TableHead>
+                    <TableHead className="hidden sm:table-cell">Peso Anterior (kg)</TableHead>
                     <TableHead>GMD (kg/dia)</TableHead>
-                    <TableHead>Responsável</TableHead>
+                    <TableHead className="hidden md:table-cell">Responsável</TableHead>
                     <TableHead>Obs</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -604,7 +604,7 @@ export default function Pecuaria() {
                       <TableCell>
                         {Number(p.peso_kg).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {p.peso_anterior_kg
                           ? Number(p.peso_anterior_kg).toLocaleString('pt-BR', { minimumFractionDigits: 1 })
                           : '—'}
@@ -614,7 +614,7 @@ export default function Pecuaria() {
                           ? <Badge variant="secondary" className="bg-green-100 text-green-800">+{Number(p.gmd_kg).toFixed(3)}</Badge>
                           : '—'}
                       </TableCell>
-                      <TableCell>{p.responsavel || '—'}</TableCell>
+                      <TableCell className="hidden md:table-cell">{p.responsavel || '—'}</TableCell>
                       <TableCell className="max-w-[150px] truncate">{p.observacoes || '—'}</TableCell>
                     </TableRow>
                   ))}
