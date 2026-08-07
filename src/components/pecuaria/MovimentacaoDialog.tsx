@@ -100,7 +100,7 @@ export function MovimentacaoDialog({
     ? (parseFloat(valorUnitario || '0') || 0) * qtdNum
     : (parseFloat(valorTotal || '0') || 0)
 
-  function PrecoBlock({ labelUnitario }: { labelUnitario: string }) {
+  function renderPreco(labelUnitario: string) {
     return (
       <>
         <div className="space-y-2">
@@ -141,7 +141,7 @@ export function MovimentacaoDialog({
     )
   }
 
-  function SelecaoAnimais() {
+  function renderSelecaoAnimais() {
     if (!TIPOS_COM_ANIMAIS.includes(tipo) || !animaisRebanho?.length) return null
     return (
       <div className="space-y-2">
@@ -300,7 +300,7 @@ export function MovimentacaoDialog({
                 <Label>Quantidade *</Label>
                 <Input type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
               </div>
-              <PrecoBlock labelUnitario="Valor por cabeça (R$)" />
+              {renderPreco('Valor por cabeça (R$)')}
               <div>
                 <Label>Fornecedor</Label>
                 <Input value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
@@ -343,8 +343,8 @@ export function MovimentacaoDialog({
                 <Label>Quantidade *</Label>
                 <Input type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
               </div>
-              <PrecoBlock labelUnitario="Valor por cabeça (R$) *" />
-              <SelecaoAnimais />
+              {renderPreco('Valor por cabeça (R$) *')}
+              {renderSelecaoAnimais()}
               <div>
                 <Label>Comprador</Label>
                 <Input value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
@@ -420,7 +420,7 @@ export function MovimentacaoDialog({
                   <Input type="number" step="0.01" value={valorUnitario} onChange={e => { setTipoPreco('unitario'); setValorUnitario(e.target.value) }} placeholder="Opcional — registra prejuízo" />
                 </div>
               </div>
-              <SelecaoAnimais />
+              {renderSelecaoAnimais()}
               {valorUnitario && (
                 <p className="text-sm text-red-600">
                   Prejuízo: R$ {totalCalculado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} — será registrado no financeiro como perda
@@ -447,7 +447,7 @@ export function MovimentacaoDialog({
                   </SelectContent>
                 </Select>
               </div>
-              <SelecaoAnimais />
+              {renderSelecaoAnimais()}
             </>
           )}
 
