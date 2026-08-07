@@ -96,7 +96,7 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                         <p className="text-sm text-muted-foreground">Sem pesagem</p>
                       )}
                     </div>
-                    <div className="flex gap-1">
+                    <div className="hidden gap-1 sm:flex">
                       <Button size="icon" variant="ghost" onClick={() => setAnimalPesagem(animal)} title="Pesar">
                         <Scale className="h-4 w-4" />
                       </Button>
@@ -113,6 +113,30 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                         <LineChart className="h-4 w-4" />
                       </Button>
                     </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild className="sm:hidden">
+                        <Button size="icon" variant="ghost" aria-label="Ações do animal">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setAnimalPesagem(animal)}>
+                          <Scale className="mr-2 h-4 w-4" /> Pesar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setAnimalVacina(animal)}>
+                          <Syringe className="mr-2 h-4 w-4" /> Vacinar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setMovAnimal({ animal, tipo: 'transferencia' })}>
+                          <ArrowRightLeft className="mr-2 h-4 w-4" /> Transferir
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setMovAnimal({ animal, tipo: 'venda' })}>
+                          <DollarSign className="mr-2 h-4 w-4" /> Vender
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setAnimalHistorico(animal)}>
+                          <LineChart className="mr-2 h-4 w-4" /> Histórico de peso
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ))}
