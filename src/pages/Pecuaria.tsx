@@ -142,6 +142,18 @@ export default function Pecuaria() {
     enabled: !!propId,
   })
 
+  const { data: contagemAnimais } = useQuery({
+    queryKey: ['sanitario-contagem', propId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('sanitario_animais')
+        .select('evento_id, animal_id, aplicado')
+      return (data || []) as any[]
+    },
+    enabled: !!propId,
+  })
+
+
   const { data: ordenhas, isLoading: loadingOrdenha } = useQuery({
     queryKey: ['ordenhas', propId],
     queryFn: async () => {
