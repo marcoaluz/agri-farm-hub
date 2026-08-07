@@ -539,10 +539,10 @@ export default function Pecuaria() {
                     <TableRow key={m.id} id={`mov-${m.id}`} className="transition-colors">
                       <TableCell>{format(new Date(m.data_evento), 'dd/MM/yyyy')}</TableCell>
                       <TableCell><Badge className={MOV_BADGE[m.tipo] || 'bg-muted text-foreground'} variant="secondary">{m.tipo?.replace('_', ' ')}</Badge></TableCell>
-                      <TableCell>{(m.rebanho as any)?.nome || '-'}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{(m.rebanho as any)?.nome || '-'}</TableCell>
                       <TableCell>{m.quantidade}</TableCell>
                       <TableCell className="text-right">{m.valor_total ? `R$ ${Number(m.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
-                      <TableCell className="max-w-[150px] truncate">{m.observacoes || '-'}</TableCell>
+                      <TableCell className="hidden md:table-cell max-w-[150px] truncate">{m.observacoes || '-'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
                           <Button variant="ghost" size="icon" title="Editar" onClick={() => { setEditMov(m); setEditMovDialog(true) }}>
