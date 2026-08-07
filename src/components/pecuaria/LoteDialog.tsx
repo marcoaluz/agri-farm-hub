@@ -166,6 +166,11 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
             <Label>Observações</Label>
             <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
           </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={form.vacinavel} onCheckedChange={v => setForm(f => ({ ...f, vacinavel: v }))} />
+            <Label>Participar de controle sanitário (vacinação)</Label>
+          </div>
+
           {!lote && (
             <div>
               <Label>Quantidade inicial de animais</Label>
