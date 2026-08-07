@@ -646,6 +646,7 @@ export default function Pecuaria() {
           onOpenChange={o => { if (!o) setAnimaisRebanho(null) }}
           propriedadeId={propId}
           rebanho={animaisRebanho}
+          rebanhos={rebanhos || []}
         />
       )}
 
