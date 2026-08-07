@@ -45,7 +45,9 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
     data_formacao: undefined as Date | undefined,
     observacoes: '',
     quantidade_inicial: '',
+    vacinavel: true,
   })
+
 
   useEffect(() => {
     if (lote) {
