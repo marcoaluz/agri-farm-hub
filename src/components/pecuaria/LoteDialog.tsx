@@ -82,7 +82,9 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
       localizacao: form.localizacao || null,
       data_formacao: form.data_formacao ? format(form.data_formacao, 'yyyy-MM-dd') : null,
       observacoes: form.observacoes || null,
+      vacinavel: form.vacinavel,
       propriedade_id: propriedadeId,
+
     }
 
     const { data: novoLote, error } = lote
