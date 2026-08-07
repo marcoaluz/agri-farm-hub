@@ -527,10 +527,10 @@ export default function Pecuaria() {
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead>Rebanho</TableHead>
+                    <TableHead className="hidden sm:table-cell">Rebanho</TableHead>
                     <TableHead>Qtd</TableHead>
                     <TableHead className="text-right">Valor Total</TableHead>
-                    <TableHead>Obs</TableHead>
+                    <TableHead className="hidden md:table-cell">Obs</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -588,9 +588,9 @@ export default function Pecuaria() {
                     <TableHead>Data</TableHead>
                     <TableHead>Rebanho</TableHead>
                     <TableHead>Peso (kg)</TableHead>
-                    <TableHead>Peso Anterior (kg)</TableHead>
+                    <TableHead className="hidden sm:table-cell">Peso Anterior (kg)</TableHead>
                     <TableHead>GMD (kg/dia)</TableHead>
-                    <TableHead>Responsável</TableHead>
+                    <TableHead className="hidden md:table-cell">Responsável</TableHead>
                     <TableHead>Obs</TableHead>
                   </TableRow>
                 </TableHeader>

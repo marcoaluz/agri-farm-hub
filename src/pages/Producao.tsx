@@ -152,7 +152,7 @@ export default function Producao() {
               </div>
             </div>
             {Number(cultura.estoque_disponivel) > 0 && (
-              <Button size="sm" onClick={() => setCulturaVenda(cultura)} className="gap-1 self-center">
+              <Button size="sm" onClick={() => setCulturaVenda(cultura)} className="w-full gap-1 sm:w-auto sm:self-center">
                 <DollarSign className="h-3.5 w-3.5" />
                 Vender
               </Button>

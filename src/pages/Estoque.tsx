@@ -318,7 +318,7 @@ export function Estoque() {
 
       {/* Dialog de Entrada */}
       <Dialog open={dialogEntradaOpen} onOpenChange={setDialogEntradaOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] sm:w-auto max-w-lg max-h-[90vh] overflow-y-auto">
           <EntradaEstoqueForm
             onSuccess={() => setDialogEntradaOpen(false)}
           />
@@ -327,7 +327,7 @@ export function Estoque() {
 
       {/* Dialog de Cadastro de Produto */}
       <Dialog open={dialogProdutoOpen} onOpenChange={setDialogProdutoOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] sm:w-auto max-w-md max-h-[90vh] overflow-y-auto">
           <ProdutoForm
             onSuccess={() => setDialogProdutoOpen(false)}
           />
@@ -336,7 +336,7 @@ export function Estoque() {
 
       {/* Dialog de Venda de Produto */}
       <Dialog open={!!produtoVenda} onOpenChange={(open) => { if (!open) setProdutoVenda(null); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] sm:w-auto max-w-lg max-h-[90vh] overflow-y-auto">
           {produtoVenda && (
             <VenderProdutoModal
               produto={produtoVenda}
