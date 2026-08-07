@@ -4,22 +4,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { supabase } from '@/lib/supabase'
-import { Plus, Scale, LineChart } from 'lucide-react'
+import { Plus, Scale, LineChart, Syringe, ArrowRightLeft, DollarSign } from 'lucide-react'
 import { NovoAnimalModal } from './NovoAnimalModal'
 import { PesagemAnimalModal } from './PesagemAnimalModal'
 import { HistoricoPesoModal } from './HistoricoPesoModal'
+import { VacinacaoModal } from './VacinacaoModal'
+import { MovimentacaoDialog } from './MovimentacaoDialog'
 
 interface AnimaisRebanhoDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   propriedadeId: string
   rebanho: any
+  rebanhos?: any[]
 }
 
-export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanho }: AnimaisRebanhoDialogProps) {
+export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanho, rebanhos }: AnimaisRebanhoDialogProps) {
   const [showNovoAnimal, setShowNovoAnimal] = useState(false)
   const [animalPesagem, setAnimalPesagem] = useState<any>(null)
   const [animalHistorico, setAnimalHistorico] = useState<any>(null)
+  const [animalVacina, setAnimalVacina] = useState<any>(null)
+  const [movAnimal, setMovAnimal] = useState<{ animal: any; tipo: string } | null>(null)
 
   const { data: animais, isLoading } = useQuery({
     queryKey: ['animais-rebanho', rebanho?.id],
@@ -56,7 +61,7 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
           ) : animais && animais.length > 0 ? (
             <div className="space-y-2">
               {animais.map((animal: any) => (
-                <div key={animal.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+                <div key={animal.id} className="flex flex-wrap items-center justify-between gap-3 p-3 border rounded-lg hover:bg-muted/50">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-amber-100 rounded-full">
                       <span className="text-sm font-bold">
@@ -92,8 +97,17 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                       )}
                     </div>
                     <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => setAnimalPesagem(animal)} title="Registrar peso">
+                      <Button size="icon" variant="ghost" onClick={() => setAnimalPesagem(animal)} title="Pesar">
                         <Scale className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => setAnimalVacina(animal)} title="Vacinar">
+                        <Syringe className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => setMovAnimal({ animal, tipo: 'transferencia' })} title="Transferir">
+                        <ArrowRightLeft className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => setMovAnimal({ animal, tipo: 'venda' })} title="Vender">
+                        <DollarSign className="h-4 w-4" />
                       </Button>
                       <Button size="icon" variant="ghost" onClick={() => setAnimalHistorico(animal)} title="Histórico de peso">
                         <LineChart className="h-4 w-4" />
@@ -123,6 +137,27 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
       )}
       {animalHistorico && (
         <HistoricoPesoModal open={!!animalHistorico} onOpenChange={o => { if (!o) setAnimalHistorico(null) }} animal={animalHistorico} />
+      )}
+      {animalVacina && (
+        <VacinacaoModal
+          open={!!animalVacina}
+          onOpenChange={o => { if (!o) setAnimalVacina(null) }}
+          propriedadeId={propriedadeId}
+          rebanho={rebanho}
+          animalIdInicial={animalVacina.id}
+        />
+      )}
+      {movAnimal && (
+        <MovimentacaoDialog
+          open={!!movAnimal}
+          onOpenChange={o => { if (!o) setMovAnimal(null) }}
+          propriedadeId={propriedadeId}
+          rebanhos={rebanhos && rebanhos.length ? rebanhos : [rebanho]}
+          rebanhoIdInicial={rebanho?.id}
+          tipoInicial={movAnimal.tipo}
+          quantidadeInicial="1"
+          animalIdInicial={movAnimal.animal.id}
+        />
       )}
     </>
   )
