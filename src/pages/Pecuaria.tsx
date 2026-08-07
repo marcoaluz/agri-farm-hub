@@ -423,6 +423,7 @@ export default function Pecuaria() {
               {eventosFiltrados.map((e: any) => {
                 const isProximo = e.data_proxima && new Date(e.data_proxima) <= addDays(new Date(), 30)
                 const tipoIcon = e.tipo === 'vacina' ? '💉' : e.tipo === 'exame' ? '🔬' : '💊'
+                const vacinados = (contagemAnimais || []).filter((c: any) => c.evento_id === e.id && c.aplicado).length
                 return (
                   <Card key={e.id} className={isProximo ? 'border-destructive/50' : ''}>
                     <CardContent className="pt-4">
@@ -434,13 +435,15 @@ export default function Pecuaria() {
                             {isProximo && <Badge variant="destructive" className="text-xs"><AlertTriangle className="h-3 w-3 mr-1" /> Próximo</Badge>}
                           </div>
                           <p className="text-sm">{e.descricao}</p>
-                          <div className="text-xs text-muted-foreground flex gap-3">
+                          <div className="text-xs text-muted-foreground flex gap-3 flex-wrap items-center">
                             <span>Aplicação: {format(new Date(e.data_aplicacao), 'dd/MM/yyyy')}</span>
+                            {vacinados > 0 && <Badge variant="outline" className="text-xs">{vacinados} animal(is)</Badge>}
                             {e.data_proxima && <span>Próxima: {format(new Date(e.data_proxima), 'dd/MM/yyyy')}</span>}
                             {e.rebanho && <span>Rebanho: {(e.rebanho as any).nome}</span>}
                           </div>
                         </div>
                       </div>
+
                     </CardContent>
                   </Card>
                 )
