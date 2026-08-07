@@ -388,9 +388,51 @@ export default function Agenda() {
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-500" /> Média</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-400" /> Baixa</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border ring-1 ring-red-600" /> Atrasada</span>
+            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-foreground" /> Vencimentos / vacinações</span>
+            <span className="ml-auto">Clique em um dia para criar uma tarefa</span>
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog Eventos do dia */}
+      <Dialog open={!!diaSelecionado} onOpenChange={o => !o && setDiaSelecionado(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {diaSelecionado ? format(parseISO(diaSelecionado + 'T12:00:00'), "dd 'de' MMMM", { locale: ptBR }) : ''}
+            </DialogTitle>
+            <DialogDescription>Eventos e vencimentos deste dia</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto">
+            {eventosSelecionados.map((ev: any, i: number) => (
+              <div key={ev.id ?? i} className="flex items-center gap-2 p-2 border-b text-sm">
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ev.cor }} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{ev.titulo}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {ev.tipo_evento === 'pagamento' || ev.tipo_evento === 'parcela'
+                      ? `R$ ${Number(ev.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                      : ev.status}
+                  </p>
+                </div>
+                {(ev.tipo_evento === 'pagamento' || ev.tipo_evento === 'parcela') && (
+                  <Badge variant="outline" className={ev.cor === '#ef4444' ? 'text-red-600' : 'text-green-600'}>
+                    {ev.cor === '#ef4444' ? 'A pagar' : 'A receber'}
+                  </Badge>
+                )}
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiaSelecionado(null)}>Fechar</Button>
+            <Button onClick={() => diaSelecionado && criarTarefaNoDia(diaSelecionado)}>
+              <Plus className="h-4 w-4 mr-1" /> Nova tarefa neste dia
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
 
       {/* Dialog Nova Tarefa */}
       <Dialog open={novaOpen} onOpenChange={setNovaOpen}>
