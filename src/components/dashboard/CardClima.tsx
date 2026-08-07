@@ -1,133 +1,160 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { CloudRain, Thermometer, Droplets, MapPinOff } from 'lucide-react'
+import { CloudSun, History } from 'lucide-react'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+
+function weatherDescription(code: number) {
+  if (code === 0) return { texto: 'Céu limpo', icone: '☀️' }
+  if (code <= 3) return { texto: 'Parcialmente nublado', icone: '⛅' }
+  if (code <= 48) return { texto: 'Nublado', icone: '☁️' }
+  if (code <= 57) return { texto: 'Chuvisco', icone: '🌦️' }
+  if (code <= 67) return { texto: 'Chuva', icone: '🌧️' }
+  if (code <= 77) return { texto: 'Neve', icone: '❄️' }
+  if (code <= 82) return { texto: 'Pancadas', icone: '⛈️' }
+  if (code <= 99) return { texto: 'Tempestade', icone: '🌩️' }
+  return { texto: 'Desconhecido', icone: '❓' }
+}
 
 export function CardClima() {
   const { propriedadeAtual } = useGlobal()
   const propId = propriedadeAtual?.id
   const lat = (propriedadeAtual as any)?.latitude
   const lng = (propriedadeAtual as any)?.longitude
-  const hasCoords = lat != null && lng != null
+  const [histOpen, setHistOpen] = useState(false)
 
-  const { data: resumo, isLoading: loadResumo } = useQuery({
-    queryKey: ['clima-resumo', propId],
+  const { data: climaHoje, isLoading } = useQuery({
+    queryKey: ['clima-hoje', lat, lng],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc('get_resumo_clima', {
-        p_propriedade_id: propId,
-        p_dias: 30,
-      })
-      if (error) throw error
-      return Array.isArray(data) ? data[0] : data
+      if (lat == null || lng == null) return null
+      const res = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&timezone=America/Sao_Paulo&forecast_days=7`,
+      )
+      return res.json()
     },
-    enabled: !!propId && hasCoords,
-    staleTime: 10 * 60 * 1000,
+    enabled: lat != null && lng != null,
+    staleTime: 1000 * 60 * 30,
   })
 
-  const { data: serie, isLoading: loadSerie } = useQuery({
-    queryKey: ['clima-serie', propId],
+  const { data: historicoClima, isLoading: loadHist } = useQuery({
+    queryKey: ['clima-historico', propId],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc('get_serie_clima_diaria', {
         p_propriedade_id: propId,
-        p_dias: 30,
+        p_dias: 90,
       })
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: !!propId && hasCoords,
+    enabled: !!propId && histOpen,
     staleTime: 10 * 60 * 1000,
   })
 
   const serieFmt = useMemo(
     () =>
-      (serie || []).map((d: any) => ({
+      (historicoClima || []).map((d: any) => ({
         ...d,
         dataLabel: d.data ? format(new Date(d.data + 'T12:00:00'), 'dd/MM') : '',
         dataFull: d.data ? format(new Date(d.data + 'T12:00:00'), 'dd/MM/yyyy') : '',
         precipitacao_mm: Number(d.precipitacao_mm || 0),
       })),
-    [serie],
+    [historicoClima],
   )
 
-  const isLoading = loadResumo || loadSerie
-  const precip = Number(resumo?.precipitacao_total || 0)
-  const tMin = resumo?.temp_min_periodo
-  const tMax = resumo?.temp_max_periodo
-  const diasChuva = Number(resumo?.dias_com_chuva || 0)
-  const semDados = !resumo || (precip === 0 && diasChuva === 0 && tMin == null && tMax == null)
-
-  if (!hasCoords || (!isLoading && semDados)) {
-    return (
-      <Card className="lg:col-span-3">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Clima — últimos 30 dias</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-          <MapPinOff className="h-10 w-10 text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground mb-4 max-w-md">
-            Sem dados climáticos ainda. Desenhe os talhões no mapa para que o sistema capture
-            a localização da propriedade automaticamente.
-          </p>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/mapa">Ir para o mapa</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
-    <Card className="lg:col-span-3">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">
-          Clima — últimos 30 dias {propriedadeAtual?.nome ? `· ${propriedadeAtual.nome}` : ''}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isLoading ? (
-          <>
-            <div className="grid grid-cols-3 gap-3">
-              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
-            </div>
-            <Skeleton className="h-[120px] w-full" />
-          </>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded-lg bg-muted/50 p-3 flex items-center gap-3">
-                <CloudRain className="h-7 w-7 text-sky-500 shrink-0" />
+    <>
+      <Card className="lg:col-span-3">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CloudSun className="h-5 w-5" />
+            Clima {propriedadeAtual?.nome ? `· ${propriedadeAtual.nome}` : ''}
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={() => setHistOpen(true)} disabled={!propId}>
+            <History className="h-4 w-4 mr-1" /> Ver histórico
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : climaHoje?.current ? (
+            <>
+              {/* Agora */}
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-xs text-muted-foreground">Chuva acumulada</p>
-                  <p className="text-xl font-bold text-foreground">{precip.toFixed(1)} mm</p>
-                </div>
-              </div>
-              <div className="rounded-lg bg-muted/50 p-3 flex items-center gap-3">
-                <Thermometer className="h-7 w-7 text-amber-500 shrink-0" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Temp. mín / máx</p>
-                  <p className="text-xl font-bold text-foreground">
-                    {tMin != null ? `${Math.round(Number(tMin))}°` : '—'} /{' '}
-                    {tMax != null ? `${Math.round(Number(tMax))}°` : '—'}
+                  <p className="text-3xl font-bold">{climaHoje.current.temperature_2m}°C</p>
+                  <p className="text-sm text-muted-foreground">
+                    {weatherDescription(climaHoje.current.weather_code).texto}
                   </p>
                 </div>
+                <div className="text-4xl">{weatherDescription(climaHoje.current.weather_code).icone}</div>
               </div>
-              <div className="rounded-lg bg-muted/50 p-3 flex items-center gap-3">
-                <Droplets className="h-7 w-7 text-sky-400 shrink-0" />
+
+              <div className="grid grid-cols-3 gap-2 text-xs text-center mb-4">
                 <div>
-                  <p className="text-xs text-muted-foreground">Dias com chuva</p>
-                  <p className="text-xl font-bold text-foreground">{diasChuva}</p>
+                  <p className="text-muted-foreground">Umidade</p>
+                  <p className="font-medium">{climaHoje.current.relative_humidity_2m}%</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Chuva</p>
+                  <p className="font-medium">{climaHoje.current.precipitation}mm</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Vento</p>
+                  <p className="font-medium">{climaHoje.current.wind_speed_10m}km/h</p>
                 </div>
               </div>
-            </div>
 
-            <div className="h-[120px]">
+              {/* Próximos dias */}
+              <div className="border-t pt-3">
+                <p className="text-xs font-medium mb-2">Próximos dias</p>
+                <div className="space-y-1">
+                  {climaHoje.daily?.time?.slice(1, 6).map((dia: string, i: number) => (
+                    <div key={dia} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground w-16">
+                        {new Date(dia + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' })}
+                      </span>
+                      <span>{weatherDescription(climaHoje.daily.weather_code[i + 1]).icone}</span>
+                      <span>
+                        {climaHoje.daily.temperature_2m_min[i + 1]}° / {climaHoje.daily.temperature_2m_max[i + 1]}°
+                      </span>
+                      <span className="text-sky-600">
+                        {climaHoje.daily.precipitation_sum[i + 1] > 0
+                          ? `${climaHoje.daily.precipitation_sum[i + 1]}mm`
+                          : '—'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Defina a localização da propriedade para ver o clima
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={histOpen} onOpenChange={setHistOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Histórico de chuva</DialogTitle>
+            <DialogDescription>Precipitação diária dos últimos 90 dias</DialogDescription>
+          </DialogHeader>
+          {loadHist ? (
+            <Skeleton className="h-[260px] w-full" />
+          ) : serieFmt.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-10">
+              Nenhum registro climático disponível para esta propriedade.
+            </p>
+          ) : (
+            <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={serieFmt} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -144,7 +171,6 @@ export function CardClima() {
                     tickLine={false}
                     axisLine={false}
                     stroke="hsl(var(--muted-foreground))"
-                    tickFormatter={(v: number) => `${v}`}
                     width={28}
                   />
                   <Tooltip
@@ -161,9 +187,9 @@ export function CardClima() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
