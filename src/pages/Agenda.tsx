@@ -246,7 +246,9 @@ export default function Agenda() {
     toast.success('Tarefa criada')
     setNovaOpen(false)
     setForm(initialForm)
+    queryClient.invalidateQueries({ queryKey: ['eventos-calendario'] })
     fetchTarefas()
+
   }
 
   async function atualizarStatus(novoStatus: Tarefa['status']) {
