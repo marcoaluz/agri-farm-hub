@@ -171,6 +171,51 @@ export default function Agenda() {
     return map
   }, [tarefas])
 
+  // Eventos do calendário (vencimentos, parcelas, vacinações, tarefas)
+  const { data: eventosCalendario } = useQuery({
+    queryKey: ['eventos-calendario', propriedadeAtual?.id, format(inicio, 'yyyy-MM')],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc('get_eventos_calendario', {
+        p_propriedade_id: propriedadeAtual!.id,
+        p_data_inicio: format(inicio, 'yyyy-MM-dd'),
+        p_data_fim: format(fim, 'yyyy-MM-dd'),
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+    enabled: !!propriedadeAtual?.id,
+  })
+
+  const eventosPorDia = useMemo(() => {
+    const map = new Map<string, any[]>()
+    eventosCalendario?.forEach((e: any) => {
+      const key = (e.data || '').slice(0, 10)
+      if (!key) return
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(e)
+    })
+    return map
+  }, [eventosCalendario])
+
+  const eventosSelecionados = diaSelecionado ? eventosPorDia.get(diaSelecionado) ?? [] : []
+
+  function handleDiaClick(dia: Date) {
+    const key = format(dia, 'yyyy-MM-dd')
+    if ((eventosPorDia.get(key) ?? []).length > 0) {
+      setDiaSelecionado(key)
+      return
+    }
+    setForm({ ...initialForm, data_prevista: key })
+    setNovaOpen(true)
+  }
+
+  function criarTarefaNoDia(key: string) {
+    setDiaSelecionado(null)
+    setForm({ ...initialForm, data_prevista: key })
+    setNovaOpen(true)
+  }
+
+
   async function salvarNova(e: React.FormEvent) {
     e.preventDefault()
     if (!propriedadeAtual?.id || !user?.id) return
