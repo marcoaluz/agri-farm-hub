@@ -28,6 +28,7 @@ import {
   Bell,
   Contact,
   Sprout,
+  LogOut,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -67,7 +68,7 @@ const routes = [
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const location = useLocation()
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const { propriedadeAtual } = useGlobal()
   const { modulos } = useModulos()
   const { data: modulosAcesso } = useModulosAcesso()
