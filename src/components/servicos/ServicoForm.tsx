@@ -68,13 +68,11 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
   const { data: categorias, refetch: refetchCategorias } = useQuery({
     queryKey: ['categorias-servico'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('categorias_servico')
-        .select('id, nome')
-        .eq('ativo', true)
-        .order('nome');
+      const { data, error } = await supabase.rpc('listar_categorias_servico' as any);
       if (error) throw error;
-      return (data || []) as { id: string; nome: string }[];
+      return ((data || []) as { id: string; nome: string }[]).sort((a, b) =>
+        a.nome.localeCompare(b.nome)
+      );
     },
   });
 
