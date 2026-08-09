@@ -107,6 +107,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Convite: usuário chegou via link de e-mail e precisa criar a senha
+      if (event === "SIGNED_IN" && session) {
+        const h = window.location.hash || "";
+        const t = new URLSearchParams(h.startsWith("#") ? h.substring(1) : h).get("type");
+        if (t === "invite" || t === "signup") {
+          setSession(session);
+          setUser(session.user);
+          setLoading(false);
+          navigate("/definir-senha", { replace: true });
+          return;
+        }
+      }
+
+
       setSession(session);
       setUser(session?.user ?? null);
 
