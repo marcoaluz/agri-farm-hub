@@ -73,10 +73,13 @@ export default function Convites() {
 
   const [tipoConvite, setTipoConvite] = useState<TipoConvite>("acesso_propriedade");
   const [email, setEmail] = useState("");
+  const [nomeConvidado, setNomeConvidado] = useState("");
   const [propriedadeId, setPropriedadeId] = useState("");
   const [papel, setPapel] = useState("");
   const [horas, setHoras] = useState("72");
   const [gerando, setGerando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+
 
   const [linkGerado, setLinkGerado] = useState("");
   const [showLinkDialog, setShowLinkDialog] = useState(false);
