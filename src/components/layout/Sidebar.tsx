@@ -165,12 +165,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-screen w-64 border-r border-border bg-sidebar transition-transform duration-300 md:relative md:z-30 md:h-full md:translate-x-0 md:flex-shrink-0',
+          'fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-sidebar transition-transform duration-300 md:relative md:z-30 md:h-full md:translate-x-0 md:flex-shrink-0',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Header Mobile */}
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4 md:hidden">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-4 md:hidden">
           <div className="flex items-center rounded-lg bg-background px-2 py-1">
             <img src="/logo-full.png" alt="Agro GFI" className="h-10 w-auto" />
           </div>
@@ -186,8 +186,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         {/* Navegação */}
-        <ScrollArea className="h-[calc(100vh-4rem)] pb-8">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="space-y-0.5 p-2">
+
             {routesFiltradas.map((route) => {
               const isActive = location.pathname === route.href
               const bloqueado = moduloBloqueado(route.href)
