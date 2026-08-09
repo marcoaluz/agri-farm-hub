@@ -423,7 +423,9 @@ export default function Convites() {
 
             {/* E-mail */}
             <div className="space-y-2">
-              <Label htmlFor="email">E-mail do convidado</Label>
+              <Label htmlFor="email">
+                {tipoConvite === "novo_proprietario" ? "E-mail do agricultor *" : "E-mail do convidado"}
+              </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -433,10 +435,51 @@ export default function Convites() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
-                  disabled={gerando}
+                  disabled={gerando || enviando}
                 />
               </div>
             </div>
+
+            {tipoConvite === "novo_proprietario" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="nome">Nome (opcional)</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="nome"
+                      placeholder="Nome do agricultor"
+                      value={nomeConvidado}
+                      onChange={(e) => setNomeConvidado(e.target.value)}
+                      className="pl-10"
+                      disabled={enviando}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+                  <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>
+                    O agricultor vai receber um e-mail com link para criar a senha e acessar o sistema. Não precisa de
+                    aprovação manual.
+                  </span>
+                </div>
+
+                <Button onClick={handleEnviarConvite} disabled={enviando || !email.trim()} className="w-full">
+                  {enviando ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="mr-2 h-4 w-4" />
+                      Enviar Convite por E-mail
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
 
             {/* Campos exclusivos de Tipo B */}
             {tipoConvite === "acesso_propriedade" && (
@@ -478,39 +521,40 @@ export default function Convites() {
                     </div>
                   )}
                 </div>
+
+                {/* Validade */}
+                <div className="space-y-2">
+                  <Label>Validade</Label>
+                  <Select value={horas} onValueChange={setHoras} disabled={gerando}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VALIDADE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button onClick={handleGerarConvite} disabled={gerando} className="w-full">
+                  {gerando ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Gerando...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Gerar Convite
+                    </>
+                  )}
+                </Button>
               </>
             )}
 
-            {/* Validade */}
-            <div className="space-y-2">
-              <Label>Validade</Label>
-              <Select value={horas} onValueChange={setHoras} disabled={gerando}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {VALIDADE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button onClick={handleGerarConvite} disabled={gerando} className="w-full">
-              {gerando ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Gerando...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Gerar Convite
-                </>
-              )}
-            </Button>
           </CardContent>
         </Card>
 
