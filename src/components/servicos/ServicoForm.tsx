@@ -59,6 +59,62 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
   const [itens, setItens] = useState<ItemVinculado[]>([]);
   const [addingType, setAddingType] = useState<'produto' | 'maquina' | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showNovaCategoria, setShowNovaCategoria] = useState(false);
+  const [novaCategoriaNome, setNovaCategoriaNome] = useState('');
+  const [salvandoCategoria, setSalvandoCategoria] = useState(false);
+  const [categoriaParaExcluir, setCategoriaParaExcluir] = useState<{ id: string; nome: string } | null>(null);
+
+  // Categorias do usuário (dinâmicas)
+  const { data: categorias, refetch: refetchCategorias } = useQuery({
+    queryKey: ['categorias-servico'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categorias_servico')
+        .select('id, nome')
+        .eq('ativo', true)
+        .order('nome');
+      if (error) throw error;
+      return (data || []) as { id: string; nome: string }[];
+    },
+  });
+
+  const handleAdicionarCategoria = async () => {
+    const nomeCat = novaCategoriaNome.trim();
+    if (!nomeCat) return;
+    setSalvandoCategoria(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('categorias_servico').insert({
+      usuario_id: user?.id,
+      nome: nomeCat,
+    });
+    setSalvandoCategoria(false);
+    if (error) {
+      toast({
+        title: (error as any).code === '23505' ? 'Essa categoria já existe' : 'Erro ao criar categoria',
+        description: (error as any).code === '23505' ? undefined : error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+    setCategoria(nomeCat);
+    setNovaCategoriaNome('');
+    setShowNovaCategoria(false);
+    refetchCategorias();
+    toast({ title: 'Categoria criada' });
+  };
+
+  const handleExcluirCategoria = async (catId: string, catNome: string) => {
+    setCategoriaParaExcluir(null);
+    const { error } = await supabase.from('categorias_servico').update({ ativo: false }).eq('id', catId);
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if (categoria === catNome) setCategoria('');
+    refetchCategorias();
+    toast({ title: 'Categoria removida' });
+  };
+
 
   // Busca produtos disponíveis para vincular (RPC inclui produtos globais)
   const { data: produtosDisponiveis = [], error: produtosError } = useQuery({
