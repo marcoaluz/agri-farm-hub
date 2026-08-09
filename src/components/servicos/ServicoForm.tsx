@@ -280,18 +280,80 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
               placeholder="Ex: Adubação de Cobertura" className={errors.nome ? 'border-destructive' : ''} />
             {errors.nome && <p className="text-xs text-destructive mt-1">{errors.nome}</p>}
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Categoria *</Label>
-            <Select value={categoria} onValueChange={setCategoria}>
-              <SelectTrigger className={errors.categoria ? 'border-destructive' : ''}>
-                <SelectValue placeholder="Selecione" />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            {!showNovaCategoria ? (
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Select value={categoria} onValueChange={setCategoria}>
+                    <SelectTrigger className={errors.categoria ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Selecione a categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(categorias || []).map(cat => (
+                        <SelectItem key={cat.id} value={cat.nome}>{cat.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="button" size="icon" variant="outline"
+                  onClick={() => setShowNovaCategoria(true)} title="Nova categoria">
+                  <Plus className="h-4 w-4" />
+                </Button>
+                {categoria && (
+                  <Button type="button" size="icon" variant="ghost"
+                    onClick={() => {
+                      const cat = (categorias || []).find(c => c.nome === categoria);
+                      if (cat) setCategoriaParaExcluir(cat);
+                    }}
+                    title="Excluir categoria selecionada"
+                    className="text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Nome da nova categoria"
+                  value={novaCategoriaNome}
+                  onChange={e => setNovaCategoriaNome(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdicionarCategoria(); } }}
+                  autoFocus
+                />
+                <Button type="button" size="icon" onClick={handleAdicionarCategoria}
+                  disabled={salvandoCategoria || !novaCategoriaNome.trim()}>
+                  {salvandoCategoria ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                </Button>
+                <Button type="button" size="icon" variant="ghost"
+                  onClick={() => { setShowNovaCategoria(false); setNovaCategoriaNome(''); }}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             {errors.categoria && <p className="text-xs text-destructive mt-1">{errors.categoria}</p>}
           </div>
+
+          <AlertDialog open={!!categoriaParaExcluir} onOpenChange={o => !o && setCategoriaParaExcluir(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir categoria?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  A categoria <strong>{categoriaParaExcluir?.nome}</strong> será removida da lista.
+                  Serviços já cadastrados não são afetados.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => categoriaParaExcluir && handleExcluirCategoria(categoriaParaExcluir.id, categoriaParaExcluir.nome)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Checkbox
