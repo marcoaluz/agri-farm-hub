@@ -153,7 +153,7 @@ export function Servicos() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total',         value: stats.total,    icon: Wrench,      bg: 'bg-blue-100',   fg: 'text-blue-600' },
           { label: 'Simples',       value: stats.simples,  icon: CheckCircle, bg: 'bg-amber-100',  fg: 'text-amber-600' },

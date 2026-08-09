@@ -28,6 +28,7 @@ import {
   Bell,
   Contact,
   Sprout,
+  LogOut,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -67,7 +68,7 @@ const routes = [
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const location = useLocation()
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const { propriedadeAtual } = useGlobal()
   const { modulos } = useModulos()
   const { data: modulosAcesso } = useModulosAcesso()
@@ -165,12 +166,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-screen w-64 border-r border-border bg-sidebar transition-transform duration-300 md:relative md:z-30 md:h-full md:translate-x-0 md:flex-shrink-0',
+          'fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-sidebar transition-transform duration-300 md:relative md:z-30 md:h-full md:translate-x-0 md:flex-shrink-0',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Header Mobile */}
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4 md:hidden">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-4 md:hidden">
           <div className="flex items-center rounded-lg bg-background px-2 py-1">
             <img src="/logo-full.png" alt="Agro GFI" className="h-10 w-auto" />
           </div>
@@ -186,8 +187,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         {/* Navegação */}
-        <ScrollArea className="h-[calc(100vh-4rem)] pb-8">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="space-y-0.5 p-2">
+
             {routesFiltradas.map((route) => {
               const isActive = location.pathname === route.href
               const bloqueado = moduloBloqueado(route.href)
@@ -307,14 +309,37 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               </>
             )}
           </div>
+        </ScrollArea>
 
-          {/* Footer da Sidebar */}
-          <div className="border-t border-sidebar-border px-3 py-2">
-            <div className="text-[10px] text-sidebar-foreground/40 text-center">
-              Agro GFI v1.0.0
+        {/* Footer fixo: usuário + logout */}
+        <div className="mt-auto shrink-0 border-t border-sidebar-border p-3">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent/20">
+              <span className="text-sm font-medium text-sidebar-foreground">
+                {user?.email?.[0]?.toUpperCase() ?? '?'}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-sidebar-foreground">
+                {(user?.user_metadata as any)?.nome_completo || user?.email?.split('@')[0] || 'Usuário'}
+              </p>
+              <p className="truncate text-xs text-sidebar-foreground/60">{user?.email}</p>
             </div>
           </div>
-        </ScrollArea>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full gap-2 bg-transparent text-sidebar-foreground hover:bg-sidebar-foreground/10"
+            onClick={() => { onClose(); signOut() }}
+          >
+            <LogOut className="h-4 w-4" />
+            Sair
+          </Button>
+          <div className="mt-2 text-center text-[10px] text-sidebar-foreground/40">
+            Agro GFI v1.0.0
+          </div>
+        </div>
+
       </aside>
 
       {upgradeModal && (
