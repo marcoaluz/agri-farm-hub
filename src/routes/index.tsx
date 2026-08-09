@@ -97,6 +97,7 @@ export function AppRoutes() {
         }
       />
       <Route path="/reset-password" element={<RedefinirSenha />} />
+      <Route path="/definir-senha" element={<DefinirSenha />} />
       
       {/* Redirect /auth to /login */}
       <Route path="/auth" element={<Navigate to="/login" />} />
