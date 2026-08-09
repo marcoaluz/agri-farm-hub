@@ -60,19 +60,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     // Detecta link de convite (#...&type=invite) ou recuperação de senha (type=recovery)
-    // ANTES de qualquer redirect para o dashboard
+    // ANTES de qualquer redirect para o dashboard/login
     const hash = window.location.hash || "";
     const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.substring(1) : hash);
     const hashType = hashParams.get("type");
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
     const isInviteLink = hashType === "invite" || hashType === "signup";
     const isRecoveryLink = hashType === "recovery";
-    if (isInviteLink && window.location.pathname !== "/definir-senha") {
-      navigate("/definir-senha", { replace: true });
-    } else if (isRecoveryLink && window.location.pathname !== "/reset-password") {
-      navigate("/reset-password" + hash, { replace: true });
-    }
 
     const initializeAuth = async () => {
+      // Se vieram tokens na URL (convite/recuperação), estabelece a sessão manualmente
+      if (accessToken && refreshToken) {
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        // Limpa o hash da URL para não reprocessar
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+
+        if (!mounted) return;
+
+        if (!error && data.session) {
+          setSession(data.session);
+          setUser(data.session.user);
+          await fetchUserStatus(data.session.user.id);
+          setLoading(false);
+
+          if (isInviteLink) {
+            navigate("/definir-senha", { replace: true });
+          } else if (isRecoveryLink) {
+            navigate("/reset-password", { replace: true });
+          }
+          return;
+        }
+      } else if (isInviteLink && window.location.pathname !== "/definir-senha") {
+        navigate("/definir-senha", { replace: true });
+      } else if (isRecoveryLink && window.location.pathname !== "/reset-password") {
+        navigate("/reset-password" + hash, { replace: true });
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -92,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     };
+
 
     const {
       data: { subscription },
