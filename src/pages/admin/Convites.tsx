@@ -133,10 +133,59 @@ export default function Convites() {
   const handleTrocarTipo = (tipo: TipoConvite) => {
     setTipoConvite(tipo);
     setEmail("");
+    setNomeConvidado("");
     setPropriedadeId("");
     setPapel("");
     setHoras("72");
   };
+
+  const handleEnviarConvite = async () => {
+    if (!email.trim()) {
+      toast.error("Informe o e-mail");
+      return;
+    }
+
+    setEnviando(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/convidar-usuario`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            nome: nomeConvidado || "",
+            role: "proprietario",
+          }),
+        },
+      );
+
+      const resultado = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        toast.error(resultado.error || "Erro ao enviar convite");
+        return;
+      }
+
+      toast.success(`Convite enviado para ${email}!`);
+      setEmail("");
+      setNomeConvidado("");
+      fetchConvites();
+    } catch {
+      toast.error("Erro ao enviar convite");
+    } finally {
+      setEnviando(false);
+    }
+  };
+
 
   const handleGerarConvite = async () => {
     if (!email.trim()) {
