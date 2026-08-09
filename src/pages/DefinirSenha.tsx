@@ -21,10 +21,45 @@ export default function DefinirSenha() {
   const formValido = senha.length >= 6 && senhasIguais
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSessaoOk(!!data.session)
+    let cancelado = false
+
+    const verificar = async () => {
+      // Se ainda houver tokens no hash, estabelece a sessão aqui também
+      const hash = window.location.hash || ''
+      const params = new URLSearchParams(hash.startsWith('#') ? hash.substring(1) : hash)
+      const accessToken = params.get('access_token')
+      const refreshToken = params.get('refresh_token')
+
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        window.history.replaceState(null, '', window.location.pathname)
+      }
+
+      // Tenta algumas vezes para evitar corrida com a hidratação da sessão
+      for (let i = 0; i < 6; i++) {
+        const { data } = await supabase.auth.getSession()
+        if (cancelado) return
+        if (data.session) {
+          setSessaoOk(true)
+          return
+        }
+        await new Promise((r) => setTimeout(r, 400))
+      }
+      if (!cancelado) setSessaoOk(false)
+    }
+
+    void verificar()
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session && !cancelado) setSessaoOk(true)
     })
+
+    return () => {
+      cancelado = true
+      sub.subscription.unsubscribe()
+    }
   }, [])
+
 
   const handleDefinirSenha = async () => {
     if (senha.length < 6) {
