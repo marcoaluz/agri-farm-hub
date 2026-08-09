@@ -59,11 +59,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Detecta link de recuperação de senha (#access_token=...&type=recovery)
+    // Detecta link de convite (#...&type=invite) ou recuperação de senha (type=recovery)
     // ANTES de qualquer redirect para o dashboard
     const hash = window.location.hash || "";
-    const isRecoveryLink = hash.includes("type=recovery");
-    if (isRecoveryLink && window.location.pathname !== "/reset-password") {
+    const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.substring(1) : hash);
+    const hashType = hashParams.get("type");
+    const isInviteLink = hashType === "invite" || hashType === "signup";
+    const isRecoveryLink = hashType === "recovery";
+    if (isInviteLink && window.location.pathname !== "/definir-senha") {
+      navigate("/definir-senha", { replace: true });
+    } else if (isRecoveryLink && window.location.pathname !== "/reset-password") {
       navigate("/reset-password" + hash, { replace: true });
     }
 
@@ -101,6 +106,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate("/reset-password", { replace: true });
         return;
       }
+
+      // Convite: usuário chegou via link de e-mail e precisa criar a senha
+      if (event === "SIGNED_IN" && session) {
+        const h = window.location.hash || "";
+        const t = new URLSearchParams(h.startsWith("#") ? h.substring(1) : h).get("type");
+        if (t === "invite" || t === "signup") {
+          setSession(session);
+          setUser(session.user);
+          setLoading(false);
+          navigate("/definir-senha", { replace: true });
+          return;
+        }
+      }
+
 
       setSession(session);
       setUser(session?.user ?? null);

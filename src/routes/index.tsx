@@ -9,6 +9,7 @@ import { LoginPage } from '@/pages/auth/Login'
 // CadastroPage removido - acesso apenas por convite
 import { RecuperarSenhaPage } from '@/pages/auth/RecuperarSenha'
 import RedefinirSenha from '@/pages/auth/RedefinirSenha'
+import DefinirSenha from '@/pages/DefinirSenha'
 
 // Páginas protegidas
 import Dashboard from '@/pages/Dashboard'
@@ -97,6 +98,7 @@ export function AppRoutes() {
         }
       />
       <Route path="/reset-password" element={<RedefinirSenha />} />
+      <Route path="/definir-senha" element={<DefinirSenha />} />
       
       {/* Redirect /auth to /login */}
       <Route path="/auth" element={<Navigate to="/login" />} />
