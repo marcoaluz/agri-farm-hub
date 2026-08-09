@@ -308,14 +308,37 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               </>
             )}
           </div>
+        </ScrollArea>
 
-          {/* Footer da Sidebar */}
-          <div className="border-t border-sidebar-border px-3 py-2">
-            <div className="text-[10px] text-sidebar-foreground/40 text-center">
-              Agro GFI v1.0.0
+        {/* Footer fixo: usuário + logout */}
+        <div className="mt-auto shrink-0 border-t border-sidebar-border p-3">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent/20">
+              <span className="text-sm font-medium text-sidebar-foreground">
+                {user?.email?.[0]?.toUpperCase() ?? '?'}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-sidebar-foreground">
+                {(user?.user_metadata as any)?.nome_completo || user?.email?.split('@')[0] || 'Usuário'}
+              </p>
+              <p className="truncate text-xs text-sidebar-foreground/60">{user?.email}</p>
             </div>
           </div>
-        </ScrollArea>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full gap-2 bg-transparent text-sidebar-foreground hover:bg-sidebar-foreground/10"
+            onClick={() => { onClose(); signOut() }}
+          >
+            <LogOut className="h-4 w-4" />
+            Sair
+          </Button>
+          <div className="mt-2 text-center text-[10px] text-sidebar-foreground/40">
+            Agro GFI v1.0.0
+          </div>
+        </div>
+
       </aside>
 
       {upgradeModal && (
