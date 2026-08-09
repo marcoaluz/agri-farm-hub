@@ -15,7 +15,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Trash2, Info, Package, Truck } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Loader2, Trash2, Info, Package, Truck, Plus, Check, X } from 'lucide-react';
 
 interface ItemVinculado {
   tipo_ref: 'produto' | 'maquina';
@@ -29,10 +33,7 @@ interface ItemVinculado {
   ordem: number;
 }
 
-const CATEGORIAS = [
-  'Preparo do Solo','Plantio','Adubação','Aplicação',
-  'Irrigação','Colheita','Transporte','Manutenção','Outros',
-];
+
 const UNIDADES_SIMPLES = [
   { value: 'hora', label: 'Hora' },
   { value: 'dia', label: 'Dia' },
