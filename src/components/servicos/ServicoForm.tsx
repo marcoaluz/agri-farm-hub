@@ -15,7 +15,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Trash2, Info, Package, Truck } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Loader2, Trash2, Info, Package, Truck, Plus, Check, X } from 'lucide-react';
 
 interface ItemVinculado {
   tipo_ref: 'produto' | 'maquina';
@@ -29,10 +33,7 @@ interface ItemVinculado {
   ordem: number;
 }
 
-const CATEGORIAS = [
-  'Preparo do Solo','Plantio','Adubação','Aplicação',
-  'Irrigação','Colheita','Transporte','Manutenção','Outros',
-];
+
 const UNIDADES_SIMPLES = [
   { value: 'hora', label: 'Hora' },
   { value: 'dia', label: 'Dia' },
@@ -58,6 +59,62 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
   const [itens, setItens] = useState<ItemVinculado[]>([]);
   const [addingType, setAddingType] = useState<'produto' | 'maquina' | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showNovaCategoria, setShowNovaCategoria] = useState(false);
+  const [novaCategoriaNome, setNovaCategoriaNome] = useState('');
+  const [salvandoCategoria, setSalvandoCategoria] = useState(false);
+  const [categoriaParaExcluir, setCategoriaParaExcluir] = useState<{ id: string; nome: string } | null>(null);
+
+  // Categorias do usuário (dinâmicas)
+  const { data: categorias, refetch: refetchCategorias } = useQuery({
+    queryKey: ['categorias-servico'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categorias_servico')
+        .select('id, nome')
+        .eq('ativo', true)
+        .order('nome');
+      if (error) throw error;
+      return (data || []) as { id: string; nome: string }[];
+    },
+  });
+
+  const handleAdicionarCategoria = async () => {
+    const nomeCat = novaCategoriaNome.trim();
+    if (!nomeCat) return;
+    setSalvandoCategoria(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('categorias_servico').insert({
+      usuario_id: user?.id,
+      nome: nomeCat,
+    });
+    setSalvandoCategoria(false);
+    if (error) {
+      toast({
+        title: (error as any).code === '23505' ? 'Essa categoria já existe' : 'Erro ao criar categoria',
+        description: (error as any).code === '23505' ? undefined : error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+    setCategoria(nomeCat);
+    setNovaCategoriaNome('');
+    setShowNovaCategoria(false);
+    refetchCategorias();
+    toast({ title: 'Categoria criada' });
+  };
+
+  const handleExcluirCategoria = async (catId: string, catNome: string) => {
+    setCategoriaParaExcluir(null);
+    const { error } = await supabase.from('categorias_servico').update({ ativo: false }).eq('id', catId);
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if (categoria === catNome) setCategoria('');
+    refetchCategorias();
+    toast({ title: 'Categoria removida' });
+  };
+
 
   // Busca produtos disponíveis para vincular (RPC inclui produtos globais)
   const { data: produtosDisponiveis = [], error: produtosError } = useQuery({
@@ -279,18 +336,80 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
               placeholder="Ex: Adubação de Cobertura" className={errors.nome ? 'border-destructive' : ''} />
             {errors.nome && <p className="text-xs text-destructive mt-1">{errors.nome}</p>}
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Categoria *</Label>
-            <Select value={categoria} onValueChange={setCategoria}>
-              <SelectTrigger className={errors.categoria ? 'border-destructive' : ''}>
-                <SelectValue placeholder="Selecione" />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            {!showNovaCategoria ? (
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Select value={categoria} onValueChange={setCategoria}>
+                    <SelectTrigger className={errors.categoria ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Selecione a categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(categorias || []).map(cat => (
+                        <SelectItem key={cat.id} value={cat.nome}>{cat.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="button" size="icon" variant="outline"
+                  onClick={() => setShowNovaCategoria(true)} title="Nova categoria">
+                  <Plus className="h-4 w-4" />
+                </Button>
+                {categoria && (
+                  <Button type="button" size="icon" variant="ghost"
+                    onClick={() => {
+                      const cat = (categorias || []).find(c => c.nome === categoria);
+                      if (cat) setCategoriaParaExcluir(cat);
+                    }}
+                    title="Excluir categoria selecionada"
+                    className="text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Nome da nova categoria"
+                  value={novaCategoriaNome}
+                  onChange={e => setNovaCategoriaNome(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdicionarCategoria(); } }}
+                  autoFocus
+                />
+                <Button type="button" size="icon" onClick={handleAdicionarCategoria}
+                  disabled={salvandoCategoria || !novaCategoriaNome.trim()}>
+                  {salvandoCategoria ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                </Button>
+                <Button type="button" size="icon" variant="ghost"
+                  onClick={() => { setShowNovaCategoria(false); setNovaCategoriaNome(''); }}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             {errors.categoria && <p className="text-xs text-destructive mt-1">{errors.categoria}</p>}
           </div>
+
+          <AlertDialog open={!!categoriaParaExcluir} onOpenChange={o => !o && setCategoriaParaExcluir(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir categoria?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  A categoria <strong>{categoriaParaExcluir?.nome}</strong> será removida da lista.
+                  Serviços já cadastrados não são afetados.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => categoriaParaExcluir && handleExcluirCategoria(categoriaParaExcluir.id, categoriaParaExcluir.nome)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Checkbox
