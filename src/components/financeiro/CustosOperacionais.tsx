@@ -98,13 +98,13 @@ export function CustosOperacionais() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* KPI Total */}
       <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800">
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6">
           <div className="text-center">
-            <p className="text-sm text-muted-foreground">Custo Total da Safra</p>
-            <p className="text-3xl font-bold text-amber-800 dark:text-amber-200">
+            <p className="text-xs sm:text-sm text-muted-foreground">Custo Total da Safra</p>
+            <p className="text-2xl sm:text-3xl font-bold text-amber-800 dark:text-amber-200 break-words">
               {fmt(custos.custo_total || 0)}
             </p>
           </div>
@@ -112,16 +112,17 @@ export function CustosOperacionais() {
       </Card>
 
       {/* Custo por tipo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {custos.custo_por_tipo?.map((tipo) => (
           <Card key={tipo.tipo}>
-            <CardContent className="pt-4">
+            <CardContent className="pt-3 px-3 sm:pt-4 sm:px-6 flex items-center justify-between gap-2 sm:block">
               <p className="text-xs text-muted-foreground">{tipo.tipo_label}</p>
-              <p className="text-xl font-bold">{fmt(tipo.valor || 0)}</p>
+              <p className="text-lg sm:text-xl font-bold">{fmt(tipo.valor || 0)}</p>
             </CardContent>
           </Card>
         ))}
       </div>
+
 
       {/* Custo por talhão */}
       <Card>
