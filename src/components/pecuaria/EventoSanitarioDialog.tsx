@@ -134,7 +134,7 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
       p_descricao: form.descricao,
       p_data_aplicacao: format(form.data_aplicacao, 'yyyy-MM-dd'),
       p_data_proxima: form.data_proxima ? format(form.data_proxima, 'yyyy-MM-dd') : null,
-      p_custo: form.custo ? Number(form.custo) : null,
+      p_custo: usarEstoque ? 0 : form.custo ? Number(form.custo) : null,
       p_responsavel: form.responsavel || null,
       p_lote_produto: form.lote_produto || null,
       p_observacoes: form.observacoes || null,
@@ -146,10 +146,22 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
       return
     }
     const resultado = (Array.isArray(resultadoRaw) ? resultadoRaw[0] : resultadoRaw) || {}
+
+    if (usarEstoque && produtoId && quantidadeUsada && resultado.evento_id) {
+      await (supabase as any)
+        .from('sanitario_eventos')
+        .update({ produto_id: produtoId, quantidade_usada: parseFloat(quantidadeUsada) })
+        .eq('id', resultado.evento_id)
+      queryClient.invalidateQueries({ queryKey: ['produtos'] })
+      queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
+      queryClient.invalidateQueries({ queryKey: ['produtos-pecuarios'] })
+    }
+
     queryClient.invalidateQueries({ queryKey: ['sanitario'] })
     queryClient.invalidateQueries({ queryKey: ['sanitario-eventos'] })
     queryClient.invalidateQueries({ queryKey: ['sanitario-contagem'] })
     queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
+
 
     if (resultado.animais_bloqueados > 0) {
       toast.warning(
