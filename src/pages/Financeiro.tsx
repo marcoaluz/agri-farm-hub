@@ -39,6 +39,7 @@ import {
 import { TransacaoForm } from '@/components/financeiro/TransacaoForm'
 import { ParcelasExpansivel } from '@/components/financeiro/ParcelasExpansivel'
 import { TransacaoOrigemAcoes, useIdsComAnexo } from '@/components/financeiro/TransacaoOrigemAcoes'
+import { CustosOperacionais } from '@/components/financeiro/CustosOperacionais'
 import { toast } from 'sonner'
 
 
@@ -254,6 +255,7 @@ export function Financeiro() {
           <TabsTrigger value="resumo">📊 Resumo</TabsTrigger>
           <TabsTrigger value="transacoes">📋 Transações</TabsTrigger>
           <TabsTrigger value="fluxo">📈 Fluxo de Caixa</TabsTrigger>
+          <TabsTrigger value="custos">🚜 Custos Operacionais</TabsTrigger>
         </TabsList>
 
         {/* ═══ ABA RESUMO ═══ */}
@@ -646,6 +648,11 @@ export function Financeiro() {
               </TableBody>
             </Table>
           </Card>
+        </TabsContent>
+
+        {/* ═══ ABA CUSTOS OPERACIONAIS ═══ */}
+        <TabsContent value="custos" className="space-y-6">
+          <CustosOperacionais />
         </TabsContent>
       </Tabs>
 
