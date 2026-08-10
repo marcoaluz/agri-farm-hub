@@ -89,6 +89,69 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
     }
   }, [produto]);
 
+  // ── Categorias dinâmicas (filtradas pelo tipo de estoque) ──
+  const { data: categorias = [], refetch: refetchCategorias } = useQuery<CategoriaProdutoRow[]>({
+    queryKey: ["categorias-produto", tipoEstoque],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("listar_categorias_produto", {
+        p_tipo_estoque: tipoEstoque || null,
+      });
+      if (error) throw error;
+      return (data as CategoriaProdutoRow[]) || [];
+    },
+  });
+
+  useEffect(() => {
+    refetchCategorias();
+  }, [tipoEstoque, refetchCategorias]);
+
+  const [showNovaCategoria, setShowNovaCategoria] = useState(false);
+  const [novaCategoriaNome, setNovaCategoriaNome] = useState("");
+  const [salvandoCategoria, setSalvandoCategoria] = useState(false);
+  const [categoriaParaExcluir, setCategoriaParaExcluir] = useState<CategoriaProdutoRow | null>(null);
+
+  const setCategoria = (value: string) => setFormData((prev) => ({ ...prev, categoria: value }));
+
+  const handleAdicionarCategoria = async () => {
+    const nome = novaCategoriaNome.trim();
+    if (!nome) return;
+    setSalvandoCategoria(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.from("categorias_produto").insert({
+      usuario_id: userData?.user?.id,
+      nome,
+      tipo_estoque: tipoEstoque || "agricola",
+    } as any);
+    setSalvandoCategoria(false);
+    if (error) {
+      toast.error((error as any).code === "23505" ? "Categoria já existe" : "Erro ao criar categoria");
+      return;
+    }
+    setCategoria(nome);
+    setNovaCategoriaNome("");
+    setShowNovaCategoria(false);
+    refetchCategorias();
+    toast.success("Categoria criada");
+  };
+
+  const handleExcluirCategoria = async () => {
+    if (!categoriaParaExcluir) return;
+    const { error } = await supabase
+      .from("categorias_produto")
+      .update({ ativo: false } as any)
+      .eq("id", categoriaParaExcluir.id);
+    setCategoriaParaExcluir(null);
+    if (error) {
+      toast.error("Erro ao remover categoria");
+      return;
+    }
+    setCategoria("");
+    refetchCategorias();
+    toast.success("Categoria removida");
+  };
+
+
+
 
   const mutation = useMutation({
     mutationFn: async (data: typeof formData) => {
