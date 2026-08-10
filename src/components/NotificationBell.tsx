@@ -159,7 +159,15 @@ export function NotificationBell() {
                   !n.lida && 'bg-blue-50 dark:bg-blue-950/30'
                 )}
               >
-                <p className="text-sm font-semibold text-foreground">{n.titulo}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-foreground">{n.titulo}</p>
+                  {n.lida && (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                      <Eye className="h-3 w-3" />
+                      Visto
+                    </span>
+                  )}
+                </div>
                 {n.mensagem && (
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                     {n.mensagem}
