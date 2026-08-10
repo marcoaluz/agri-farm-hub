@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { Loader2, Paperclip, Upload, FileText, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { useSafraFechada } from '@/hooks/useSafraFechada'
 
 interface CulturaProducao {
   cultura_id: string
@@ -36,6 +37,7 @@ const hoje = () => new Date().toISOString().slice(0, 10)
 export function VenderProducaoModal({ cultura, propriedadeId, safraId, onClose }: Props) {
   const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
+  const { verificarSafra } = useSafraFechada()
 
   const [quantidade, setQuantidade] = useState('')
   const [precoUnitario, setPrecoUnitario] = useState('')
@@ -51,6 +53,7 @@ export function VenderProducaoModal({ cultura, propriedadeId, safraId, onClose }
   const valorTotal = (parseFloat(quantidade) || 0) * (parseFloat(precoUnitario) || 0)
 
   const handleVender = async () => {
+    if (!verificarSafra('registrar venda')) return
     const qtd = parseFloat(quantidade)
     const preco = parseFloat(precoUnitario)
 

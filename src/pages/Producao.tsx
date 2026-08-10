@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { useSafraFechada } from '@/hooks/useSafraFechada'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +16,7 @@ const fmtNum = (v: any) => Number(v || 0).toLocaleString('pt-BR')
 
 export default function Producao() {
   const { propriedadeAtual, safraAtual } = useGlobal()
+  const { isFechada, verificarSafra } = useSafraFechada(safraAtual)
   const [showNovaColheita, setShowNovaColheita] = useState(false)
   const [talhaoSelecionado, setTalhaoSelecionado] = useState<any | null>(null)
   const [culturaVenda, setCulturaVenda] = useState<any | null>(null)
@@ -91,7 +93,12 @@ export default function Producao() {
             Colheitas por talhão{safraAtual?.nome ? ` — ${safraAtual.nome}` : ''}
           </p>
         </div>
-        <Button onClick={() => setShowNovaColheita(true)} className="gap-2">
+        <Button
+          onClick={() => { if (!verificarSafra('registrar colheita')) return; setShowNovaColheita(true) }}
+          disabled={isFechada}
+          title={isFechada ? 'Safra fechada' : ''}
+          className="gap-2"
+        >
           <Plus className="h-4 w-4" />
           Registrar Colheita
         </Button>
@@ -152,7 +159,13 @@ export default function Producao() {
               </div>
             </div>
             {Number(cultura.estoque_disponivel) > 0 && (
-              <Button size="sm" onClick={() => setCulturaVenda(cultura)} className="w-full gap-1 sm:w-auto sm:self-center">
+              <Button
+                size="sm"
+                onClick={() => { if (!verificarSafra('registrar venda')) return; setCulturaVenda(cultura) }}
+                disabled={isFechada}
+                title={isFechada ? 'Safra fechada' : ''}
+                className="w-full gap-1 sm:w-auto sm:self-center"
+              >
                 <DollarSign className="h-3.5 w-3.5" />
                 Vender
               </Button>

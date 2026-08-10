@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { useSafraFechada } from '@/hooks/useSafraFechada'
 import { useSafraContext } from '@/contexts/SafraContext'
 import { useToast } from '@/hooks/use-toast'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -46,6 +47,7 @@ const MOV_BADGE: Record<string, string> = {
 export default function Pecuaria() {
   const { propriedadeAtual } = useGlobal()
   const { safraSelecionada } = useSafraContext()
+  const { isFechada, verificarSafra } = useSafraFechada(safraSelecionada)
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const propId = propriedadeAtual?.id
@@ -336,8 +338,8 @@ export default function Pecuaria() {
           </div>
 
           <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setRacaoDialog(true)}><Wheat className="h-4 w-4 mr-1" /> Registrar Ração</Button>
-            <Button className="w-full sm:w-auto" onClick={() => { setEditLote(null); setLoteDialog(true) }}><Plus className="h-4 w-4 mr-1" /> Novo Lote</Button>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => { if (!verificarSafra('registrar ração')) return; setRacaoDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Wheat className="h-4 w-4 mr-1" /> Registrar Ração</Button>
+            <Button className="w-full sm:w-auto" onClick={() => { if (!verificarSafra('criar lote')) return; setEditLote(null); setLoteDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Plus className="h-4 w-4 mr-1" /> Novo Lote</Button>
           </div>
 
 
@@ -413,7 +415,7 @@ export default function Pecuaria() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => setSanitarioDialog(true)}><Plus className="h-4 w-4 mr-1" /> Registrar Evento</Button>
+            <Button onClick={() => { if (!verificarSafra('registrar evento sanitário')) return; setSanitarioDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Plus className="h-4 w-4 mr-1" /> Registrar Evento</Button>
           </div>
 
           {loadingSan ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24" />) : !eventosFiltrados.length ? (
@@ -481,7 +483,7 @@ export default function Pecuaria() {
               </Card>
 
               <div className="flex justify-end">
-                <Button onClick={() => setOrdenhaDialog(true)}><Plus className="h-4 w-4 mr-1" /> Registrar Ordenha</Button>
+                <Button onClick={() => { if (!verificarSafra('registrar ordenha')) return; setOrdenhaDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Plus className="h-4 w-4 mr-1" /> Registrar Ordenha</Button>
               </div>
 
               {loadingOrdenha ? <Skeleton className="h-48" /> : !ordenhas?.length ? (
@@ -530,7 +532,7 @@ export default function Pecuaria() {
         {/* ========= ABA MOVIMENTAÇÕES ========= */}
         <TabsContent value="movimentacoes" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => { setMovRebanhoId(undefined); setMovDialog(true) }}><Plus className="h-4 w-4 mr-1" /> Nova Movimentação</Button>
+            <Button onClick={() => { if (!verificarSafra('registrar movimentação')) return; setMovRebanhoId(undefined); setMovDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Plus className="h-4 w-4 mr-1" /> Nova Movimentação</Button>
           </div>
 
           {loadingMov ? <Skeleton className="h-48" /> : !movimentacoes?.length ? (
@@ -579,7 +581,7 @@ export default function Pecuaria() {
         {/* ========= ABA PESAGENS ========= */}
         <TabsContent value="pesagens" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => setPesagemDialog(true)}><Scale className="h-4 w-4 mr-1" /> Registrar Pesagem</Button>
+            <Button onClick={() => { if (!verificarSafra('registrar pesagem')) return; setPesagemDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Scale className="h-4 w-4 mr-1" /> Registrar Pesagem</Button>
           </div>
 
           {loadingPesagens ? (

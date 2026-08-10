@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { useSafraFechada } from '@/hooks/useSafraFechada'
 import {
   useTransacoes, useFluxoCaixaMensal, useMarcarPago, useDeleteTransacao,
   statusEfetivo, type Transacao, type FiltrosTransacao,
@@ -92,6 +93,7 @@ function ParcelasIndicador({ n }: { n?: number | null }) {
 
 export function Financeiro() {
   const { propriedadeAtual, safraAtual } = useGlobal()
+  const { isFechada, verificarSafra } = useSafraFechada(safraAtual)
   const propId = propriedadeAtual?.id
   const { data: idsComAnexo } = useIdsComAnexo(propId)
   const safraId = safraAtual?.id
@@ -245,7 +247,12 @@ export function Financeiro() {
           <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground">Financeiro</h1>
           <p className="text-sm text-muted-foreground">Gestão de receitas, despesas e fluxo de caixa</p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={() => { setEditando(null); setFormOpen(true) }}>
+        <Button
+          className="w-full sm:w-auto"
+          onClick={() => { if (!verificarSafra('criar transação')) return; setEditando(null); setFormOpen(true) }}
+          disabled={isFechada}
+          title={isFechada ? 'Safra fechada' : ''}
+        >
           <Plus className="h-4 w-4 mr-2" /> Nova Transação
         </Button>
       </div>
