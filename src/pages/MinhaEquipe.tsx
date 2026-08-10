@@ -223,7 +223,7 @@ export default function MinhaEquipe() {
                 <UserPlus className="h-5 w-5" />
                 Convidar Membro
               </CardTitle>
-              <CardDescription>Envie um convite por link para sua equipe</CardDescription>
+              <CardDescription>Envie um convite por e-mail para sua equipe</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -282,7 +282,7 @@ export default function MinhaEquipe() {
               >
                 {gerando
                   ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando...</>
-                  : <><Send className="h-4 w-4 mr-2" /> Gerar Convite</>}
+                  : <><Send className="h-4 w-4 mr-2" /> Enviar Convite</>}
               </Button>
             </CardContent>
           </Card>
