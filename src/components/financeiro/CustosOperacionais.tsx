@@ -126,28 +126,29 @@ export function CustosOperacionais() {
 
       {/* Custo por talhão */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Custo por Talhão</CardTitle>
+        <CardHeader className="pb-2 px-3 sm:px-6">
+          <CardTitle className="text-sm sm:text-base">Custo por Talhão</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
+        <CardContent className="px-3 sm:px-6">
+          <div className="space-y-2 sm:space-y-3">
             {custos.custo_por_talhao?.map((talhao) => (
               <div
                 key={talhao.talhao_id}
-                className="flex items-center justify-between p-3 border rounded-lg"
+                className="flex items-center justify-between gap-3 p-3 border rounded-lg"
               >
-                <div>
-                  <p className="font-medium">{talhao.talhao_nome}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{talhao.talhao_nome}</p>
                   <p className="text-xs text-muted-foreground">
                     {talhao.area_ha} ha • {talhao.num_lancamentos} lançamento(s)
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold">{fmt(talhao.custo_total || 0)}</p>
+                <div className="text-right shrink-0">
+                  <p className="font-bold text-sm">{fmt(talhao.custo_total || 0)}</p>
                   <p className="text-xs text-muted-foreground">
                     {fmt(talhao.custo_por_ha || 0)}/ha
                   </p>
                 </div>
+
               </div>
             ))}
             {(custos.custo_sem_talhao || 0) > 0 && (
