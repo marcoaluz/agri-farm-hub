@@ -255,6 +255,7 @@ export function Financeiro() {
           <TabsTrigger value="resumo">📊 Resumo</TabsTrigger>
           <TabsTrigger value="transacoes">📋 Transações</TabsTrigger>
           <TabsTrigger value="fluxo">📈 Fluxo de Caixa</TabsTrigger>
+          <TabsTrigger value="custos">🚜 Custos Operacionais</TabsTrigger>
         </TabsList>
 
         {/* ═══ ABA RESUMO ═══ */}
