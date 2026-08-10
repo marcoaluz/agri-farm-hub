@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabase'
 import { Propriedade } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
+import { useGlobal } from '@/contexts/GlobalContext'
+
 
 interface PropriedadeFormData {
   nome: string
@@ -17,6 +19,8 @@ export function usePropriedades() {
   const { user, loading: authLoading } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { refetchPropriedades } = useGlobal()
+
 
   const { data: propriedades = [], isLoading } = useQuery({
     queryKey: ['propriedades', user?.id],
@@ -52,8 +56,11 @@ export function usePropriedades() {
       if (error) throw error
       return data
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['propriedades'] })
+      queryClient.invalidateQueries({ queryKey: ['user-properties'] })
+      queryClient.refetchQueries({ queryKey: ['propriedades'] })
+      await refetchPropriedades()
       toast({
         title: 'Propriedade criada!',
         description: 'A propriedade foi cadastrada com sucesso.',

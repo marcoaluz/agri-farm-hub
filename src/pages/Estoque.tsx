@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 
 import { supabase } from '@/lib/supabase';
 import { useGlobal } from '@/contexts/GlobalContext';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -244,8 +246,19 @@ export function Estoque() {
         </Card>
       </div>
 
+      {/* Abas por tipo de estoque */}
+      <Tabs value={tipoFiltro} onValueChange={setTipoFiltro}>
+        <TabsList className="w-full sm:w-auto overflow-x-auto flex justify-start">
+          <TabsTrigger value="todos">Todos ({produtos?.length || 0})</TabsTrigger>
+          <TabsTrigger value="agricola">🌱 Agrícola ({contarTipo('agricola')})</TabsTrigger>
+          <TabsTrigger value="pecuario">🐄 Pecuário ({contarTipo('pecuario')})</TabsTrigger>
+          <TabsTrigger value="geral">📦 Geral ({contarTipo('geral')})</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Filtros */}
       <div className="flex flex-col md:flex-row gap-4">
+
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
