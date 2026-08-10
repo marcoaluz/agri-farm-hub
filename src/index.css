@@ -165,9 +165,19 @@
 }
 
 @layer utilities {
+  /* Safe area para iPhone com notch */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
   .glass-effect {
     @apply bg-card/80 backdrop-blur-md border border-border/50;
   }
+
   
   .text-gradient {
     @apply bg-clip-text text-transparent;
