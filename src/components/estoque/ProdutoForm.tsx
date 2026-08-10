@@ -277,23 +277,90 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
         {/* Categoria */}
         <div className="space-y-2">
           <Label>Categoria *</Label>
-
-          <Select
-            value={formData.categoria}
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, categoria: value }))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione a categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIAS.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {!showNovaCategoria ? (
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Select value={formData.categoria} onValueChange={setCategoria}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categorias.length === 0 && (
+                      <div className="px-2 py-3 text-xs text-muted-foreground">
+                        Nenhuma categoria. Use + para criar.
+                      </div>
+                    )}
+                    {categorias.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.nome}>
+                        {cat.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                onClick={() => setShowNovaCategoria(true)}
+                title="Nova categoria"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              {formData.categoria && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  title="Excluir categoria"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => {
+                    const cat = categorias.find((c) => c.nome === formData.categoria);
+                    if (cat) setCategoriaParaExcluir(cat);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                placeholder="Nome da nova categoria"
+                value={novaCategoriaNome}
+                onChange={(e) => setNovaCategoriaNome(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAdicionarCategoria();
+                  }
+                }}
+                autoFocus
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                size="icon"
+                onClick={handleAdicionarCategoria}
+                disabled={salvandoCategoria || !novaCategoriaNome.trim()}
+              >
+                {salvandoCategoria ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={() => {
+                  setShowNovaCategoria(false);
+                  setNovaCategoriaNome("");
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
+
 
         {/* Compartilhado */}
         <div className="space-y-2">
