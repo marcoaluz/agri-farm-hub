@@ -302,3 +302,12 @@ html, body, #root {
 * {
   box-sizing: border-box;
 }
+
+/* iOS instalado como PWA: respeitar safe areas */
+@media all and (display-mode: standalone) {
+  header,
+  .app-header,
+  nav.app-nav {
+    padding-top: env(safe-area-inset-top);
+  }
+}
