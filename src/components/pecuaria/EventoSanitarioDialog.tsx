@@ -268,6 +268,49 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
               <Input type="number" step="0.01" value={form.custo} onChange={e => setForm(f => ({ ...f, custo: e.target.value }))} />
             </div>
           </div>
+
+          <div className="flex items-center gap-2 border-t pt-3">
+            <Switch
+              checked={usarEstoque}
+              onCheckedChange={(v) => {
+                setUsarEstoque(v)
+                if (v) setForm(f => ({ ...f, custo: '0' }))
+              }}
+            />
+            <Label className="text-sm font-normal">Usar produto do estoque (desconta saldo)</Label>
+          </div>
+
+          {usarEstoque && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/30 p-3 rounded-lg">
+              <div>
+                <Label>Produto do estoque</Label>
+                <Select value={produtoId} onValueChange={setProdutoId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {(produtosPecuarios || []).map((prod: any) => (
+                      <SelectItem key={prod.id || prod.produto_id} value={prod.id || prod.produto_id}>
+                        {prod.nome} (saldo: {prod.saldo_atual ?? 0} {prod.unidade_medida})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Quantidade usada</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={quantidadeUsada}
+                  onChange={e => setQuantidadeUsada(e.target.value)}
+                  placeholder="Ex: 50"
+                />
+              </div>
+              <p className="sm:col-span-2 text-xs text-muted-foreground">
+                O custo não será lançado no financeiro pois o produto já foi pago na compra.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Lote do produto</Label>
