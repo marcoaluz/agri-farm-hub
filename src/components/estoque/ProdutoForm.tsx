@@ -106,6 +106,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
             nivel_minimo: data.nivel_minimo,
             compartilhado,
             vendavel,
+            tipo_estoque: tipoEstoque,
             ativo: true,
           } as any)
           .eq("id", produto.id);
@@ -126,14 +127,15 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
 
         const novoId = typeof novo === "string" ? novo : (novo as any)?.id || (novo as any)?.produto_id;
 
-        if (novoId && (vendavel || data.nivel_minimo)) {
+        if (novoId) {
           await supabase
             .from("produtos")
-            .update({ vendavel, nivel_minimo: data.nivel_minimo } as any)
+            .update({ vendavel, nivel_minimo: data.nivel_minimo, tipo_estoque: tipoEstoque } as any)
             .eq("id", novoId);
         }
       }
     },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["produtos"] });
       if (propriedadeAtual?.id) {
@@ -194,9 +196,25 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
           />
         </div>
 
+        {/* Tipo de Estoque */}
+        <div className="space-y-2">
+          <Label>Tipo de Estoque *</Label>
+          <Select value={tipoEstoque} onValueChange={setTipoEstoque}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="agricola">🌱 Agrícola (adubo, defensivo, calcário...)</SelectItem>
+              <SelectItem value="pecuario">🐄 Pecuário (ração, vacina, remédio, sal mineral...)</SelectItem>
+              <SelectItem value="geral">📦 Geral (diesel, ferramentas, outros)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Categoria */}
         <div className="space-y-2">
           <Label>Categoria *</Label>
+
           <Select
             value={formData.categoria}
             onValueChange={(value) => setFormData((prev) => ({ ...prev, categoria: value }))}
