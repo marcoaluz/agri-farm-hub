@@ -356,64 +356,69 @@ export function Financeiro() {
 
           {/* Filtros */}
 
-          <div className="flex flex-wrap gap-2 items-end">
-            <Select value={filtros.tipo || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, tipo: v === 'todos' ? undefined : v })); setPage(0) }}>
-              <SelectTrigger className="w-[130px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
-              <SelectContent className="bg-popover border border-border">
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="receita">Receita</SelectItem>
-                <SelectItem value="despesa">Despesa</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filtros.categoria || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, categoria: v === 'todos' ? undefined : v })); setPage(0) }}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
-              <SelectContent className="bg-popover border border-border">
-                <SelectItem value="todos">Todas</SelectItem>
-                {Object.entries(categoriasLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={filtros.status || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, status: v === 'todos' ? undefined : v })); setPage(0) }}>
-              <SelectTrigger className="w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent className="bg-popover border border-border">
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="pendente">Pendente</SelectItem>
-                <SelectItem value="pago">Pago</SelectItem>
-                <SelectItem value="vencido">Vencido</SelectItem>
-                <SelectItem value="cancelado">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-end">
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-2">
+              <Select value={filtros.tipo || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, tipo: v === 'todos' ? undefined : v })); setPage(0) }}>
+                <SelectTrigger className="text-xs sm:text-sm sm:w-[130px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
+                <SelectContent className="bg-popover border border-border">
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="receita">Receita</SelectItem>
+                  <SelectItem value="despesa">Despesa</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filtros.categoria || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, categoria: v === 'todos' ? undefined : v })); setPage(0) }}>
+                <SelectTrigger className="text-xs sm:text-sm sm:w-[160px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
+                <SelectContent className="bg-popover border border-border">
+                  <SelectItem value="todos">Todas</SelectItem>
+                  {Object.entries(categoriasLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={filtros.status || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, status: v === 'todos' ? undefined : v })); setPage(0) }}>
+                <SelectTrigger className="text-xs sm:text-sm sm:w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent className="bg-popover border border-border">
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                  <SelectItem value="pago">Pago</SelectItem>
+                  <SelectItem value="vencido">Vencido</SelectItem>
+                  <SelectItem value="cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Date range */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('text-xs', dataInicio && 'border-primary')}>
-                  <CalendarIcon className="h-3 w-3 mr-1" />{dataInicio ? format(dataInicio, 'dd/MM/yy') : 'De'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dataInicio} onSelect={d => { setDataInicio(d || undefined); setPage(0) }} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('text-xs', dataFim && 'border-primary')}>
-                  <CalendarIcon className="h-3 w-3 mr-1" />{dataFim ? format(dataFim, 'dd/MM/yy') : 'Até'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dataFim} onSelect={d => { setDataFim(d || undefined); setPage(0) }} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn('flex-1 sm:flex-none text-xs', dataInicio && 'border-primary')}>
+                    <CalendarIcon className="h-3 w-3 mr-1" />{dataInicio ? format(dataInicio, 'dd/MM/yy') : 'De'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dataInicio} onSelect={d => { setDataInicio(d || undefined); setPage(0) }} className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn('flex-1 sm:flex-none text-xs', dataFim && 'border-primary')}>
+                    <CalendarIcon className="h-3 w-3 mr-1" />{dataFim ? format(dataFim, 'dd/MM/yy') : 'Até'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dataFim} onSelect={d => { setDataFim(d || undefined); setPage(0) }} className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
 
-            <div className="relative flex-1 min-w-[180px]">
+            <div className="relative flex-1 sm:min-w-[180px]">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input className="pl-8" placeholder="Buscar descrição..." value={busca} onChange={e => { setBusca(e.target.value); setPage(0) }} />
+              <Input className="pl-8 text-sm" placeholder="Buscar descrição..." value={busca} onChange={e => { setBusca(e.target.value); setPage(0) }} />
             </div>
 
             {(filtros.tipo || filtros.categoria || filtros.status || dataInicio || dataFim || busca) && (
-              <Button variant="ghost" size="sm" onClick={() => { setFiltros({}); setBusca(''); setDataInicio(undefined); setDataFim(undefined); setPage(0) }}>Limpar</Button>
+              <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => { setFiltros({}); setBusca(''); setDataInicio(undefined); setDataFim(undefined); setPage(0) }}>Limpar</Button>
             )}
           </div>
+
 
           {/* Tabela */}
           <Card>
