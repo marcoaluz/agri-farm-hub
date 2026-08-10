@@ -29,17 +29,12 @@ interface ProdutoFormProps {
   } | null;
 }
 
-const CATEGORIAS = [
-  "Fertilizante",
-  "Defensivo",
-  "Semente",
-  "Adubo",
-  "Herbicida",
-  "Fungicida",
-  "Inseticida",
-  "Combustível",
-  "Outros",
-];
+interface CategoriaProdutoRow {
+  id: string;
+  nome: string;
+  tipo_estoque?: string | null;
+}
+
 
 const UNIDADES = [
   { value: "kg", label: "Quilograma (kg)" },
