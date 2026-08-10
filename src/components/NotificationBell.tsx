@@ -80,9 +80,18 @@ export function NotificationBell() {
     }
   }, [user, open, fetchList])
 
-  const handleOpenChange = (value: boolean) => {
+  const handleOpenChange = async (value: boolean) => {
     setOpen(value)
-    if (value) fetchList()
+    if (!value) return
+
+    await fetchList()
+
+    // Ao abrir o painel, marcar todas como lidas para o badge sumir
+    if (count > 0) {
+      await supabase.rpc('marcar_todas_notificacoes_lidas' as any)
+      setCount(0)
+      setItems((prev) => prev.map((item) => ({ ...item, lida: true })))
+    }
   }
 
   const handleClickItem = async (n: Notificacao) => {
