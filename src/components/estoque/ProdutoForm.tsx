@@ -63,6 +63,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
   });
   const [compartilhado, setCompartilhado] = useState(false);
   const [vendavel, setVendavel] = useState(false);
+  const [tipoEstoque, setTipoEstoque] = useState("agricola");
 
   useEffect(() => {
     if (produto) {
@@ -74,6 +75,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
       });
       setCompartilhado(!!produto.compartilhado);
       setVendavel(!!produto.vendavel);
+      setTipoEstoque((produto as any).tipo_estoque || "agricola");
     } else {
       setFormData({
         nome: "",
@@ -83,8 +85,10 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
       });
       setCompartilhado(false);
       setVendavel(false);
+      setTipoEstoque("agricola");
     }
   }, [produto]);
+
 
   const mutation = useMutation({
     mutationFn: async (data: typeof formData) => {
