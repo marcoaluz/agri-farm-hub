@@ -169,21 +169,21 @@ export function CustosOperacionais() {
 
       {/* Custo por serviço */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Custo por Tipo de Serviço</CardTitle>
+        <CardHeader className="pb-2 px-3 sm:px-6">
+          <CardTitle className="text-sm sm:text-base">Custo por Tipo de Serviço</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           <div className="space-y-2">
             {custos.custo_por_servico?.map((sv) => (
               <div
                 key={sv.servico_nome}
-                className="flex items-center justify-between py-2 border-b last:border-0"
+                className="flex items-center justify-between gap-3 py-2 border-b last:border-0"
               >
-                <div>
-                  <p className="text-sm font-medium">{sv.servico_nome}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{sv.servico_nome}</p>
                   <p className="text-xs text-muted-foreground">{sv.num_lancamentos}x</p>
                 </div>
-                <p className="font-bold">{fmt(sv.custo_total || 0)}</p>
+                <p className="font-bold text-sm shrink-0">{fmt(sv.custo_total || 0)}</p>
               </div>
             ))}
             {(custos.custo_por_servico?.length || 0) === 0 && (
@@ -197,10 +197,11 @@ export function CustosOperacionais() {
 
       {/* Lista de lançamentos */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Detalhamento</CardTitle>
+        <CardHeader className="pb-2 px-3 sm:px-6">
+          <CardTitle className="text-sm sm:text-base">Detalhamento</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
+
           <div className="space-y-3">
             {custos.lancamentos?.map((lc) => (
               <div key={lc.id} className="p-3 border rounded-lg">
