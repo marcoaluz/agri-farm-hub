@@ -39,6 +39,7 @@ import {
 import { TransacaoForm } from '@/components/financeiro/TransacaoForm'
 import { ParcelasExpansivel } from '@/components/financeiro/ParcelasExpansivel'
 import { TransacaoOrigemAcoes, useIdsComAnexo } from '@/components/financeiro/TransacaoOrigemAcoes'
+import { CustosOperacionais } from '@/components/financeiro/CustosOperacionais'
 import { toast } from 'sonner'
 
 
