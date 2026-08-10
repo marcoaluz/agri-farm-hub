@@ -100,8 +100,9 @@ export function usePropriedades() {
       if (error) throw error
       return data
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['propriedades'] })
+      await refetchPropriedades()
       toast({
         title: 'Propriedade atualizada!',
         description: 'As alterações foram salvas com sucesso.',
@@ -125,8 +126,9 @@ export function usePropriedades() {
 
       if (error) throw error
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['propriedades'] })
+      await refetchPropriedades()
       toast({
         title: 'Propriedade removida!',
         description: 'A propriedade foi desativada.',

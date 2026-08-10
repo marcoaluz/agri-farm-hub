@@ -175,6 +175,9 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
     }
     setAnimaisSelecionados([])
     setStatusAnimais({})
+    setUsarEstoque(false)
+    setProdutoId('')
+    setQuantidadeUsada('')
     onOpenChange(false)
   }
 
