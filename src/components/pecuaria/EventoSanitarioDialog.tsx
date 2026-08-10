@@ -37,6 +37,9 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
   const [loading, setLoading] = useState(false)
   const [animaisSelecionados, setAnimaisSelecionados] = useState<string[]>([])
   const [statusAnimais, setStatusAnimais] = useState<Record<string, any>>({})
+  const [usarEstoque, setUsarEstoque] = useState(false)
+  const [produtoId, setProdutoId] = useState('')
+  const [quantidadeUsada, setQuantidadeUsada] = useState('')
   const [form, setForm] = useState({
     rebanho_id: '',
     tipo: 'vacina',
@@ -49,6 +52,18 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
     responsavel: '',
     observacoes: '',
   })
+
+  const { data: produtosPecuarios } = useQuery({
+    queryKey: ['produtos-pecuarios', propriedadeId],
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc('listar_produtos_usuario', {
+        p_propriedade_id: propriedadeId,
+      })
+      return ((data || []) as any[]).filter((p: any) => p.tipo_estoque === 'pecuario')
+    },
+    enabled: open && !!propriedadeId,
+  })
+
 
   // Apenas rebanhos que participam do controle sanitário
   const rebanhosVacinaveis = (rebanhos || []).filter((r: any) => r?.vacinavel === true)
