@@ -80,6 +80,9 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   // Mutation para salvar
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (isFechada) {
+        throw new Error('Safra fechada — não é possível registrar entrada de estoque.');
+      }
       if (statusPagamento !== 'pago' && !dataVencimento) {
         throw new Error(statusPagamento === 'parcelado' ? 'Informe a data da 1ª parcela' : 'Informe a data de vencimento');
       }

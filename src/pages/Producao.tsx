@@ -159,7 +159,13 @@ export default function Producao() {
               </div>
             </div>
             {Number(cultura.estoque_disponivel) > 0 && (
-              <Button size="sm" onClick={() => setCulturaVenda(cultura)} className="w-full gap-1 sm:w-auto sm:self-center">
+              <Button
+                size="sm"
+                onClick={() => { if (!verificarSafra('registrar venda')) return; setCulturaVenda(cultura) }}
+                disabled={isFechada}
+                title={isFechada ? 'Safra fechada' : ''}
+                className="w-full gap-1 sm:w-auto sm:self-center"
+              >
                 <DollarSign className="h-3.5 w-3.5" />
                 Vender
               </Button>
