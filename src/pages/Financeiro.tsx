@@ -275,17 +275,20 @@ export function Financeiro() {
               <CardHeader className="px-0 pt-0"><CardTitle className="text-base">Receitas vs Despesas Mensal</CardTitle></CardHeader>
               <CardContent className="px-0 pb-0">
                 {chartMensal.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={chartMensal}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="label" fontSize={12} />
-                      <YAxis fontSize={12} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                      <ReTooltip formatter={(v: number) => fmt(v)} />
-                      <Bar dataKey="receitas" name="Receitas" fill="hsl(142, 70%, 40%)" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="despesas" name="Despesas" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : <div className="h-[280px] flex items-center justify-center text-muted-foreground">Sem dados</div>}
+                  <div className="h-[250px] sm:h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartMensal}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="label" fontSize={11} />
+                        <YAxis fontSize={11} width={40} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                        <ReTooltip formatter={(v: number) => fmt(v)} />
+                        <Bar dataKey="receitas" name="Receitas" fill="hsl(142, 70%, 40%)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="despesas" name="Despesas" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : <div className="h-[250px] sm:h-[280px] flex items-center justify-center text-muted-foreground">Sem dados</div>}
+
               </CardContent>
             </Card>
 
