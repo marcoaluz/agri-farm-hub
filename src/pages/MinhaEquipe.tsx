@@ -90,6 +90,7 @@ export default function MinhaEquipe() {
     if (!email.trim() || !papel || !propriedadeId) return
     setGerando(true)
     try {
+      // 1. Cria o registro do convite (token) para aparecer na lista da equipe
       const { data, error } = await supabase.rpc('gerar_convite_equipe' as any, {
         p_email: email.trim().toLowerCase(),
         p_propriedade_id: propriedadeId,
@@ -99,13 +100,51 @@ export default function MinhaEquipe() {
       if (error) throw error
       const result = data as any
       const link = `${window.location.origin}/convite?token=${result.token}&tipo=existente`
+
+      // 2. Envia o e-mail com o template do Agro GFI
+      const { data: sessionData } = await supabase.auth.getSession()
+      const session = sessionData?.session
+      let emailEnviado = false
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/convidar-usuario`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session?.access_token}`,
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+            body: JSON.stringify({
+              email: email.trim().toLowerCase(),
+              nome: '',
+              role: papel,
+              propriedade_id: propriedadeId,
+              token: result.token,
+              link,
+            }),
+          },
+        )
+        emailEnviado = response.ok
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({} as any))
+          console.warn('Falha ao enviar e-mail de convite:', err?.error)
+        }
+      } catch (e) {
+        console.warn('Falha ao enviar e-mail de convite', e)
+      }
+
       setLinkGerado(link)
-      setShowLinkDialog(true)
       setCopiado(false)
       setEmail('')
       setPapel('')
       setHoras('72')
-      toast.success('Convite gerado!')
+      if (emailEnviado) {
+        toast.success(`Convite enviado por e-mail para ${email.trim()}!`)
+      } else {
+        setShowLinkDialog(true)
+        toast.warning('Convite criado, mas o e-mail não pôde ser enviado. Compartilhe o link manualmente.')
+      }
       fetchEquipe()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao gerar convite')
@@ -184,7 +223,7 @@ export default function MinhaEquipe() {
                 <UserPlus className="h-5 w-5" />
                 Convidar Membro
               </CardTitle>
-              <CardDescription>Envie um convite por link para sua equipe</CardDescription>
+              <CardDescription>Envie um convite por e-mail para sua equipe</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -243,7 +282,7 @@ export default function MinhaEquipe() {
               >
                 {gerando
                   ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando...</>
-                  : <><Send className="h-4 w-4 mr-2" /> Gerar Convite</>}
+                  : <><Send className="h-4 w-4 mr-2" /> Enviar Convite</>}
               </Button>
             </CardContent>
           </Card>

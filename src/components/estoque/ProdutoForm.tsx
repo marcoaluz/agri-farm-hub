@@ -103,6 +103,8 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
 
   useEffect(() => {
     refetchCategorias();
+    // Ao trocar o tipo de estoque, a categoria anterior pode não existir no novo tipo
+    setFormData((prev) => ({ ...prev, categoria: "" }));
   }, [tipoEstoque, refetchCategorias]);
 
   const [showNovaCategoria, setShowNovaCategoria] = useState(false);
