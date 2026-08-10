@@ -242,30 +242,32 @@ export function Financeiro() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Financeiro</h1>
-          <p className="text-muted-foreground">Gestão de receitas, despesas e fluxo de caixa</p>
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground">Financeiro</h1>
+          <p className="text-sm text-muted-foreground">Gestão de receitas, despesas e fluxo de caixa</p>
         </div>
-        <Button onClick={() => { setEditando(null); setFormOpen(true) }}>
+        <Button className="w-full sm:w-auto" onClick={() => { setEditando(null); setFormOpen(true) }}>
           <Plus className="h-4 w-4 mr-2" /> Nova Transação
         </Button>
       </div>
 
       <Tabs defaultValue="resumo" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="resumo">📊 Resumo</TabsTrigger>
-          <TabsTrigger value="transacoes">📋 Transações</TabsTrigger>
-          <TabsTrigger value="fluxo">📈 Fluxo de Caixa</TabsTrigger>
-          <TabsTrigger value="custos">🚜 Custos Operacionais</TabsTrigger>
+        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 h-auto">
+          <TabsTrigger value="resumo" className="text-xs sm:text-sm py-2">📊 Resumo</TabsTrigger>
+          <TabsTrigger value="transacoes" className="text-xs sm:text-sm py-2">📋 Transações</TabsTrigger>
+          <TabsTrigger value="fluxo" className="text-xs sm:text-sm py-2">📈 Fluxo</TabsTrigger>
+          <TabsTrigger value="custos" className="text-xs sm:text-sm py-2">🚜 Custos</TabsTrigger>
         </TabsList>
+
 
         {/* ═══ ABA RESUMO ═══ */}
         <TabsContent value="resumo" className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><DollarSign className="h-4 w-4 text-success" /> Receitas</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-success">{fmt(kpis.totalReceitas)}</div><p className="text-xs text-muted-foreground mt-1">Na safra atual</p></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><TrendingDown className="h-4 w-4 text-destructive" /> Despesas</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-destructive">{fmt(kpis.totalDespesas)}</div><p className="text-xs text-muted-foreground mt-1">Na safra atual</p></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Saldo</CardTitle></CardHeader><CardContent><div className={cn('text-2xl font-bold', kpis.saldo >= 0 ? 'text-success' : 'text-destructive')}>{fmt(kpis.saldo)}</div><p className="text-xs text-muted-foreground mt-1">Projetado</p></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-warning" /> A Vencer</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-warning-foreground">{fmt(kpis.aVencer)}</div><p className="text-xs text-muted-foreground mt-1">Próx. 7 dias + vencidos</p></CardContent></Card>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+            <Card><CardHeader className="pb-2 px-3 sm:px-6"><CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2"><DollarSign className="h-4 w-4 text-success" /> Receitas</CardTitle></CardHeader><CardContent className="px-3 sm:px-6"><div className="text-lg sm:text-2xl font-bold text-success break-words">{fmt(kpis.totalReceitas)}</div><p className="text-xs text-muted-foreground mt-1">Na safra atual</p></CardContent></Card>
+            <Card><CardHeader className="pb-2 px-3 sm:px-6"><CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2"><TrendingDown className="h-4 w-4 text-destructive" /> Despesas</CardTitle></CardHeader><CardContent className="px-3 sm:px-6"><div className="text-lg sm:text-2xl font-bold text-destructive break-words">{fmt(kpis.totalDespesas)}</div><p className="text-xs text-muted-foreground mt-1">Na safra atual</p></CardContent></Card>
+            <Card><CardHeader className="pb-2 px-3 sm:px-6"><CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Saldo</CardTitle></CardHeader><CardContent className="px-3 sm:px-6"><div className={cn('text-lg sm:text-2xl font-bold break-words', kpis.saldo >= 0 ? 'text-success' : 'text-destructive')}>{fmt(kpis.saldo)}</div><p className="text-xs text-muted-foreground mt-1">Projetado</p></CardContent></Card>
+            <Card><CardHeader className="pb-2 px-3 sm:px-6"><CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-warning" /> A Vencer</CardTitle></CardHeader><CardContent className="px-3 sm:px-6"><div className="text-lg sm:text-2xl font-bold text-warning-foreground break-words">{fmt(kpis.aVencer)}</div><p className="text-xs text-muted-foreground mt-1">Próx. 7 dias + vencidos</p></CardContent></Card>
           </div>
+
 
           {/* Charts */}
           <div className="grid gap-6 lg:grid-cols-2">
@@ -273,17 +275,20 @@ export function Financeiro() {
               <CardHeader className="px-0 pt-0"><CardTitle className="text-base">Receitas vs Despesas Mensal</CardTitle></CardHeader>
               <CardContent className="px-0 pb-0">
                 {chartMensal.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={chartMensal}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="label" fontSize={12} />
-                      <YAxis fontSize={12} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                      <ReTooltip formatter={(v: number) => fmt(v)} />
-                      <Bar dataKey="receitas" name="Receitas" fill="hsl(142, 70%, 40%)" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="despesas" name="Despesas" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : <div className="h-[280px] flex items-center justify-center text-muted-foreground">Sem dados</div>}
+                  <div className="h-[250px] sm:h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartMensal}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="label" fontSize={11} />
+                        <YAxis fontSize={11} width={40} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                        <ReTooltip formatter={(v: number) => fmt(v)} />
+                        <Bar dataKey="receitas" name="Receitas" fill="hsl(142, 70%, 40%)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="despesas" name="Despesas" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : <div className="h-[250px] sm:h-[280px] flex items-center justify-center text-muted-foreground">Sem dados</div>}
+
               </CardContent>
             </Card>
 
@@ -351,64 +356,69 @@ export function Financeiro() {
 
           {/* Filtros */}
 
-          <div className="flex flex-wrap gap-2 items-end">
-            <Select value={filtros.tipo || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, tipo: v === 'todos' ? undefined : v })); setPage(0) }}>
-              <SelectTrigger className="w-[130px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
-              <SelectContent className="bg-popover border border-border">
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="receita">Receita</SelectItem>
-                <SelectItem value="despesa">Despesa</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filtros.categoria || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, categoria: v === 'todos' ? undefined : v })); setPage(0) }}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
-              <SelectContent className="bg-popover border border-border">
-                <SelectItem value="todos">Todas</SelectItem>
-                {Object.entries(categoriasLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={filtros.status || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, status: v === 'todos' ? undefined : v })); setPage(0) }}>
-              <SelectTrigger className="w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent className="bg-popover border border-border">
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="pendente">Pendente</SelectItem>
-                <SelectItem value="pago">Pago</SelectItem>
-                <SelectItem value="vencido">Vencido</SelectItem>
-                <SelectItem value="cancelado">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-end">
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-2">
+              <Select value={filtros.tipo || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, tipo: v === 'todos' ? undefined : v })); setPage(0) }}>
+                <SelectTrigger className="text-xs sm:text-sm sm:w-[130px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
+                <SelectContent className="bg-popover border border-border">
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="receita">Receita</SelectItem>
+                  <SelectItem value="despesa">Despesa</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filtros.categoria || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, categoria: v === 'todos' ? undefined : v })); setPage(0) }}>
+                <SelectTrigger className="text-xs sm:text-sm sm:w-[160px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
+                <SelectContent className="bg-popover border border-border">
+                  <SelectItem value="todos">Todas</SelectItem>
+                  {Object.entries(categoriasLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={filtros.status || 'todos'} onValueChange={v => { setFiltros(f => ({ ...f, status: v === 'todos' ? undefined : v })); setPage(0) }}>
+                <SelectTrigger className="text-xs sm:text-sm sm:w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent className="bg-popover border border-border">
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                  <SelectItem value="pago">Pago</SelectItem>
+                  <SelectItem value="vencido">Vencido</SelectItem>
+                  <SelectItem value="cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Date range */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('text-xs', dataInicio && 'border-primary')}>
-                  <CalendarIcon className="h-3 w-3 mr-1" />{dataInicio ? format(dataInicio, 'dd/MM/yy') : 'De'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dataInicio} onSelect={d => { setDataInicio(d || undefined); setPage(0) }} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('text-xs', dataFim && 'border-primary')}>
-                  <CalendarIcon className="h-3 w-3 mr-1" />{dataFim ? format(dataFim, 'dd/MM/yy') : 'Até'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dataFim} onSelect={d => { setDataFim(d || undefined); setPage(0) }} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn('flex-1 sm:flex-none text-xs', dataInicio && 'border-primary')}>
+                    <CalendarIcon className="h-3 w-3 mr-1" />{dataInicio ? format(dataInicio, 'dd/MM/yy') : 'De'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dataInicio} onSelect={d => { setDataInicio(d || undefined); setPage(0) }} className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn('flex-1 sm:flex-none text-xs', dataFim && 'border-primary')}>
+                    <CalendarIcon className="h-3 w-3 mr-1" />{dataFim ? format(dataFim, 'dd/MM/yy') : 'Até'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dataFim} onSelect={d => { setDataFim(d || undefined); setPage(0) }} className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
 
-            <div className="relative flex-1 min-w-[180px]">
+            <div className="relative flex-1 sm:min-w-[180px]">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input className="pl-8" placeholder="Buscar descrição..." value={busca} onChange={e => { setBusca(e.target.value); setPage(0) }} />
+              <Input className="pl-8 text-sm" placeholder="Buscar descrição..." value={busca} onChange={e => { setBusca(e.target.value); setPage(0) }} />
             </div>
 
             {(filtros.tipo || filtros.categoria || filtros.status || dataInicio || dataFim || busca) && (
-              <Button variant="ghost" size="sm" onClick={() => { setFiltros({}); setBusca(''); setDataInicio(undefined); setDataFim(undefined); setPage(0) }}>Limpar</Button>
+              <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => { setFiltros({}); setBusca(''); setDataInicio(undefined); setDataFim(undefined); setPage(0) }}>Limpar</Button>
             )}
           </div>
+
 
           {/* Tabela */}
           <Card>
@@ -605,25 +615,28 @@ export function Financeiro() {
             <CardHeader className="px-0 pt-0"><CardTitle className="text-base">Fluxo de Caixa Acumulado</CardTitle></CardHeader>
             <CardContent className="px-0 pb-0">
               {fluxoAcumulado.length > 0 ? (
-                <ResponsiveContainer width="100%" height={320}>
-                  <LineChart data={fluxoAcumulado}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="mes" fontSize={12} />
-                    <YAxis fontSize={12} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                    <ReTooltip formatter={(v: number) => fmt(v)} />
-                    <Legend />
-                    <Line type="monotone" dataKey="receitas" name="Receitas" stroke="hsl(142, 70%, 40%)" strokeWidth={2} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="despesas" name="Despesas" stroke="hsl(0, 72%, 51%)" strokeWidth={2} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="acumulado" name="Saldo Acumulado" stroke="hsl(199, 89%, 48%)" strokeWidth={2.5} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : <div className="h-[320px] flex items-center justify-center text-muted-foreground">Sem dados de fluxo de caixa</div>}
+                <div className="h-[250px] sm:h-[320px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={fluxoAcumulado}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="mes" fontSize={11} />
+                      <YAxis fontSize={11} width={40} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                      <ReTooltip formatter={(v: number) => fmt(v)} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Line type="monotone" dataKey="receitas" name="Receitas" stroke="hsl(142, 70%, 40%)" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="despesas" name="Despesas" stroke="hsl(0, 72%, 51%)" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="acumulado" name="Saldo Acumulado" stroke="hsl(199, 89%, 48%)" strokeWidth={2.5} dot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : <div className="h-[250px] sm:h-[320px] flex items-center justify-center text-muted-foreground">Sem dados de fluxo de caixa</div>}
             </CardContent>
           </Card>
 
           {/* Tabela mensal */}
-          <Card>
-            <Table>
+          <Card className="overflow-x-auto">
+            <Table className="min-w-[560px]">
+
               <TableHeader>
                 <TableRow>
                   <TableHead>Mês</TableHead>

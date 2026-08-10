@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useGlobal } from "@/contexts/GlobalContext";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, Package } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Package, Plus, Check, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
 
 interface ProdutoFormProps {
   onSuccess: () => void;
@@ -24,17 +29,12 @@ interface ProdutoFormProps {
   } | null;
 }
 
-const CATEGORIAS = [
-  "Fertilizante",
-  "Defensivo",
-  "Semente",
-  "Adubo",
-  "Herbicida",
-  "Fungicida",
-  "Inseticida",
-  "Combustível",
-  "Outros",
-];
+interface CategoriaProdutoRow {
+  id: string;
+  nome: string;
+  tipo_estoque?: string | null;
+}
+
 
 const UNIDADES = [
   { value: "kg", label: "Quilograma (kg)" },
@@ -88,6 +88,69 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
       setTipoEstoque("agricola");
     }
   }, [produto]);
+
+  // ── Categorias dinâmicas (filtradas pelo tipo de estoque) ──
+  const { data: categorias = [], refetch: refetchCategorias } = useQuery<CategoriaProdutoRow[]>({
+    queryKey: ["categorias-produto", tipoEstoque],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("listar_categorias_produto", {
+        p_tipo_estoque: tipoEstoque || null,
+      });
+      if (error) throw error;
+      return (data as CategoriaProdutoRow[]) || [];
+    },
+  });
+
+  useEffect(() => {
+    refetchCategorias();
+  }, [tipoEstoque, refetchCategorias]);
+
+  const [showNovaCategoria, setShowNovaCategoria] = useState(false);
+  const [novaCategoriaNome, setNovaCategoriaNome] = useState("");
+  const [salvandoCategoria, setSalvandoCategoria] = useState(false);
+  const [categoriaParaExcluir, setCategoriaParaExcluir] = useState<CategoriaProdutoRow | null>(null);
+
+  const setCategoria = (value: string) => setFormData((prev) => ({ ...prev, categoria: value }));
+
+  const handleAdicionarCategoria = async () => {
+    const nome = novaCategoriaNome.trim();
+    if (!nome) return;
+    setSalvandoCategoria(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.from("categorias_produto").insert({
+      usuario_id: userData?.user?.id,
+      nome,
+      tipo_estoque: tipoEstoque || "agricola",
+    } as any);
+    setSalvandoCategoria(false);
+    if (error) {
+      toast.error((error as any).code === "23505" ? "Categoria já existe" : "Erro ao criar categoria");
+      return;
+    }
+    setCategoria(nome);
+    setNovaCategoriaNome("");
+    setShowNovaCategoria(false);
+    refetchCategorias();
+    toast.success("Categoria criada");
+  };
+
+  const handleExcluirCategoria = async () => {
+    if (!categoriaParaExcluir) return;
+    const { error } = await supabase
+      .from("categorias_produto")
+      .update({ ativo: false } as any)
+      .eq("id", categoriaParaExcluir.id);
+    setCategoriaParaExcluir(null);
+    if (error) {
+      toast.error("Erro ao remover categoria");
+      return;
+    }
+    setCategoria("");
+    refetchCategorias();
+    toast.success("Categoria removida");
+  };
+
+
 
 
   const mutation = useMutation({
@@ -214,23 +277,90 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
         {/* Categoria */}
         <div className="space-y-2">
           <Label>Categoria *</Label>
-
-          <Select
-            value={formData.categoria}
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, categoria: value }))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione a categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIAS.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {!showNovaCategoria ? (
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Select value={formData.categoria} onValueChange={setCategoria}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categorias.length === 0 && (
+                      <div className="px-2 py-3 text-xs text-muted-foreground">
+                        Nenhuma categoria. Use + para criar.
+                      </div>
+                    )}
+                    {categorias.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.nome}>
+                        {cat.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                onClick={() => setShowNovaCategoria(true)}
+                title="Nova categoria"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              {formData.categoria && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  title="Excluir categoria"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => {
+                    const cat = categorias.find((c) => c.nome === formData.categoria);
+                    if (cat) setCategoriaParaExcluir(cat);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                placeholder="Nome da nova categoria"
+                value={novaCategoriaNome}
+                onChange={(e) => setNovaCategoriaNome(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAdicionarCategoria();
+                  }
+                }}
+                autoFocus
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                size="icon"
+                onClick={handleAdicionarCategoria}
+                disabled={salvandoCategoria || !novaCategoriaNome.trim()}
+              >
+                {salvandoCategoria ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={() => {
+                  setShowNovaCategoria(false);
+                  setNovaCategoriaNome("");
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
+
 
         {/* Compartilhado */}
         <div className="space-y-2">
@@ -304,6 +434,22 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
           </Button>
         </DialogFooter>
       </form>
+
+      <AlertDialog open={!!categoriaParaExcluir} onOpenChange={(open) => { if (!open) setCategoriaParaExcluir(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir categoria?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A categoria "{categoriaParaExcluir?.nome}" deixará de aparecer na lista.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirCategoria}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </>
   );
 }
