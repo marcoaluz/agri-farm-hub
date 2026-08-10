@@ -129,6 +129,7 @@ export function usePropriedades() {
     },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['propriedades'] })
+      queryClient.invalidateQueries({ queryKey: ['user-properties'] })
       await refetchPropriedades()
       toast({
         title: 'Propriedade removida!',

@@ -87,18 +87,23 @@ export default function ModulosPropriedades() {
           }
         }
         if (row.propriedade_id) {
-          agrupado[row.usuario_id].propriedades.push({
-            id: row.propriedade_id,
-            nome: row.propriedade_nome,
-            safra: row.safra_ativa_nome,
-            modulos: {
-              pecuaria: row.mod_pecuaria ?? true,
-              lavoura: row.mod_lavoura ?? true,
-              financeiro: row.mod_financeiro ?? true,
-              relatorios: row.mod_relatorios ?? true,
-              auditoria: row.mod_auditoria ?? true,
-            },
-          })
+          const jaExiste = agrupado[row.usuario_id].propriedades.some(
+            (p) => p.id === row.propriedade_id
+          )
+          if (!jaExiste) {
+            agrupado[row.usuario_id].propriedades.push({
+              id: row.propriedade_id,
+              nome: row.propriedade_nome,
+              safra: row.safra_ativa_nome,
+              modulos: {
+                pecuaria: row.mod_pecuaria ?? true,
+                lavoura: row.mod_lavoura ?? true,
+                financeiro: row.mod_financeiro ?? true,
+                relatorios: row.mod_relatorios ?? true,
+                auditoria: row.mod_auditoria ?? true,
+              },
+            })
+          }
         }
       })
       return Object.values(agrupado)
