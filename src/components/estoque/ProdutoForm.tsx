@@ -434,6 +434,22 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
           </Button>
         </DialogFooter>
       </form>
+
+      <AlertDialog open={!!categoriaParaExcluir} onOpenChange={(open) => { if (!open) setCategoriaParaExcluir(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir categoria?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A categoria "{categoriaParaExcluir?.nome}" deixará de aparecer na lista.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirCategoria}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </>
   );
 }
