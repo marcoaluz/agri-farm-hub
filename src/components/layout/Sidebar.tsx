@@ -312,7 +312,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </ScrollArea>
 
         {/* Footer fixo: usuário + logout */}
-        <div className="mt-auto shrink-0 border-t border-sidebar-border p-3">
+        <div
+          className="mt-auto shrink-0 border-t border-sidebar-border p-3"
+          style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+        >
           <div className="mb-3 flex items-center gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent/20">
               <span className="text-sm font-medium text-sidebar-foreground">
