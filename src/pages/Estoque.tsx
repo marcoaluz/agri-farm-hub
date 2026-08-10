@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { supabase } from '@/lib/supabase';
 import { useGlobal } from '@/contexts/GlobalContext';
+import { useSafraFechada } from '@/hooks/useSafraFechada';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ interface ProdutoComCusto {
 
 export function Estoque() {
   const { propriedadeAtual } = useGlobal();
+  const { isFechada, verificarSafra } = useSafraFechada();
   const [busca, setBusca] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState<string>('todos');
   const [tipoFiltro, setTipoFiltro] = useState<string>('todos');
@@ -187,7 +189,12 @@ export function Estoque() {
             <PackagePlus className="h-4 w-4 mr-2" />
             Novo Produto
           </Button>
-          <Button onClick={() => setDialogEntradaOpen(true)} className="w-full sm:w-auto">
+          <Button
+            onClick={() => { if (!verificarSafra('registrar entrada de estoque')) return; setDialogEntradaOpen(true) }}
+            disabled={isFechada}
+            title={isFechada ? 'Safra fechada' : ''}
+            className="w-full sm:w-auto"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Entrada de Estoque
           </Button>

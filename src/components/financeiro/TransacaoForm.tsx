@@ -28,6 +28,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { useSafraFechada } from '@/hooks/useSafraFechada'
 import { useTalhoes } from '@/hooks/useTalhoes'
 import { useCreateTransacao, useUpdateTransacao, type Transacao } from '@/hooks/useTransacoes'
 import { supabase } from '@/lib/supabase'
@@ -104,6 +105,7 @@ interface Props {
 
 export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const { propriedadeAtual, safraAtual } = useGlobal()
+  const { verificarSafra } = useSafraFechada(safraAtual)
   const propId = typeof propriedadeAtual === 'object' ? propriedadeAtual?.id : propriedadeAtual
   const queryClient = useQueryClient()
 
@@ -248,6 +250,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   }, [transacao, open])
 
   const onSubmit = async (data: FormData) => {
+    if (!verificarSafra('criar transação')) return
     const safraId = typeof safraAtual === 'object' ? safraAtual?.id : safraAtual
     if (!propId || !safraId) { toast.error('Selecione propriedade e safra'); return }
 

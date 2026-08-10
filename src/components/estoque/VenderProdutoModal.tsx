@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Loader2, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
+import { useSafraFechada } from '@/hooks/useSafraFechada';
 
 interface VenderProdutoModalProps {
   produto: {
@@ -39,6 +40,7 @@ export function VenderProdutoModal({ produto, onClose }: VenderProdutoModalProps
   const valorTotal = (quantidade || 0) * (precoUnitario || 0);
 
   const handleVender = async () => {
+    if (!verificarSafra('registrar venda')) return
     if (quantidade > produto.saldo_atual) {
       toast.error('Saldo insuficiente');
       return;

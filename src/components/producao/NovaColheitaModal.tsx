@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useSafraFechada } from '@/hooks/useSafraFechada'
 
 interface Props {
   open: boolean
@@ -86,6 +87,7 @@ export function NovaColheitaModal({
     : 'Quantidade'
 
   const handleSalvar = async () => {
+    if (!verificarSafra('registrar colheita')) return
     if (!culturaId || !talhaoId || !quantidade || parseFloat(quantidade) <= 0) {
       toast.error('Preencha cultura, talhão e quantidade')
       return
