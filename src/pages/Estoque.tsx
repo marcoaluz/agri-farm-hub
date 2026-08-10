@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 
 import { supabase } from '@/lib/supabase';
 import { useGlobal } from '@/contexts/GlobalContext';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -38,6 +40,8 @@ export function Estoque() {
   const { propriedadeAtual } = useGlobal();
   const [busca, setBusca] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState<string>('todos');
+  const [tipoFiltro, setTipoFiltro] = useState<string>('todos');
+
   const [produtoSelecionado, setProdutoSelecionado] = useState<ProdutoComCusto | null>(null);
   const [dialogLotesOpen, setDialogLotesOpen] = useState(false);
   const [dialogEntradaOpen, setDialogEntradaOpen] = useState(false);
@@ -118,11 +122,17 @@ export function Estoque() {
 
   const categorias = Array.from(new Set(produtos?.map(p => p.categoria) || []));
 
+  const contarTipo = (tipo: string) =>
+    produtos?.filter((p: any) => (p.tipo_estoque || 'agricola') === tipo).length || 0;
+
   const produtosFiltrados = produtos?.filter(produto => {
     const matchBusca = produto.nome.toLowerCase().includes(busca.toLowerCase());
     const matchCategoria = filtroCategoria === 'todos' || produto.categoria === filtroCategoria;
-    return matchBusca && matchCategoria;
+    const matchTipo =
+      tipoFiltro === 'todos' || ((produto as any).tipo_estoque || 'agricola') === tipoFiltro;
+    return matchBusca && matchCategoria && matchTipo;
   });
+
 
   const totalProdutos = produtos?.length || 0;
   const estoqueTotal = produtos?.reduce((sum, p) => sum + (p.valor_imobilizado || 0), 0) || 0;
@@ -236,8 +246,19 @@ export function Estoque() {
         </Card>
       </div>
 
+      {/* Abas por tipo de estoque */}
+      <Tabs value={tipoFiltro} onValueChange={setTipoFiltro}>
+        <TabsList className="w-full sm:w-auto overflow-x-auto flex justify-start">
+          <TabsTrigger value="todos">Todos ({produtos?.length || 0})</TabsTrigger>
+          <TabsTrigger value="agricola">🌱 Agrícola ({contarTipo('agricola')})</TabsTrigger>
+          <TabsTrigger value="pecuario">🐄 Pecuário ({contarTipo('pecuario')})</TabsTrigger>
+          <TabsTrigger value="geral">📦 Geral ({contarTipo('geral')})</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Filtros */}
       <div className="flex flex-col md:flex-row gap-4">
+
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input

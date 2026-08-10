@@ -332,6 +332,8 @@ function SafraForm({
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { refetchSafras } = useGlobal();
+
 
   const currentYear = new Date().getFullYear();
 
@@ -390,9 +392,11 @@ function SafraForm({
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({ title: `Safra ${safra ? "atualizada" : "criada"} com sucesso` });
       queryClient.invalidateQueries({ queryKey: ["safras"] });
+      queryClient.refetchQueries({ queryKey: ["safras"] });
+      await refetchSafras();
       onSuccess();
     },
     onError: (error: Error) => {

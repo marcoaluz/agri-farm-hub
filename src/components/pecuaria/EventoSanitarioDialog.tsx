@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
@@ -15,6 +16,7 @@ import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+
 
 const TIPOS_SANITARIO = [
   { value: 'vacina', label: 'Vacina' },
@@ -37,6 +39,9 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
   const [loading, setLoading] = useState(false)
   const [animaisSelecionados, setAnimaisSelecionados] = useState<string[]>([])
   const [statusAnimais, setStatusAnimais] = useState<Record<string, any>>({})
+  const [usarEstoque, setUsarEstoque] = useState(false)
+  const [produtoId, setProdutoId] = useState('')
+  const [quantidadeUsada, setQuantidadeUsada] = useState('')
   const [form, setForm] = useState({
     rebanho_id: '',
     tipo: 'vacina',
@@ -49,6 +54,18 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
     responsavel: '',
     observacoes: '',
   })
+
+  const { data: produtosPecuarios } = useQuery({
+    queryKey: ['produtos-pecuarios', propriedadeId],
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc('listar_produtos_usuario', {
+        p_propriedade_id: propriedadeId,
+      })
+      return ((data || []) as any[]).filter((p: any) => p.tipo_estoque === 'pecuario')
+    },
+    enabled: open && !!propriedadeId,
+  })
+
 
   // Apenas rebanhos que participam do controle sanitário
   const rebanhosVacinaveis = (rebanhos || []).filter((r: any) => r?.vacinavel === true)
@@ -117,7 +134,7 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
       p_descricao: form.descricao,
       p_data_aplicacao: format(form.data_aplicacao, 'yyyy-MM-dd'),
       p_data_proxima: form.data_proxima ? format(form.data_proxima, 'yyyy-MM-dd') : null,
-      p_custo: form.custo ? Number(form.custo) : null,
+      p_custo: usarEstoque ? 0 : form.custo ? Number(form.custo) : null,
       p_responsavel: form.responsavel || null,
       p_lote_produto: form.lote_produto || null,
       p_observacoes: form.observacoes || null,
@@ -129,10 +146,22 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
       return
     }
     const resultado = (Array.isArray(resultadoRaw) ? resultadoRaw[0] : resultadoRaw) || {}
+
+    if (usarEstoque && produtoId && quantidadeUsada && resultado.evento_id) {
+      await (supabase as any)
+        .from('sanitario_eventos')
+        .update({ produto_id: produtoId, quantidade_usada: parseFloat(quantidadeUsada) })
+        .eq('id', resultado.evento_id)
+      queryClient.invalidateQueries({ queryKey: ['produtos'] })
+      queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
+      queryClient.invalidateQueries({ queryKey: ['produtos-pecuarios'] })
+    }
+
     queryClient.invalidateQueries({ queryKey: ['sanitario'] })
     queryClient.invalidateQueries({ queryKey: ['sanitario-eventos'] })
     queryClient.invalidateQueries({ queryKey: ['sanitario-contagem'] })
     queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
+
 
     if (resultado.animais_bloqueados > 0) {
       toast.warning(
@@ -146,6 +175,9 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
     }
     setAnimaisSelecionados([])
     setStatusAnimais({})
+    setUsarEstoque(false)
+    setProdutoId('')
+    setQuantidadeUsada('')
     onOpenChange(false)
   }
 
@@ -239,6 +271,49 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
               <Input type="number" step="0.01" value={form.custo} onChange={e => setForm(f => ({ ...f, custo: e.target.value }))} />
             </div>
           </div>
+
+          <div className="flex items-center gap-2 border-t pt-3">
+            <Switch
+              checked={usarEstoque}
+              onCheckedChange={(v) => {
+                setUsarEstoque(v)
+                if (v) setForm(f => ({ ...f, custo: '0' }))
+              }}
+            />
+            <Label className="text-sm font-normal">Usar produto do estoque (desconta saldo)</Label>
+          </div>
+
+          {usarEstoque && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/30 p-3 rounded-lg">
+              <div>
+                <Label>Produto do estoque</Label>
+                <Select value={produtoId} onValueChange={setProdutoId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {(produtosPecuarios || []).map((prod: any) => (
+                      <SelectItem key={prod.id || prod.produto_id} value={prod.id || prod.produto_id}>
+                        {prod.nome} (saldo: {prod.saldo_atual ?? 0} {prod.unidade_medida})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Quantidade usada</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={quantidadeUsada}
+                  onChange={e => setQuantidadeUsada(e.target.value)}
+                  placeholder="Ex: 50"
+                />
+              </div>
+              <p className="sm:col-span-2 text-xs text-muted-foreground">
+                O custo não será lançado no financeiro pois o produto já foi pago na compra.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Lote do produto</Label>
