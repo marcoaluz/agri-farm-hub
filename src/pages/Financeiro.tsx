@@ -615,25 +615,28 @@ export function Financeiro() {
             <CardHeader className="px-0 pt-0"><CardTitle className="text-base">Fluxo de Caixa Acumulado</CardTitle></CardHeader>
             <CardContent className="px-0 pb-0">
               {fluxoAcumulado.length > 0 ? (
-                <ResponsiveContainer width="100%" height={320}>
-                  <LineChart data={fluxoAcumulado}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="mes" fontSize={12} />
-                    <YAxis fontSize={12} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                    <ReTooltip formatter={(v: number) => fmt(v)} />
-                    <Legend />
-                    <Line type="monotone" dataKey="receitas" name="Receitas" stroke="hsl(142, 70%, 40%)" strokeWidth={2} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="despesas" name="Despesas" stroke="hsl(0, 72%, 51%)" strokeWidth={2} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="acumulado" name="Saldo Acumulado" stroke="hsl(199, 89%, 48%)" strokeWidth={2.5} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : <div className="h-[320px] flex items-center justify-center text-muted-foreground">Sem dados de fluxo de caixa</div>}
+                <div className="h-[250px] sm:h-[320px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={fluxoAcumulado}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="mes" fontSize={11} />
+                      <YAxis fontSize={11} width={40} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                      <ReTooltip formatter={(v: number) => fmt(v)} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Line type="monotone" dataKey="receitas" name="Receitas" stroke="hsl(142, 70%, 40%)" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="despesas" name="Despesas" stroke="hsl(0, 72%, 51%)" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="acumulado" name="Saldo Acumulado" stroke="hsl(199, 89%, 48%)" strokeWidth={2.5} dot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : <div className="h-[250px] sm:h-[320px] flex items-center justify-center text-muted-foreground">Sem dados de fluxo de caixa</div>}
             </CardContent>
           </Card>
 
           {/* Tabela mensal */}
-          <Card>
-            <Table>
+          <Card className="overflow-x-auto">
+            <Table className="min-w-[560px]">
+
               <TableHeader>
                 <TableRow>
                   <TableHead>Mês</TableHead>
