@@ -242,21 +242,22 @@ export function Financeiro() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Financeiro</h1>
-          <p className="text-muted-foreground">Gestão de receitas, despesas e fluxo de caixa</p>
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground">Financeiro</h1>
+          <p className="text-sm text-muted-foreground">Gestão de receitas, despesas e fluxo de caixa</p>
         </div>
-        <Button onClick={() => { setEditando(null); setFormOpen(true) }}>
+        <Button className="w-full sm:w-auto" onClick={() => { setEditando(null); setFormOpen(true) }}>
           <Plus className="h-4 w-4 mr-2" /> Nova Transação
         </Button>
       </div>
 
       <Tabs defaultValue="resumo" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="resumo">📊 Resumo</TabsTrigger>
-          <TabsTrigger value="transacoes">📋 Transações</TabsTrigger>
-          <TabsTrigger value="fluxo">📈 Fluxo de Caixa</TabsTrigger>
-          <TabsTrigger value="custos">🚜 Custos Operacionais</TabsTrigger>
+        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 h-auto">
+          <TabsTrigger value="resumo" className="text-xs sm:text-sm py-2">📊 Resumo</TabsTrigger>
+          <TabsTrigger value="transacoes" className="text-xs sm:text-sm py-2">📋 Transações</TabsTrigger>
+          <TabsTrigger value="fluxo" className="text-xs sm:text-sm py-2">📈 Fluxo</TabsTrigger>
+          <TabsTrigger value="custos" className="text-xs sm:text-sm py-2">🚜 Custos</TabsTrigger>
         </TabsList>
+
 
         {/* ═══ ABA RESUMO ═══ */}
         <TabsContent value="resumo" className="space-y-6">
