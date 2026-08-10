@@ -39,6 +39,7 @@ export function NovaColheitaModal({
 }: Props) {
   const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
+  const { verificarSafra } = useSafraFechada()
 
   const [culturaId, setCulturaId] = useState(culturaIdInicial || '')
   const [talhaoId, setTalhaoId] = useState(talhaoIdInicial || '')

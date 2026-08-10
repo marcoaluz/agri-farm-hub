@@ -26,6 +26,7 @@ const hoje = () => new Date().toISOString().slice(0, 10);
 export function VenderProdutoModal({ produto, onClose }: VenderProdutoModalProps) {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const { verificarSafra } = useSafraFechada();
 
   const [quantidade, setQuantidade] = useState<number>(0);
   const [precoUnitario, setPrecoUnitario] = useState<number>(0);

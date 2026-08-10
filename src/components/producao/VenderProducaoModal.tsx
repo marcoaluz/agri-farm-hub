@@ -37,6 +37,7 @@ const hoje = () => new Date().toISOString().slice(0, 10)
 export function VenderProducaoModal({ cultura, propriedadeId, safraId, onClose }: Props) {
   const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
+  const { verificarSafra } = useSafraFechada()
 
   const [quantidade, setQuantidade] = useState('')
   const [precoUnitario, setPrecoUnitario] = useState('')
