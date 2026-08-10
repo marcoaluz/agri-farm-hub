@@ -36,16 +36,18 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: "Agro GFI — Gestão de Fazenda Inteligente",
         short_name: "Agro GFI",
-        description: "Toda a gestão da sua fazenda em um único lugar.",
-        theme_color: "#FAFAF7",
+        description: "Sistema de gestão de fazenda inteligente",
+        theme_color: "#1F3A2E",
         background_color: "#FFFFFF",
         display: "standalone",
         orientation: "portrait",
         start_url: "/",
         scope: "/",
         icons: [
-          { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
-          { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+          { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "/pwa-maskable-192x192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+          { src: "/pwa-maskable-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {
