@@ -649,6 +649,11 @@ export function Financeiro() {
             </Table>
           </Card>
         </TabsContent>
+
+        {/* ═══ ABA CUSTOS OPERACIONAIS ═══ */}
+        <TabsContent value="custos" className="space-y-6">
+          <CustosOperacionais />
+        </TabsContent>
       </Tabs>
 
       {/* Dialog Form */}
