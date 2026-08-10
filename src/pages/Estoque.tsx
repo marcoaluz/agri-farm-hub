@@ -120,7 +120,16 @@ export function Estoque() {
   }, [highlightLoteId, produtos, setSearchParams]);
 
 
-  const categorias = Array.from(new Set(produtos?.map(p => p.categoria) || []));
+  const categorias = Array.from(
+    new Set(
+      (produtos || [])
+        .filter((p: any) =>
+          tipoFiltro === 'todos' || (p.tipo_estoque || 'agricola') === tipoFiltro
+        )
+        .map((p: any) => p.categoria)
+        .filter(Boolean)
+    )
+  );
 
   const contarTipo = (tipo: string) =>
     produtos?.filter((p: any) => (p.tipo_estoque || 'agricola') === tipo).length || 0;

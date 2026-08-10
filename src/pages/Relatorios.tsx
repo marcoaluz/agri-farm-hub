@@ -685,14 +685,6 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
                   <p className="text-xs text-muted-foreground">Produtividade / ha</p>
                   <p className="font-semibold">{c.produtividade > 0 ? `${fmtN(c.produtividade)} ${c.unidade}/ha` : '—'}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Receita estimada</p>
-                  <p className="font-semibold text-success">{fmt(c.receita)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Resultado estimado</p>
-                  <p className={`font-semibold ${c.resultado >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(c.resultado)}</p>
-                </div>
               </div>
               {(c.primeira || c.ultima) && (
                 <p className="text-xs text-muted-foreground border-t pt-2">
