@@ -111,6 +111,7 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
     } else {
       toast({ title: lote ? 'Lote atualizado!' : 'Lote criado!' })
       queryClient.invalidateQueries({ queryKey: ['rebanhos'] })
+      queryClient.refetchQueries({ queryKey: ['rebanhos'] })
       queryClient.invalidateQueries({ queryKey: ['rebanho-movimentacoes'] })
       onOpenChange(false)
     }

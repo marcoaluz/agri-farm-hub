@@ -38,6 +38,8 @@ export function Estoque() {
   const { propriedadeAtual } = useGlobal();
   const [busca, setBusca] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState<string>('todos');
+  const [tipoFiltro, setTipoFiltro] = useState<string>('todos');
+
   const [produtoSelecionado, setProdutoSelecionado] = useState<ProdutoComCusto | null>(null);
   const [dialogLotesOpen, setDialogLotesOpen] = useState(false);
   const [dialogEntradaOpen, setDialogEntradaOpen] = useState(false);
@@ -118,11 +120,17 @@ export function Estoque() {
 
   const categorias = Array.from(new Set(produtos?.map(p => p.categoria) || []));
 
+  const contarTipo = (tipo: string) =>
+    produtos?.filter((p: any) => (p.tipo_estoque || 'agricola') === tipo).length || 0;
+
   const produtosFiltrados = produtos?.filter(produto => {
     const matchBusca = produto.nome.toLowerCase().includes(busca.toLowerCase());
     const matchCategoria = filtroCategoria === 'todos' || produto.categoria === filtroCategoria;
-    return matchBusca && matchCategoria;
+    const matchTipo =
+      tipoFiltro === 'todos' || ((produto as any).tipo_estoque || 'agricola') === tipoFiltro;
+    return matchBusca && matchCategoria && matchTipo;
   });
+
 
   const totalProdutos = produtos?.length || 0;
   const estoqueTotal = produtos?.reduce((sum, p) => sum + (p.valor_imobilizado || 0), 0) || 0;
