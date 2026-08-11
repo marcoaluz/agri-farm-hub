@@ -93,23 +93,21 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
         throw new Error('Arquivo muito grande (máx. 5MB)');
       }
 
-      // Inserir lote (o trigger cria a transação financeira automaticamente)
+      // RPC valida safra ativa/aberta e cria o lote (trigger cria a transação financeira)
       const { data: novoLote, error } = await supabase
-        .from('lotes')
-        .insert({
-          propriedade_id: propriedadeAtual?.id,
-          produto_id: formData.produto_id,
-          nota_fiscal: formData.nota_fiscal || null,
-          fornecedor: formData.fornecedor || null,
-          quantidade_original: formData.quantidade,
-          quantidade_disponivel: formData.quantidade,
-          custo_unitario: formData.custo_unitario,
-          data_entrada: formData.data_entrada,
-          data_validade: formData.data_validade || null,
-          status_pagamento: statusPagamento === 'pago' ? 'pago' : 'pendente',
-          data_vencimento: statusPagamento === 'pago' ? null : dataVencimento,
-        } as any)
-        .select()
+        .rpc('registrar_entrada_estoque' as any, {
+          p_propriedade_id: propriedadeAtual?.id,
+          p_produto_id: formData.produto_id,
+          p_safra_id: safraAtual?.id,
+          p_quantidade: formData.quantidade,
+          p_custo_unitario: formData.custo_unitario,
+          p_data_entrada: formData.data_entrada,
+          p_data_validade: formData.data_validade || null,
+          p_fornecedor: formData.fornecedor || null,
+          p_nota_fiscal: formData.nota_fiscal || null,
+          p_status_pagamento: statusPagamento === 'pago' ? 'pago' : 'pendente',
+          p_data_vencimento: statusPagamento === 'pago' ? null : dataVencimento,
+        })
         .single();
 
       if (error) throw error;
