@@ -146,11 +146,11 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
       }
 
 
-      if (arquivoNF && novoLote) {
+      if (arquivoNF && loteId) {
         const { error: erroAnexo } = await uploadAnexoNF({
           propriedadeId: propriedadeAtual!.id,
           entidadeTipo: 'lote',
-          entidadeId: (novoLote as any).id,
+          entidadeId: loteId,
           arquivo: arquivoNF,
         });
         if (erroAnexo) {
