@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { GlobalProvider } from "@/contexts/GlobalContext";
 import { AppRoutes } from "@/routes";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
               <Toaster />
               <Sonner />
               <InstallPrompt />
+              <SpeedInsights />
             </GlobalProvider>
           </AuthProvider>
         </TooltipProvider>
