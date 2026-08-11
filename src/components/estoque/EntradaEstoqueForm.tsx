@@ -182,14 +182,17 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
       onSuccess();
     },
     onError: (error: Error) => {
+      const msg = error.message || '';
       const isAvisoSafra =
-        error.message.includes('Safra fechada') ||
-        error.message.includes('Nenhuma safra ativa');
+        msg.includes('Safra fechada') ||
+        msg.includes('Nenhuma safra ativa') ||
+        msg.includes('está fechada') ||
+        msg.includes('não está ativa');
       toast({
         title: isAvisoSafra ? 'Ação de safra necessária' : 'Erro ao registrar entrada',
-        description: error.message.includes('Safra fechada')
+        description: msg.includes('Safra fechada') || msg.includes('está fechada')
           ? 'A safra selecionada está fechada. Reabra a safra em "Safras" para continuar lançando operações nela, ou selecione outra safra ativa.'
-          : error.message,
+          : msg,
         variant: isAvisoSafra ? 'default' : 'destructive'
       });
     }
