@@ -76,7 +76,14 @@ export function RegistrarColheitaDialog({ open, onOpenChange, talhaoId, culturaI
       onOpenChange(false);
     },
     onError: (error: Error) => {
-      toast({ title: "Erro ao registrar colheita", description: error.message, variant: "destructive" });
+      const isSafraFechada = error.message.includes('Safra fechada');
+      toast({
+        title: isSafraFechada ? 'Safra fechada' : 'Erro ao registrar colheita',
+        description: isSafraFechada
+          ? 'A safra selecionada está fechada. Reabra a safra em "Safras" para continuar lançando operações nela, ou selecione outra safra ativa.'
+          : error.message,
+        variant: isSafraFechada ? 'default' : 'destructive'
+      });
     },
   });
 
