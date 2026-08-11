@@ -718,10 +718,13 @@ export function LancamentoForm() {
     },
     onError: (error: Error) => {
       setValidandoEstoque(false)
+      const isSafraFechada = error.message.includes('Safra fechada')
       toast({
-        title: '❌ Erro ao salvar lançamento',
-        description: error.message,
-        variant: 'destructive'
+        title: isSafraFechada ? 'Safra fechada' : '❌ Erro ao salvar lançamento',
+        description: isSafraFechada
+          ? 'A safra selecionada está fechada. Reabra a safra em "Safras" para continuar lançando operações nela, ou selecione outra safra ativa.'
+          : error.message,
+        variant: isSafraFechada ? 'default' : 'destructive'
       })
     }
   })

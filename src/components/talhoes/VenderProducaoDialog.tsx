@@ -79,7 +79,14 @@ export function VenderProducaoDialog({
       onOpenChange(false);
     },
     onError: (err: Error) => {
-      toast({ title: "Erro ao registrar venda", description: err.message, variant: "destructive" });
+      const isSafraFechada = err.message.includes('Safra fechada');
+      toast({
+        title: isSafraFechada ? 'Safra fechada' : 'Erro ao registrar venda',
+        description: isSafraFechada
+          ? 'A safra selecionada está fechada. Reabra a safra em "Safras" para continuar lançando operações nela, ou selecione outra safra ativa.'
+          : err.message,
+        variant: isSafraFechada ? 'default' : 'destructive'
+      });
     },
   });
 

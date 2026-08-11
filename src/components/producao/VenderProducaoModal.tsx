@@ -88,7 +88,14 @@ export function VenderProducaoModal({ cultura, propriedadeId, safraId, onClose }
 
     if (error) {
       setLoading(false)
-      toast.error('Erro: ' + error.message)
+      const isSafraFechada = error.message.includes('Safra fechada')
+      if (isSafraFechada) {
+        toast('Safra fechada', {
+          description: 'A safra selecionada está fechada. Reabra a safra em "Safras" para continuar lançando operações nela, ou selecione outra safra ativa.',
+        })
+      } else {
+        toast.error('Erro: ' + error.message)
+      }
       return
     }
 
