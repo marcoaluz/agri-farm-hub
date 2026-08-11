@@ -112,13 +112,15 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
 
       if (error) throw error;
 
+      const loteId = typeof novoLote === 'string' ? novoLote : (novoLote as any)?.id ?? (novoLote as any)?.lote_id;
+
       // Parcelamento: localizar a transação criada pelo trigger e gerar parcelas
-      if (statusPagamento === 'parcelado' && novoLote) {
+      if (statusPagamento === 'parcelado' && loteId) {
         const { data: transacao } = await supabase
           .from('transacoes')
           .select('id')
           .eq('propriedade_id', propriedadeAtual!.id)
-          .like('origem', `%${(novoLote as any).id}%`)
+          .like('origem', `%${loteId}%`)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
