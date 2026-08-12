@@ -709,8 +709,20 @@ export function Financeiro() {
                         </div>
                         <div className="shrink-0 text-right">
                           <div className={cn('font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
-                            {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
+                            {(() => {
+                              const prox = proximaParcela(t)
+                              if (!prox) return <>{t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}</>
+                              return (
+                                <>
+                                  {t.tipo === 'receita' ? '+' : '-'} {fmt(Number(prox.parcela.valor) || 0)}
+                                  <div className="text-xs font-normal text-muted-foreground">
+                                    {prox.parcela.numero_parcela}/{prox.total} · Total {fmt(t.valor)}
+                                  </div>
+                                </>
+                              )
+                            })()}
                           </div>
+
                           <div className="mt-1 inline-flex items-center">
                             <StatusBadge status={st} />
                             {t.parcelado && <ParcelasIndicador n={t.numero_parcelas} />}
