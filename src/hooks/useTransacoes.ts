@@ -224,15 +224,41 @@ export function useDeleteTransacao() {
 export function useMarcarPago() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, pagar = true }: { id: string; pagar?: boolean }) => {
       const { error } = await supabase
         .from('transacoes')
-        .update({ status: 'pago', data_pagamento: new Date().toISOString().split('T')[0] })
+        .update({
+          status: pagar ? 'pago' : 'pendente',
+          data_pagamento: pagar ? new Date().toISOString().split('T')[0] : null,
+        })
         .eq('id', id)
       if (error) throw error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+      queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
+      queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] })
+    },
+  })
+}
+
+export function useMarcarPagoParcela() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, pagar = true }: { id: string; pagar?: boolean }) => {
+      const { error } = await supabase
+        .from('parcelas' as any)
+        .update({
+          status: pagar ? 'pago' : 'pendente',
+          data_pagamento: pagar ? new Date().toISOString().split('T')[0] : null,
+        })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+      queryClient.invalidateQueries({ queryKey: ['parcelas'] })
+      queryClient.invalidateQueries({ queryKey: ['parcelas-calendario'] })
       queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
       queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] })
     },

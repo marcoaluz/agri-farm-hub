@@ -4,7 +4,7 @@ import { ptBR } from 'date-fns/locale'
 import { useSearchParams } from 'react-router-dom'
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle,
-  Plus, Search, Check, CheckCheck, Pencil, Trash2, CalendarIcon,
+  Plus, Search, Check, CheckCheck, Undo2, Pencil, Trash2, CalendarIcon,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
 
@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useSafraFechada } from '@/hooks/useSafraFechada'
 import {
-  useTransacoes, useFluxoCaixaMensal, useMarcarPago, useDeleteTransacao,
+  useTransacoes, useFluxoCaixaMensal, useMarcarPago, useMarcarPagoParcela, useDeleteTransacao,
   statusEfetivo, type Transacao, type FiltrosTransacao,
 } from '@/hooks/useTransacoes'
 import { TransacaoForm } from '@/components/financeiro/TransacaoForm'
@@ -127,6 +127,7 @@ export function Financeiro() {
   const { data: todasTransacoes = [] } = useTransacoes(propId, safraId)
   const { data: fluxoMensal = [] } = useFluxoCaixaMensal(propId, safraId)
   const marcarPago = useMarcarPago()
+  const marcarPagoParcela = useMarcarPagoParcela()
   const deletar = useDeleteTransacao()
   const queryClient = useQueryClient()
 
@@ -190,18 +191,12 @@ export function Financeiro() {
     queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
   }
 
-  // Marcar uma parcela específica como paga
-  const pagarParcela = async (parcelaId: string) => {
-    const { error } = await supabase
-      .from('parcelas' as any)
-      .update({ status: 'pago', data_pagamento: new Date().toISOString().split('T')[0] })
-      .eq('id', parcelaId)
-    if (error) {
-      toast.error('Erro ao marcar parcela como paga: ' + error.message)
-      return
-    }
-    toast.success('Parcela paga!')
-    invalidarFinanceiro()
+  // Marcar uma parcela específica como paga/desfazer
+  const pagarParcela = (parcelaId: string) => {
+    marcarPagoParcela.mutate(
+      { id: parcelaId, pagar: true },
+      { onSuccess: () => toast.success('Parcela paga!') }
+    )
   }
 
   // Marcar todas as parcelas restantes de uma transação como pagas
@@ -222,7 +217,7 @@ export function Financeiro() {
 
   const marcarPagoLinha = (t: Transacao) => {
     if (t.eh_parcela) pagarParcela(t.id)
-    else marcarPago.mutate(t.id, { onSuccess: () => toast.success('Baixa registrada!') })
+    else marcarPago.mutate({ id: t.id, pagar: true }, { onSuccess: () => toast.success('Baixa registrada!') })
   }
 
   const executarBaixa = (alvo: { t: Transacao; todas: boolean }) => {
@@ -428,7 +423,19 @@ export function Financeiro() {
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <span className="font-bold text-destructive">{fmt(t.valor)}</span>
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => marcarPago.mutate(t.id, { onSuccess: () => toast.success('Marcado como pago') })} disabled={marcarPago.isPending}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              if (t.eh_parcela) {
+                                marcarPagoParcela.mutate({ id: t.id, pagar: true }, { onSuccess: () => toast.success('Marcado como pago') })
+                              } else {
+                                marcarPago.mutate({ id: t.id, pagar: true }, { onSuccess: () => toast.success('Marcado como pago') })
+                              }
+                            }}
+                            disabled={marcarPago.isPending || marcarPagoParcela.isPending}
+                          >
                             <Check className="h-3 w-3 mr-1" /> Pagar
                           </Button>
                         </div>
@@ -603,6 +610,24 @@ export function Financeiro() {
                               )}
                             </>
                           )}
+                          {st === 'pago' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-muted-foreground"
+                              title="Desfazer baixa"
+                              onClick={() => {
+                                if (t.eh_parcela) {
+                                  marcarPagoParcela.mutate({ id: t.id, pagar: false }, { onSuccess: () => toast.success('Desfeito') })
+                                } else {
+                                  marcarPago.mutate({ id: t.id, pagar: false }, { onSuccess: () => toast.success('Desfeito') })
+                                }
+                              }}
+                              disabled={marcarPago.isPending || marcarPagoParcela.isPending}
+                            >
+                              <Undo2 className="h-4 w-4 mr-1" /> Desfazer
+                            </Button>
+                          )}
                           {!isAutoGerada(t) ? (
                             <>
                               <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => { setEditando(t); setFormOpen(true) }}>
@@ -695,6 +720,24 @@ export function Financeiro() {
                               </Button>
                             )}
                           </>
+                        )}
+                        {st === 'pago' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-11 text-muted-foreground"
+                            onClick={e => {
+                              e.stopPropagation()
+                              if (t.eh_parcela) {
+                                marcarPagoParcela.mutate({ id: t.id, pagar: false }, { onSuccess: () => toast.success('Desfeito') })
+                              } else {
+                                marcarPago.mutate({ id: t.id, pagar: false }, { onSuccess: () => toast.success('Desfeito') })
+                              }
+                            }}
+                            disabled={marcarPago.isPending || marcarPagoParcela.isPending}
+                          >
+                            <Undo2 className="mr-1 h-4 w-4" /> Desfazer
+                          </Button>
                         )}
                         {isAutoGerada(t) ? (
                           <span className="text-xs text-muted-foreground italic self-center">Via {origemLabel(t.origem!)}</span>
