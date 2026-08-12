@@ -1,6 +1,7 @@
-import { useState, useMemo, Fragment } from 'react'
+import { useState, useMemo, useEffect, useRef, Fragment } from 'react'
 import { format, addDays, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { useSearchParams } from 'react-router-dom'
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle,
   Plus, Search, Check, Pencil, Trash2, CalendarIcon,
@@ -98,6 +99,9 @@ export function Financeiro() {
   const { data: idsComAnexo } = useIdsComAnexo(propId)
   const safraId = safraAtual?.id
 
+  const [searchParams, setSearchParams] = useSearchParams()
+  const transacaoDestaqueId = searchParams.get('transacao')
+
   // Filters
   const [filtros, setFiltros] = useState<FiltrosTransacao>({})
   const [busca, setBusca] = useState('')
@@ -134,6 +138,48 @@ export function Financeiro() {
   const [formOpen, setFormOpen] = useState(false)
   const [editando, setEditando] = useState<Transacao | null>(null)
   const [deletandoId, setDeletandoId] = useState<string | null>(null)
+
+  // Paginação
+  const [page, setPage] = useState(0)
+  const perPage = 15
+  const totalPages = Math.ceil(transacoes.length / perPage)
+  const transacoesPag = transacoes.slice(page * perPage, (page + 1) * perPage)
+
+  // Deep-link para transação específica via ?transacao=abc123
+  const [activeTab, setActiveTab] = useState(transacaoDestaqueId ? 'transacoes' : 'resumo')
+  const [highlightedId, setHighlightedId] = useState<string | null>(transacaoDestaqueId)
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!transacaoDestaqueId || !transacoes.length) return
+    const idx = transacoes.findIndex(t => t.id === transacaoDestaqueId)
+    if (idx >= 0) {
+      const targetPage = Math.floor(idx / perPage)
+      setPage(targetPage)
+      setActiveTab('transacoes')
+      setHighlightedId(transacaoDestaqueId)
+    }
+  }, [transacaoDestaqueId, transacoes.length])
+
+  useEffect(() => {
+    if (!highlightedId) return
+    const el = document.getElementById(`transacao-${highlightedId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+      highlightTimerRef.current = setTimeout(() => {
+        setHighlightedId(null)
+        setSearchParams(prev => {
+          const next = new URLSearchParams(prev)
+          next.delete('transacao')
+          return next
+        }, { replace: true })
+      }, 3000)
+    }
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    }
+  }, [highlightedId, transacoesPag])
 
   // Computed KPIs
   const kpis = useMemo(() => {
@@ -215,12 +261,6 @@ export function Financeiro() {
     })
   }, [fluxoMensal])
 
-  // Paginação
-  const [page, setPage] = useState(0)
-  const perPage = 15
-  const totalPages = Math.ceil(transacoes.length / perPage)
-  const transacoesPag = transacoes.slice(page * perPage, (page + 1) * perPage)
-
   // Totalizadores da aba transações
   const totais = useMemo(() => {
     let rec = 0, desp = 0
@@ -257,7 +297,7 @@ export function Financeiro() {
         </Button>
       </div>
 
-      <Tabs defaultValue="resumo" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 h-auto">
           <TabsTrigger value="resumo" className="text-xs sm:text-sm py-2">📊 Resumo</TabsTrigger>
           <TabsTrigger value="transacoes" className="text-xs sm:text-sm py-2">📋 Transações</TabsTrigger>
@@ -452,7 +492,13 @@ export function Financeiro() {
                   const expandido = expandidos.includes(t.id)
                   return (
                     <Fragment key={t.id}>
-                    <TableRow className={cn(st === 'vencido' && 'bg-destructive/5')}>
+                    <TableRow
+                      id={`transacao-${t.id}`}
+                      className={cn(
+                        st === 'vencido' && 'bg-destructive/5',
+                        highlightedId === t.id && 'ring-2 ring-primary bg-primary/10 animate-pulse'
+                      )}
+                    >
 
                       <TableCell className="whitespace-nowrap">{format(parseISO(t.data_vencimento), 'dd/MM/yy')}</TableCell>
                       <TableCell>
@@ -540,7 +586,13 @@ export function Financeiro() {
                 return (
                   <Fragment key={t.id}>
                   <Card
-                    className={cn('transition-colors', isAutoGerada(t) ? 'cursor-default' : 'cursor-pointer hover:bg-muted/50', st === 'vencido' && 'bg-destructive/5')}
+                    id={`transacao-${t.id}`}
+                    className={cn(
+                      'transition-colors',
+                      isAutoGerada(t) ? 'cursor-default' : 'cursor-pointer hover:bg-muted/50',
+                      st === 'vencido' && 'bg-destructive/5',
+                      highlightedId === t.id && 'ring-2 ring-primary bg-primary/10 animate-pulse'
+                    )}
                     onClick={() => { if (!isAutoGerada(t)) { setEditando(t); setFormOpen(true) } }}
                   >
                     <CardContent className="p-4">
