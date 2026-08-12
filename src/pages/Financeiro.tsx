@@ -811,6 +811,30 @@ export function Financeiro() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Confirm baixa (pagar / receber) */}
+      <AlertDialog open={!!pagandoAlvo} onOpenChange={() => setPagandoAlvo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pagandoAlvo?.todas
+                ? `Marcar todas as parcelas restantes como ${pagandoAlvo?.t.tipo === 'receita' ? 'recebidas' : 'pagas'}?`
+                : `Marcar como ${pagandoAlvo?.t.tipo === 'receita' ? 'recebido' : 'pago'}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pagandoAlvo?.todas
+                ? `Todas as parcelas pendentes desta transação serão marcadas como ${pagandoAlvo?.t.tipo === 'receita' ? 'recebidas' : 'pagas'} com a data de hoje.`
+                : `O lançamento será baixado com a data de hoje.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (pagandoAlvo) executarBaixa(pagandoAlvo); setPagandoAlvo(null) }}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
