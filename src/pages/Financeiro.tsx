@@ -297,7 +297,7 @@ export function Financeiro() {
         </Button>
       </div>
 
-      <Tabs defaultValue="resumo" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 h-auto">
           <TabsTrigger value="resumo" className="text-xs sm:text-sm py-2">📊 Resumo</TabsTrigger>
           <TabsTrigger value="transacoes" className="text-xs sm:text-sm py-2">📋 Transações</TabsTrigger>
