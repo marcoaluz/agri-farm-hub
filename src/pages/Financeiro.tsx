@@ -191,18 +191,12 @@ export function Financeiro() {
     queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
   }
 
-  // Marcar uma parcela específica como paga
-  const pagarParcela = async (parcelaId: string) => {
-    const { error } = await supabase
-      .from('parcelas' as any)
-      .update({ status: 'pago', data_pagamento: new Date().toISOString().split('T')[0] })
-      .eq('id', parcelaId)
-    if (error) {
-      toast.error('Erro ao marcar parcela como paga: ' + error.message)
-      return
-    }
-    toast.success('Parcela paga!')
-    invalidarFinanceiro()
+  // Marcar uma parcela específica como paga/desfazer
+  const pagarParcela = (parcelaId: string) => {
+    marcarPagoParcela.mutate(
+      { id: parcelaId, pagar: true },
+      { onSuccess: () => toast.success('Parcela paga!') }
+    )
   }
 
   // Marcar todas as parcelas restantes de uma transação como pagas
@@ -223,7 +217,7 @@ export function Financeiro() {
 
   const marcarPagoLinha = (t: Transacao) => {
     if (t.eh_parcela) pagarParcela(t.id)
-    else marcarPago.mutate(t.id, { onSuccess: () => toast.success('Baixa registrada!') })
+    else marcarPago.mutate({ id: t.id, pagar: true }, { onSuccess: () => toast.success('Baixa registrada!') })
   }
 
   const executarBaixa = (alvo: { t: Transacao; todas: boolean }) => {
