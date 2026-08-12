@@ -592,9 +592,16 @@ export function Financeiro() {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           {(st === 'pendente' || st === 'vencido') && (
-                            <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title="Marcar como pago" onClick={() => marcarPagoLinha(t)}>
-                              <Check className="h-4 w-4 mr-1" /> Pagar
-                            </Button>
+                            <>
+                              <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title={`Marcar como ${t.tipo === 'receita' ? 'recebido' : 'pago'}`} onClick={() => setPagandoAlvo({ t, todas: false })}>
+                                <Check className="h-4 w-4 mr-1" /> {labelBaixa(t)}
+                              </Button>
+                              {temParcelasRestantes(t) && (
+                                <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title={`${labelBaixa(t)} todas as restantes`} onClick={() => setPagandoAlvo({ t, todas: true })}>
+                                  <CheckCheck className="h-4 w-4 mr-1" /> Todas
+                                </Button>
+                              )}
+                            </>
                           )}
                           {!isAutoGerada(t) ? (
                             <>
