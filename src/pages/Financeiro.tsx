@@ -586,7 +586,13 @@ export function Financeiro() {
                 return (
                   <Fragment key={t.id}>
                   <Card
-                    className={cn('transition-colors', isAutoGerada(t) ? 'cursor-default' : 'cursor-pointer hover:bg-muted/50', st === 'vencido' && 'bg-destructive/5')}
+                    id={`transacao-${t.id}`}
+                    className={cn(
+                      'transition-colors',
+                      isAutoGerada(t) ? 'cursor-default' : 'cursor-pointer hover:bg-muted/50',
+                      st === 'vencido' && 'bg-destructive/5',
+                      highlightedId === t.id && 'ring-2 ring-primary bg-primary/10 animate-pulse'
+                    )}
                     onClick={() => { if (!isAutoGerada(t)) { setEditando(t); setFormOpen(true) } }}
                   >
                     <CardContent className="p-4">
