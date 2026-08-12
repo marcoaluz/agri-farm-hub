@@ -39,10 +39,9 @@ import {
   statusEfetivo, type Transacao, type FiltrosTransacao,
 } from '@/hooks/useTransacoes'
 import { TransacaoForm } from '@/components/financeiro/TransacaoForm'
-import { ParcelasExpansivel } from '@/components/financeiro/ParcelasExpansivel'
 import { TransacaoOrigemAcoes, useIdsComAnexo } from '@/components/financeiro/TransacaoOrigemAcoes'
 import { CustosOperacionais } from '@/components/financeiro/CustosOperacionais'
-import { useQuery } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
@@ -126,7 +125,6 @@ export function Financeiro() {
   const fimMes = endOfMonth(mesAtual)
 
   // Parcelas expandidas
-  const [expandidos, setExpandidos] = useState<string[]>([])
   const toggleExpandido = (id: string) => {
     setExpandidos(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
@@ -526,7 +524,6 @@ export function Financeiro() {
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma transação encontrada.</TableCell></TableRow>
                 ) : transacoesPag.map(t => {
                   const st = statusEfetivo(t)
-                  const expandido = expandidos.includes(t.id)
                   return (
                     <Fragment key={t.id}>
                     <TableRow
@@ -540,11 +537,6 @@ export function Financeiro() {
                       <TableCell className="whitespace-nowrap">{format(parseISO(t.data_vencimento), 'dd/MM/yy')}</TableCell>
                       <TableCell>
                         <div className="flex items-start gap-1 min-w-0">
-                          {t.parcelado && (
-                            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => toggleExpandido(t.id)} title="Ver parcelas">
-                              <ChevronDown className={cn('h-4 w-4 transition-transform', expandido && 'rotate-180')} />
-                            </Button>
-                          )}
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="truncate max-w-[200px] font-medium">{t.descricao}</p>
@@ -562,18 +554,12 @@ export function Financeiro() {
                       <TableCell className="hidden md:table-cell">{categoriasLabel[t.categoria] || t.categoria}</TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">{t.fornecedor_cliente || '—'}</TableCell>
                       <TableCell className={cn('text-right font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
-                        {(() => {
-                          const prox = proximaParcela(t)
-                          if (!prox) return <>{t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}</>
-                          return (
-                            <>
-                              {t.tipo === 'receita' ? '+' : '-'} {fmt(Number(prox.parcela.valor) || 0)}
-                              <div className="text-xs font-normal text-muted-foreground">
-                                {prox.parcela.numero_parcela}/{prox.total} · Total {fmt(t.valor)}
-                              </div>
-                            </>
-                          )
-                        })()}
+                        {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
+                        {t.eh_parcela && (
+                          <div className="text-xs font-normal text-muted-foreground">
+                            {t.numero_parcela}/{t.total_parcelas} · Total {fmt(Number(t.valor_total_transacao) || 0)}
+                          </div>
+                        )}
                       </TableCell>
 
                       <TableCell>
@@ -585,8 +571,8 @@ export function Financeiro() {
 
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          {!t.parcelado && (st === 'pendente' || st === 'vencido') && (
-                            <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title="Marcar como pago" onClick={() => marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') })}>
+                          {(st === 'pendente' || st === 'vencido') && (
+                            <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title="Marcar como pago" onClick={() => marcarPagoLinha(t)}>
                               <Check className="h-4 w-4 mr-1" /> Pagar
                             </Button>
                           )}
@@ -607,13 +593,6 @@ export function Financeiro() {
                         </div>
                       </TableCell>
                     </TableRow>
-                    {t.parcelado && expandido && (
-                      <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={7} className="p-0">
-                          <ParcelasExpansivel transacaoId={t.id} />
-                        </TableCell>
-                      </TableRow>
-                    )}
                     </Fragment>
 
                   )
@@ -631,7 +610,6 @@ export function Financeiro() {
                 <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma transação encontrada.</p>
               ) : transacoesPag.map(t => {
                 const st = statusEfetivo(t)
-                const expandido = expandidos.includes(t.id)
                 return (
                   <Fragment key={t.id}>
                   <Card
@@ -663,18 +641,12 @@ export function Financeiro() {
                         </div>
                         <div className="shrink-0 text-right">
                           <div className={cn('font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
-                            {(() => {
-                              const prox = proximaParcela(t)
-                              if (!prox) return <>{t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}</>
-                              return (
-                                <>
-                                  {t.tipo === 'receita' ? '+' : '-'} {fmt(Number(prox.parcela.valor) || 0)}
-                                  <div className="text-xs font-normal text-muted-foreground">
-                                    {prox.parcela.numero_parcela}/{prox.total} · Total {fmt(t.valor)}
-                                  </div>
-                                </>
-                              )
-                            })()}
+                            {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
+                            {t.eh_parcela && (
+                              <div className="text-xs font-normal text-muted-foreground">
+                                {t.numero_parcela}/{t.total_parcelas} · Total {fmt(Number(t.valor_total_transacao) || 0)}
+                              </div>
+                            )}
                           </div>
 
                           <div className="mt-1 inline-flex items-center">
@@ -685,12 +657,8 @@ export function Financeiro() {
                         </div>
                       </div>
                       <div className="mt-3 flex justify-end gap-2">
-                        {t.parcelado ? (
-                          <Button size="sm" variant="outline" className="h-11" onClick={e => { e.stopPropagation(); toggleExpandido(t.id) }}>
-                            <ChevronDown className={cn('mr-1 h-4 w-4 transition-transform', expandido && 'rotate-180')} /> Parcelas
-                          </Button>
-                        ) : (st === 'pendente' || st === 'vencido') && (
-                          <Button size="sm" variant="outline" className="h-11 text-green-700 border-green-300 hover:bg-green-50" onClick={e => { e.stopPropagation(); marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') }) }}>
+                        {(st === 'pendente' || st === 'vencido') && (
+                          <Button size="sm" variant="outline" className="h-11 text-green-700 border-green-300 hover:bg-green-50" onClick={e => { e.stopPropagation(); marcarPagoLinha(t) }}>
                             <Check className="mr-1 h-4 w-4" /> Pagar
                           </Button>
                         )}
@@ -704,7 +672,6 @@ export function Financeiro() {
                       </div>
                     </CardContent>
                   </Card>
-                  {t.parcelado && expandido && <ParcelasExpansivel transacaoId={t.id} />}
                   </Fragment>
                 )
               })}
