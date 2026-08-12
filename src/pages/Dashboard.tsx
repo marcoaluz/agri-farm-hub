@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
@@ -355,10 +355,23 @@ export default function Dashboard() {
     : (kpisV2?.alertas?.total_alertas ?? 0)
 
   // Expose alert count globally for sidebar
-  useMemo(() => {
-    (window as any).__sga_total_alertas = totalAlertasGlobal
-    window.dispatchEvent(new CustomEvent('sga-alertas-update', { detail: totalAlertasGlobal }))
-  }, [totalAlertasGlobal])
+  useEffect(() => {
+    if (totalAlertasGlobal === undefined || totalAlertasGlobal === null) return
+
+    const storageKey = `agrogfi_alertas_vistos_${propriedadeAtual?.id || 'consolidado'}`
+    const ultimoVisto = Number(localStorage.getItem(storageKey) || 0)
+
+    // Badge mostra só o que é NOVO desde a última vez que o usuário
+    // visitou o Dashboard (não o total, para não incomodar com algo
+    // que ele já sabe que existe e vai resolver quando puder)
+    const naoVisto = Math.max(0, totalAlertasGlobal - ultimoVisto)
+
+    ;(window as any).__sga_total_alertas = naoVisto
+    window.dispatchEvent(new CustomEvent('sga-alertas-update', { detail: naoVisto }))
+
+    // Marca como "visto" o total atual, para a próxima visita
+    localStorage.setItem(storageKey, String(totalAlertasGlobal))
+  }, [totalAlertasGlobal, propriedadeAtual?.id])
 
   const handleSelectPropriedade = (propIdSelected: string) => {
     const prop = propriedadesLista.find((p) => p.id === propIdSelected)
