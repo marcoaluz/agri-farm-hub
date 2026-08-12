@@ -31,7 +31,14 @@ export interface Transacao {
   created_at: string
   updated_at: string
   talhao?: { nome: string } | null
+  // Campos vindos da view vw_movimentos_financeiros
+  eh_parcela?: boolean | null
+  numero_parcela?: number | null
+  total_parcelas?: number | null
+  valor_total_transacao?: number | null
+  transacao_id?: string | null
 }
+
 
 export interface TransacaoPayload {
   propriedade_id: string
