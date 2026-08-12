@@ -37,6 +37,7 @@ export interface Transacao {
   total_parcelas?: number | null
   valor_total_transacao?: number | null
   transacao_id?: string | null
+  data_referencia?: string | null
 }
 
 
