@@ -261,12 +261,6 @@ export function Financeiro() {
     })
   }, [fluxoMensal])
 
-  // Paginação
-  const [page, setPage] = useState(0)
-  const perPage = 15
-  const totalPages = Math.ceil(transacoes.length / perPage)
-  const transacoesPag = transacoes.slice(page * perPage, (page + 1) * perPage)
-
   // Totalizadores da aba transações
   const totais = useMemo(() => {
     let rec = 0, desp = 0
