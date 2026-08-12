@@ -423,7 +423,19 @@ export function Financeiro() {
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <span className="font-bold text-destructive">{fmt(t.valor)}</span>
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => marcarPago.mutate(t.id, { onSuccess: () => toast.success('Marcado como pago') })} disabled={marcarPago.isPending}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              if (t.eh_parcela) {
+                                marcarPagoParcela.mutate({ id: t.id, pagar: true }, { onSuccess: () => toast.success('Marcado como pago') })
+                              } else {
+                                marcarPago.mutate({ id: t.id, pagar: true }, { onSuccess: () => toast.success('Marcado como pago') })
+                              }
+                            }}
+                            disabled={marcarPago.isPending || marcarPagoParcela.isPending}
+                          >
                             <Check className="h-3 w-3 mr-1" /> Pagar
                           </Button>
                         </div>
