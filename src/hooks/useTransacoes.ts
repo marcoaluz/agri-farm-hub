@@ -104,9 +104,9 @@ export function useTransacoes(propriedadeId?: string | null, safraId?: string | 
 
       const { data, error } = await query
         .order('data_vencimento', { ascending: false })
-        .order('created_at', { ascending: false })
       if (error) throw error
-      return (data || []) as Transacao[]
+      return (data || []) as unknown as Transacao[]
+
     },
     enabled: !!idProp && !!idSafra,
   })
