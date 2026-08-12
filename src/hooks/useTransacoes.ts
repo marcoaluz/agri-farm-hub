@@ -98,12 +98,12 @@ export function useTransacoes(propriedadeId?: string | null, safraId?: string | 
         }
       }
       if (filtros?.categoria) query = query.eq('categoria', filtros.categoria)
-      if (filtros?.data_inicio) query = query.gte('data_vencimento', filtros.data_inicio)
-      if (filtros?.data_fim) query = query.lte('data_vencimento', filtros.data_fim)
+      if (filtros?.data_inicio) query = query.gte('data_referencia', filtros.data_inicio)
+      if (filtros?.data_fim) query = query.lte('data_referencia', filtros.data_fim)
       if (filtros?.busca) query = query.ilike('descricao', `%${filtros.busca}%`)
 
       const { data, error } = await query
-        .order('data_vencimento', { ascending: false })
+        .order('data_referencia', { ascending: false })
       if (error) throw error
       return (data || []) as unknown as Transacao[]
 
