@@ -45,16 +45,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
-interface ParcelaLote {
-  id: string
-  transacao_id: string
-  numero_parcela: number
-  valor: number
-  data_vencimento: string
-  data_pagamento: string | null
-  status: string
-}
-
 
 const PIE_COLORS = [
   'hsl(142, 45%, 28%)', 'hsl(42, 85%, 55%)', 'hsl(199, 89%, 48%)',
@@ -124,11 +114,6 @@ export function Financeiro() {
   const inicioMes = startOfMonth(mesAtual)
   const fimMes = endOfMonth(mesAtual)
 
-  // Parcelas expandidas
-  const toggleExpandido = (id: string) => {
-    setExpandidos(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-  }
-
   const filtrosAtivos: FiltrosTransacao = {
     ...filtros,
     busca: busca || undefined,
@@ -143,6 +128,7 @@ export function Financeiro() {
   const { data: fluxoMensal = [] } = useFluxoCaixaMensal(propId, safraId)
   const marcarPago = useMarcarPago()
   const deletar = useDeleteTransacao()
+  const queryClient = useQueryClient()
 
   // Dialog states
   const [formOpen, setFormOpen] = useState(false)
