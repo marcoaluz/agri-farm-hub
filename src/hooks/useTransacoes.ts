@@ -31,7 +31,14 @@ export interface Transacao {
   created_at: string
   updated_at: string
   talhao?: { nome: string } | null
+  // Campos vindos da view vw_movimentos_financeiros
+  eh_parcela?: boolean | null
+  numero_parcela?: number | null
+  total_parcelas?: number | null
+  valor_total_transacao?: number | null
+  transacao_id?: string | null
 }
+
 
 export interface TransacaoPayload {
   propriedade_id: string
@@ -76,8 +83,9 @@ export function useTransacoes(propriedadeId?: string | null, safraId?: string | 
     queryKey: ['transacoes', idProp, idSafra, filtros],
     queryFn: async () => {
       let query = supabase
-        .from('transacoes')
-        .select('*, talhao:talhoes(nome)')
+        .from('vw_movimentos_financeiros' as any)
+        .select('*')
+
         .eq('propriedade_id', idProp)
         .eq('safra_id', idSafra)
 
@@ -96,9 +104,9 @@ export function useTransacoes(propriedadeId?: string | null, safraId?: string | 
 
       const { data, error } = await query
         .order('data_vencimento', { ascending: false })
-        .order('created_at', { ascending: false })
       if (error) throw error
-      return (data || []) as Transacao[]
+      return (data || []) as unknown as Transacao[]
+
     },
     enabled: !!idProp && !!idSafra,
   })

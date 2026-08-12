@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle,
   Plus, Search, Check, Pencil, Trash2, CalendarIcon,
-  ChevronDown, ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 
 import {
@@ -39,22 +39,11 @@ import {
   statusEfetivo, type Transacao, type FiltrosTransacao,
 } from '@/hooks/useTransacoes'
 import { TransacaoForm } from '@/components/financeiro/TransacaoForm'
-import { ParcelasExpansivel } from '@/components/financeiro/ParcelasExpansivel'
 import { TransacaoOrigemAcoes, useIdsComAnexo } from '@/components/financeiro/TransacaoOrigemAcoes'
 import { CustosOperacionais } from '@/components/financeiro/CustosOperacionais'
-import { useQuery } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
-
-interface ParcelaLote {
-  id: string
-  transacao_id: string
-  numero_parcela: number
-  valor: number
-  data_vencimento: string
-  data_pagamento: string | null
-  status: string
-}
 
 
 const PIE_COLORS = [
@@ -125,12 +114,6 @@ export function Financeiro() {
   const inicioMes = startOfMonth(mesAtual)
   const fimMes = endOfMonth(mesAtual)
 
-  // Parcelas expandidas
-  const [expandidos, setExpandidos] = useState<string[]>([])
-  const toggleExpandido = (id: string) => {
-    setExpandidos(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-  }
-
   const filtrosAtivos: FiltrosTransacao = {
     ...filtros,
     busca: busca || undefined,
@@ -145,6 +128,7 @@ export function Financeiro() {
   const { data: fluxoMensal = [] } = useFluxoCaixaMensal(propId, safraId)
   const marcarPago = useMarcarPago()
   const deletar = useDeleteTransacao()
+  const queryClient = useQueryClient()
 
   // Dialog states
   const [formOpen, setFormOpen] = useState(false)
@@ -193,77 +177,31 @@ export function Financeiro() {
     }
   }, [highlightedId, transacoesPag])
 
-  // Parcelas em lote de todas as transações parceladas
-  const idsParceladas = useMemo(
-    () => todasTransacoes.filter(t => t.parcelado).map(t => t.id).sort(),
-    [todasTransacoes],
-  )
+  // A view vw_movimentos_financeiros já entrega uma linha por parcela
+  const movimentosFlatten = todasTransacoes
 
-  const { data: parcelasTodas = [] } = useQuery({
-    queryKey: ['parcelas-lote', idsParceladas],
-    queryFn: async () => {
-      if (!idsParceladas.length) return [] as ParcelaLote[]
-      const { data, error } = await supabase
-        .from('parcelas' as any)
-        .select('id, transacao_id, numero_parcela, valor, data_vencimento, data_pagamento, status')
-        .in('transacao_id', idsParceladas)
-        .order('numero_parcela')
-      if (error) throw error
-      return (data || []) as unknown as ParcelaLote[]
-    },
-    enabled: idsParceladas.length > 0,
-  })
-
-  // Parcelas agrupadas por transação
-  const parcelasPorTransacao = useMemo(() => {
-    const map: Record<string, ParcelaLote[]> = {}
-    parcelasTodas.forEach(p => {
-      if (!map[p.transacao_id]) map[p.transacao_id] = []
-      map[p.transacao_id].push(p)
-    })
-    Object.values(map).forEach(arr => arr.sort((a, b) => a.numero_parcela - b.numero_parcela))
-    return map
-  }, [parcelasTodas])
-
-  // Desmonta transações parceladas em uma entrada por parcela
-  const movimentosFlatten = useMemo<Transacao[]>(() => {
-    const hoje = new Date().toISOString().split('T')[0]
-    const out: Transacao[] = []
-    todasTransacoes.forEach(t => {
-      const parcelas = t.parcelado ? parcelasPorTransacao[t.id] : undefined
-      if (!t.parcelado || !parcelas?.length) {
-        out.push(t)
-        return
-      }
-      parcelas.forEach(p => {
-        const statusParcela = p.status === 'pago'
-          ? 'pago'
-          : p.status === 'cancelado'
-            ? 'cancelado'
-            : p.data_vencimento < hoje ? 'vencido' : 'pendente'
-        out.push({
-          ...t,
-          valor: Number(p.valor) || 0,
-          data_vencimento: p.data_vencimento,
-          data_pagamento: p.data_pagamento,
-          status: statusParcela as Transacao['status'],
-          parcela_numero: p.numero_parcela,
-          parcela_total: parcelas.length,
-        })
-      })
-    })
-    return out
-  }, [todasTransacoes, parcelasPorTransacao])
-
-  // Próxima parcela pendente por transação (para exibição na lista)
-  const proximaParcela = (t: Transacao) => {
-    if (!t.parcelado) return null
-    const parcelas = parcelasPorTransacao[t.id]
-    if (!parcelas?.length) return null
-    const pendentes = parcelas.filter(p => p.status !== 'pago' && p.status !== 'cancelado')
-    if (!pendentes.length) return null
-    return { parcela: pendentes[0], total: parcelas.length }
+  // Marcar uma parcela específica como paga
+  const pagarParcela = async (parcelaId: string) => {
+    const { error } = await supabase
+      .from('parcelas' as any)
+      .update({ status: 'pago', data_pagamento: new Date().toISOString().split('T')[0] })
+      .eq('id', parcelaId)
+    if (error) {
+      toast.error('Erro ao marcar parcela como paga: ' + error.message)
+      return
+    }
+    toast.success('Parcela paga!')
+    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['parcelas'] })
+    queryClient.invalidateQueries({ queryKey: ['parcelas-calendario'] })
+    queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
   }
+
+  const marcarPagoLinha = (t: Transacao) => {
+    if (t.eh_parcela) pagarParcela(t.id)
+    else marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') })
+  }
+
 
   // Computed KPIs
   const kpis = useMemo(() => {
@@ -572,7 +510,6 @@ export function Financeiro() {
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma transação encontrada.</TableCell></TableRow>
                 ) : transacoesPag.map(t => {
                   const st = statusEfetivo(t)
-                  const expandido = expandidos.includes(t.id)
                   return (
                     <Fragment key={t.id}>
                     <TableRow
@@ -586,11 +523,6 @@ export function Financeiro() {
                       <TableCell className="whitespace-nowrap">{format(parseISO(t.data_vencimento), 'dd/MM/yy')}</TableCell>
                       <TableCell>
                         <div className="flex items-start gap-1 min-w-0">
-                          {t.parcelado && (
-                            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => toggleExpandido(t.id)} title="Ver parcelas">
-                              <ChevronDown className={cn('h-4 w-4 transition-transform', expandido && 'rotate-180')} />
-                            </Button>
-                          )}
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="truncate max-w-[200px] font-medium">{t.descricao}</p>
@@ -608,18 +540,12 @@ export function Financeiro() {
                       <TableCell className="hidden md:table-cell">{categoriasLabel[t.categoria] || t.categoria}</TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">{t.fornecedor_cliente || '—'}</TableCell>
                       <TableCell className={cn('text-right font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
-                        {(() => {
-                          const prox = proximaParcela(t)
-                          if (!prox) return <>{t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}</>
-                          return (
-                            <>
-                              {t.tipo === 'receita' ? '+' : '-'} {fmt(Number(prox.parcela.valor) || 0)}
-                              <div className="text-xs font-normal text-muted-foreground">
-                                {prox.parcela.numero_parcela}/{prox.total} · Total {fmt(t.valor)}
-                              </div>
-                            </>
-                          )
-                        })()}
+                        {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
+                        {t.eh_parcela && (
+                          <div className="text-xs font-normal text-muted-foreground">
+                            {t.numero_parcela}/{t.total_parcelas} · Total {fmt(Number(t.valor_total_transacao) || 0)}
+                          </div>
+                        )}
                       </TableCell>
 
                       <TableCell>
@@ -631,8 +557,8 @@ export function Financeiro() {
 
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          {!t.parcelado && (st === 'pendente' || st === 'vencido') && (
-                            <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title="Marcar como pago" onClick={() => marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') })}>
+                          {(st === 'pendente' || st === 'vencido') && (
+                            <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title="Marcar como pago" onClick={() => marcarPagoLinha(t)}>
                               <Check className="h-4 w-4 mr-1" /> Pagar
                             </Button>
                           )}
@@ -653,13 +579,6 @@ export function Financeiro() {
                         </div>
                       </TableCell>
                     </TableRow>
-                    {t.parcelado && expandido && (
-                      <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={7} className="p-0">
-                          <ParcelasExpansivel transacaoId={t.id} />
-                        </TableCell>
-                      </TableRow>
-                    )}
                     </Fragment>
 
                   )
@@ -677,7 +596,6 @@ export function Financeiro() {
                 <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma transação encontrada.</p>
               ) : transacoesPag.map(t => {
                 const st = statusEfetivo(t)
-                const expandido = expandidos.includes(t.id)
                 return (
                   <Fragment key={t.id}>
                   <Card
@@ -709,18 +627,12 @@ export function Financeiro() {
                         </div>
                         <div className="shrink-0 text-right">
                           <div className={cn('font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
-                            {(() => {
-                              const prox = proximaParcela(t)
-                              if (!prox) return <>{t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}</>
-                              return (
-                                <>
-                                  {t.tipo === 'receita' ? '+' : '-'} {fmt(Number(prox.parcela.valor) || 0)}
-                                  <div className="text-xs font-normal text-muted-foreground">
-                                    {prox.parcela.numero_parcela}/{prox.total} · Total {fmt(t.valor)}
-                                  </div>
-                                </>
-                              )
-                            })()}
+                            {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
+                            {t.eh_parcela && (
+                              <div className="text-xs font-normal text-muted-foreground">
+                                {t.numero_parcela}/{t.total_parcelas} · Total {fmt(Number(t.valor_total_transacao) || 0)}
+                              </div>
+                            )}
                           </div>
 
                           <div className="mt-1 inline-flex items-center">
@@ -731,12 +643,8 @@ export function Financeiro() {
                         </div>
                       </div>
                       <div className="mt-3 flex justify-end gap-2">
-                        {t.parcelado ? (
-                          <Button size="sm" variant="outline" className="h-11" onClick={e => { e.stopPropagation(); toggleExpandido(t.id) }}>
-                            <ChevronDown className={cn('mr-1 h-4 w-4 transition-transform', expandido && 'rotate-180')} /> Parcelas
-                          </Button>
-                        ) : (st === 'pendente' || st === 'vencido') && (
-                          <Button size="sm" variant="outline" className="h-11 text-green-700 border-green-300 hover:bg-green-50" onClick={e => { e.stopPropagation(); marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') }) }}>
+                        {(st === 'pendente' || st === 'vencido') && (
+                          <Button size="sm" variant="outline" className="h-11 text-green-700 border-green-300 hover:bg-green-50" onClick={e => { e.stopPropagation(); marcarPagoLinha(t) }}>
                             <Check className="mr-1 h-4 w-4" /> Pagar
                           </Button>
                         )}
@@ -750,7 +658,6 @@ export function Financeiro() {
                       </div>
                     </CardContent>
                   </Card>
-                  {t.parcelado && expandido && <ParcelasExpansivel transacaoId={t.id} />}
                   </Fragment>
                 )
               })}
