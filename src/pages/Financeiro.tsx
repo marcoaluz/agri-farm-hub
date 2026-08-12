@@ -311,13 +311,16 @@ export function Financeiro() {
     })
   }, [fluxoMensal])
 
-  // Totalizadores da aba transações
+  // Totalizadores da aba transações (somente valores efetivamente pagos/recebidos)
   const totais = useMemo(() => {
     let rec = 0, desp = 0
     transacoes.forEach(t => {
-      if (statusEfetivo(t) === 'cancelado') return
-      if (t.tipo === 'receita') rec += t.valor
-      else desp += t.valor
+      const st = statusEfetivo(t)
+      if (st === 'cancelado') return
+      if (st === 'pago') {
+        if (t.tipo === 'receita') rec += t.valor
+        else desp += t.valor
+      }
     })
     return { rec, desp, saldo: rec - desp }
   }, [transacoes])
