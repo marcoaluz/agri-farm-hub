@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react'
 import { format, addDays, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { useSearchParams } from 'react-router-dom'
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle,
   Plus, Search, Check, Pencil, Trash2, CalendarIcon,
