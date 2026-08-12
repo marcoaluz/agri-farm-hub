@@ -46,6 +46,16 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
+interface ParcelaLote {
+  id: string
+  transacao_id: string
+  numero_parcela: number
+  valor: number
+  data_vencimento: string
+  data_pagamento: string | null
+  status: string
+}
+
 
 const PIE_COLORS = [
   'hsl(142, 45%, 28%)', 'hsl(42, 85%, 55%)', 'hsl(199, 89%, 48%)',
