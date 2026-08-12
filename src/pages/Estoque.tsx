@@ -14,7 +14,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Package, Search, AlertTriangle, DollarSign, PackagePlus } from 'lucide-react';
+import { Plus, Package, Search, AlertTriangle, DollarSign, PackagePlus, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LotesDialog } from '@/components/estoque/LotesDialog';
 import { EntradaEstoqueForm } from '@/components/estoque/EntradaEstoqueForm';
@@ -48,6 +48,7 @@ export function Estoque() {
   const [dialogLotesOpen, setDialogLotesOpen] = useState(false);
   const [dialogEntradaOpen, setDialogEntradaOpen] = useState(false);
   const [dialogProdutoOpen, setDialogProdutoOpen] = useState(false);
+  const [produtoEditando, setProdutoEditando] = useState<any>(null);
   const [produtoVenda, setProdutoVenda] = useState<ProdutoComCusto | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightLoteId = searchParams.get('highlight');
@@ -183,7 +184,7 @@ export function Estoque() {
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button 
             variant="outline" 
-            onClick={() => setDialogProdutoOpen(true)} 
+            onClick={() => { setProdutoEditando(null); setDialogProdutoOpen(true); }} 
             className="w-full sm:w-auto"
           >
             <PackagePlus className="h-4 w-4 mr-2" />
@@ -334,6 +335,10 @@ export function Estoque() {
                 setDialogLotesOpen(true);
               }}
               onVender={() => setProdutoVenda(produto)}
+              onEditar={() => {
+                setProdutoEditando(produto);
+                setDialogProdutoOpen(true);
+              }}
             />
           ))}
         </div>
@@ -363,10 +368,11 @@ export function Estoque() {
       </Dialog>
 
       {/* Dialog de Cadastro de Produto */}
-      <Dialog open={dialogProdutoOpen} onOpenChange={setDialogProdutoOpen}>
+      <Dialog open={dialogProdutoOpen} onOpenChange={(open) => { setDialogProdutoOpen(open); if (!open) setProdutoEditando(null); }}>
         <DialogContent className="w-[95vw] sm:w-auto max-w-md max-h-[90vh] overflow-y-auto">
           <ProdutoForm
-            onSuccess={() => setDialogProdutoOpen(false)}
+            produto={produtoEditando}
+            onSuccess={() => { setDialogProdutoOpen(false); setProdutoEditando(null); }}
           />
         </DialogContent>
       </Dialog>
@@ -390,10 +396,12 @@ function ProdutoCard({
   produto, 
   onVerLotes,
   onVender,
+  onEditar,
 }: { 
   produto: ProdutoComCusto; 
   onVerLotes: () => void;
   onVender: () => void;
+  onEditar: () => void;
 }) {
   const getStatusEstoque = () => {
     if (produto.saldo_atual === 0) {
@@ -491,6 +499,9 @@ function ProdutoCard({
           >
             <Package className="h-4 w-4 mr-2" />
             Ver {produto.total_lotes} {produto.total_lotes === 1 ? 'Lote' : 'Lotes'} (FIFO)
+          </Button>
+          <Button size="sm" variant="outline" onClick={onEditar} className="gap-1">
+            <Pencil className="h-3.5 w-3.5" />
           </Button>
           {produto.vendavel && produto.saldo_atual > 0 && (
             <Button size="sm" variant="default" onClick={onVender} className="gap-1">
