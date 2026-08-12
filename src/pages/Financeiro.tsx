@@ -139,6 +139,12 @@ export function Financeiro() {
   const [editando, setEditando] = useState<Transacao | null>(null)
   const [deletandoId, setDeletandoId] = useState<string | null>(null)
 
+  // Paginação
+  const [page, setPage] = useState(0)
+  const perPage = 15
+  const totalPages = Math.ceil(transacoes.length / perPage)
+  const transacoesPag = transacoes.slice(page * perPage, (page + 1) * perPage)
+
   // Deep-link para transação específica via ?transacao=abc123
   const [activeTab, setActiveTab] = useState(transacaoDestaqueId ? 'transacoes' : 'resumo')
   const [highlightedId, setHighlightedId] = useState<string | null>(transacaoDestaqueId)
