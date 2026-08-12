@@ -492,7 +492,13 @@ export function Financeiro() {
                   const expandido = expandidos.includes(t.id)
                   return (
                     <Fragment key={t.id}>
-                    <TableRow className={cn(st === 'vencido' && 'bg-destructive/5')}>
+                    <TableRow
+                      id={`transacao-${t.id}`}
+                      className={cn(
+                        st === 'vencido' && 'bg-destructive/5',
+                        highlightedId === t.id && 'ring-2 ring-primary bg-primary/10 animate-pulse'
+                      )}
+                    >
 
                       <TableCell className="whitespace-nowrap">{format(parseISO(t.data_vencimento), 'dd/MM/yy')}</TableCell>
                       <TableCell>
