@@ -127,6 +127,7 @@ export function Financeiro() {
   const { data: todasTransacoes = [] } = useTransacoes(propId, safraId)
   const { data: fluxoMensal = [] } = useFluxoCaixaMensal(propId, safraId)
   const marcarPago = useMarcarPago()
+  const marcarPagoParcela = useMarcarPagoParcela()
   const deletar = useDeleteTransacao()
   const queryClient = useQueryClient()
 
