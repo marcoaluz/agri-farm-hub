@@ -1046,14 +1046,16 @@ export function LancamentoForm() {
                             <SelectValue placeholder="Selecione um produto..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {produtos?.map(p => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.nome} ({p.unidade_medida}) — Estoque: {p.saldo_atual ?? 0}
-                              </SelectItem>
-                            ))}
-                            {(!produtos || produtos.length === 0) && (
+                            {produtos
+                              ?.filter(p => !formData.itens.some(i => i.produto_id === p.id))
+                              .map(p => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.nome} ({p.unidade_medida}) — Estoque: {p.saldo_atual ?? 0}
+                                </SelectItem>
+                              ))}
+                            {(!produtos || produtos.filter(p => !formData.itens.some(i => i.produto_id === p.id)).length === 0) && (
                               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                                Nenhum produto cadastrado
+                                {produtos?.length ? 'Todos os produtos já foram adicionados' : 'Nenhum produto cadastrado'}
                               </div>
                             )}
                           </SelectContent>
