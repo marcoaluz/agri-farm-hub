@@ -4,7 +4,7 @@ import { ptBR } from 'date-fns/locale'
 import { useSearchParams } from 'react-router-dom'
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle,
-  Plus, Search, Check, Pencil, Trash2, CalendarIcon,
+  Plus, Search, Check, CheckCheck, Pencil, Trash2, CalendarIcon,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
 
@@ -180,6 +180,16 @@ export function Financeiro() {
   // A view vw_movimentos_financeiros já entrega uma linha por parcela
   const movimentosFlatten = todasTransacoes
 
+  // Confirmação de baixa (pagar/receber)
+  const [pagandoAlvo, setPagandoAlvo] = useState<{ t: Transacao; todas: boolean } | null>(null)
+
+  const invalidarFinanceiro = () => {
+    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['parcelas'] })
+    queryClient.invalidateQueries({ queryKey: ['parcelas-calendario'] })
+    queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
+  }
+
   // Marcar uma parcela específica como paga
   const pagarParcela = async (parcelaId: string) => {
     const { error } = await supabase
@@ -191,17 +201,39 @@ export function Financeiro() {
       return
     }
     toast.success('Parcela paga!')
-    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
-    queryClient.invalidateQueries({ queryKey: ['parcelas'] })
-    queryClient.invalidateQueries({ queryKey: ['parcelas-calendario'] })
-    queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
+    invalidarFinanceiro()
+  }
+
+  // Marcar todas as parcelas restantes de uma transação como pagas
+  const pagarTodasRestantes = async (transacaoId: string) => {
+    const hoje = new Date().toISOString().split('T')[0]
+    const { error } = await supabase
+      .from('parcelas' as any)
+      .update({ status: 'pago', data_pagamento: hoje })
+      .eq('transacao_id', transacaoId)
+      .neq('status', 'pago')
+    if (error) {
+      toast.error('Erro ao atualizar parcelas: ' + error.message)
+      return
+    }
+    toast.success('Todas as parcelas restantes foram baixadas')
+    invalidarFinanceiro()
   }
 
   const marcarPagoLinha = (t: Transacao) => {
     if (t.eh_parcela) pagarParcela(t.id)
-    else marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') })
+    else marcarPago.mutate(t.id, { onSuccess: () => toast.success('Baixa registrada!') })
   }
 
+  const executarBaixa = (alvo: { t: Transacao; todas: boolean }) => {
+    if (alvo.todas) pagarTodasRestantes(alvo.t.transacao_id || alvo.t.id)
+    else marcarPagoLinha(alvo.t)
+  }
+
+  const temParcelasRestantes = (t: Transacao) =>
+    !!t.eh_parcela && !!t.numero_parcela && !!t.total_parcelas && t.numero_parcela < t.total_parcelas
+
+  const labelBaixa = (t: Transacao) => (t.tipo === 'receita' ? 'Receber' : 'Pagar')
 
   // Computed KPIs
   const kpis = useMemo(() => {
@@ -212,8 +244,10 @@ export function Financeiro() {
     movimentosFlatten.forEach(t => {
       const st = statusEfetivo(t)
       if (st === 'cancelado') return
-      if (t.tipo === 'receita') totalReceitas += t.valor
-      else totalDespesas += t.valor
+      if (st === 'pago') {
+        if (t.tipo === 'receita') totalReceitas += t.valor
+        else totalDespesas += t.valor
+      }
       if (st === 'pendente' && t.data_vencimento >= hoje && t.data_vencimento <= em7dias) {
         aVencer += t.valor
       }
@@ -558,9 +592,16 @@ export function Financeiro() {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           {(st === 'pendente' || st === 'vencido') && (
-                            <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title="Marcar como pago" onClick={() => marcarPagoLinha(t)}>
-                              <Check className="h-4 w-4 mr-1" /> Pagar
-                            </Button>
+                            <>
+                              <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title={`Marcar como ${t.tipo === 'receita' ? 'recebido' : 'pago'}`} onClick={() => setPagandoAlvo({ t, todas: false })}>
+                                <Check className="h-4 w-4 mr-1" /> {labelBaixa(t)}
+                              </Button>
+                              {temParcelasRestantes(t) && (
+                                <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title={`${labelBaixa(t)} todas as restantes`} onClick={() => setPagandoAlvo({ t, todas: true })}>
+                                  <CheckCheck className="h-4 w-4 mr-1" /> Todas
+                                </Button>
+                              )}
+                            </>
                           )}
                           {!isAutoGerada(t) ? (
                             <>
@@ -644,9 +685,16 @@ export function Financeiro() {
                       </div>
                       <div className="mt-3 flex justify-end gap-2">
                         {(st === 'pendente' || st === 'vencido') && (
-                          <Button size="sm" variant="outline" className="h-11 text-green-700 border-green-300 hover:bg-green-50" onClick={e => { e.stopPropagation(); marcarPagoLinha(t) }}>
-                            <Check className="mr-1 h-4 w-4" /> Pagar
-                          </Button>
+                          <>
+                            <Button size="sm" variant="outline" className="h-11 text-green-700 border-green-300 hover:bg-green-50" onClick={e => { e.stopPropagation(); setPagandoAlvo({ t, todas: false }) }}>
+                              <Check className="mr-1 h-4 w-4" /> {labelBaixa(t)}
+                            </Button>
+                            {temParcelasRestantes(t) && (
+                              <Button size="sm" variant="outline" className="h-11 text-green-700 border-green-300 hover:bg-green-50" onClick={e => { e.stopPropagation(); setPagandoAlvo({ t, todas: true }) }}>
+                                <CheckCheck className="mr-1 h-4 w-4" /> Todas
+                              </Button>
+                            )}
+                          </>
                         )}
                         {isAutoGerada(t) ? (
                           <span className="text-xs text-muted-foreground italic self-center">Via {origemLabel(t.origem!)}</span>
@@ -760,6 +808,30 @@ export function Financeiro() {
                 onError: (e: any) => toast.error(e?.message || 'Erro ao excluir'),
               })
             }}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm baixa (pagar / receber) */}
+      <AlertDialog open={!!pagandoAlvo} onOpenChange={() => setPagandoAlvo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pagandoAlvo?.todas
+                ? `Marcar todas as parcelas restantes como ${pagandoAlvo?.t.tipo === 'receita' ? 'recebidas' : 'pagas'}?`
+                : `Marcar como ${pagandoAlvo?.t.tipo === 'receita' ? 'recebido' : 'pago'}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pagandoAlvo?.todas
+                ? `Todas as parcelas pendentes desta transação serão marcadas como ${pagandoAlvo?.t.tipo === 'receita' ? 'recebidas' : 'pagas'} com a data de hoje.`
+                : `O lançamento será baixado com a data de hoje.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (pagandoAlvo) executarBaixa(pagandoAlvo); setPagandoAlvo(null) }}>
+              Confirmar
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
