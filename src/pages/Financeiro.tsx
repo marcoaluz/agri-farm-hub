@@ -446,7 +446,7 @@ export function Financeiro() {
                     if (st === 'vencido') urgBadge = '🔴'
                     else if (t.data_vencimento <= amanha) urgBadge = '🟡'
                     return (
-                      <div key={t.id} className={cn('flex items-center justify-between p-3 rounded-lg', st === 'vencido' ? 'bg-destructive/5 border border-destructive/20' : 'bg-muted/50')}>
+                      <div key={`${t.id}-${t.parcela_numero ?? 0}`} className={cn('flex items-center justify-between p-3 rounded-lg', st === 'vencido' ? 'bg-destructive/5 border border-destructive/20' : 'bg-muted/50')}>
                         <div className="flex items-center gap-3 min-w-0">
                           <span>{urgBadge}</span>
                           <div className="min-w-0">
