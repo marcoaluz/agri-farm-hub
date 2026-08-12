@@ -83,8 +83,9 @@ export function useTransacoes(propriedadeId?: string | null, safraId?: string | 
     queryKey: ['transacoes', idProp, idSafra, filtros],
     queryFn: async () => {
       let query = supabase
-        .from('transacoes')
-        .select('*, talhao:talhoes(nome)')
+        .from('vw_movimentos_financeiros' as any)
+        .select('*')
+
         .eq('propriedade_id', idProp)
         .eq('safra_id', idSafra)
 
