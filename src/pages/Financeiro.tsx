@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle,
   Plus, Search, Check, Pencil, Trash2, CalendarIcon,
-  ChevronDown, ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 
 import {
