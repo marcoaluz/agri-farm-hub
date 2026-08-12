@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useSafraFechada } from '@/hooks/useSafraFechada'
 import {
-  useTransacoes, useFluxoCaixaMensal, useMarcarPago, useDeleteTransacao,
+  useTransacoes, useFluxoCaixaMensal, useMarcarPago, useMarcarPagoParcela, useDeleteTransacao,
   statusEfetivo, type Transacao, type FiltrosTransacao,
 } from '@/hooks/useTransacoes'
 import { TransacaoForm } from '@/components/financeiro/TransacaoForm'
