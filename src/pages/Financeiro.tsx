@@ -180,6 +180,16 @@ export function Financeiro() {
   // A view vw_movimentos_financeiros já entrega uma linha por parcela
   const movimentosFlatten = todasTransacoes
 
+  // Confirmação de baixa (pagar/receber)
+  const [pagandoAlvo, setPagandoAlvo] = useState<{ t: Transacao; todas: boolean } | null>(null)
+
+  const invalidarFinanceiro = () => {
+    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['parcelas'] })
+    queryClient.invalidateQueries({ queryKey: ['parcelas-calendario'] })
+    queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
+  }
+
   // Marcar uma parcela específica como paga
   const pagarParcela = async (parcelaId: string) => {
     const { error } = await supabase
@@ -191,17 +201,39 @@ export function Financeiro() {
       return
     }
     toast.success('Parcela paga!')
-    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
-    queryClient.invalidateQueries({ queryKey: ['parcelas'] })
-    queryClient.invalidateQueries({ queryKey: ['parcelas-calendario'] })
-    queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
+    invalidarFinanceiro()
+  }
+
+  // Marcar todas as parcelas restantes de uma transação como pagas
+  const pagarTodasRestantes = async (transacaoId: string) => {
+    const hoje = new Date().toISOString().split('T')[0]
+    const { error } = await supabase
+      .from('parcelas' as any)
+      .update({ status: 'pago', data_pagamento: hoje })
+      .eq('transacao_id', transacaoId)
+      .neq('status', 'pago')
+    if (error) {
+      toast.error('Erro ao atualizar parcelas: ' + error.message)
+      return
+    }
+    toast.success('Todas as parcelas restantes foram baixadas')
+    invalidarFinanceiro()
   }
 
   const marcarPagoLinha = (t: Transacao) => {
     if (t.eh_parcela) pagarParcela(t.id)
-    else marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') })
+    else marcarPago.mutate(t.id, { onSuccess: () => toast.success('Baixa registrada!') })
   }
 
+  const executarBaixa = (alvo: { t: Transacao; todas: boolean }) => {
+    if (alvo.todas) pagarTodasRestantes(alvo.t.transacao_id || alvo.t.id)
+    else marcarPagoLinha(alvo.t)
+  }
+
+  const temParcelasRestantes = (t: Transacao) =>
+    !!t.eh_parcela && !!t.numero_parcela && !!t.total_parcelas && t.numero_parcela < t.total_parcelas
+
+  const labelBaixa = (t: Transacao) => (t.tipo === 'receita' ? 'Receber' : 'Pagar')
 
   // Computed KPIs
   const kpis = useMemo(() => {
@@ -212,8 +244,10 @@ export function Financeiro() {
     movimentosFlatten.forEach(t => {
       const st = statusEfetivo(t)
       if (st === 'cancelado') return
-      if (t.tipo === 'receita') totalReceitas += t.valor
-      else totalDespesas += t.valor
+      if (st === 'pago') {
+        if (t.tipo === 'receita') totalReceitas += t.valor
+        else totalDespesas += t.valor
+      }
       if (st === 'pendente' && t.data_vencimento >= hoje && t.data_vencimento <= em7dias) {
         aVencer += t.valor
       }
