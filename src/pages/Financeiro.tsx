@@ -608,8 +608,20 @@ export function Financeiro() {
                       <TableCell className="hidden md:table-cell">{categoriasLabel[t.categoria] || t.categoria}</TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">{t.fornecedor_cliente || '—'}</TableCell>
                       <TableCell className={cn('text-right font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
-                        {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
+                        {(() => {
+                          const prox = proximaParcela(t)
+                          if (!prox) return <>{t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}</>
+                          return (
+                            <>
+                              {t.tipo === 'receita' ? '+' : '-'} {fmt(Number(prox.parcela.valor) || 0)}
+                              <div className="text-xs font-normal text-muted-foreground">
+                                {prox.parcela.numero_parcela}/{prox.total} · Total {fmt(t.valor)}
+                              </div>
+                            </>
+                          )
+                        })()}
                       </TableCell>
+
                       <TableCell>
                         <span className="inline-flex items-center">
                           <StatusBadge status={st} />
