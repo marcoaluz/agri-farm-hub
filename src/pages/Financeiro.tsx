@@ -685,9 +685,16 @@ export function Financeiro() {
                       </div>
                       <div className="mt-3 flex justify-end gap-2">
                         {(st === 'pendente' || st === 'vencido') && (
-                          <Button size="sm" variant="outline" className="h-11 text-green-700 border-green-300 hover:bg-green-50" onClick={e => { e.stopPropagation(); marcarPagoLinha(t) }}>
-                            <Check className="mr-1 h-4 w-4" /> Pagar
-                          </Button>
+                          <>
+                            <Button size="sm" variant="outline" className="h-11 text-green-700 border-green-300 hover:bg-green-50" onClick={e => { e.stopPropagation(); setPagandoAlvo({ t, todas: false }) }}>
+                              <Check className="mr-1 h-4 w-4" /> {labelBaixa(t)}
+                            </Button>
+                            {temParcelasRestantes(t) && (
+                              <Button size="sm" variant="outline" className="h-11 text-green-700 border-green-300 hover:bg-green-50" onClick={e => { e.stopPropagation(); setPagandoAlvo({ t, todas: true }) }}>
+                                <CheckCheck className="mr-1 h-4 w-4" /> Todas
+                              </Button>
+                            )}
+                          </>
                         )}
                         {isAutoGerada(t) ? (
                           <span className="text-xs text-muted-foreground italic self-center">Via {origemLabel(t.origem!)}</span>
