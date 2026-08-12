@@ -99,6 +99,9 @@ export function Financeiro() {
   const { data: idsComAnexo } = useIdsComAnexo(propId)
   const safraId = safraAtual?.id
 
+  const [searchParams, setSearchParams] = useSearchParams()
+  const transacaoDestaqueId = searchParams.get('transacao')
+
   // Filters
   const [filtros, setFiltros] = useState<FiltrosTransacao>({})
   const [busca, setBusca] = useState('')
@@ -135,6 +138,42 @@ export function Financeiro() {
   const [formOpen, setFormOpen] = useState(false)
   const [editando, setEditando] = useState<Transacao | null>(null)
   const [deletandoId, setDeletandoId] = useState<string | null>(null)
+
+  // Deep-link para transação específica via ?transacao=abc123
+  const [activeTab, setActiveTab] = useState(transacaoDestaqueId ? 'transacoes' : 'resumo')
+  const [highlightedId, setHighlightedId] = useState<string | null>(transacaoDestaqueId)
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!transacaoDestaqueId || !transacoes.length) return
+    const idx = transacoes.findIndex(t => t.id === transacaoDestaqueId)
+    if (idx >= 0) {
+      const targetPage = Math.floor(idx / perPage)
+      setPage(targetPage)
+      setActiveTab('transacoes')
+      setHighlightedId(transacaoDestaqueId)
+    }
+  }, [transacaoDestaqueId, transacoes.length])
+
+  useEffect(() => {
+    if (!highlightedId) return
+    const el = document.getElementById(`transacao-${highlightedId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+      highlightTimerRef.current = setTimeout(() => {
+        setHighlightedId(null)
+        setSearchParams(prev => {
+          const next = new URLSearchParams(prev)
+          next.delete('transacao')
+          return next
+        }, { replace: true })
+      }, 3000)
+    }
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    }
+  }, [highlightedId, transacoesPag])
 
   // Computed KPIs
   const kpis = useMemo(() => {
