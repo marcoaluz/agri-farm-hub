@@ -721,6 +721,24 @@ export function Financeiro() {
                             )}
                           </>
                         )}
+                        {st === 'pago' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-11 text-muted-foreground"
+                            onClick={e => {
+                              e.stopPropagation()
+                              if (t.eh_parcela) {
+                                marcarPagoParcela.mutate({ id: t.id, pagar: false }, { onSuccess: () => toast.success('Desfeito') })
+                              } else {
+                                marcarPago.mutate({ id: t.id, pagar: false }, { onSuccess: () => toast.success('Desfeito') })
+                              }
+                            }}
+                            disabled={marcarPago.isPending || marcarPagoParcela.isPending}
+                          >
+                            <Undo2 className="mr-1 h-4 w-4" /> Desfazer
+                          </Button>
+                        )}
                         {isAutoGerada(t) ? (
                           <span className="text-xs text-muted-foreground italic self-center">Via {origemLabel(t.origem!)}</span>
                         ) : (
