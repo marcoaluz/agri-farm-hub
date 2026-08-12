@@ -193,77 +193,31 @@ export function Financeiro() {
     }
   }, [highlightedId, transacoesPag])
 
-  // Parcelas em lote de todas as transações parceladas
-  const idsParceladas = useMemo(
-    () => todasTransacoes.filter(t => t.parcelado).map(t => t.id).sort(),
-    [todasTransacoes],
-  )
+  // A view vw_movimentos_financeiros já entrega uma linha por parcela
+  const movimentosFlatten = todasTransacoes
 
-  const { data: parcelasTodas = [] } = useQuery({
-    queryKey: ['parcelas-lote', idsParceladas],
-    queryFn: async () => {
-      if (!idsParceladas.length) return [] as ParcelaLote[]
-      const { data, error } = await supabase
-        .from('parcelas' as any)
-        .select('id, transacao_id, numero_parcela, valor, data_vencimento, data_pagamento, status')
-        .in('transacao_id', idsParceladas)
-        .order('numero_parcela')
-      if (error) throw error
-      return (data || []) as unknown as ParcelaLote[]
-    },
-    enabled: idsParceladas.length > 0,
-  })
-
-  // Parcelas agrupadas por transação
-  const parcelasPorTransacao = useMemo(() => {
-    const map: Record<string, ParcelaLote[]> = {}
-    parcelasTodas.forEach(p => {
-      if (!map[p.transacao_id]) map[p.transacao_id] = []
-      map[p.transacao_id].push(p)
-    })
-    Object.values(map).forEach(arr => arr.sort((a, b) => a.numero_parcela - b.numero_parcela))
-    return map
-  }, [parcelasTodas])
-
-  // Desmonta transações parceladas em uma entrada por parcela
-  const movimentosFlatten = useMemo<Transacao[]>(() => {
-    const hoje = new Date().toISOString().split('T')[0]
-    const out: Transacao[] = []
-    todasTransacoes.forEach(t => {
-      const parcelas = t.parcelado ? parcelasPorTransacao[t.id] : undefined
-      if (!t.parcelado || !parcelas?.length) {
-        out.push(t)
-        return
-      }
-      parcelas.forEach(p => {
-        const statusParcela = p.status === 'pago'
-          ? 'pago'
-          : p.status === 'cancelado'
-            ? 'cancelado'
-            : p.data_vencimento < hoje ? 'vencido' : 'pendente'
-        out.push({
-          ...t,
-          valor: Number(p.valor) || 0,
-          data_vencimento: p.data_vencimento,
-          data_pagamento: p.data_pagamento,
-          status: statusParcela as Transacao['status'],
-          parcela_numero: p.numero_parcela,
-          parcela_total: parcelas.length,
-        })
-      })
-    })
-    return out
-  }, [todasTransacoes, parcelasPorTransacao])
-
-  // Próxima parcela pendente por transação (para exibição na lista)
-  const proximaParcela = (t: Transacao) => {
-    if (!t.parcelado) return null
-    const parcelas = parcelasPorTransacao[t.id]
-    if (!parcelas?.length) return null
-    const pendentes = parcelas.filter(p => p.status !== 'pago' && p.status !== 'cancelado')
-    if (!pendentes.length) return null
-    return { parcela: pendentes[0], total: parcelas.length }
+  // Marcar uma parcela específica como paga
+  const pagarParcela = async (parcelaId: string) => {
+    const { error } = await supabase
+      .from('parcelas' as any)
+      .update({ status: 'pago', data_pagamento: new Date().toISOString().split('T')[0] })
+      .eq('id', parcelaId)
+    if (error) {
+      toast.error('Erro ao marcar parcela como paga: ' + error.message)
+      return
+    }
+    toast.success('Parcela paga!')
+    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['parcelas'] })
+    queryClient.invalidateQueries({ queryKey: ['parcelas-calendario'] })
+    queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
   }
+
+  const marcarPagoLinha = (t: Transacao) => {
+    if (t.eh_parcela) pagarParcela(t.id)
+    else marcarPago.mutate(t.id, { onSuccess: () => toast.success('Pago!') })
+  }
+
 
   // Computed KPIs
   const kpis = useMemo(() => {
