@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { ArrowDownToLine, ArrowUpFromLine, ArrowUpRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { fmtMoedaBR } from '@/lib/formatters'
 
 interface Props {
   cultura: {
