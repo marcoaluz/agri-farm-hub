@@ -256,7 +256,7 @@ export function Financeiro() {
     const map: Record<string, { mes: string; receitas: number; despesas: number }> = {}
     movimentosFlatten.forEach(t => {
       if (statusEfetivo(t) === 'cancelado') return
-      const m = t.data_vencimento.substring(0, 7) // yyyy-MM
+      const m = t.data_referencia.substring(0, 7) // yyyy-MM
       if (!map[m]) map[m] = { mes: m, receitas: 0, despesas: 0 }
       if (t.tipo === 'receita') map[m].receitas += t.valor
       else map[m].despesas += t.valor
