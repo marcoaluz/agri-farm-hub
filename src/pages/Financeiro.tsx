@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle,
   Plus, Search, Check, CheckCheck, Undo2, Pencil, Trash2, CalendarIcon,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Eye,
 } from 'lucide-react'
 
 import {
@@ -601,6 +601,27 @@ export function Financeiro() {
 
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" title="Ver detalhes">
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 text-sm space-y-2" align="end">
+                              <p className="font-semibold">{t.descricao}</p>
+                              <div className="grid grid-cols-2 gap-1 text-muted-foreground">
+                                <span>Categoria:</span><span className="text-foreground">{categoriasLabel[t.categoria] || t.categoria}</span>
+                                <span>Valor:</span><span className="text-foreground">{fmt(t.valor)}</span>
+                                {t.eh_parcela && (<><span>Parcela:</span><span className="text-foreground">{t.numero_parcela}/{t.total_parcelas} · Total {fmt(Number(t.valor_total_transacao) || 0)}</span></>)}
+                                <span>Vencimento:</span><span className="text-foreground">{format(parseISO(t.data_vencimento), 'dd/MM/yyyy')}</span>
+                                {t.data_pagamento && (<><span>Pago em:</span><span className="text-foreground">{format(parseISO(t.data_pagamento), 'dd/MM/yyyy')}</span></>)}
+                                <span>{t.tipo === 'receita' ? 'Cliente:' : 'Fornecedor:'}</span><span className="text-foreground">{t.fornecedor_cliente || '—'}</span>
+                                {t.numero_nf && (<><span>Nº NF:</span><span className="text-foreground">{t.numero_nf}</span></>)}
+                                <span>Status:</span><span className="text-foreground capitalize">{statusEfetivo(t)}</span>
+                                {isAutoGerada(t) && (<><span>Origem:</span><span className="text-foreground">{origemLabel(t.origem!)}</span></>)}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
                           {(st === 'pendente' || st === 'vencido') && (
                             <>
                               <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" title={`Marcar como ${t.tipo === 'receita' ? 'recebido' : 'pago'}`} onClick={() => setPagandoAlvo({ t, todas: false })}>
