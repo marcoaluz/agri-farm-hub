@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { ArrowDownToLine, ArrowUpFromLine } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, ArrowUpRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 interface Props {
   cultura: {
@@ -23,6 +25,7 @@ interface Props {
 }
 
 export function HistoricoProducaoModal({ cultura, propriedadeId, onClose }: Props) {
+  const navigate = useNavigate()
   const { data: historico, isLoading } = useQuery({
     queryKey: ['historico-producao', propriedadeId, cultura.cultura_id, cultura.talhao_id ?? null],
     queryFn: async () => {
@@ -109,6 +112,17 @@ export function HistoricoProducaoModal({ cultura, propriedadeId, onClose }: Prop
                   )}
                   {item.comprador && (
                     <span className="text-xs text-muted-foreground">→ {item.comprador}</span>
+                  )}
+                  {item.tipo === 'venda' && item.transacao_id && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-xs"
+                      onClick={() => navigate(`/financeiro?transacao=${item.transacao_id}`)}
+                    >
+                      Ver no Financeiro <ArrowUpRight className="ml-1 h-3 w-3" />
+                    </Button>
                   )}
                 </div>
 
