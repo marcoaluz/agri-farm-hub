@@ -25,6 +25,7 @@ interface Props {
 }
 
 export function HistoricoProducaoModal({ cultura, propriedadeId, onClose }: Props) {
+  const navigate = useNavigate()
   const { data: historico, isLoading } = useQuery({
     queryKey: ['historico-producao', propriedadeId, cultura.cultura_id, cultura.talhao_id ?? null],
     queryFn: async () => {
