@@ -78,36 +78,6 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
 
   const culturaSel = culturas?.find((c) => c.id === culturaId);
 
-  const { data: propriedade } = useQuery({
-    queryKey: ["propriedade-coords", propriedadeId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("propriedades")
-        .select("latitude,longitude")
-        .eq("id", propriedadeId)
-        .maybeSingle();
-      return data as { latitude: number | null; longitude: number | null } | null;
-    },
-  });
-
-  const initialCenter: [number, number] | undefined =
-    talhao?.centro_lat && talhao?.centro_lng
-      ? [Number(talhao.centro_lat), Number(talhao.centro_lng)]
-      : propriedade?.latitude && propriedade?.longitude
-        ? [Number(propriedade.latitude), Number(propriedade.longitude)]
-        : undefined;
-
-  const initialZoom = talhao?.centro_lat ? 15 : propriedade?.latitude ? 14 : 4;
-
-  const handleDraw = (r: DrawResult | null) => {
-    if (!r) {
-      setGeo({ geometria: null, centro_lat: null, centro_lng: null });
-      return;
-    }
-    setGeo({ geometria: r.geometria, centro_lat: r.centro_lat, centro_lng: r.centro_lng });
-    setAreaHa(String(r.area_ha));
-  };
-
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
