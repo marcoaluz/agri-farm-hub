@@ -146,20 +146,6 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
       </div>
 
       <div>
-        <Label>Desenhar área no mapa</Label>
-        <p className="text-xs text-muted-foreground mb-2">
-          Use a ferramenta de polígono (topo direito) para desenhar o contorno. A área em hectares é calculada automaticamente.
-        </p>
-        <MapaDesenho
-          initialGeometry={geo.geometria}
-          center={initialCenter}
-          zoom={initialZoom}
-          onChange={handleDraw}
-          height={isMobile ? 420 : 340}
-        />
-      </div>
-
-      <div>
         <Label>Área (hectares) *</Label>
         <Input
           type="number"
