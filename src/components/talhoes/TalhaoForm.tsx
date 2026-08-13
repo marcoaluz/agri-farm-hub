@@ -43,7 +43,6 @@ function labelQuantidadePes(nome?: string) {
 export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const isMobile = useIsMobile();
 
   const [nome, setNome] = useState(talhao?.nome || "");
   const [areaHa, setAreaHa] = useState(talhao?.area_ha ? String(talhao.area_ha) : "");
