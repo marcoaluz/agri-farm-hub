@@ -113,6 +113,17 @@ export function HistoricoProducaoModal({ cultura, propriedadeId, onClose }: Prop
                   {item.comprador && (
                     <span className="text-xs text-muted-foreground">→ {item.comprador}</span>
                   )}
+                  {item.tipo === 'venda' && item.transacao_id && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-xs"
+                      onClick={() => navigate(`/financeiro?transacao=${item.transacao_id}`)}
+                    >
+                      Ver no Financeiro <ArrowUpRight className="ml-1 h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
 
                 {item.observacoes && (
