@@ -41,9 +41,37 @@ export function registerServiceWorker() {
     return;
   }
 
+  let jaRecarregou = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (jaRecarregou) return;
+    jaRecarregou = true;
+    window.location.reload();
+  });
+
   window.addEventListener("load", () => {
-    void navigator.serviceWorker.register(SW_URL, { scope: "/" }).catch(() => {
-      /* silencioso: PWA é opcional */
-    });
+    navigator.serviceWorker
+      .register(SW_URL, { scope: "/" })
+      .then((registration) => {
+        setInterval(() => {
+          void registration.update().catch(() => {});
+        }, 5 * 60 * 1000);
+
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+
+        registration.addEventListener("updatefound", () => {
+          const novoWorker = registration.installing;
+          if (!novoWorker) return;
+          novoWorker.addEventListener("statechange", () => {
+            if (novoWorker.state === "installed" && navigator.serviceWorker.controller) {
+              novoWorker.postMessage({ type: "SKIP_WAITING" });
+            }
+          });
+        });
+      })
+      .catch(() => {
+        /* silencioso: PWA é opcional */
+      });
   });
 }
