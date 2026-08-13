@@ -109,6 +109,11 @@ export function HistoricoProducaoModal({ cultura, propriedadeId, onClose }: Prop
                   {item.valor_total && (
                     <span className="text-xs font-medium text-green-600">
                       R$ {Number(item.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {item.preco_unitario && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          ({fmtMoedaBR(Number(item.preco_unitario))}/{item.unidade_medida || 'saca'})
+                        </span>
+                      )}
                     </span>
                   )}
                   {item.comprador && (
