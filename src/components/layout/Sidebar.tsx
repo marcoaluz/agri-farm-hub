@@ -47,7 +47,7 @@ interface SidebarProps {
 const routes = [
   { label: 'Dashboard',     icon: LayoutDashboard, href: '/',             sempre: true },
   { label: 'Propriedades',  icon: Home,            href: '/propriedades', sempre: true },
-  { label: 'Minha Equipe',  icon: Users,           href: '/equipe',       sempre: true, hideForAdmin: true },
+  { label: 'Usuários',      icon: Users,           href: '/equipe',       sempre: true, hideForAdmin: true },
   { label: 'Safras',        icon: Calendar,        href: '/safras',       modulo: 'lavoura' as const },
   { label: 'Talhões',       icon: MapPin,          href: '/talhoes',      modulo: 'lavoura' as const },
   { label: 'Estoque',       icon: Package,         href: '/estoque',      sempre: true },

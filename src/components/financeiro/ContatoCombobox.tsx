@@ -70,20 +70,10 @@ export function ContatoCombobox({ propriedadeId, value, onChange, placeholder = 
             onValueChange={setSearch}
           />
           <CommandList>
-            <CommandEmpty>
-              {search ? (
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded"
-                  onClick={() => { onChange(search, null); setOpen(false); setSearch('') }}
-                >
-                  <Plus className="h-4 w-4" /> Usar "{search}"
-                </button>
-              ) : (
-                <span className="block px-3 py-2 text-sm text-muted-foreground">Nenhum contato</span>
-              )}
-            </CommandEmpty>
-            {search && !exatoExiste && filtrados.length > 0 && (
+            {filtrados.length === 0 && !search && (
+              <div className="px-3 py-2 text-sm text-muted-foreground">Nenhum contato cadastrado ainda</div>
+            )}
+            {search && !exatoExiste && (
               <CommandGroup>
                 <CommandItem
                   value={`__new__${search}`}
@@ -93,19 +83,21 @@ export function ContatoCombobox({ propriedadeId, value, onChange, placeholder = 
                 </CommandItem>
               </CommandGroup>
             )}
-            <CommandGroup>
-              {filtrados.map(c => (
-                <CommandItem
-                  key={c.id}
-                  value={c.id}
-                  onSelect={() => { onChange(c.nome, c.id); setOpen(false); setSearch('') }}
-                >
-                  <Check className={cn('mr-2 h-4 w-4', value === c.nome ? 'opacity-100' : 'opacity-0')} />
-                  <span className="flex-1 truncate">{c.nome}</span>
-                  <span className="text-xs text-muted-foreground capitalize ml-2">{c.tipo}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {filtrados.length > 0 && (
+              <CommandGroup>
+                {filtrados.map(c => (
+                  <CommandItem
+                    key={c.id}
+                    value={c.id}
+                    onSelect={() => { onChange(c.nome, c.id); setOpen(false); setSearch('') }}
+                  >
+                    <Check className={cn('mr-2 h-4 w-4', value === c.nome ? 'opacity-100' : 'opacity-0')} />
+                    <span className="flex-1 truncate">{c.nome}</span>
+                    <span className="text-xs text-muted-foreground capitalize ml-2">{c.tipo}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
