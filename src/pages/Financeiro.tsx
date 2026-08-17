@@ -102,6 +102,7 @@ export function Financeiro() {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const transacaoDestaqueId = searchParams.get('transacao')
+  const tabParam = searchParams.get('tab')
 
   // Filters
   const [filtros, setFiltros] = useState<FiltrosTransacao>({})
