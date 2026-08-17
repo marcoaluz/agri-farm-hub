@@ -244,8 +244,8 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
           p_categoria: categoria,
           p_compartilhado: compartilhado,
           p_tipo_servico: tipoServico,
-          p_custo_padrao: tipoServico === 'simples' && custoPadrao ? parseFloat(custoPadrao) : null,
-          p_unidade_medida: tipoServico === 'simples' ? unidadeMedida : null,
+          p_custo_padrao: temValorProprio && custoPadrao ? parseFloat(custoPadrao) : null,
+          p_unidade_medida: temValorProprio ? unidadeMedida : null,
           p_requer_talhao: requerTalhao,
           p_descricao: descricao.trim() || null,
         });
@@ -256,6 +256,8 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
             ? resultado
             : resultado?.servico_id || resultado?.id || null;
         if (!servicoId) throw new Error('Não foi possível obter o ID do serviço criado');
+        // Persiste a flag (a RPC não recebe esse campo)
+        await supabase.from('servicos').update({ tem_valor_proprio: temValorProprio } as any).eq('id', servicoId);
       }
 
       if (tipoServico === 'composto' && itens.length > 0) {
