@@ -554,24 +554,6 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <CardClima />
-
-            <ChartCard title="Distribuição por Categoria" description="Custos por tipo de serviço" className="lg:col-span-3">
-              {isLoadingCatRender ? (
-                <Skeleton className="h-[350px] md:h-[400px] rounded-lg" />
-              ) : (
-                <PizzaCategoria
-                  dados={dadosCatRender || []}
-                  nameKey="categoria"
-                  valueKey="custo_total"
-                  donut
-                  emptyLabel="Sem custos no período"
-                />
-              )}
-            </ChartCard>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-3">
             <Card className="lg:col-span-1">
               <CardHeader>
                 <CardTitle>Planejado</CardTitle>
@@ -579,9 +561,9 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 {loadPlanejado ? (
-                  <Skeleton className="h-[220px] rounded-lg" />
+                  <Skeleton className="h-[300px] rounded-lg" />
                 ) : (
-                  <div className="h-[220px]">
+                  <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={[
                         { nome: 'A Pagar', valor: Number(planejado?.total_a_pagar || 0) },
@@ -601,6 +583,24 @@ export default function Dashboard() {
                 )}
               </CardContent>
             </Card>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <CardClima />
+
+            <ChartCard title="Distribuição por Categoria" description="Custos por tipo de serviço" className="lg:col-span-2">
+              {isLoadingCatRender ? (
+                <Skeleton className="h-[350px] md:h-[400px] rounded-lg" />
+              ) : (
+                <PizzaCategoria
+                  dados={dadosCatRender || []}
+                  nameKey="categoria"
+                  valueKey="custo_total"
+                  donut
+                  emptyLabel="Sem custos no período"
+                />
+              )}
+            </ChartCard>
           </div>
 
           {/* Bottom row — Lançamentos & Alertas */}
