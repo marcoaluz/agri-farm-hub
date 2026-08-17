@@ -143,8 +143,9 @@ export function Financeiro() {
   const totalPages = Math.ceil(transacoes.length / perPage)
   const transacoesPag = transacoes.slice(page * perPage, (page + 1) * perPage)
 
-  // Deep-link para transação específica via ?transacao=abc123
-  const [activeTab, setActiveTab] = useState(transacaoDestaqueId ? 'transacoes' : 'resumo')
+  // Deep-link para transação específica via ?transacao=abc123 ou aba via ?tab=custos
+  const initialTab = transacaoDestaqueId ? 'transacoes' : (tabParam === 'custos' ? 'custos' : 'resumo')
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [highlightedId, setHighlightedId] = useState<string | null>(transacaoDestaqueId)
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
