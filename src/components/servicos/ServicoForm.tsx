@@ -456,32 +456,45 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
         </CardContent>
       </Card>
 
-      {tipoServico === 'simples' && (
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Custo</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Custo Padrão (R$) *</Label>
-              <Input type="number" step="0.01" min="0" value={custoPadrao}
-                onChange={e => setCustoPadrao(e.target.value)}
-                placeholder="Ex: 150.00" className={errors.custo ? 'border-destructive' : ''} />
-              {errors.custo && <p className="text-xs text-destructive mt-1">{errors.custo}</p>}
-            </div>
-            <div>
-              <Label>Unidade *</Label>
-              <Select value={unidadeMedida} onValueChange={setUnidadeMedida}>
-                <SelectTrigger className={errors.unidade ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNIDADES_SIMPLES.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {errors.unidade && <p className="text-xs text-destructive mt-1">{errors.unidade}</p>}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Valor</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="tem-valor-proprio"
+              checked={temValorProprio}
+              onCheckedChange={(v) => setTemValorProprio(v === true)}
+            />
+            <Label htmlFor="tem-valor-proprio" className="text-sm font-normal cursor-pointer">
+              Este serviço tem valor próprio
+            </Label>
+          </div>
+          {temValorProprio && (
+            <>
+              <div>
+                <Label>Valor (R$) *</Label>
+                <Input type="number" step="0.01" min="0" value={custoPadrao}
+                  onChange={e => setCustoPadrao(e.target.value)}
+                  placeholder="Ex: 150.00" className={errors.custo ? 'border-destructive' : ''} />
+                {errors.custo && <p className="text-xs text-destructive mt-1">{errors.custo}</p>}
+              </div>
+              <div>
+                <Label>Unidade *</Label>
+                <Select value={unidadeMedida} onValueChange={setUnidadeMedida}>
+                  <SelectTrigger className={errors.unidade ? 'border-destructive' : ''}>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIDADES_SIMPLES.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {errors.unidade && <p className="text-xs text-destructive mt-1">{errors.unidade}</p>}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
 
       {tipoServico === 'composto' && (
         <Card>
