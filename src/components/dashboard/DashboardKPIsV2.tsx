@@ -51,7 +51,7 @@ export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
   const isPositivo = resultado >= 0
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <Link to="/financeiro?tab=custos">
         <StatCard
           title="Custo da Safra"
@@ -68,6 +68,14 @@ export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
         description="total de receitas"
         icon={Landmark}
         variant={(data.receita_paga ?? 0) > 0 ? 'success' : 'default'}
+        className="border-l-[3px] border-l-accent"
+      />
+      <StatCard
+        title="Despesas"
+        value={fmt(data.custo_propriedade ?? 0)}
+        description="total pago na safra"
+        icon={TrendingDown}
+        variant={(data.custo_propriedade ?? 0) > 0 ? 'warning' : 'default'}
         className="border-l-[3px] border-l-accent"
       />
 
