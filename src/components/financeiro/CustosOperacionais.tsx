@@ -28,6 +28,8 @@ interface CustoPorServico {
 interface ItemDetalhamento {
   nome: string
   custo: number
+  quantidade?: number
+  unidade?: string | null
 }
 
 interface LancamentoCusto {
