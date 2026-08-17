@@ -30,8 +30,8 @@ interface Props {
 export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
   if (isLoading || !data) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-32 rounded-xl" />
         ))}
       </div>
