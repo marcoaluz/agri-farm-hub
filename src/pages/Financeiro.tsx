@@ -255,7 +255,7 @@ export function Financeiro() {
   const chartMensal = useMemo(() => {
     const map: Record<string, { mes: string; receitas: number; despesas: number }> = {}
     movimentosFlatten.forEach(t => {
-      if (statusEfetivo(t) === 'cancelado') return
+      if (statusEfetivo(t) !== 'pago') return
       const m = t.data_referencia.substring(0, 7) // yyyy-MM
       if (!map[m]) map[m] = { mes: m, receitas: 0, despesas: 0 }
       if (t.tipo === 'receita') map[m].receitas += t.valor
