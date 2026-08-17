@@ -207,8 +207,8 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
     const errs: Record<string, string> = {};
     if (!nome.trim()) errs.nome = 'Nome é obrigatório';
     if (!categoria) errs.categoria = 'Categoria é obrigatória';
-    if (tipoServico === 'simples') {
-      if (!custoPadrao || parseFloat(custoPadrao) < 0) errs.custo = 'Custo é obrigatório';
+    if (temValorProprio) {
+      if (!custoPadrao || parseFloat(custoPadrao) < 0) errs.custo = 'Valor é obrigatório';
       if (!unidadeMedida) errs.unidade = 'Unidade é obrigatória';
     }
     setErrors(errs);
