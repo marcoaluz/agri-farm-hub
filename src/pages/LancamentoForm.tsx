@@ -150,7 +150,7 @@ export function LancamentoForm() {
       })
       if (error) throw error
       return ((data as any[]) || [])
-        .filter(s => s.ativo !== false && s.tipo_servico === 'simples')
+        .filter(s => s.ativo !== false && s.tem_valor_proprio)
         .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
     },
     enabled: !!propriedadeAtual?.id
@@ -1034,7 +1034,7 @@ export function LancamentoForm() {
                       </Button>
                       <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'servico_simples' ? null : 'servico_simples')}>
                         <Wrench className="h-4 w-4 mr-1" />
-                        + Serviço Simples
+                        + Custo de Serviço
                       </Button>
                     </div>
 
@@ -1089,7 +1089,7 @@ export function LancamentoForm() {
                       <div className="mt-3">
                         <Select onValueChange={adicionarServicoSimples}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione um serviço simples..." />
+                            <SelectValue placeholder="Selecione um custo de serviço..." />
                           </SelectTrigger>
                           <SelectContent>
                             {servicosSimples?.filter(s => s.id !== formData.servico_id).map(s => (
@@ -1099,7 +1099,7 @@ export function LancamentoForm() {
                             ))}
                             {(!servicosSimples || servicosSimples.length === 0) && (
                               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                                Nenhum serviço simples cadastrado
+                                Nenhum serviço com valor cadastrado
                               </div>
                             )}
                           </SelectContent>
