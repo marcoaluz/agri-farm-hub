@@ -28,6 +28,8 @@ interface CustoPorServico {
 interface ItemDetalhamento {
   nome: string
   custo: number
+  quantidade?: number
+  unidade?: string | null
 }
 
 interface LancamentoCusto {
@@ -219,7 +221,7 @@ export function CustosOperacionais() {
                   <div className="flex flex-wrap gap-2">
                     {lc.itens.map((item, i) => (
                       <Badge key={i} variant="outline" className="text-xs">
-                        {item.nome}: {fmt(item.custo || 0)}
+                        {item.nome}{item.quantidade && item.unidade ? ` (${item.quantidade} ${item.unidade})` : ''}: {fmt(item.custo || 0)}
                       </Badge>
                     ))}
                   </div>
