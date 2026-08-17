@@ -1,4 +1,5 @@
 import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, Landmark, BarChart3 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { StatCard } from '@/components/common/StatCard'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -7,6 +8,7 @@ const fmt = (v: number) =>
 
 interface KPIData {
   custo_safra_ativa: number
+  custo_propriedade: number
   custo_por_ha: number
   receita_paga: number
   resultado_parcial: number
@@ -50,14 +52,16 @@ export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard
-        title="Custo da Safra"
-        value={fmt(data.custo_safra_ativa ?? 0)}
-        description={`R$ ${((data.custo_por_ha ?? 0)).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}/ha`}
-        icon={DollarSign}
-        variant="primary"
-        className="border-l-[3px] border-l-accent"
-      />
+      <Link to="/financeiro?tab=custos">
+        <StatCard
+          title="Custo da Safra"
+          value={fmt(data.custo_safra_ativa ?? 0)}
+          description={`R$ ${((data.custo_por_ha ?? 0)).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}/ha`}
+          icon={DollarSign}
+          variant="primary"
+          className="border-l-[3px] border-l-accent cursor-pointer hover:shadow-md transition-shadow"
+        />
+      </Link>
       <StatCard
         title="Receitas"
         value={fmt(data.receita_paga ?? 0)}
@@ -70,7 +74,7 @@ export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
       <StatCard
         title={isPositivo ? 'Lucro Parcial' : 'Prejuízo Parcial'}
         value={fmt(resultado)}
-        description={`Margem: ${resultado !== 0 && (data.receita_paga ?? 0) > 0
+        description={`Receitas − Custo Propriedade · Margem: ${resultado !== 0 && (data.receita_paga ?? 0) > 0
           ? ((resultado / (data.receita_paga ?? 1)) * 100).toFixed(1)
           : '0.0'}%`}
         icon={isPositivo ? TrendingUp : TrendingDown}
