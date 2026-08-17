@@ -301,7 +301,7 @@ export function Financeiro() {
       acum += saldo_mes
       return {
         mes: m.mes
-          ? format(parseISO(m.mes + '-01'), 'MMM/yy', { locale: ptBR })
+          ? format(parseISO(m.mes), 'MMM/yy', { locale: ptBR })
           : '—',
         receitas: rec,
         despesas: desp,
