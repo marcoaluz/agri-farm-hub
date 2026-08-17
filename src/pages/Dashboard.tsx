@@ -571,6 +571,38 @@ export default function Dashboard() {
             </ChartCard>
           </div>
 
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle>Planejado</CardTitle>
+                <p className="text-sm text-muted-foreground">Ainda a pagar e a receber</p>
+              </CardHeader>
+              <CardContent>
+                {loadPlanejado ? (
+                  <Skeleton className="h-[220px] rounded-lg" />
+                ) : (
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[
+                        { nome: 'A Pagar', valor: Number(planejado?.total_a_pagar || 0) },
+                        { nome: 'A Receber', valor: Number(planejado?.total_a_receber || 0) },
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="nome" />
+                        <YAxis tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '']} />
+                        <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+                          <Cell fill="#ef4444" />
+                          <Cell fill="#22c55e" />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Bottom row — Lançamentos & Alertas */}
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
