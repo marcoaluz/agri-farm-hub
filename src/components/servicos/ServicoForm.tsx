@@ -224,8 +224,9 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
         categoria,
         requer_talhao: requerTalhao,
         tipo_servico: tipoServico,
-        custo_padrao: tipoServico === 'simples' ? parseFloat(custoPadrao) : null,
-        unidade_medida: tipoServico === 'simples' ? unidadeMedida : null,
+        tem_valor_proprio: temValorProprio,
+        custo_padrao: temValorProprio ? parseFloat(custoPadrao) : null,
+        unidade_medida: temValorProprio ? unidadeMedida : null,
         compartilhado,
       };
 
