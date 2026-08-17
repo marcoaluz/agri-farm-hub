@@ -284,6 +284,19 @@ export default function Dashboard() {
     enabled: !!propriedadeAtual?.id,
   })
 
+  const { data: planejado, isLoading: loadPlanejado } = useQuery({
+    queryKey: ['planejado-totais', propriedadeAtual?.id, safraAtual?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc('get_planejado_totais', {
+        p_propriedade_id: propriedadeAtual?.id,
+        p_safra_id: safraAtual?.id || null,
+      })
+      if (error) throw error
+      return data?.[0] || { total_a_pagar: 0, total_a_receber: 0 }
+    },
+    enabled: !!propriedadeAtual?.id,
+  })
+
   const { data: custosCategoria, isLoading: loadCat } = useQuery({
     queryKey: ['dash-custos-cat', propId, safraId],
     queryFn: async () => {
