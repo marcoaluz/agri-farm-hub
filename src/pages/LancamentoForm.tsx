@@ -100,7 +100,7 @@ export function LancamentoForm() {
       })
       if (error) throw error
       return ((data as any[]) || [])
-        .filter(s => s.ativo !== false)
+        .filter(s => s.ativo !== false && !s.tem_valor_proprio)
         .sort((a, b) => (a.nome || '').localeCompare(b.nome || '')) as ServicoComTipo[]
     },
     enabled: !!propriedadeAtual?.id
