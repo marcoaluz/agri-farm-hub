@@ -189,6 +189,7 @@ export default function Dashboard() {
     if (!consolidadoV2?.length) return null
     return consolidadoV2.reduce((acc: any, row: any) => ({
       custo_safra_ativa: (acc.custo_safra_ativa ?? 0) + Number(row.custo_safra || 0),
+      custo_propriedade_total: (acc.custo_propriedade_total ?? 0) + Number(row.custo_propriedade || 0),
       receita_paga: (acc.receita_paga ?? 0) + Number(row.receita_paga || 0),
       resultado_parcial: (acc.resultado_parcial ?? 0) + Number(row.resultado || 0),
       custo_por_ha: 0, // will compute below
@@ -200,7 +201,7 @@ export default function Dashboard() {
         financeiro_vencido: 0,
       },
     }), {
-      custo_safra_ativa: 0, receita_paga: 0, resultado_parcial: 0, custo_por_ha: 0,
+      custo_safra_ativa: 0, custo_propriedade_total: 0, receita_paga: 0, resultado_parcial: 0, custo_por_ha: 0,
       alertas: { total_alertas: 0, produtos_baixo_estoque: 0, manutencoes_vencidas: 0, vacinas_proximas: 0, financeiro_vencido: 0 },
     })
   }, [consolidadoV2])
