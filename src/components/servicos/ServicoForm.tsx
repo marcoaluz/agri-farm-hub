@@ -56,6 +56,9 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
   const [tipoServico, setTipoServico] = useState<'simples' | 'composto'>(servico?.tipo_servico || 'composto');
   const [custoPadrao, setCustoPadrao] = useState(servico?.custo_padrao?.toString() || '');
   const [unidadeMedida, setUnidadeMedida] = useState(servico?.unidade_medida || '');
+  const [temValorProprio, setTemValorProprio] = useState(
+    servico?.tem_valor_proprio ?? (servico?.tipo_servico === 'simples' || servico?.custo_padrao != null)
+  );
   const [itens, setItens] = useState<ItemVinculado[]>([]);
   const [addingType, setAddingType] = useState<'produto' | 'maquina' | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -204,8 +207,8 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
     const errs: Record<string, string> = {};
     if (!nome.trim()) errs.nome = 'Nome é obrigatório';
     if (!categoria) errs.categoria = 'Categoria é obrigatória';
-    if (tipoServico === 'simples') {
-      if (!custoPadrao || parseFloat(custoPadrao) < 0) errs.custo = 'Custo é obrigatório';
+    if (temValorProprio) {
+      if (!custoPadrao || parseFloat(custoPadrao) < 0) errs.custo = 'Valor é obrigatório';
       if (!unidadeMedida) errs.unidade = 'Unidade é obrigatória';
     }
     setErrors(errs);
@@ -221,8 +224,9 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
         categoria,
         requer_talhao: requerTalhao,
         tipo_servico: tipoServico,
-        custo_padrao: tipoServico === 'simples' ? parseFloat(custoPadrao) : null,
-        unidade_medida: tipoServico === 'simples' ? unidadeMedida : null,
+        tem_valor_proprio: temValorProprio,
+        custo_padrao: temValorProprio ? parseFloat(custoPadrao) : null,
+        unidade_medida: temValorProprio ? unidadeMedida : null,
         compartilhado,
       };
 
@@ -240,8 +244,8 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
           p_categoria: categoria,
           p_compartilhado: compartilhado,
           p_tipo_servico: tipoServico,
-          p_custo_padrao: tipoServico === 'simples' && custoPadrao ? parseFloat(custoPadrao) : null,
-          p_unidade_medida: tipoServico === 'simples' ? unidadeMedida : null,
+          p_custo_padrao: temValorProprio && custoPadrao ? parseFloat(custoPadrao) : null,
+          p_unidade_medida: temValorProprio ? unidadeMedida : null,
           p_requer_talhao: requerTalhao,
           p_descricao: descricao.trim() || null,
         });
@@ -252,6 +256,8 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
             ? resultado
             : resultado?.servico_id || resultado?.id || null;
         if (!servicoId) throw new Error('Não foi possível obter o ID do serviço criado');
+        // Persiste a flag (a RPC não recebe esse campo)
+        await supabase.from('servicos').update({ tem_valor_proprio: temValorProprio } as any).eq('id', servicoId);
       }
 
       if (tipoServico === 'composto' && itens.length > 0) {
@@ -450,32 +456,45 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
         </CardContent>
       </Card>
 
-      {tipoServico === 'simples' && (
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Custo</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Custo Padrão (R$) *</Label>
-              <Input type="number" step="0.01" min="0" value={custoPadrao}
-                onChange={e => setCustoPadrao(e.target.value)}
-                placeholder="Ex: 150.00" className={errors.custo ? 'border-destructive' : ''} />
-              {errors.custo && <p className="text-xs text-destructive mt-1">{errors.custo}</p>}
-            </div>
-            <div>
-              <Label>Unidade *</Label>
-              <Select value={unidadeMedida} onValueChange={setUnidadeMedida}>
-                <SelectTrigger className={errors.unidade ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNIDADES_SIMPLES.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {errors.unidade && <p className="text-xs text-destructive mt-1">{errors.unidade}</p>}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Valor</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="tem-valor-proprio"
+              checked={temValorProprio}
+              onCheckedChange={(v) => setTemValorProprio(v === true)}
+            />
+            <Label htmlFor="tem-valor-proprio" className="text-sm font-normal cursor-pointer">
+              Este serviço tem valor próprio
+            </Label>
+          </div>
+          {temValorProprio && (
+            <>
+              <div>
+                <Label>Valor (R$) *</Label>
+                <Input type="number" step="0.01" min="0" value={custoPadrao}
+                  onChange={e => setCustoPadrao(e.target.value)}
+                  placeholder="Ex: 150.00" className={errors.custo ? 'border-destructive' : ''} />
+                {errors.custo && <p className="text-xs text-destructive mt-1">{errors.custo}</p>}
+              </div>
+              <div>
+                <Label>Unidade *</Label>
+                <Select value={unidadeMedida} onValueChange={setUnidadeMedida}>
+                  <SelectTrigger className={errors.unidade ? 'border-destructive' : ''}>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIDADES_SIMPLES.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {errors.unidade && <p className="text-xs text-destructive mt-1">{errors.unidade}</p>}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
 
       {tipoServico === 'composto' && (
         <Card>
