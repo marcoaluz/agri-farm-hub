@@ -56,6 +56,9 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
   const [tipoServico, setTipoServico] = useState<'simples' | 'composto'>(servico?.tipo_servico || 'composto');
   const [custoPadrao, setCustoPadrao] = useState(servico?.custo_padrao?.toString() || '');
   const [unidadeMedida, setUnidadeMedida] = useState(servico?.unidade_medida || '');
+  const [temValorProprio, setTemValorProprio] = useState(
+    servico?.tem_valor_proprio ?? (servico?.tipo_servico === 'simples' || servico?.custo_padrao != null)
+  );
   const [itens, setItens] = useState<ItemVinculado[]>([]);
   const [addingType, setAddingType] = useState<'produto' | 'maquina' | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
