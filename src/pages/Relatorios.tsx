@@ -1080,82 +1080,7 @@ export default Relatorios
 /* ════════════════════════════════════════════════
    ABA 6 — CUSTOS DETALHADOS
    ════════════════════════════════════════════════ */
-type GrupoCusto = {
-  categoria?: string
-  nome?: string
-  subtotal?: number
-  total?: number
-  itens?: any[]
-}
-
-function nomeGrupo(g: GrupoCusto) {
-  return g.categoria || g.nome || '—'
-}
-function subtotalGrupo(g: GrupoCusto) {
-  if (g.subtotal != null) return Number(g.subtotal)
-  if (g.total != null) return Number(g.total)
-  return (g.itens || []).reduce((s, i: any) => s + Number(i.valor ?? i.valor_total ?? 0), 0)
-}
-
-function BlocoGrupos({ titulo, grupos }: { titulo: string; grupos: GrupoCusto[] }) {
-  const total = grupos.reduce((s, g) => s + subtotalGrupo(g), 0)
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-base">
-          <span>{titulo}</span>
-          <span className="font-bold">{fmt(total)}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {grupos.length === 0 ? (
-          <div className="flex flex-col items-center py-8 text-muted-foreground">
-            <FileX className="h-8 w-8 mb-2 opacity-50" />
-            <p className="text-sm">Nenhum custo no período</p>
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {grupos.map((g, gi) => (
-              <div key={gi} className="space-y-1">
-                <div className="flex items-baseline justify-between border-b pb-1">
-                  <span className="font-bold text-sm">{nomeGrupo(g)}</span>
-                  <span className="font-bold text-sm">{fmt(subtotalGrupo(g))}</span>
-                </div>
-                <div className="pl-4 space-y-1">
-                  {(g.itens || []).map((i: any, ii: number) => {
-                    const qtd = i.quantidade != null ? Number(i.quantidade) : null
-                    const un = i.unidade || i.unidade_medida || ''
-                    return (
-                      <div key={ii} className="flex items-baseline justify-between gap-2 text-sm">
-                        <span className="text-muted-foreground truncate">
-                          {i.nome || i.descricao || '—'}
-                          {qtd != null && qtd > 0 && (
-                            <span className="ml-1 text-xs opacity-70">
-                              ({fmtN(qtd, qtd % 1 === 0 ? 0 : 2)}{un ? ` ${un}` : ''})
-                            </span>
-                          )}
-                        </span>
-                        <span className="tabular-nums whitespace-nowrap">
-                          {fmt(Number(i.valor ?? i.valor_total ?? 0))}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-                <div className="flex items-baseline justify-between pl-4 pt-1 text-xs text-muted-foreground">
-                  <span>Subtotal {nomeGrupo(g)}</span>
-                  <span className="font-bold text-foreground">{fmt(subtotalGrupo(g))}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function AbaCustosDetalhados({ propId, safraId }: { propId: string; safraId: string }) {
+function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
@@ -1163,10 +1088,8 @@ function AbaCustosDetalhados({ propId, safraId }: { propId: string; safraId: str
   const [talhaoFiltro, setTalhaoFiltro] = useState('')
   const [ordenarPor, setOrdenarPor] = useState('valor_desc')
 
-  const { data: talhoes = [] } = useTalhoes(propId)
-
-  const { data: servicos = [] } = useQuery({
-    queryKey: ['servicos', propId],
+  const servicosQ = useQuery({
+    queryKey: ['rel-servicos-lista', propId],
     queryFn: async () => {
       const { data, error } = await db.rpc('listar_servicos_usuario', { p_propriedade_id: propId })
       if (error) throw error
@@ -1175,8 +1098,18 @@ function AbaCustosDetalhados({ propId, safraId }: { propId: string; safraId: str
     enabled: !!propId,
   })
 
-  const { data: custosDetalhados, isLoading } = useQuery({
-    queryKey: ['custos-detalhado', propId, safraId, dataInicio, dataFim, categoriaFiltro, servicoFiltro, talhaoFiltro, ordenarPor],
+  const talhoesQ = useQuery({
+    queryKey: ['rel-talhoes-lista', propId],
+    queryFn: async () => {
+      const { data, error } = await db.from('talhoes').select('id, nome').eq('propriedade_id', propId).eq('ativo', true).order('nome')
+      if (error) throw error
+      return (data || []) as any[]
+    },
+    enabled: !!propId,
+  })
+
+  const relatorioQ = useQuery({
+    queryKey: ['rel-custos-detalhado', propId, safraId, dataInicio, dataFim, categoriaFiltro, servicoFiltro, talhaoFiltro, ordenarPor],
     queryFn: async () => {
       const { data, error } = await db.rpc('get_relatorio_custos_detalhado', {
         p_propriedade_id: propId,
@@ -1194,72 +1127,68 @@ function AbaCustosDetalhados({ propId, safraId }: { propId: string; safraId: str
     enabled: !!propId && !!safraId,
   })
 
-  const operacional: GrupoCusto[] = custosDetalhados?.operacional || []
-  const financeiro: GrupoCusto[] = custosDetalhados?.financeiro || []
+  const operacional = (relatorioQ.data?.operacional || []) as any[]
+  const financeiro = (relatorioQ.data?.financeiro || []) as any[]
 
-  const categorias = useMemo(() => {
-    const set = new Set<string>()
-    ;[...operacional, ...financeiro].forEach((g) => {
-      const n = nomeGrupo(g)
-      if (n && n !== '—') set.add(n)
-    })
-    return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [operacional, financeiro])
+  const categoriasDisponiveis = useMemo(() => {
+    const nomes = new Set<string>()
+    operacional.forEach((g: any) => nomes.add(g.grupo))
+    return Array.from(nomes).sort()
+  }, [operacional])
 
-  const limpar = () => {
-    setDataInicio(''); setDataFim(''); setCategoriaFiltro('')
-    setServicoFiltro(''); setTalhaoFiltro(''); setOrdenarPor('valor_desc')
+  const totalOperacional = operacional.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
+  const totalFinanceiro = financeiro.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
+
+  const limparFiltros = () => {
+    setDataInicio(''); setDataFim(''); setCategoriaFiltro(''); setServicoFiltro(''); setTalhaoFiltro(''); setOrdenarPor('valor_desc')
   }
 
   return (
     <div className="space-y-4">
+      {/* Filtros */}
       <Card>
         <CardContent className="pt-4">
-          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">De</Label>
-              <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground">De</label>
+              <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Até</Label>
-              <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+            <div>
+              <label className="text-xs text-muted-foreground">Até</label>
+              <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} />
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Categoria</Label>
-              <Select value={categoriaFiltro || '_all'} onValueChange={(v) => setCategoriaFiltro(v === '_all' ? '' : v)}>
+            <div>
+              <label className="text-xs text-muted-foreground">Categoria</label>
+              <Select value={categoriaFiltro || '_todos'} onValueChange={v => setCategoriaFiltro(v === '_todos' ? '' : v)}>
                 <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_all">Todas</SelectItem>
-                  {categorias.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  <SelectItem value="_todos">Todas</SelectItem>
+                  {categoriasDisponiveis.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Serviço</Label>
-              <Select value={servicoFiltro || '_all'} onValueChange={(v) => setServicoFiltro(v === '_all' ? '' : v)}>
+            <div>
+              <label className="text-xs text-muted-foreground">Serviço</label>
+              <Select value={servicoFiltro || '_todos'} onValueChange={v => setServicoFiltro(v === '_todos' ? '' : v)}>
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_all">Todos</SelectItem>
-                  {servicos.filter((s: any) => s.ativo !== false).map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                  ))}
+                  <SelectItem value="_todos">Todos</SelectItem>
+                  {(servicosQ.data || []).map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Talhão</Label>
-              <Select value={talhaoFiltro || '_all'} onValueChange={(v) => setTalhaoFiltro(v === '_all' ? '' : v)}>
+            <div>
+              <label className="text-xs text-muted-foreground">Talhão</label>
+              <Select value={talhaoFiltro || '_todos'} onValueChange={v => setTalhaoFiltro(v === '_todos' ? '' : v)}>
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_all">Todos</SelectItem>
-                  {talhoes.map((t: any) => (
-                    <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
-                  ))}
+                  <SelectItem value="_todos">Todos</SelectItem>
+                  {(talhoesQ.data || []).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Ordenar por</Label>
+            <div>
+              <label className="text-xs text-muted-foreground">Ordenar por</label>
               <Select value={ordenarPor} onValueChange={setOrdenarPor}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -1271,19 +1200,93 @@ function AbaCustosDetalhados({ propId, safraId }: { propId: string; safraId: str
               </Select>
             </div>
           </div>
-          <div className="flex justify-end mt-3">
-            <Button variant="ghost" size="sm" onClick={limpar}>Limpar filtros</Button>
-          </div>
+          {(dataInicio || dataFim || categoriaFiltro || servicoFiltro || talhaoFiltro) && (
+            <Button variant="ghost" size="sm" className="mt-2" onClick={limparFiltros}>
+              Limpar filtros
+            </Button>
+          )}
         </CardContent>
       </Card>
 
-      {isLoading ? (
+      {relatorioQ.isLoading ? (
         <SkeletonAba />
+      ) : operacional.length === 0 && financeiro.length === 0 ? (
+        <Card><CardContent className="pt-6"><EmptyState message="Nenhum custo encontrado com esses filtros" /></CardContent></Card>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <BlocoGrupos titulo="Operacional" grupos={operacional} />
-          <BlocoGrupos titulo="Financeiro" grupos={financeiro} />
-        </div>
+        <>
+          {/* Seção Operacional */}
+          {operacional.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Operacional
+                  <span className="ml-auto text-sm font-normal text-muted-foreground">
+                    Total: <span className="font-bold text-foreground">{fmt(totalOperacional)}</span>
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {operacional.map((grupo: any) => (
+                  <div key={grupo.grupo}>
+                    <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
+                      <span>{grupo.grupo}</span>
+                      <span>{fmt(Number(grupo.subtotal))}</span>
+                    </div>
+                    {(grupo.itens || []).map((item: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between text-sm pl-4 py-1 text-muted-foreground">
+                        <span>
+                          {item.nome}
+                          {item.quantidade != null && item.unidade && (
+                            <span className="text-xs ml-1">({fmtN(item.quantidade)} {item.unidade})</span>
+                          )}
+                        </span>
+                        <span>{fmt(Number(item.valor))}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Seção Financeiro */}
+          {financeiro.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Financeiro
+                  <span className="ml-auto text-sm font-normal text-muted-foreground">
+                    Total: <span className="font-bold text-foreground">{fmt(totalFinanceiro)}</span>
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {financeiro.map((grupo: any) => (
+                  <div key={grupo.grupo}>
+                    <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
+                      <span className="capitalize">{String(grupo.grupo).replace(/_/g, ' ')}</span>
+                      <span>{fmt(Number(grupo.subtotal))}</span>
+                    </div>
+                    {(grupo.itens || []).map((item: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between text-sm pl-4 py-1 text-muted-foreground">
+                        <span>{item.nome}</span>
+                        <span className={item.tipo === 'receita' ? 'text-green-600' : ''}>
+                          {item.tipo === 'receita' ? '+' : '-'} {fmt(Number(item.valor))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          <p className="text-xs text-muted-foreground text-center">
+            Os totais de Operacional e Financeiro não são somados entre si — são duas visões diferentes do mesmo dinheiro (consumo aplicado vs. dinheiro que saiu do banco).
+          </p>
+        </>
       )}
     </div>
   )
