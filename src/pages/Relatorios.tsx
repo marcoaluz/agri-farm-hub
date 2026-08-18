@@ -6,7 +6,9 @@ import { ptBR } from 'date-fns/locale'
 import {
   BarChart3, ClipboardList, DollarSign, Sprout, TrendingUp, Package,
   ArrowUpDown, ChevronUp, ChevronDown, Download, FileX, Lock, Circle, Leaf,
-  FileSpreadsheet, FileText,
+  FileSpreadsheet, FileText, ListTree,
+
+
 
 } from 'lucide-react'
 import {
