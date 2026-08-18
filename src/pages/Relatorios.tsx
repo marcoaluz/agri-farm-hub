@@ -79,26 +79,27 @@ function colorScale(value: number, max: number) {
 
 /* Botões de exportação reutilizáveis */
 function ExportButtons({
-  propriedadeNome, nomeAba, nomeArquivo, colunas, linhas,
+  propriedadeNome, nomeAba, nomeArquivo, colunas, linhas, safraNome,
 }: {
   propriedadeNome: string
   nomeAba: string
   nomeArquivo: string
   colunas: Coluna[]
   linhas: any[]
+  safraNome?: string
 }) {
   const disabled = !linhas || linhas.length === 0
   return (
     <div className="flex flex-wrap justify-end gap-2 mb-2">
       <Button
         variant="outline" size="sm" disabled={disabled} className="flex-1 sm:flex-none min-w-[140px]"
-        onClick={() => exportarPDF({ nomeArquivo, propriedadeNome, nomeAba, colunas, linhas })}
+        onClick={async () => { await exportarPDF({ nomeArquivo, propriedadeNome, nomeAba, colunas, linhas, safraNome }) }}
       >
         <FileText className="h-4 w-4 mr-1" /> Exportar PDF
       </Button>
       <Button
         variant="outline" size="sm" disabled={disabled} className="flex-1 sm:flex-none min-w-[140px]"
-        onClick={() => exportarExcel({ nomeArquivo, nomeAba, colunas, linhas })}
+        onClick={() => exportarExcel({ nomeArquivo, nomeAba, colunas, linhas, propriedadeNome, safraNome })}
       >
         <FileSpreadsheet className="h-4 w-4 mr-1" /> Exportar Excel
       </Button>
@@ -167,6 +168,7 @@ export function Relatorios() {
    ABA 1 — OPERACIONAL
    ════════════════════════════════════════════════ */
 function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
+  const { safraAtual } = useGlobal()
   const lancQ = useQuery({
     queryKey: ['rel-op-lanc', propId, safraId],
     queryFn: async () => {
@@ -263,6 +265,7 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
     <div className="space-y-4">
       <ExportButtons
         propriedadeNome={propriedadeNome}
+        safraNome={safraAtual?.nome}
         nomeAba="Operacional"
         nomeArquivo="relatorio-operacional"
         colunas={[
@@ -405,6 +408,7 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
    ABA 2 — FINANCEIRO
    ════════════════════════════════════════════════ */
 function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
+  const { safraAtual } = useGlobal()
   const evolQ = useQuery({
     queryKey: ['rel-fin-evol', propId, safraId],
     queryFn: async () => {
@@ -481,6 +485,7 @@ function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; s
     <div className="space-y-4">
       <ExportButtons
         propriedadeNome={propriedadeNome}
+        safraNome={safraAtual?.nome}
         nomeAba="Financeiro"
         nomeArquivo="relatorio-financeiro"
         colunas={[
@@ -572,6 +577,7 @@ function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; s
    ABA 3 — POR TALHÃO
    ════════════════════════════════════════════════ */
 function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
+  const { safraAtual } = useGlobal()
   const talhaoQ = useQuery({
     queryKey: ['rel-talhao', propId, safraId],
     queryFn: async () => {
@@ -632,6 +638,7 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
     <div className="space-y-4">
       <ExportButtons
         propriedadeNome={propriedadeNome}
+        safraNome={safraAtual?.nome}
         nomeAba="Por Talhão"
         nomeArquivo="relatorio-por-talhao"
         colunas={[
@@ -728,6 +735,7 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
    ABA 4 — COMPARATIVO DE SAFRAS
    ════════════════════════════════════════════════ */
 function AbaComparativo({ propId, safraAtualId, propriedadeNome }: { propId: string; safraAtualId: string; propriedadeNome: string }) {
+  const { safraAtual } = useGlobal()
   const compQ = useQuery({
     queryKey: ['rel-comp-safras', propId],
     queryFn: async () => {
@@ -765,6 +773,7 @@ function AbaComparativo({ propId, safraAtualId, propriedadeNome }: { propId: str
     <div className="space-y-4">
       <ExportButtons
         propriedadeNome={propriedadeNome}
+        safraNome={safraAtual?.nome}
         nomeAba="Comparativo de Safras"
         nomeArquivo="relatorio-comparativo"
         colunas={[
@@ -868,6 +877,7 @@ function AbaComparativo({ propId, safraAtualId, propriedadeNome }: { propId: str
    ABA 5 — INSUMOS
    ════════════════════════════════════════════════ */
 function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
+  const { safraAtual } = useGlobal()
   const insQ = useQuery({
     queryKey: ['rel-insumos', propId, safraId],
     queryFn: async () => {
@@ -913,6 +923,7 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
     <div className="space-y-4">
       <ExportButtons
         propriedadeNome={propriedadeNome}
+        safraNome={safraAtual?.nome}
         nomeAba="Insumos"
         nomeArquivo="relatorio-insumos"
         colunas={[
