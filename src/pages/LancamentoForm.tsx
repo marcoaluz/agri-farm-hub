@@ -40,7 +40,8 @@ import {
   Users,
   Wrench,
   Truck,
-  AlertTriangle
+  AlertTriangle,
+  Fuel
 } from 'lucide-react'
 
 // Interfaces
@@ -82,7 +83,7 @@ export function LancamentoForm() {
   const [loading, setLoading] = useState(false)
   const [loadingItens, setLoadingItens] = useState(false)
   const [validandoEstoque, setValidandoEstoque] = useState(false)
-  const [adicionandoTipo, setAdicionandoTipo] = useState<'produto' | 'maquina' | 'servico_simples' | null>(null)
+  const [adicionandoTipo, setAdicionandoTipo] = useState<'produto' | 'maquina' | 'servico_simples' | 'abastecimento' | null>(null)
   const [custoAltoDialog, setCustoAltoDialog] = useState<{
     open: boolean
     valor: string
@@ -1065,6 +1066,10 @@ export function LancamentoForm() {
                         <Wrench className="h-4 w-4 mr-1" />
                         + Custo de Serviço
                       </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'abastecimento' ? null : 'abastecimento')}>
+                        <Fuel className="h-4 w-4 mr-1" />
+                        + Abastecimento
+                      </Button>
                     </div>
 
                     {/* Select para tipo selecionado */}
@@ -1129,6 +1134,31 @@ export function LancamentoForm() {
                             {(!servicosSimples || servicosSimples.length === 0) && (
                               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                                 Nenhum serviço com valor cadastrado
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {adicionandoTipo === 'abastecimento' && (
+                      <div className="mt-3">
+                        <Select onValueChange={(maquinaId) => {
+                          adicionarAbastecimento(maquinaId)
+                          setAdicionandoTipo(null)
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a máquina abastecida..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {maquinas?.map(m => (
+                              <SelectItem key={m.id} value={m.id}>
+                                {m.nome} — R$ {(m.custo_hora || 0).toFixed(2)}/h
+                              </SelectItem>
+                            ))}
+                            {(!maquinas || maquinas.length === 0) && (
+                              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                Nenhuma máquina cadastrada
                               </div>
                             )}
                           </SelectContent>
