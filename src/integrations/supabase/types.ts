@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      categorias_manutencao: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          usuario_id: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          usuario_id?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       maquina_manutencoes: {
         Row: {
           created_at: string
@@ -391,6 +415,13 @@ export type Database = {
           total_entradas: number
           total_saidas: number
           unidade_label: string
+        }[]
+      }
+      listar_categorias_manutencao: {
+        Args: never
+        Returns: {
+          id: string
+          nome: string
         }[]
       }
     }
