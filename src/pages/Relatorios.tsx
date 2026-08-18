@@ -990,6 +990,7 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
                 <TableHead className="text-right">Custo Unit. Médio</TableHead>
                 <TableHead className="w-[180px]">% do Total</TableHead>
                 <TableHead>Talhões</TableHead>
+                <TableHead className="text-right">Em Estoque</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1000,7 +1001,7 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
                   <TableRow key={i.produto_id || idx} className={isTop ? 'bg-warning/10' : ''}>
                     <TableCell className="font-medium">{idx + 1}</TableCell>
                     <TableCell className={isTop ? 'font-semibold' : 'font-medium'}>{i.produto_nome || '—'}</TableCell>
-                    <TableCell>{i.unidade || '-'}</TableCell>
+                    <TableCell>{i.unidade_medida || '-'}</TableCell>
                     <TableCell className="text-right">{fmtN(Number(i.quantidade_total || 0))}</TableCell>
                     <TableCell className="text-right font-semibold">{fmt(Number(i.custo_total || 0))}</TableCell>
                     <TableCell className="text-right">{fmt(Number(i.custo_unitario_medio || 0))}</TableCell>
@@ -1010,7 +1011,8 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
                         <span className="text-xs text-muted-foreground w-12 text-right">{pct.toFixed(1)}%</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">{i.talhoes || '-'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">{i.talhoes_usados || '-'}</TableCell>
+                    <TableCell className="text-right">{fmtN(Number(i.saldo_estoque || 0))} {i.unidade_medida}</TableCell>
                   </TableRow>
                 )
               })}
