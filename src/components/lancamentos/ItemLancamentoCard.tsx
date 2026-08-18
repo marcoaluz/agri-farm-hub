@@ -56,10 +56,20 @@ export interface ItemLancamento {
   }
 }
 
+interface ProdutoCombustivel {
+  id: string
+  nome: string
+  categoria?: string
+  saldo_atual?: number
+  unidade_medida?: string
+}
+
 interface ItemLancamentoCardProps {
   itemForm: ItemLancamento
   onUpdate: (updated: ItemLancamento) => void
   onRemove: () => void
+  produtos?: ProdutoCombustivel[]
+  temMaquinaNoLancamento?: boolean
 }
 
 function getTipoConfig(tipoRef?: string, itemTipo?: string) {
