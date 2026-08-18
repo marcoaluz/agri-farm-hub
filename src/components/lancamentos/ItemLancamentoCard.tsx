@@ -366,7 +366,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
         {/* Input de Quantidade */}
         <div className="space-y-2">
           <Label htmlFor={`quantidade-${itemForm.produto_id || itemForm.maquina_id || itemForm.servico_ref_id || itemForm.item_id}`}>
-            Quantidade ({itemUnidade})
+            Quantidade:
             {itemForm.obrigatorio && <span className="text-destructive ml-1">*</span>}
           </Label>
           <Input
