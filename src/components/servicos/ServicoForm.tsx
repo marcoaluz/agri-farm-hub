@@ -53,12 +53,12 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
   const [categoria, setCategoria] = useState(servico?.categoria || '');
   const [compartilhado, setCompartilhado] = useState(!!servico?.compartilhado);
   const [requerTalhao, setRequerTalhao] = useState(servico?.requer_talhao ?? true);
-  const [tipoServico, setTipoServico] = useState<'simples' | 'composto'>(servico?.tipo_servico || 'composto');
   const [custoPadrao, setCustoPadrao] = useState(servico?.custo_padrao?.toString() || '');
   const [unidadeMedida, setUnidadeMedida] = useState(servico?.unidade_medida || '');
   const [temValorProprio, setTemValorProprio] = useState(
     servico?.tem_valor_proprio ?? (servico?.tipo_servico === 'simples' || servico?.custo_padrao != null)
   );
+  const tipoServico = temValorProprio ? 'simples' : 'composto';
   const [itens, setItens] = useState<ItemVinculado[]>([]);
   const [addingType, setAddingType] = useState<'produto' | 'maquina' | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -430,16 +430,6 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
                 Este serviço será disponível em todas as suas propriedades.
               </p>
             )}
-          </div>
-          <div>
-            <Label>Tipo *</Label>
-            <Select value={tipoServico} onValueChange={v => setTipoServico(v as 'simples' | 'composto')}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="simples">Simples — custo fixo por unidade</SelectItem>
-                <SelectItem value="composto">Composto — usa produtos e máquinas</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           <div>
             <Label>Descrição</Label>
