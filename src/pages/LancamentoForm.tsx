@@ -1065,6 +1065,10 @@ export function LancamentoForm() {
                         <Wrench className="h-4 w-4 mr-1" />
                         + Custo de Serviço
                       </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'abastecimento' ? null : 'abastecimento')}>
+                        <Fuel className="h-4 w-4 mr-1" />
+                        + Abastecimento
+                      </Button>
                     </div>
 
                     {/* Select para tipo selecionado */}
