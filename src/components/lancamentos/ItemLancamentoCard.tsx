@@ -90,7 +90,7 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   return config[itemTipo as keyof typeof config] || { label: itemTipo || 'Item', icon: Package, color: 'bg-gray-100 text-gray-800' }
 }
 
-export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancamentoCardProps) {
+export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento }: ItemLancamentoCardProps) {
   const [quantidade, setQuantidade] = useState(itemForm.quantidade)
   const [editandoCusto, setEditandoCusto] = useState(false)
   const [custoEditavel, setCustoEditavel] = useState('')
