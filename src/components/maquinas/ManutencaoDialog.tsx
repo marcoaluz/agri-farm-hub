@@ -86,7 +86,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
           status,
           data_prevista: dataPrevista ? format(dataPrevista, 'yyyy-MM-dd') : null,
           data_realizada: status === 'realizada' && dataRealizada ? format(dataRealizada, 'yyyy-MM-dd') : null,
-          horimetro_manutencao: horimetroManutencao ? Number(horimetroManutencao) : null,
+          horimetro_na_manutencao: horimetroManutencao ? Number(horimetroManutencao) : null,
           proximo_horimetro: proximoHorimetro ? Number(proximoHorimetro) : null,
           custo: custo ? Number(custo) : null,
           oficina: oficina.trim() || null,
