@@ -157,7 +157,10 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
 
       toast({ title: 'Manutenção registrada com sucesso' });
       queryClient.invalidateQueries({ queryKey: ['manutencoes-proximas'] });
+      queryClient.invalidateQueries({ queryKey: ['manutencoes-todas'] });
       queryClient.invalidateQueries({ queryKey: ['maquinas'] });
+      queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['transacoes'] });
       resetForm();
       onOpenChange(false);
     } catch (err: any) {

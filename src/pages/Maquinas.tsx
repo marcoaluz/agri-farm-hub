@@ -574,7 +574,7 @@ export function Maquinas() {
                           : '—'}
                       </TableCell>
                       <TableCell>
-                        {m.horimetro_manutencao != null ? fmtHorimetro(Number(m.horimetro_manutencao)) : '—'}
+                        {m.horimetro_na_manutencao != null ? fmtHorimetro(Number(m.horimetro_na_manutencao)) : '—'}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -620,8 +620,8 @@ export function Maquinas() {
                                 : '—'}
                             </div>
                             <div className="truncate">{m.descricao}</div>
-                            {m.horimetro_manutencao != null && (
-                              <div>Horímetro: {fmtHorimetro(Number(m.horimetro_manutencao))}</div>
+                            {m.horimetro_na_manutencao != null && (
+                              <div>Horímetro: {fmtHorimetro(Number(m.horimetro_na_manutencao))}</div>
                             )}
                           </div>
                         </div>
