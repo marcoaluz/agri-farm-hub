@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
 export interface ItemLancamento {
@@ -55,10 +56,20 @@ export interface ItemLancamento {
   }
 }
 
+interface ProdutoCombustivel {
+  id: string
+  nome: string
+  categoria?: string
+  saldo_atual?: number
+  unidade_medida?: string
+}
+
 interface ItemLancamentoCardProps {
   itemForm: ItemLancamento
   onUpdate: (updated: ItemLancamento) => void
   onRemove: () => void
+  produtos?: ProdutoCombustivel[]
+  temMaquinaNoLancamento?: boolean
 }
 
 function getTipoConfig(tipoRef?: string, itemTipo?: string) {
@@ -79,7 +90,7 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   return config[itemTipo as keyof typeof config] || { label: itemTipo || 'Item', icon: Package, color: 'bg-gray-100 text-gray-800' }
 }
 
-export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancamentoCardProps) {
+export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento }: ItemLancamentoCardProps) {
   const [quantidade, setQuantidade] = useState(itemForm.quantidade)
   const [editandoCusto, setEditandoCusto] = useState(false)
   const [custoEditavel, setCustoEditavel] = useState('')
@@ -393,6 +404,94 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove }: ItemLancame
               <Gauge className="h-4 w-4" />
               Horímetro será atualizado automaticamente
             </div>
+          </div>
+        )}
+
+        {/* Formulário de edição para abastecimento */}
+        {itemForm.tipo_ref === 'abastecimento' && (
+          <div className="space-y-3 rounded-lg border border-orange-200 bg-orange-50/30 dark:border-orange-800/40 dark:bg-orange-950/10 p-3">
+            <div className="flex items-center gap-2">
+              <Label>Origem</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button" size="sm"
+                  variant={itemForm.origem_estoque ? 'default' : 'outline'}
+                  onClick={() => onUpdate({ ...itemForm, origem_estoque: true })}
+                >
+                  Do Estoque
+                </Button>
+                <Button
+                  type="button" size="sm"
+                  variant={!itemForm.origem_estoque ? 'default' : 'outline'}
+                  onClick={() => onUpdate({ ...itemForm, origem_estoque: false, produto_id: null })}
+                >
+                  Livre
+                </Button>
+              </div>
+            </div>
+
+            {itemForm.origem_estoque ? (
+              <div>
+                <Label>Combustível (do estoque)</Label>
+                <Select value={itemForm.produto_id || ''} onValueChange={(v) => onUpdate({ ...itemForm, produto_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
+                  <SelectContent>
+                    {produtos?.filter(p => (p.categoria || '').toLowerCase().includes('combust')).map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.nome} — {p.saldo_atual} {p.unidade_medida}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div>
+                <Label>Tipo de combustível</Label>
+                <Input value={itemForm.combustivel_tipo || ''} onChange={(e) => onUpdate({ ...itemForm, combustivel_tipo: e.target.value })} placeholder="Ex: Diesel" />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Litros</Label>
+                <Input type="number" value={itemForm.litros || ''} onChange={(e) => onUpdate({ ...itemForm, litros: Number(e.target.value) })} />
+              </div>
+              <div>
+                <Label>Custo Total (R$)</Label>
+                <Input type="number" value={itemForm.custo_total || ''} onChange={(e) => onUpdate({ ...itemForm, custo_total: Number(e.target.value) })} disabled={itemForm.origem_estoque} />
+              </div>
+            </div>
+
+            <div>
+              <Label>Horímetro no momento do abastecimento</Label>
+              <Input
+                type="number" value={itemForm.horimetro_informado ?? ''}
+                onChange={(e) => onUpdate({ ...itemForm, horimetro_informado: Number(e.target.value) })}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Digite o valor exato do painel — isso substitui o horímetro atual, não soma.
+              </p>
+            </div>
+
+            {temMaquinaNoLancamento && (
+              <div>
+                <Label>Esse abastecimento foi antes ou depois do trabalho com a máquina?</Label>
+                <div className="flex gap-2 mt-1">
+                  <Button
+                    type="button" size="sm"
+                    variant={itemForm.momento_abastecimento === 'antes' ? 'default' : 'outline'}
+                    onClick={() => onUpdate({ ...itemForm, momento_abastecimento: 'antes' })}
+                  >
+                    Antes do trabalho
+                  </Button>
+                  <Button
+                    type="button" size="sm"
+                    variant={itemForm.momento_abastecimento === 'depois' ? 'default' : 'outline'}
+                    onClick={() => onUpdate({ ...itemForm, momento_abastecimento: 'depois' })}
+                  >
+                    Depois do trabalho
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
