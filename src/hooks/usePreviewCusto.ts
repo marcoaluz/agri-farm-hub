@@ -71,7 +71,7 @@ export function usePreviewCusto(itemId: string | undefined, quantidade: number) 
 
 // === NOVO HOOK: Preview por referência direta ===
 export function usePreviewCustoDireto(
-  tipoRef: 'produto' | 'maquina' | 'servico_simples' | undefined,
+  tipoRef: 'produto' | 'maquina' | 'servico_simples' | 'abastecimento' | undefined,
   produtoId: string | null | undefined,
   maquinaId: string | null | undefined,
   servicoRefId: string | null | undefined,

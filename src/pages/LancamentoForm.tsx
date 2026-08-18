@@ -381,6 +381,33 @@ export function LancamentoForm() {
     setAdicionandoTipo(null)
   }
 
+  const adicionarAbastecimento = (maquinaId: string) => {
+    const maquina = maquinas?.find(m => m.id === maquinaId)
+    if (!maquina) return
+    if (formData.itens.some(i => i.tipo_ref === 'abastecimento' && i.maquina_id === maquinaId)) {
+      toast({ title: 'Já existe abastecimento para essa máquina neste lançamento', variant: 'destructive' })
+      return
+    }
+    const temHorasNoMesmoLancamento = formData.itens.some(i => i.tipo_ref === 'maquina' && i.maquina_id === maquinaId)
+    setFormData(prev => ({
+      ...prev,
+      itens: [...prev.itens, {
+        tipo_ref: 'abastecimento',
+        maquina_id: maquina.id,
+        nome: `Abastecimento — ${maquina.nome}`,
+        origem_estoque: true,
+        produto_id: null,
+        litros: 0,
+        combustivel_tipo: '',
+        custo_total: 0,
+        horimetro_informado: maquina.horimetro_atual || 0,
+        momento_abastecimento: temHorasNoMesmoLancamento ? 'antes' : null,
+        quantidade: 1,
+      }]
+    }))
+    setAdicionandoTipo(null)
+  }
+
   const adicionarServicoSimples = (servicoRefId: string) => {
     const svc = servicosSimples?.find(s => s.id === servicoRefId)
     if (!svc) return

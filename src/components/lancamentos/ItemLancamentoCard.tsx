@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 
 export interface ItemLancamento {
   // Novo: referências diretas
-  tipo_ref?: 'produto' | 'maquina' | 'servico_simples'
+  tipo_ref?: 'produto' | 'maquina' | 'servico_simples' | 'abastecimento'
   produto_id?: string | null
   maquina_id?: string | null
   servico_ref_id?: string | null
@@ -36,6 +36,13 @@ export interface ItemLancamento {
   custo_total?: number
   detalhamento_lotes?: any
   obrigatorio?: boolean
+
+  // Abastecimento
+  origem_estoque?: boolean
+  litros?: number
+  combustivel_tipo?: string
+  horimetro_informado?: number
+  momento_abastecimento?: 'antes' | 'depois' | null
 
   // Legado
   item?: {
