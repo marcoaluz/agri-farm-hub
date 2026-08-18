@@ -157,6 +157,8 @@ export function Relatorios() {
         <TabsContent value="talhao"><AbaPorTalhao propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="comparativo"><AbaComparativo propId={propId} safraAtualId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="insumos"><AbaInsumos propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="custos"><AbaCustosDetalhados propId={propId} safraId={safraId} /></TabsContent>
+
 
       </Tabs>
     </div>
