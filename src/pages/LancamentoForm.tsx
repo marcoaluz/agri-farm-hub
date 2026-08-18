@@ -40,7 +40,8 @@ import {
   Users,
   Wrench,
   Truck,
-  AlertTriangle
+  AlertTriangle,
+  Fuel
 } from 'lucide-react'
 
 // Interfaces
