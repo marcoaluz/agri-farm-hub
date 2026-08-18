@@ -1030,6 +1030,8 @@ export function LancamentoForm() {
                       <ItemLancamentoCard
                         key={`${itemForm.tipo_ref}-${itemForm.produto_id || itemForm.maquina_id || itemForm.servico_ref_id || index}`}
                         itemForm={itemForm}
+                        produtos={produtos}
+                        temMaquinaNoLancamento={!!itemForm.maquina_id && formData.itens.some(i => i.tipo_ref === 'maquina' && i.maquina_id === itemForm.maquina_id)}
                         onUpdate={(updated) => {
                           const newItens = [...formData.itens]
                           newItens[index] = updated
