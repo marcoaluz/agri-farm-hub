@@ -101,6 +101,27 @@ export async function exportarPDF(opts: {
     headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [245, 245, 245] },
     margin: { left: 14, right: 14 },
+    didDrawPage: () => {
+      if (logo) {
+        try {
+          const pageWidth = doc.internal.pageSize.getWidth()
+          const pageHeight = doc.internal.pageSize.getHeight()
+          const tamanho = 90
+          doc.saveGraphicsState()
+          // @ts-ignore - GState existe em runtime no jsPDF, só falta no tipo
+          doc.setGState(new (doc as any).GState({ opacity: 0.06 }))
+          doc.addImage(
+            logo, 'PNG',
+            (pageWidth - tamanho) / 2,
+            (pageHeight - tamanho) / 2,
+            tamanho, tamanho
+          )
+          doc.restoreGraphicsState()
+        } catch {
+          // se a marca d'água falhar, não impede o resto do PDF
+        }
+      }
+    },
   })
 
   doc.save(`${nomeArquivo}-${hoje()}.pdf`)
