@@ -29,6 +29,7 @@ interface Servico {
   custo_padrao?: number;
   unidade_medida?: string;
   compartilhado?: boolean;
+  tem_valor_proprio?: boolean;
   ativo: boolean;
   created_at: string;
   total_itens?: number;
@@ -91,8 +92,8 @@ export function Servicos() {
 
   const stats = {
     total:    servicos?.length || 0,
-    simples:  (servicos || []).filter(s => s.tipo_servico === 'simples').length,
-    composto: (servicos || []).filter(s => s.tipo_servico === 'composto').length,
+    comValor: (servicos || []).filter(s => s.tem_valor_proprio === true).length,
+    semValor: (servicos || []).filter(s => s.tem_valor_proprio !== true).length,
     talhao:   (servicos || []).filter(s => s.requer_talhao).length,
   };
 
@@ -156,8 +157,8 @@ export function Servicos() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total',         value: stats.total,    icon: Wrench,      bg: 'bg-blue-100',   fg: 'text-blue-600' },
-          { label: 'Simples',       value: stats.simples,  icon: CheckCircle, bg: 'bg-amber-100',  fg: 'text-amber-600' },
-          { label: 'Compostos',     value: stats.composto, icon: Package,     bg: 'bg-purple-100', fg: 'text-purple-600' },
+          { label: 'Com Valor',  value: stats.comValor, icon: CheckCircle, bg: 'bg-amber-100',  fg: 'text-amber-600' },
+          { label: 'Sem Valor',  value: stats.semValor, icon: Package,     bg: 'bg-purple-100', fg: 'text-purple-600' },
           { label: 'Requer Talhão', value: stats.talhao,   icon: MapPin,      bg: 'bg-green-100',  fg: 'text-green-600' },
         ].map(({ label, value, icon: Icon, bg, fg }) => (
           <Card key={label}>
@@ -286,13 +287,6 @@ function ServicoCard({ servico, onEdit }: { servico: Servico; onEdit: () => void
               {servico.categoria && (
                 <Badge variant="outline" className="text-xs">{servico.categoria}</Badge>
               )}
-              <Badge className={
-                isSimples
-                  ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs'
-                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs'
-              }>
-                {isSimples ? 'Simples' : 'Composto'}
-              </Badge>
               {servico.requer_talhao && (
                 <Badge className="bg-green-100 text-green-700 hover:bg-green-200 text-xs">
                   <MapPin className="h-3 w-3 mr-1" />
@@ -340,7 +334,7 @@ function ServicoCard({ servico, onEdit }: { servico: Servico; onEdit: () => void
           <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{servico.descricao}</p>
         )}
 
-        {isSimples ? (
+        {temValor ? (
           <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
             <span className="text-sm font-medium text-amber-900">Custo padrão</span>
             <span className="text-lg font-bold text-amber-600">
