@@ -6,7 +6,9 @@ import { ptBR } from 'date-fns/locale'
 import {
   BarChart3, ClipboardList, DollarSign, Sprout, TrendingUp, Package,
   ArrowUpDown, ChevronUp, ChevronDown, Download, FileX, Lock, Circle, Leaf,
-  FileSpreadsheet, FileText,
+  FileSpreadsheet, FileText, ListTree,
+
+
 
 } from 'lucide-react'
 import {
@@ -21,8 +23,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { useTalhoes } from '@/hooks/useTalhoes'
+
 import { exportarExcel, exportarPDF, type Coluna } from '@/lib/exportTabela'
 
 
@@ -140,6 +146,8 @@ export function Relatorios() {
             <TabsTrigger value="talhao" className="whitespace-nowrap"><Sprout className="h-4 w-4 mr-1" />Por Talhão</TabsTrigger>
             <TabsTrigger value="comparativo" className="whitespace-nowrap"><TrendingUp className="h-4 w-4 mr-1" />Comparativo</TabsTrigger>
             <TabsTrigger value="insumos" className="whitespace-nowrap"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
+            <TabsTrigger value="custos" className="whitespace-nowrap"><ListTree className="h-4 w-4 mr-1" />Custos Detalhados</TabsTrigger>
+
           </TabsList>
         </div>
 
@@ -149,6 +157,8 @@ export function Relatorios() {
         <TabsContent value="talhao"><AbaPorTalhao propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="comparativo"><AbaComparativo propId={propId} safraAtualId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="insumos"><AbaInsumos propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="custos"><AbaCustosDetalhados propId={propId} safraId={safraId} /></TabsContent>
+
 
       </Tabs>
     </div>
@@ -1066,3 +1076,215 @@ function Pagination({ page, totalPages, total, onChange }: { page: number; total
 }
 
 export default Relatorios
+
+/* ════════════════════════════════════════════════
+   ABA 6 — CUSTOS DETALHADOS
+   ════════════════════════════════════════════════ */
+type GrupoCusto = {
+  categoria?: string
+  nome?: string
+  subtotal?: number
+  total?: number
+  itens?: any[]
+}
+
+function nomeGrupo(g: GrupoCusto) {
+  return g.categoria || g.nome || '—'
+}
+function subtotalGrupo(g: GrupoCusto) {
+  if (g.subtotal != null) return Number(g.subtotal)
+  if (g.total != null) return Number(g.total)
+  return (g.itens || []).reduce((s, i: any) => s + Number(i.valor ?? i.valor_total ?? 0), 0)
+}
+
+function BlocoGrupos({ titulo, grupos }: { titulo: string; grupos: GrupoCusto[] }) {
+  const total = grupos.reduce((s, g) => s + subtotalGrupo(g), 0)
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center justify-between text-base">
+          <span>{titulo}</span>
+          <span className="font-bold">{fmt(total)}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {grupos.length === 0 ? (
+          <div className="flex flex-col items-center py-8 text-muted-foreground">
+            <FileX className="h-8 w-8 mb-2 opacity-50" />
+            <p className="text-sm">Nenhum custo no período</p>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {grupos.map((g, gi) => (
+              <div key={gi} className="space-y-1">
+                <div className="flex items-baseline justify-between border-b pb-1">
+                  <span className="font-bold text-sm">{nomeGrupo(g)}</span>
+                  <span className="font-bold text-sm">{fmt(subtotalGrupo(g))}</span>
+                </div>
+                <div className="pl-4 space-y-1">
+                  {(g.itens || []).map((i: any, ii: number) => {
+                    const qtd = i.quantidade != null ? Number(i.quantidade) : null
+                    const un = i.unidade || i.unidade_medida || ''
+                    return (
+                      <div key={ii} className="flex items-baseline justify-between gap-2 text-sm">
+                        <span className="text-muted-foreground truncate">
+                          {i.nome || i.descricao || '—'}
+                          {qtd != null && qtd > 0 && (
+                            <span className="ml-1 text-xs opacity-70">
+                              ({fmtN(qtd, qtd % 1 === 0 ? 0 : 2)}{un ? ` ${un}` : ''})
+                            </span>
+                          )}
+                        </span>
+                        <span className="tabular-nums whitespace-nowrap">
+                          {fmt(Number(i.valor ?? i.valor_total ?? 0))}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="flex items-baseline justify-between pl-4 pt-1 text-xs text-muted-foreground">
+                  <span>Subtotal {nomeGrupo(g)}</span>
+                  <span className="font-bold text-foreground">{fmt(subtotalGrupo(g))}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function AbaCustosDetalhados({ propId, safraId }: { propId: string; safraId: string }) {
+  const [dataInicio, setDataInicio] = useState('')
+  const [dataFim, setDataFim] = useState('')
+  const [categoriaFiltro, setCategoriaFiltro] = useState('')
+  const [servicoFiltro, setServicoFiltro] = useState('')
+  const [talhaoFiltro, setTalhaoFiltro] = useState('')
+  const [ordenarPor, setOrdenarPor] = useState('valor_desc')
+
+  const { data: talhoes = [] } = useTalhoes(propId)
+
+  const { data: servicos = [] } = useQuery({
+    queryKey: ['servicos', propId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('listar_servicos_usuario', { p_propriedade_id: propId })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+    enabled: !!propId,
+  })
+
+  const { data: custosDetalhados, isLoading } = useQuery({
+    queryKey: ['custos-detalhado', propId, safraId, dataInicio, dataFim, categoriaFiltro, servicoFiltro, talhaoFiltro, ordenarPor],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('get_relatorio_custos_detalhado', {
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
+        p_data_inicio: dataInicio || null,
+        p_data_fim: dataFim || null,
+        p_categoria: categoriaFiltro || null,
+        p_servico_id: servicoFiltro || null,
+        p_talhao_id: talhaoFiltro || null,
+        p_ordenar_por: ordenarPor,
+      })
+      if (error) throw error
+      return data as any
+    },
+    enabled: !!propId && !!safraId,
+  })
+
+  const operacional: GrupoCusto[] = custosDetalhados?.operacional || []
+  const financeiro: GrupoCusto[] = custosDetalhados?.financeiro || []
+
+  const categorias = useMemo(() => {
+    const set = new Set<string>()
+    ;[...operacional, ...financeiro].forEach((g) => {
+      const n = nomeGrupo(g)
+      if (n && n !== '—') set.add(n)
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [operacional, financeiro])
+
+  const limpar = () => {
+    setDataInicio(''); setDataFim(''); setCategoriaFiltro('')
+    setServicoFiltro(''); setTalhaoFiltro(''); setOrdenarPor('valor_desc')
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">De</Label>
+              <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Até</Label>
+              <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Categoria</Label>
+              <Select value={categoriaFiltro || '_all'} onValueChange={(v) => setCategoriaFiltro(v === '_all' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">Todas</SelectItem>
+                  {categorias.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Serviço</Label>
+              <Select value={servicoFiltro || '_all'} onValueChange={(v) => setServicoFiltro(v === '_all' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">Todos</SelectItem>
+                  {servicos.filter((s: any) => s.ativo !== false).map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Talhão</Label>
+              <Select value={talhaoFiltro || '_all'} onValueChange={(v) => setTalhaoFiltro(v === '_all' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">Todos</SelectItem>
+                  {talhoes.map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Ordenar por</Label>
+              <Select value={ordenarPor} onValueChange={setOrdenarPor}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="valor_desc">Maior valor</SelectItem>
+                  <SelectItem value="valor_asc">Menor valor</SelectItem>
+                  <SelectItem value="nome_asc">Nome (A-Z)</SelectItem>
+                  <SelectItem value="quantidade_desc">Maior quantidade</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end mt-3">
+            <Button variant="ghost" size="sm" onClick={limpar}>Limpar filtros</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <SkeletonAba />
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <BlocoGrupos titulo="Operacional" grupos={operacional} />
+          <BlocoGrupos titulo="Financeiro" grupos={financeiro} />
+        </div>
+      )}
+    </div>
+  )
+}
