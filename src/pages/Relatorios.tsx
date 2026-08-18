@@ -1090,6 +1090,7 @@ export default Relatorios
    ABA 6 — CUSTOS DETALHADOS
    ════════════════════════════════════════════════ */
 function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
+  const { safraAtual } = useGlobal()
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
