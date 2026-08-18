@@ -82,7 +82,7 @@ export function LancamentoForm() {
   const [loading, setLoading] = useState(false)
   const [loadingItens, setLoadingItens] = useState(false)
   const [validandoEstoque, setValidandoEstoque] = useState(false)
-  const [adicionandoTipo, setAdicionandoTipo] = useState<'produto' | 'maquina' | 'servico_simples' | null>(null)
+  const [adicionandoTipo, setAdicionandoTipo] = useState<'produto' | 'maquina' | 'servico_simples' | 'abastecimento' | null>(null)
   const [custoAltoDialog, setCustoAltoDialog] = useState<{
     open: boolean
     valor: string
