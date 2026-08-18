@@ -266,7 +266,7 @@ function ServicoCard({ servico, onEdit }: { servico: Servico; onEdit: () => void
     },
   });
 
-  const isSimples = (servico.tipo_servico || 'composto') === 'simples';
+  const temValor = servico.tem_valor_proprio === true;
 
   return (
     <Card className="hover:shadow-lg transition-all border-2 border-blue-100">

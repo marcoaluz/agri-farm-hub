@@ -432,16 +432,6 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
             )}
           </div>
           <div>
-            <Label>Tipo *</Label>
-            <Select value={tipoServico} onValueChange={v => setTipoServico(v as 'simples' | 'composto')}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="simples">Simples — custo fixo por unidade</SelectItem>
-                <SelectItem value="composto">Composto — usa produtos e máquinas</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
             <Label>Descrição</Label>
             <Textarea value={descricao} onChange={e => setDescricao(e.target.value)}
               placeholder="Descrição opcional..." rows={2} />
