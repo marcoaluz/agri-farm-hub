@@ -24,10 +24,8 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { useGlobal } from '@/contexts/GlobalContext'
-import { useTalhoes } from '@/hooks/useTalhoes'
 
 import { exportarExcel, exportarPDF, type Coluna } from '@/lib/exportTabela'
 
