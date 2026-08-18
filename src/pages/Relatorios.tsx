@@ -858,7 +858,7 @@ function AbaComparativo({ propId, safraAtualId, propriedadeNome }: { propId: str
                 <XAxis dataKey="safra" fontSize={11} />
                 <YAxis yAxisId="left" fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
                 <YAxis yAxisId="right" orientation="right" fontSize={11} tickFormatter={(v) => `${v.toFixed(0)}%`} />
-                <Tooltip formatter={(v: number, n: string) => n === 'margem_pct' ? [`${Number(v).toFixed(1)}%`, 'Margem'] : [fmt(Number(v)), n === 'receita' ? 'Receita' : 'Custo']} />
+                <Tooltip formatter={(v: number, n: string) => n === 'Margem %' ? [`${Number(v).toFixed(1)}%`, 'Margem'] : [fmt(Number(v)), n]} />
                 <Legend />
                 <Bar yAxisId="left" dataKey="receita" name="Receita" fill="hsl(142,70%,40%)" radius={[4, 4, 0, 0]} />
                 <Bar yAxisId="left" dataKey="custo" name="Custo" fill="hsl(0,72%,51%)" radius={[4, 4, 0, 0]} />
