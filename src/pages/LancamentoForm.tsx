@@ -1140,6 +1140,31 @@ export function LancamentoForm() {
                         </Select>
                       </div>
                     )}
+
+                    {adicionandoTipo === 'abastecimento' && (
+                      <div className="mt-3">
+                        <Select onValueChange={(maquinaId) => {
+                          adicionarAbastecimento(maquinaId)
+                          setAdicionandoTipo(null)
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a máquina abastecida..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {maquinas?.map(m => (
+                              <SelectItem key={m.id} value={m.id}>
+                                {m.nome} — R$ {(m.custo_hora || 0).toFixed(2)}/h
+                              </SelectItem>
+                            ))}
+                            {(!maquinas || maquinas.length === 0) && (
+                              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                Nenhuma máquina cadastrada
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
