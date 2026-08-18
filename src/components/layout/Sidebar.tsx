@@ -169,21 +169,20 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        {/* Header Mobile */}
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-4 md:hidden">
-          <div className="flex items-center rounded-lg bg-background px-2 py-1">
-            <img src="/logo-full.png" alt="Agro GFI" className="h-10 w-auto" />
-          </div>
+        {/* Header com logo */}
+        <div className="flex shrink-0 items-center justify-center border-b border-sidebar-border bg-background px-4 py-3">
+          <img src="/logo-full.png" alt="Agro GFI" className="h-12 w-auto" />
 
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="text-sidebar-foreground hover:bg-sidebar-accent"
+            className="absolute right-2 top-2 text-foreground hover:bg-muted md:hidden"
           >
             <X className="h-5 w-5" />
           </Button>
         </div>
+
 
         {/* Navegação */}
         <ScrollArea className="flex-1 min-h-0">
