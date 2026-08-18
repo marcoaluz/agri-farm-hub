@@ -162,10 +162,11 @@ export default function Dashboard() {
 
   // ── NEW KPI RPC (filtered mode) ──
   const { data: kpisV2, isLoading: loadKpisV2 } = useQuery({
-    queryKey: ['dash-kpis-v2', propId],
+    queryKey: ['dash-kpis-v2', propId, safraAtual?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc('get_dashboard_kpis_completo', {
         p_propriedade_id: propId,
+        p_safra_id: safraAtual?.id || null,
       })
       if (error) throw error
       return data as any
