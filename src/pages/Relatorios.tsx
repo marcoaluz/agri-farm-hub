@@ -1146,6 +1146,44 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
     return Array.from(nomes).sort()
   }, [operacional])
 
+  const colunasExport: Coluna[] = [
+    { header: 'Seção', key: 'secao', width: 14 },
+    { header: 'Categoria', key: 'categoria', width: 18 },
+    { header: 'Item', key: 'item', width: 24 },
+    { header: 'Quantidade', key: 'quantidade', width: 14 },
+    { header: 'Unidade', key: 'unidade', width: 10 },
+    { header: 'Valor', key: 'valor', width: 14 },
+  ]
+
+  const linhasExport = useMemo(() => {
+    const linhas: any[] = []
+    operacional.forEach((grupo: any) => {
+      (grupo.itens || []).forEach((item: any) => {
+        linhas.push({
+          secao: 'Operacional',
+          categoria: grupo.grupo,
+          item: item.nome,
+          quantidade: item.quantidade ?? '',
+          unidade: item.unidade ?? '',
+          valor: fmt(Number(item.valor)),
+        })
+      })
+    })
+    financeiro.forEach((grupo: any) => {
+      (grupo.itens || []).forEach((item: any) => {
+        linhas.push({
+          secao: 'Financeiro',
+          categoria: String(grupo.grupo).replace(/_/g, ' '),
+          item: item.nome,
+          quantidade: '',
+          unidade: '',
+          valor: (item.tipo === 'receita' ? '+ ' : '- ') + fmt(Number(item.valor)),
+        })
+      })
+    })
+    return linhas
+  }, [operacional, financeiro])
+
   const totalOperacional = operacional.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
   const totalFinanceiro = financeiro.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
 
@@ -1155,6 +1193,14 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
 
   return (
     <div className="space-y-4">
+      <ExportButtons
+        propriedadeNome={propriedadeNome}
+        nomeAba="Custos Detalhados"
+        nomeArquivo="custos-detalhados"
+        colunas={colunasExport}
+        linhas={linhasExport}
+        safraNome={safraAtual?.nome}
+      />
       {/* Filtros */}
       <Card>
         <CardContent className="pt-4">
