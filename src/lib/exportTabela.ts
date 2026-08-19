@@ -126,3 +126,132 @@ export async function exportarPDF(opts: {
 
   doc.save(`${nomeArquivo}-${hoje()}.pdf`)
 }
+
+export async function exportarCustosDetalhadosPDF(opts: {
+  nomeArquivo: string
+  propriedadeNome: string
+  safraNome?: string
+  operacional: { grupo: string; subtotal: number; itens: { nome: string; vezes?: number; valor: number }[] }[]
+  financeiro: { grupo: string; subtotal: number; itens: { nome: string; valor: number; tipo?: string }[] }[]
+  totalOperacional: number
+  totalDespesas: number
+  totalReceitas: number
+}) {
+  const { nomeArquivo, propriedadeNome, safraNome, operacional, financeiro, totalOperacional, totalDespesas, totalReceitas } = opts
+  const doc = new jsPDF()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 14
+  let y = 14
+
+  const logo = await getLogoBase64()
+  const desenharMarcaDagua = () => {
+    if (!logo) return
+    try {
+      const tamanho = 90
+      doc.saveGraphicsState()
+      // @ts-ignore
+      doc.setGState(new (doc as any).GState({ opacity: 0.06 }))
+      doc.addImage(logo, 'PNG', (pageWidth - tamanho) / 2, (pageHeight - tamanho) / 2, tamanho, tamanho)
+      doc.restoreGraphicsState()
+    } catch {}
+  }
+
+  const novaPaginaSeNecessario = (alturaNecessaria: number) => {
+    if (y + alturaNecessaria > pageHeight - 20) {
+      doc.addPage()
+      desenharMarcaDagua()
+      y = 14
+    }
+  }
+
+  desenharMarcaDagua()
+  let textX = margin
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', margin, 8, 12, 12); textX = margin + 16 } catch {}
+  }
+  doc.setFontSize(14); doc.setFont('helvetica', 'bold')
+  doc.text('Agro GFI', textX, 14)
+  doc.setFontSize(11); doc.setFont('helvetica', 'normal')
+  doc.text('Relatório: Custos Detalhados', textX, 20)
+  doc.setFontSize(10)
+  doc.text(`Propriedade: ${propriedadeNome}`, margin, 30)
+  if (safraNome) doc.text(`Safra: ${safraNome}`, margin, 36)
+  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, safraNome ? 42 : 36)
+  y = safraNome ? 50 : 44
+
+  const desenharSecao = (
+    titulo: string, totalGeral: number,
+    grupos: { grupo: string; subtotal: number; itens: any[] }[],
+    linhaFormatador: (item: any) => [string, string]
+  ) => {
+    novaPaginaSeNecessario(14)
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold')
+    doc.text(titulo, margin, y)
+    doc.text(`Total: R$ ${totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin, y, { align: 'right' })
+    y += 6
+
+    grupos.forEach((grupo) => {
+      novaPaginaSeNecessario(10 + grupo.itens.length * 6)
+
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold')
+      doc.text(grupo.grupo, margin, y)
+      doc.text(`R$ ${Number(grupo.subtotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin, y, { align: 'right' })
+      y += 1
+      doc.setDrawColor(200)
+      doc.line(margin, y, pageWidth - margin, y)
+      y += 5
+
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal')
+      grupo.itens.forEach((item: any) => {
+        const [esquerda, direita] = linhaFormatador(item)
+        doc.setTextColor(90)
+        doc.text(esquerda, margin + 4, y)
+        doc.setTextColor(item.tipo === 'receita' ? 34 : item.tipo === 'despesa' ? 180 : 90)
+        doc.text(direita, pageWidth - margin, y, { align: 'right' })
+        doc.setTextColor(0)
+        y += 5.5
+      })
+      y += 3
+    })
+    y += 4
+  }
+
+  desenharSecao('Operacional', totalOperacional, operacional, (item) => [
+    `${item.nome}${item.vezes != null ? ` ${item.vezes}x` : ''}`,
+    `= R$ ${Number(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+  ])
+
+  novaPaginaSeNecessario(10)
+  doc.setFontSize(12); doc.setFont('helvetica', 'bold')
+  doc.text('Financeiro', margin, y)
+  doc.text(
+    `Despesas: R$ ${totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}   |   Recebimentos: R$ ${totalReceitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+    pageWidth - margin, y, { align: 'right' }
+  )
+  y += 6
+
+  financeiro.forEach((grupo) => {
+    novaPaginaSeNecessario(10 + grupo.itens.length * 6)
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold')
+    doc.text(grupo.grupo, margin, y)
+    doc.text(`R$ ${Number(grupo.subtotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin, y, { align: 'right' })
+    y += 1
+    doc.setDrawColor(200)
+    doc.line(margin, y, pageWidth - margin, y)
+    y += 5
+
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal')
+    grupo.itens.forEach((item: any) => {
+      doc.setTextColor(90)
+      doc.text(item.nome, margin + 4, y)
+      doc.setTextColor(item.tipo === 'receita' ? 34 : 180)
+      doc.text(`${item.tipo === 'receita' ? '+' : '-'} R$ ${Number(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin, y, { align: 'right' })
+      doc.setTextColor(0)
+      y += 5.5
+    })
+    y += 3
+  })
+
+  doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+}
