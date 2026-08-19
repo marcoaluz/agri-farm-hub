@@ -1168,6 +1168,16 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
     enabled: !!propId,
   })
 
+  const categoriasServicoQ = useQuery({
+    queryKey: ['rel-categorias-servico', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('listar_categorias_servico_usadas', { p_propriedade_id: propId, p_safra_id: safraId })
+      if (error) throw error
+      return (data || []).map((d: any) => d.categoria) as string[]
+    },
+    enabled: !!propId && !!safraId,
+  })
+
   const relatorioQ = useQuery({
     queryKey: ['rel-custos-detalhado', propId, safraId, dataInicio, dataFim, categoriaFiltro, itemFiltro, talhaoFiltro, ordenarPor],
     queryFn: async () => {
@@ -1190,12 +1200,6 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
 
   const operacional = (relatorioQ.data?.operacional || []) as any[]
   const financeiro = (relatorioQ.data?.financeiro || []) as any[]
-
-  const categoriasDisponiveis = useMemo(() => {
-    const nomes = new Set<string>()
-    operacional.forEach((g: any) => nomes.add(g.grupo))
-    return Array.from(nomes).sort()
-  }, [operacional])
 
   const colunasExport: Coluna[] = [
     { header: 'Seção', key: 'secao', width: 14 },
@@ -1270,7 +1274,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_todos">Todas</SelectItem>
-                  {categoriasDisponiveis.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {(categoriasServicoQ.data || []).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -1358,11 +1362,8 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                           {item.vezes != null && (
                             <span className="text-xs ml-1 text-muted-foreground">{item.vezes}x</span>
                           )}
-                          {item.quantidade != null && item.unidade && (
-                            <span className="text-xs ml-1">({fmtN(item.quantidade)} {item.unidade})</span>
-                          )}
                         </span>
-                        <span>{fmt(Number(item.valor))}</span>
+                        <span>= {fmt(Number(item.valor))}</span>
                       </div>
                     ))}
                   </div>
