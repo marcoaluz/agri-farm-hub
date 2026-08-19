@@ -311,9 +311,17 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
                 <XAxis dataKey="categoria" fontSize={11} />
                 <YAxis fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
-                  formatter={(v: number, n: string) =>
-                    n === 'custo_total' ? [fmt(Number(v)), 'Custo'] : [v, 'Lançamentos']
-                  }
+                  content={({ active, payload }) => {
+                    if (!active || !payload || !payload.length) return null
+                    const d = payload[0].payload
+                    return (
+                      <div className="bg-background border rounded-lg shadow-md p-3 text-sm">
+                        <p className="font-semibold mb-1">{d.categoria}</p>
+                        <p>Total: <span className="font-medium">{fmt(Number(d.custo_total))}</span></p>
+                        <p>Lançamentos: <span className="font-medium">{d.total_lancamentos}</span></p>
+                      </div>
+                    )
+                  }}
                 />
                 <Legend />
                 <Bar dataKey="custo_total" name="Custo Total" fill="hsl(142,70%,40%)" radius={[4, 4, 0, 0]} />
