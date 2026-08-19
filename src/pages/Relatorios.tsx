@@ -923,6 +923,8 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
   const top10 = itens.slice(0, 10).map((i: any) => ({
     nome: i.produto_nome || '—',
     valor: Number(i.custo_total || 0),
+    quantidade: Number(i.quantidade_total || 0),
+    unidade: i.unidade_medida || '',
   }))
 
   const exportCSV = () => {
