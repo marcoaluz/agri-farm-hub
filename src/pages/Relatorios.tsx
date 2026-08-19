@@ -1144,14 +1144,14 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
-  const [servicoFiltro, setServicoFiltro] = useState('')
+  const [itemFiltro, setItemFiltro] = useState<{ tipo: string; id: string } | null>(null)
   const [talhaoFiltro, setTalhaoFiltro] = useState('')
   const [ordenarPor, setOrdenarPor] = useState('valor_desc')
 
-  const servicosQ = useQuery({
-    queryKey: ['rel-servicos-lista', propId],
+  const itensFiltraveisQ = useQuery({
+    queryKey: ['rel-itens-filtraveis', propId],
     queryFn: async () => {
-      const { data, error } = await db.rpc('listar_servicos_usuario', { p_propriedade_id: propId })
+      const { data, error } = await db.rpc('listar_itens_filtraveis', { p_propriedade_id: propId })
       if (error) throw error
       return (data || []) as any[]
     },
@@ -1169,7 +1169,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   })
 
   const relatorioQ = useQuery({
-    queryKey: ['rel-custos-detalhado', propId, safraId, dataInicio, dataFim, categoriaFiltro, servicoFiltro, talhaoFiltro, ordenarPor],
+    queryKey: ['rel-custos-detalhado', propId, safraId, dataInicio, dataFim, categoriaFiltro, itemFiltro, talhaoFiltro, ordenarPor],
     queryFn: async () => {
       const { data, error } = await db.rpc('get_relatorio_custos_detalhado', {
         p_propriedade_id: propId,
@@ -1177,7 +1177,8 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
         p_data_inicio: dataInicio || null,
         p_data_fim: dataFim || null,
         p_categoria: categoriaFiltro || null,
-        p_servico_id: servicoFiltro || null,
+        p_item_tipo: itemFiltro?.tipo || null,
+        p_item_id: itemFiltro?.id || null,
         p_talhao_id: talhaoFiltro || null,
         p_ordenar_por: ordenarPor,
       })
@@ -1238,7 +1239,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   const totalFinanceiro = financeiro.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
 
   const limparFiltros = () => {
-    setDataInicio(''); setDataFim(''); setCategoriaFiltro(''); setServicoFiltro(''); setTalhaoFiltro(''); setOrdenarPor('valor_desc')
+    setDataInicio(''); setDataFim(''); setCategoriaFiltro(''); setItemFiltro(null); setTalhaoFiltro(''); setOrdenarPor('valor_desc')
   }
 
   return (
@@ -1274,12 +1275,23 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
               </Select>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Serviço</label>
-              <Select value={servicoFiltro || '_todos'} onValueChange={v => setServicoFiltro(v === '_todos' ? '' : v)}>
+              <label className="text-xs text-muted-foreground">Item usado</label>
+              <Select
+                value={itemFiltro ? `${itemFiltro.tipo}:${itemFiltro.id}` : '_todos'}
+                onValueChange={(v) => {
+                  if (v === '_todos') { setItemFiltro(null); return }
+                  const [tipo, id] = v.split(':')
+                  setItemFiltro({ tipo, id })
+                }}
+              >
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_todos">Todos</SelectItem>
-                  {(servicosQ.data || []).map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  {(itensFiltraveisQ.data || []).map((it: any) => (
+                    <SelectItem key={`${it.item_tipo}:${it.item_id}`} value={`${it.item_tipo}:${it.item_id}`}>
+                      {it.item_nome} {it.item_tipo === 'maquina' ? '(máquina)' : it.item_tipo === 'servico' ? '(serviço)' : ''}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1306,7 +1318,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
               </Select>
             </div>
           </div>
-          {(dataInicio || dataFim || categoriaFiltro || servicoFiltro || talhaoFiltro) && (
+          {(dataInicio || dataFim || categoriaFiltro || itemFiltro || talhaoFiltro) && (
             <Button variant="ghost" size="sm" className="mt-2" onClick={limparFiltros}>
               Limpar filtros
             </Button>
