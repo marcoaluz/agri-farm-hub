@@ -1362,11 +1362,8 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                           {item.vezes != null && (
                             <span className="text-xs ml-1 text-muted-foreground">{item.vezes}x</span>
                           )}
-                          {item.quantidade != null && item.unidade && (
-                            <span className="text-xs ml-1">({fmtN(item.quantidade)} {item.unidade})</span>
-                          )}
                         </span>
-                        <span>{fmt(Number(item.valor))}</span>
+                        <span>= {fmt(Number(item.valor))}</span>
                       </div>
                     ))}
                   </div>
