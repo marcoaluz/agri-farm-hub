@@ -1240,7 +1240,25 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   }, [operacional, financeiro])
 
   const totalOperacional = operacional.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
-  const totalFinanceiro = financeiro.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
+  const totalDespesas = useMemo(() => {
+    let soma = 0
+    financeiro.forEach((grupo: any) => {
+      (grupo.itens || []).forEach((item: any) => {
+        if (item.tipo === 'despesa') soma += Number(item.valor || 0)
+      })
+    })
+    return soma
+  }, [financeiro])
+
+  const totalReceitas = useMemo(() => {
+    let soma = 0
+    financeiro.forEach((grupo: any) => {
+      (grupo.itens || []).forEach((item: any) => {
+        if (item.tipo === 'receita') soma += Number(item.valor || 0)
+      })
+    })
+    return soma
+  }, [financeiro])
 
   const limparFiltros = () => {
     setDataInicio(''); setDataFim(''); setCategoriaFiltro(''); setItemFiltro(null); setTalhaoFiltro(''); setOrdenarPor('valor_desc')
