@@ -1343,6 +1343,9 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                       <div key={idx} className="flex items-center justify-between text-sm pl-4 py-1 text-muted-foreground">
                         <span>
                           {item.nome}
+                          {item.vezes != null && (
+                            <span className="text-xs ml-1 text-muted-foreground">{item.vezes}x</span>
+                          )}
                           {item.quantidade != null && item.unidade && (
                             <span className="text-xs ml-1">({fmtN(item.quantidade)} {item.unidade})</span>
                           )}
