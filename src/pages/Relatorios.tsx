@@ -27,7 +27,7 @@ import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { useGlobal } from '@/contexts/GlobalContext'
 
-import { exportarExcel, exportarPDF, type Coluna } from '@/lib/exportTabela'
+import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, type Coluna } from '@/lib/exportTabela'
 
 
 /* ───────────────── helpers ───────────────── */
