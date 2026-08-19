@@ -923,6 +923,8 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
   const top10 = itens.slice(0, 10).map((i: any) => ({
     nome: i.produto_nome || '—',
     valor: Number(i.custo_total || 0),
+    quantidade: Number(i.quantidade_total || 0),
+    unidade: i.unidade_medida || '',
   }))
 
   const exportCSV = () => {
@@ -983,7 +985,19 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
               <YAxis type="category" dataKey="nome" fontSize={11} width={140} />
-              <Tooltip formatter={(v: number) => fmt(Number(v))} />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload || !payload.length) return null
+                  const d = payload[0].payload
+                  return (
+                    <div className="bg-background border rounded-lg shadow-md p-3 text-sm">
+                      <p className="font-semibold mb-1">{d.nome}</p>
+                      <p>Custo: <span className="font-medium">{fmt(Number(d.valor))}</span></p>
+                      <p>Quantidade: <span className="font-medium">{fmtN(d.quantidade)} {d.unidade}</span></p>
+                    </div>
+                  )
+                }}
+              />
               <Bar dataKey="valor" name="Custo">
                 {top10.map((d, i) => <Cell key={i} fill={colorScale(d.valor, maxCusto)} />)}
               </Bar>
