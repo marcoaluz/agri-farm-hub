@@ -636,7 +636,7 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
 
   const chartData = useMemo(() =>
     [...cards].sort((a, b) => b.custo - a.custo).map((c) => ({
-      nome: c.nome, custo_total: c.custo, receita_estimada: c.receita,
+      nome: c.nome, custo_total: c.custo, produtividade: c.produtividade, unidade: c.unidade,
     })), [cards])
 
   if (talhaoQ.isLoading || rentQ.isLoading) return <SkeletonAba />
