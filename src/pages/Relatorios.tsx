@@ -324,11 +324,6 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
                         <p className="font-semibold mb-1">{d.categoria}</p>
                         <p>Total: <span className="font-medium">{fmt(Number(d.custo_total))}</span></p>
                         <p>Lançamentos: <span className="font-medium">{d.total_lancamentos}</span></p>
-                        {d.quantidades && d.quantidades.length > 0 && (
-                          <p>Qtd: <span className="font-medium">
-                            {d.quantidades.map((q: any) => `${fmtN(q.quantidade)} ${q.unidade}`).join(' + ')}
-                          </span></p>
-                        )}
                       </div>
                     )
                   }}
