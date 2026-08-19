@@ -1274,7 +1274,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_todos">Todas</SelectItem>
-                  {categoriasDisponiveis.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {(categoriasServicoQ.data || []).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
