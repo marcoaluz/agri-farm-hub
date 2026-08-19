@@ -720,18 +720,31 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Custo vs Receita por Talhão</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Custo vs Produtividade por Talhão</CardTitle></CardHeader>
         <CardContent style={{ height: Math.max(280, chartData.length * 42 + 60) }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
+            <ComposedChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+              <XAxis type="number" xAxisId="custo" fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+              <XAxis type="number" xAxisId="prod" orientation="top" fontSize={11} hide />
               <YAxis type="category" dataKey="nome" fontSize={11} width={120} />
-              <Tooltip formatter={(v: number) => fmt(Number(v))} />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload || !payload.length) return null
+                  const d = payload[0].payload
+                  return (
+                    <div className="bg-background border rounded-lg shadow-md p-3 text-sm">
+                      <p className="font-semibold mb-1">{d.nome}</p>
+                      <p>Custo: <span className="font-medium">{fmt(Number(d.custo_total))}</span></p>
+                      <p>Produtividade: <span className="font-medium">{d.produtividade} {d.unidade}/ha</span></p>
+                    </div>
+                  )
+                }}
+              />
               <Legend />
-              <Bar dataKey="custo_total" name="Custo" fill="hsl(0,72%,51%)" />
-              <Bar dataKey="receita_estimada" name="Receita estimada" fill="hsl(142,70%,40%)" />
-            </BarChart>
+              <Bar xAxisId="custo" dataKey="custo_total" name="Custo" fill="hsl(0,72%,51%)" />
+              <Bar xAxisId="prod" dataKey="produtividade" name="Produtividade (por ha)" fill="hsl(142,70%,40%)" />
+            </ComposedChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
