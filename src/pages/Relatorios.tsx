@@ -1240,7 +1240,25 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   }, [operacional, financeiro])
 
   const totalOperacional = operacional.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
-  const totalFinanceiro = financeiro.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
+  const totalDespesas = useMemo(() => {
+    let soma = 0
+    financeiro.forEach((grupo: any) => {
+      (grupo.itens || []).forEach((item: any) => {
+        if (item.tipo === 'despesa') soma += Number(item.valor || 0)
+      })
+    })
+    return soma
+  }, [financeiro])
+
+  const totalReceitas = useMemo(() => {
+    let soma = 0
+    financeiro.forEach((grupo: any) => {
+      (grupo.itens || []).forEach((item: any) => {
+        if (item.tipo === 'receita') soma += Number(item.valor || 0)
+      })
+    })
+    return soma
+  }, [financeiro])
 
   const limparFiltros = () => {
     setDataInicio(''); setDataFim(''); setCategoriaFiltro(''); setItemFiltro(null); setTalhaoFiltro(''); setOrdenarPor('valor_desc')
@@ -1379,8 +1397,9 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 <CardTitle className="text-base flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
                   Financeiro
-                  <span className="ml-auto text-sm font-normal text-muted-foreground">
-                    Total: <span className="font-bold text-foreground">{fmt(totalFinanceiro)}</span>
+                  <span className="ml-auto text-sm font-normal text-muted-foreground space-x-3">
+                    <span>Despesas: <span className="font-bold text-destructive">{fmt(totalDespesas)}</span></span>
+                    <span>Recebimentos: <span className="font-bold text-green-600">{fmt(totalReceitas)}</span></span>
                   </span>
                 </CardTitle>
               </CardHeader>
