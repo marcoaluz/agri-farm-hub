@@ -1266,14 +1266,29 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
 
   return (
     <div className="space-y-4">
-      <ExportButtons
-        propriedadeNome={propriedadeNome}
-        nomeAba="Custos Detalhados"
-        nomeArquivo="custos-detalhados"
-        colunas={colunasExport}
-        linhas={linhasExport}
-        safraNome={safraAtual?.nome}
-      />
+      <div className="flex flex-wrap justify-end gap-2 mb-2">
+        <Button
+          variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]"
+          onClick={() => exportarCustosDetalhadosPDF({
+            nomeArquivo: 'custos-detalhados',
+            propriedadeNome,
+            safraNome: safraAtual?.nome,
+            operacional,
+            financeiro,
+            totalOperacional,
+            totalDespesas,
+            totalReceitas,
+          })}
+        >
+          <FileText className="h-4 w-4 mr-1" /> Exportar PDF
+        </Button>
+        <Button
+          variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]"
+          onClick={() => exportarExcel({ nomeArquivo: 'custos-detalhados', nomeAba: 'Custos Detalhados', colunas: colunasExport, linhas: linhasExport, propriedadeNome, safraNome: safraAtual?.nome })}
+        >
+          <FileSpreadsheet className="h-4 w-4 mr-1" /> Exportar Excel
+        </Button>
+      </div>
       {/* Filtros */}
       <Card>
         <CardContent className="pt-4">
