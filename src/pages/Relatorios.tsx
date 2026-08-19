@@ -1144,14 +1144,14 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
-  const [servicoFiltro, setServicoFiltro] = useState('')
+  const [itemFiltro, setItemFiltro] = useState<{ tipo: string; id: string } | null>(null)
   const [talhaoFiltro, setTalhaoFiltro] = useState('')
   const [ordenarPor, setOrdenarPor] = useState('valor_desc')
 
-  const servicosQ = useQuery({
-    queryKey: ['rel-servicos-lista', propId],
+  const itensFiltraveisQ = useQuery({
+    queryKey: ['rel-itens-filtraveis', propId],
     queryFn: async () => {
-      const { data, error } = await db.rpc('listar_servicos_usuario', { p_propriedade_id: propId })
+      const { data, error } = await db.rpc('listar_itens_filtraveis', { p_propriedade_id: propId })
       if (error) throw error
       return (data || []) as any[]
     },
