@@ -456,7 +456,7 @@ function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; s
     const receita = evol.reduce((s: number, m: any) => s + Number(m.receita || 0), 0)
     const custoLanc = evol.reduce((s: number, m: any) => s + Number(m.custo_lancamentos || 0), 0)
     const custoFin = evol.reduce((s: number, m: any) => s + Number(m.custo_financeiro || 0), 0)
-    const custo = custoLanc + custoFin
+    const custo = custoFin
     const resultado = receita - custo
     const margem = receita > 0 ? (resultado / receita) * 100 : 0
     return { receita, custo, resultado, margem }
@@ -636,7 +636,7 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
 
   const chartData = useMemo(() =>
     [...cards].sort((a, b) => b.custo - a.custo).map((c) => ({
-      nome: c.nome, custo_total: c.custo, produtividade: c.produtividade, unidade: c.unidade,
+      nome: c.nome, custo_total: c.custo, colhida: c.colhida, unidade: c.unidade,
     })), [cards])
 
   if (talhaoQ.isLoading || rentQ.isLoading) return <SkeletonAba />
@@ -720,7 +720,7 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Custo vs Produtividade por Talhão</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Custo vs Quantidade Colhida por Talhão</CardTitle></CardHeader>
         <CardContent style={{ height: Math.max(280, chartData.length * 42 + 60) }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
@@ -736,14 +736,14 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
                     <div className="bg-background border rounded-lg shadow-md p-3 text-sm">
                       <p className="font-semibold mb-1">{d.nome}</p>
                       <p>Custo: <span className="font-medium">{fmt(Number(d.custo_total))}</span></p>
-                      <p>Produtividade: <span className="font-medium">{d.produtividade} {d.unidade}/ha</span></p>
+                      <p>Quantidade Colhida: <span className="font-medium">{fmtN(d.colhida)} {d.unidade}</span></p>
                     </div>
                   )
                 }}
               />
               <Legend />
               <Bar xAxisId="custo" dataKey="custo_total" name="Custo" fill="hsl(0,72%,51%)" />
-              <Bar xAxisId="prod" dataKey="produtividade" name="Produtividade (por ha)" fill="hsl(142,70%,40%)" />
+              <Bar xAxisId="prod" dataKey="colhida" name="Quantidade Colhida" fill="hsl(142,70%,40%)" />
             </ComposedChart>
           </ResponsiveContainer>
         </CardContent>
