@@ -201,7 +201,7 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
     categoria: c.out_categoria || 'Outros',
     custo_total: Number(c.custo_total || 0),
     total_lancamentos: c.total_lancamentos,
-    quantidades: c.quantidades || [],
+    itens: c.itens || [],
   }))
 
   const talhoesUnicos = useMemo(() => {
@@ -322,8 +322,16 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
                     return (
                       <div className="bg-background border rounded-lg shadow-md p-3 text-sm">
                         <p className="font-semibold mb-1">{d.categoria}</p>
-                        <p>Total: <span className="font-medium">{fmt(Number(d.custo_total))}</span></p>
-                        <p>Lançamentos: <span className="font-medium">{d.total_lancamentos}</span></p>
+                        <p className="mb-1">Total: <span className="font-medium">{fmt(Number(d.custo_total))}</span></p>
+                        {d.itens && d.itens.length > 0 && (
+                          <div className="border-t pt-1 mt-1 space-y-0.5">
+                            {d.itens.map((it: any, idx: number) => (
+                              <p key={idx} className="text-xs">
+                                {it.nome} {it.vezes}x = {fmt(Number(it.valor))}
+                              </p>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )
                   }}
