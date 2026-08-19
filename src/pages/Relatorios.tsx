@@ -1397,8 +1397,9 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 <CardTitle className="text-base flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
                   Financeiro
-                  <span className="ml-auto text-sm font-normal text-muted-foreground">
-                    Total: <span className="font-bold text-foreground">{fmt(totalFinanceiro)}</span>
+                  <span className="ml-auto text-sm font-normal text-muted-foreground space-x-3">
+                    <span>Despesas: <span className="font-bold text-destructive">{fmt(totalDespesas)}</span></span>
+                    <span>Recebimentos: <span className="font-bold text-green-600">{fmt(totalReceitas)}</span></span>
                   </span>
                 </CardTitle>
               </CardHeader>
