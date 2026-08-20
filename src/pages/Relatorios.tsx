@@ -1378,7 +1378,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
 
       {relatorioQ.isLoading ? (
         <SkeletonAba />
-      ) : operacional.length === 0 && financeiro.length === 0 ? (
+      ) : (incluirOperacional ? operacional : []).length === 0 && (incluirFinanceiro ? financeiro : []).length === 0 ? (
         <Card><CardContent className="pt-6"><EmptyState message="Nenhum custo encontrado com esses filtros" /></CardContent></Card>
       ) : (
         <>
