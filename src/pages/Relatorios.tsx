@@ -1241,7 +1241,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
       (grupo.itens || []).forEach((item: any) => {
         linhas.push({
           secao: 'Financeiro',
-          categoria: String(grupo.grupo).replace(/_/g, ' '),
+          categoria: labelGrupo(grupo.grupo),
           item: item.nome,
           quantidade: '',
           unidade: '',
