@@ -150,22 +150,23 @@ export async function exportarCustosDetalhadosPDF(opts: {
   // Remove sufixo entre parênteses do fim da unidade (ex: "Sacas (60kg)" -> "Sacas")
   const unidadeCurta = (unidade?: string) => (unidade || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
 
-  // Formata a linha de um item Operacional de acordo com o tipo (produto/máquina/serviço/abastecimento/manutenção)
-  const formatarItemOperacional = (item: any): string => {
+  // Formata só a coluna de Quantidade de um item Operacional, de acordo com o tipo.
+  // item.vezes continua vindo do RPC normalmente, só não é mais desenhado no PDF.
+  const formatarQtdeOperacional = (item: any): string => {
     const qtd = item.quantidade != null ? fmt2(Number(item.quantidade)) : null
     const un = unidadeCurta(item.unidade)
     switch (item.tipo_ref) {
       case 'produto':
-        return `${item.nome} ${item.vezes}x${qtd != null ? `, ${qtd} (${un})` : ''}`
+        return qtd != null ? `${qtd} (${un})` : '-'
       case 'maquina':
       case 'servico_simples':
-        return `${item.nome} ${item.vezes}x${qtd != null ? ` ${qtd}(${un})` : ''}`
+        return qtd != null ? `${qtd}(${un})` : '-'
       case 'abastecimento':
-        return `${item.nome} ${item.vezes}x${qtd != null ? ` (${qtd} ${un})` : ''}`
+        return qtd != null ? `(${qtd} ${un})` : '-'
       case 'manutencao':
-        return `${item.nome} ${item.vezes}x`
+        return '-'
       default:
-        return `${item.nome}${item.vezes != null ? ` ${item.vezes}x` : ''}`
+        return qtd != null ? `${qtd}${un ? ` (${un})` : ''}` : '-'
     }
   }
 
@@ -209,16 +210,25 @@ export async function exportarCustosDetalhadosPDF(opts: {
   doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, safraNome ? 42 : 36)
   y = safraNome ? 50 : 44
 
+  const COL_QTDE_X = pageWidth - margin - 38
+
   const desenharSecao = (
     titulo: string, totalGeral: number,
     grupos: { grupo: string; subtotal: number; itens: any[] }[],
-    linhaFormatador: (item: any) => [string, string]
+    linhaFormatador: (item: any) => [string, string, string]
   ) => {
-    novaPaginaSeNecessario(14)
+    novaPaginaSeNecessario(16)
     doc.setFontSize(12); doc.setFont('helvetica', 'bold')
     doc.text(titulo, margin, y)
     doc.text(`Total: R$ ${fmt2(totalGeral)}`, pageWidth - margin, y, { align: 'right' })
     y += 6
+
+    doc.setFontSize(8); doc.setFont('helvetica', 'bold')
+    doc.setTextColor(140)
+    doc.text('Qtde.', COL_QTDE_X, y, { align: 'right' })
+    doc.text('Valor', pageWidth - margin, y, { align: 'right' })
+    doc.setTextColor(0)
+    y += 4
 
     grupos.forEach((grupo) => {
       novaPaginaSeNecessario(10 + grupo.itens.length * 6)
@@ -233,17 +243,13 @@ export async function exportarCustosDetalhadosPDF(opts: {
 
       doc.setFontSize(9); doc.setFont('helvetica', 'normal')
       grupo.itens.forEach((item: any) => {
-        const [esquerda, direita] = linhaFormatador(item)
+        const [nome, qtde, valor] = linhaFormatador(item)
         doc.setTextColor(COR_TEXTO)
-        doc.text(esquerda, margin + 4, y)
-        if (item.tipo === 'receita') {
-          doc.setTextColor(...COR_RECEITA)
-        } else if (item.tipo === 'despesa') {
-          doc.setTextColor(...COR_DESPESA)
-        } else {
-          doc.setTextColor(COR_TEXTO)
-        }
-        doc.text(direita, pageWidth - margin, y, { align: 'right' })
+        doc.text(nome, margin + 4, y)
+        doc.setTextColor(140)
+        doc.text(qtde, COL_QTDE_X, y, { align: 'right' })
+        doc.setTextColor(COR_TEXTO)
+        doc.text(valor, pageWidth - margin, y, { align: 'right' })
         doc.setTextColor(0)
         y += 5.5
       })
@@ -254,8 +260,9 @@ export async function exportarCustosDetalhadosPDF(opts: {
 
   if (operacional.length > 0) {
     desenharSecao('Operacional', totalOperacional, operacional, (item) => [
-      formatarItemOperacional(item),
-      `= R$ ${fmt2(item.valor)}`,
+      item.nome,
+      formatarQtdeOperacional(item),
+      `R$ ${fmt2(item.valor)}`,
     ])
   }
 
