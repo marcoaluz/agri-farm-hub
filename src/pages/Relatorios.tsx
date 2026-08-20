@@ -1363,6 +1363,16 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
               Limpar filtros
             </Button>
           )}
+          <div className="flex gap-4 items-center mt-3">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={incluirOperacional} onCheckedChange={(v) => setIncluirOperacional(!!v)} />
+              Operacional
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={incluirFinanceiro} onCheckedChange={(v) => setIncluirFinanceiro(!!v)} />
+              Financeiro
+            </label>
+          </div>
         </CardContent>
       </Card>
 
