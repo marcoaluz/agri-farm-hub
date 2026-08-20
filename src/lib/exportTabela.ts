@@ -425,3 +425,102 @@ export async function exportarEstoquePDF(opts: {
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 }
+
+const TIPO_ESTOQUE_LABEL_INSUMOS: Record<string, string> = {
+  agricola: 'Agrícola',
+  pecuario: 'Pecuária',
+  geral: 'Geral',
+}
+
+export async function exportarInsumosPDF(opts: {
+  nomeArquivo: string
+  propriedadeNome: string
+  safraNome?: string
+  grupos: {
+    tipo_estoque: string
+    subtotal: number
+    itens: { produto_nome: string; quantidade_total: number; unidade_medida: string; custo_total: number; custo_unitario_medio: number }[]
+  }[]
+}) {
+  const { nomeArquivo, propriedadeNome, safraNome, grupos } = opts
+  const doc = new jsPDF()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 14
+  let y = 14
+
+  const fmt2 = (v: number) =>
+    Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const unidadeCurta = (u?: string) => (u || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
+  const COR_TEXTO = 55 as const
+
+  const logo = await getLogoBase64()
+  const desenharMarcaDagua = () => {
+    if (!logo) return
+    try {
+      const tamanho = 90
+      doc.saveGraphicsState()
+      // @ts-ignore
+      doc.setGState(new (doc as any).GState({ opacity: 0.06 }))
+      doc.addImage(logo, 'PNG', (pageWidth - tamanho) / 2, (pageHeight - tamanho) / 2, tamanho, tamanho)
+      doc.restoreGraphicsState()
+    } catch {}
+  }
+
+  const novaPaginaSeNecessario = (alturaNecessaria: number) => {
+    if (y + alturaNecessaria > pageHeight - 20) {
+      doc.addPage()
+      desenharMarcaDagua()
+      y = 14
+    }
+  }
+
+  desenharMarcaDagua()
+  let textX = margin
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', margin, 8, 12, 12); textX = margin + 16 } catch {}
+  }
+  doc.setFontSize(14); doc.setFont('helvetica', 'bold')
+  doc.text('Agro GFI', textX, 14)
+  doc.setFontSize(11); doc.setFont('helvetica', 'normal')
+  doc.text('Relatório: Insumos', textX, 20)
+  doc.setFontSize(10)
+  doc.text(`Propriedade: ${propriedadeNome}`, margin, 30)
+  if (safraNome) doc.text(`Safra: ${safraNome}`, margin, 36)
+  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, safraNome ? 42 : 36)
+  y = safraNome ? 50 : 44
+
+  grupos.forEach((grupo) => {
+    novaPaginaSeNecessario(16)
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold')
+    doc.text(TIPO_ESTOQUE_LABEL_INSUMOS[grupo.tipo_estoque] || grupo.tipo_estoque, margin, y)
+    doc.text(`R$ ${fmt2(grupo.subtotal)}`, pageWidth - margin, y, { align: 'right' })
+    y += 6
+
+    doc.setFontSize(8); doc.setFont('helvetica', 'bold')
+    doc.setTextColor(140)
+    doc.text('Qtde.', pageWidth - margin - 38, y, { align: 'right' })
+    doc.text('Valor', pageWidth - margin, y, { align: 'right' })
+    doc.setTextColor(0)
+    y += 4
+    doc.setDrawColor(200)
+    doc.line(margin, y, pageWidth - margin, y)
+    y += 5
+
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal')
+    grupo.itens.forEach((item) => {
+      novaPaginaSeNecessario(6)
+      doc.setTextColor(COR_TEXTO)
+      doc.text(item.produto_nome, margin + 4, y)
+      doc.setTextColor(140)
+      doc.text(`${fmt2(item.quantidade_total)} (${unidadeCurta(item.unidade_medida)})`, pageWidth - margin - 38, y, { align: 'right' })
+      doc.setTextColor(COR_TEXTO)
+      doc.text(`R$ ${fmt2(item.custo_total)}`, pageWidth - margin, y, { align: 'right' })
+      doc.setTextColor(0)
+      y += 5.5
+    })
+    y += 5
+  })
+
+  doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+}

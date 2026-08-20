@@ -29,7 +29,7 @@ import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useGlobal } from '@/contexts/GlobalContext'
 
-import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, exportarEstoquePDF, type Coluna } from '@/lib/exportTabela'
+import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, exportarEstoquePDF, exportarInsumosPDF, type Coluna } from '@/lib/exportTabela'
 import { TRANSACAO_CATEGORIA_LABELS } from '@/lib/enumLabels'
 
 function labelGrupo(valor: any): string {
@@ -972,6 +972,29 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
   const maxCusto = itens.length ? Number(itens[0].custo_total || 0) : 0
   const top1 = itens[0]
 
+  const TIPO_ESTOQUE_LABEL_INS: Record<string, string> = { agricola: 'Agrícola', pecuario: 'Pecuária', geral: 'Geral' }
+  const ORDEM_TIPO: Record<string, number> = { agricola: 1, pecuario: 2, geral: 3 }
+
+  const gruposPorTipo = useMemo(() => {
+    const mapa = new Map<string, any[]>()
+    itens.forEach((i: any) => {
+      const tipo = i.tipo_estoque || 'agricola'
+      if (!mapa.has(tipo)) mapa.set(tipo, [])
+      mapa.get(tipo)!.push(i)
+    })
+    return Array.from(mapa.entries())
+      .map(([tipo_estoque, lista]) => ({
+        tipo_estoque,
+        subtotal: lista.reduce((s, i) => s + Number(i.custo_total || 0), 0),
+        itens: lista,
+      }))
+      .sort((a, b) => (ORDEM_TIPO[a.tipo_estoque] || 9) - (ORDEM_TIPO[b.tipo_estoque] || 9))
+  }, [itens])
+
+  const handleExportInsumosPDF = () => {
+    exportarInsumosPDF({ nomeArquivo: 'insumos', propriedadeNome, safraNome: safraAtual?.nome, grupos: gruposPorTipo })
+  }
+
   const top10 = itens.slice(0, 10).map((i: any) => ({
     nome: i.produto_nome || '—',
     valor: Number(i.custo_total || 0),
@@ -1058,55 +1081,63 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Ranking de Insumos</CardTitle>
-          <Button variant="outline" size="sm" onClick={exportCSV}>
-            <Download className="h-4 w-4 mr-1" /> Exportar CSV
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">#</TableHead>
-                <TableHead>Produto</TableHead>
-                <TableHead>Unidade</TableHead>
-                <TableHead className="text-right">Qtd Total</TableHead>
-                <TableHead className="text-right">Custo Total</TableHead>
-                <TableHead className="text-right">Custo Unit. Médio</TableHead>
-                <TableHead className="w-[180px]">% do Total</TableHead>
-                <TableHead>Talhões</TableHead>
-                <TableHead className="text-right">Em Estoque</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {itens.map((i: any, idx: number) => {
-                const pct = total > 0 ? (Number(i.custo_total || 0) / total) * 100 : 0
-                const isTop = idx === 0
-                return (
-                  <TableRow key={i.produto_id || idx} className={isTop ? 'bg-warning/10' : ''}>
-                    <TableCell className="font-medium">{idx + 1}</TableCell>
-                    <TableCell className={isTop ? 'font-semibold' : 'font-medium'}>{i.produto_nome || '—'}</TableCell>
-                    <TableCell>{i.unidade_medida || '-'}</TableCell>
-                    <TableCell className="text-right">{fmtN(Number(i.quantidade_total || 0))}</TableCell>
-                    <TableCell className="text-right font-semibold">{fmt(Number(i.custo_total || 0))}</TableCell>
-                    <TableCell className="text-right">{fmt(Number(i.custo_unitario_medio || 0))}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={pct} className="h-2 flex-1" />
-                        <span className="text-xs text-muted-foreground w-12 text-right">{pct.toFixed(1)}%</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">{i.talhoes_usados || '-'}</TableCell>
-                    <TableCell className="text-right">{fmtN(Number(i.saldo_estoque || 0))} {i.unidade_medida}</TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button variant="outline" size="sm" onClick={exportCSV}>
+          <Download className="h-4 w-4 mr-1" /> Exportar CSV
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleExportInsumosPDF}>
+          <FileText className="h-4 w-4 mr-1" /> Exportar PDF
+        </Button>
+      </div>
+
+      {gruposPorTipo.map((grupo) => (
+        <Card key={grupo.tipo_estoque}>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">{TIPO_ESTOQUE_LABEL_INS[grupo.tipo_estoque] || grupo.tipo_estoque}</CardTitle>
+            <span className="text-sm font-semibold">{fmt(grupo.subtotal)}</span>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">#</TableHead>
+                  <TableHead>Produto</TableHead>
+                  <TableHead>Unidade</TableHead>
+                  <TableHead className="text-right">Qtd Total</TableHead>
+                  <TableHead className="text-right">Custo Total</TableHead>
+                  <TableHead className="text-right">Custo Unit. Médio</TableHead>
+                  <TableHead className="w-[180px]">% do Total</TableHead>
+                  <TableHead>Talhões</TableHead>
+                  <TableHead className="text-right">Em Estoque</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {grupo.itens.map((i: any, idx: number) => {
+                  const pct = total > 0 ? (Number(i.custo_total || 0) / total) * 100 : 0
+                  return (
+                    <TableRow key={i.produto_id || idx}>
+                      <TableCell className="font-medium">{idx + 1}</TableCell>
+                      <TableCell className="font-medium">{i.produto_nome || '—'}</TableCell>
+                      <TableCell>{i.unidade_medida || '-'}</TableCell>
+                      <TableCell className="text-right">{fmtN(Number(i.quantidade_total || 0))}</TableCell>
+                      <TableCell className="text-right font-semibold">{fmt(Number(i.custo_total || 0))}</TableCell>
+                      <TableCell className="text-right">{fmt(Number(i.custo_unitario_medio || 0))}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress value={pct} className="h-2 flex-1" />
+                          <span className="text-xs text-muted-foreground w-12 text-right">{pct.toFixed(1)}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">{i.talhoes_usados || '-'}</TableCell>
+                      <TableCell className="text-right">{fmtN(Number(i.saldo_estoque || 0))} {i.unidade_medida}</TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   )
 }
