@@ -42,20 +42,20 @@ export function StatCard({
   return (
     <div
       className={cn(
-        'hover-lift rounded-lg border p-6 shadow-[0_1px_3px_rgba(31,58,46,0.08)]',
+        'hover-lift rounded-lg border p-4 sm:p-6 shadow-[0_1px_3px_rgba(31,58,46,0.08)] min-w-0',
         variantStyles[variant],
         className
       )}
     >
-      <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="font-display text-3xl font-bold tracking-tight text-foreground">{value}</h3>
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-2 min-w-0 flex-1">
+          <p className="text-sm font-medium text-muted-foreground truncate">{title}</p>
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <h3 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground break-words">{value}</h3>
             {trend && (
               <span
                 className={cn(
-                  'text-sm font-medium',
+                  'text-sm font-medium shrink-0',
                   trend.isPositive ? 'text-success' : 'text-destructive'
                 )}
               >
@@ -64,11 +64,11 @@ export function StatCard({
             )}
           </div>
           {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="text-sm text-muted-foreground break-words">{description}</p>
           )}
         </div>
-        <div className={cn('rounded-lg p-3', iconStyles[variant])}>
-          <Icon className="h-6 w-6" />
+        <div className={cn('rounded-lg p-2.5 sm:p-3 shrink-0', iconStyles[variant])}>
+          <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
         </div>
       </div>
     </div>
