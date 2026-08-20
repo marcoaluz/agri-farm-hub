@@ -44,6 +44,7 @@ export interface ItemLancamento {
   combustivel_tipo?: string
   horimetro_informado?: number
   momento_abastecimento?: 'antes' | 'depois' | null
+  observacao?: string
 
   // Legado
   item?: {
@@ -254,7 +255,8 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
           )}
         </div>
 
-        {/* Info do Item */}
+        {/* Info do Item (não se aplica a abastecimento — usa seus próprios campos) */}
+        {itemForm.tipo_ref !== 'abastecimento' && (
         <Alert className="bg-muted/50">
           <Info className="h-4 w-4" />
           <AlertDescription>
@@ -362,8 +364,10 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
             </div>
           </AlertDescription>
         </Alert>
+        )}
 
-        {/* Input de Quantidade */}
+        {/* Input de Quantidade (não se aplica a abastecimento — usa o campo Litros) */}
+        {itemForm.tipo_ref !== 'abastecimento' && (
         <div className="space-y-2">
           <Label htmlFor={`quantidade-${itemForm.produto_id || itemForm.maquina_id || itemForm.servico_ref_id || itemForm.item_id}`}>
             Quantidade:
@@ -396,6 +400,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
             </Alert>
           )}
         </div>
+        )}
 
         {/* Info Horímetro para máquina */}
         {isMaquina && (
