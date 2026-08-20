@@ -497,6 +497,15 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                 </div>
               </div>
             )}
+
+            <div>
+              <Label>Observação (opcional)</Label>
+              <Input
+                value={itemForm.observacao || ''}
+                onChange={(e) => onUpdate({ ...itemForm, observacao: e.target.value })}
+                placeholder="Ex: Abasteci no posto da entrada, tanque não encheu totalmente"
+              />
+            </div>
           </div>
         )}
 
