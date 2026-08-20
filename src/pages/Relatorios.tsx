@@ -29,6 +29,16 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useGlobal } from '@/contexts/GlobalContext'
 
 import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, type Coluna } from '@/lib/exportTabela'
+import { TRANSACAO_CATEGORIA_LABELS } from '@/lib/enumLabels'
+
+function labelGrupo(valor: any): string {
+  const v = String(valor ?? '')
+  if (!v) return ''
+  if (TRANSACAO_CATEGORIA_LABELS[v]) return TRANSACAO_CATEGORIA_LABELS[v]
+  return v
+    .replace(/_/g, ' ')
+    .replace(/\b\p{L}/gu, (c) => c.toUpperCase())
+}
 
 
 /* ───────────────── helpers ───────────────── */
@@ -1219,7 +1229,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
       (grupo.itens || []).forEach((item: any) => {
         linhas.push({
           secao: 'Operacional',
-          categoria: grupo.grupo,
+          categoria: labelGrupo(grupo.grupo),
           item: item.nome,
           quantidade: item.quantidade ?? '',
           unidade: item.unidade ?? '',
@@ -1231,7 +1241,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
       (grupo.itens || []).forEach((item: any) => {
         linhas.push({
           secao: 'Financeiro',
-          categoria: String(grupo.grupo).replace(/_/g, ' '),
+          categoria: labelGrupo(grupo.grupo),
           item: item.nome,
           quantidade: '',
           unidade: '',
@@ -1276,8 +1286,12 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
             nomeArquivo: 'custos-detalhados',
             propriedadeNome,
             safraNome: safraAtual?.nome,
-            operacional: incluirOperacional ? operacional : [],
-            financeiro: incluirFinanceiro ? financeiro : [],
+            operacional: incluirOperacional
+              ? operacional.map((g: any) => ({ ...g, grupo: labelGrupo(g.grupo) }))
+              : [],
+            financeiro: incluirFinanceiro
+              ? financeiro.map((g: any) => ({ ...g, grupo: labelGrupo(g.grupo) }))
+              : [],
             totalOperacional: incluirOperacional ? totalOperacional : 0,
             totalDespesas: incluirFinanceiro ? totalDespesas : 0,
             totalReceitas: incluirFinanceiro ? totalReceitas : 0,
@@ -1398,7 +1412,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 {operacional.map((grupo: any) => (
                   <div key={grupo.grupo}>
                     <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
-                      <span>{grupo.grupo}</span>
+                      <span>{labelGrupo(grupo.grupo)}</span>
                       <span>{fmt(Number(grupo.subtotal))}</span>
                     </div>
                     {(grupo.itens || []).map((item: any, idx: number) => (
@@ -1435,7 +1449,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 {financeiro.map((grupo: any) => (
                   <div key={grupo.grupo}>
                     <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
-                      <span className="capitalize">{String(grupo.grupo).replace(/_/g, ' ')}</span>
+                      <span>{labelGrupo(grupo.grupo)}</span>
                       <span>{fmt(Number(grupo.subtotal))}</span>
                     </div>
                     {(grupo.itens || []).map((item: any, idx: number) => (
