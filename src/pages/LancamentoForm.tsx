@@ -77,7 +77,10 @@ export function LancamentoForm() {
   // Estado do formulário
   const [formData, setFormData] = useState<LancamentoFormData>({
     servico_id: '',
-    data_execucao: new Date().toISOString().split('T')[0],
+    data_execucao: (() => {
+      const hoje = new Date()
+      return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
+    })(),
     itens: []
   })
   const [dadosOriginais, setDadosOriginais] = useState<LancamentoFormData | null>(null)
