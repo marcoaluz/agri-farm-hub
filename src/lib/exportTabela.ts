@@ -144,6 +144,16 @@ export async function exportarCustosDetalhadosPDF(opts: {
   const margin = 14
   let y = 14
 
+  const fmt2 = (v: number) =>
+    Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  // Remove sufixo entre parênteses do fim da unidade (ex: "Sacas (60kg)" -> "Sacas")
+  const unidadeCurta = (unidade?: string) => (unidade || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
+
+  const COR_TEXTO = 55 as const
+  const COR_RECEITA: [number, number, number] = [21, 101, 52]
+  const COR_DESPESA: [number, number, number] = [180, 30, 30]
+
   const logo = await getLogoBase64()
   const desenharMarcaDagua = () => {
     if (!logo) return
@@ -188,7 +198,7 @@ export async function exportarCustosDetalhadosPDF(opts: {
     novaPaginaSeNecessario(14)
     doc.setFontSize(12); doc.setFont('helvetica', 'bold')
     doc.text(titulo, margin, y)
-    doc.text(`Total: R$ ${totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin, y, { align: 'right' })
+    doc.text(`Total: R$ ${fmt2(totalGeral)}`, pageWidth - margin, y, { align: 'right' })
     y += 6
 
     grupos.forEach((grupo) => {
@@ -196,7 +206,7 @@ export async function exportarCustosDetalhadosPDF(opts: {
 
       doc.setFontSize(10); doc.setFont('helvetica', 'bold')
       doc.text(grupo.grupo, margin, y)
-      doc.text(`R$ ${Number(grupo.subtotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin, y, { align: 'right' })
+      doc.text(`R$ ${fmt2(grupo.subtotal)}`, pageWidth - margin, y, { align: 'right' })
       y += 1
       doc.setDrawColor(200)
       doc.line(margin, y, pageWidth - margin, y)
@@ -205,9 +215,15 @@ export async function exportarCustosDetalhadosPDF(opts: {
       doc.setFontSize(9); doc.setFont('helvetica', 'normal')
       grupo.itens.forEach((item: any) => {
         const [esquerda, direita] = linhaFormatador(item)
-        doc.setTextColor(90)
+        doc.setTextColor(COR_TEXTO)
         doc.text(esquerda, margin + 4, y)
-        doc.setTextColor(item.tipo === 'receita' ? 34 : item.tipo === 'despesa' ? 180 : 90)
+        if (item.tipo === 'receita') {
+          doc.setTextColor(...COR_RECEITA)
+        } else if (item.tipo === 'despesa') {
+          doc.setTextColor(...COR_DESPESA)
+        } else {
+          doc.setTextColor(COR_TEXTO)
+        }
         doc.text(direita, pageWidth - margin, y, { align: 'right' })
         doc.setTextColor(0)
         y += 5.5
@@ -217,44 +233,52 @@ export async function exportarCustosDetalhadosPDF(opts: {
     y += 4
   }
 
-  desenharSecao('Operacional', totalOperacional, operacional, (item) => [
-    `${item.nome}${item.vezes != null ? ` ${item.vezes}x` : ''}`,
-    `= R$ ${Number(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-  ])
+  if (operacional.length > 0) {
+    desenharSecao('Operacional', totalOperacional, operacional, (item) => [
+      `${item.nome}${item.vezes != null ? ` ${item.vezes}x` : ''}`,
+      `= R$ ${fmt2(item.valor)}`,
+    ])
+  }
 
-  novaPaginaSeNecessario(10)
-  doc.setFontSize(12); doc.setFont('helvetica', 'bold')
-  doc.text('Financeiro', margin, y)
-  doc.text(
-    `Despesas: R$ ${totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}   |   Recebimentos: R$ ${totalReceitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-    pageWidth - margin, y, { align: 'right' }
-  )
-  y += 6
+  if (financeiro.length > 0) {
+    novaPaginaSeNecessario(10)
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold')
+    doc.text('Financeiro', margin, y)
+    doc.text(
+      `Despesas: R$ ${fmt2(totalDespesas)}   |   Recebimentos: R$ ${fmt2(totalReceitas)}`,
+      pageWidth - margin, y, { align: 'right' }
+    )
+    y += 6
 
-  financeiro.forEach((grupo) => {
-    novaPaginaSeNecessario(10 + grupo.itens.length * 6)
-    doc.setFontSize(10); doc.setFont('helvetica', 'bold')
-    doc.text(grupo.grupo, margin, y)
-    doc.text(`R$ ${Number(grupo.subtotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin, y, { align: 'right' })
-    y += 1
-    doc.setDrawColor(200)
-    doc.line(margin, y, pageWidth - margin, y)
-    y += 5
+    financeiro.forEach((grupo) => {
+      novaPaginaSeNecessario(10 + grupo.itens.length * 6)
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold')
+      doc.text(grupo.grupo, margin, y)
+      doc.text(`R$ ${fmt2(grupo.subtotal)}`, pageWidth - margin, y, { align: 'right' })
+      y += 1
+      doc.setDrawColor(200)
+      doc.line(margin, y, pageWidth - margin, y)
+      y += 5
 
-    doc.setFontSize(9); doc.setFont('helvetica', 'normal')
-    grupo.itens.forEach((item: any) => {
-      const detalhe = item.quantidade != null
-        ? ` (${item.quantidade} ${item.unidade || ''} · méd. R$ ${item.preco_medio}/${item.unidade || ''})`
-        : ''
-      doc.setTextColor(90)
-      doc.text(`${item.nome}${detalhe}`, margin + 4, y)
-      doc.setTextColor(item.tipo === 'receita' ? 34 : 180)
-      doc.text(`${item.tipo === 'receita' ? '+' : '-'} R$ ${Number(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin, y, { align: 'right' })
-      doc.setTextColor(0)
-      y += 5.5
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal')
+      grupo.itens.forEach((item: any) => {
+        const detalhe = item.quantidade != null
+          ? ` (${item.quantidade} ${unidadeCurta(item.unidade)} · méd. R$ ${fmt2(item.preco_medio)}/${item.unidade || ''})`
+          : ''
+        doc.setTextColor(COR_TEXTO)
+        doc.text(`${item.nome}${detalhe}`, margin + 4, y)
+        if (item.tipo === 'receita') {
+          doc.setTextColor(...COR_RECEITA)
+        } else {
+          doc.setTextColor(...COR_DESPESA)
+        }
+        doc.text(`${item.tipo === 'receita' ? '+' : '-'} R$ ${fmt2(item.valor)}`, pageWidth - margin, y, { align: 'right' })
+        doc.setTextColor(0)
+        y += 5.5
+      })
+      y += 3
     })
-    y += 3
-  })
+  }
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 }
