@@ -196,7 +196,7 @@ export function AdminPropertyPicker({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[460px] p-0 z-[60]" align="start">
+      <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[460px] max-w-[460px] p-0 z-[60]" align="start">
         {/* Visão Geral */}
         <button
           onClick={handleVisaoGeral}
@@ -215,7 +215,7 @@ export function AdminPropertyPicker({
 
         <div className="flex" style={{ height: 320 }}>
           {/* Left column: Owners */}
-          <div className="w-[200px] border-r border-border flex flex-col">
+          <div className="w-[120px] sm:w-[200px] shrink-0 border-r border-border flex flex-col">
             <div className="p-2">
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -257,7 +257,7 @@ export function AdminPropertyPicker({
           </div>
 
           {/* Right column: Properties */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 min-w-0 flex flex-col">
             <div className="px-3 py-2 border-b border-border">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Propriedades
