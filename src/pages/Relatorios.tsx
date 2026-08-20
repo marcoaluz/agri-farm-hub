@@ -1440,7 +1440,14 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                     </div>
                     {(grupo.itens || []).map((item: any, idx: number) => (
                       <div key={idx} className="flex items-center justify-between text-sm pl-4 py-1 text-muted-foreground">
-                        <span>{item.nome}</span>
+                        <span>
+                          {item.nome}
+                          {item.quantidade != null && (
+                            <span className="text-xs ml-1">
+                              ({fmtN(item.quantidade)} {item.unidade}{item.preco_medio != null ? ` · média R$${item.preco_medio}/${item.unidade}` : ''})
+                            </span>
+                          )}
+                        </span>
                         <span className={item.tipo === 'receita' ? 'text-green-600' : ''}>
                           {item.tipo === 'receita' ? '+' : '-'} {fmt(Number(item.valor))}
                         </span>
