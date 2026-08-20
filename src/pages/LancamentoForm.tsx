@@ -713,6 +713,11 @@ export function LancamentoForm() {
             custo_unitario: item.custo_unitario,
             custo_total: item.custo_total,
             detalhamento_lotes: item.detalhamento_lotes || null,
+            litros: item.litros ?? null,
+            combustivel_tipo: item.combustivel_tipo || null,
+            horimetro_informado: item.horimetro_informado ?? null,
+            momento_abastecimento: item.momento_abastecimento || null,
+            observacao: item.observacao || null,
           })))
         if (erroItens) throw erroItens
       }
