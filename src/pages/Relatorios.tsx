@@ -1383,7 +1383,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
       ) : (
         <>
           {/* Seção Operacional */}
-          {operacional.length > 0 && (
+          {incluirOperacional && operacional.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
@@ -1419,7 +1419,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
           )}
 
           {/* Seção Financeiro */}
-          {financeiro.length > 0 && (
+          {incluirFinanceiro && financeiro.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
