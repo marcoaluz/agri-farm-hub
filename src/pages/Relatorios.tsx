@@ -1408,7 +1408,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 {operacional.map((grupo: any) => (
                   <div key={grupo.grupo}>
                     <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
-                      <span>{grupo.grupo}</span>
+                      <span>{labelGrupo(grupo.grupo)}</span>
                       <span>{fmt(Number(grupo.subtotal))}</span>
                     </div>
                     {(grupo.itens || []).map((item: any, idx: number) => (
