@@ -222,6 +222,11 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
   const TipoIcon = tipoConfig.icon
   const isMaquina = itemForm.tipo_ref === 'maquina' || itemForm.item?.tipo === 'maquina_hora'
   const estoqueInsuficiente = isProduto && preview && !preview.estoque_suficiente
+  const produtoCombustivelSelecionado = itemForm.tipo_ref === 'abastecimento' && itemForm.origem_estoque
+    ? produtos?.find(p => p.id === itemForm.produto_id)
+    : undefined
+  const estoqueCombustivelInsuficiente = !!produtoCombustivelSelecionado &&
+    Number(itemForm.litros || 0) > Number(produtoCombustivelSelecionado.saldo_atual || 0)
   const custoExibido = itemForm.custo_personalizado && itemForm.custo_unitario_override != null
     ? itemForm.custo_unitario_override
     : (preview?.custo_unitario || itemForm.custo_unitario_ref || 0)
@@ -236,7 +241,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
     <Card className={cn(
       "relative transition-all",
       itemForm.obrigatorio && "ring-2 ring-destructive/20 bg-destructive/5",
-      estoqueInsuficiente && "ring-2 ring-yellow-500/50 bg-yellow-50/50 dark:bg-yellow-900/10"
+      (estoqueInsuficiente || estoqueCombustivelInsuficiente) && "ring-2 ring-yellow-500/50 bg-yellow-50/50 dark:bg-yellow-900/10"
     )}>
       <CardContent className="pt-6 space-y-4">
         {/* Cabeçalho do Item */}
@@ -460,6 +465,22 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                     ))}
                   </SelectContent>
                 </Select>
+                {produtoCombustivelSelecionado && Number(produtoCombustivelSelecionado.saldo_atual || 0) <= 0 && (
+                  <Alert variant="destructive" className="py-2 mt-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      Este produto está sem estoque. Escolha "Livre" pra lançar mesmo assim, ou selecione outro combustível.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {estoqueCombustivelInsuficiente && Number(produtoCombustivelSelecionado?.saldo_atual || 0) > 0 && (
+                  <Alert variant="destructive" className="py-2 mt-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      Quantidade maior que o estoque disponível! Disponível: {Number(produtoCombustivelSelecionado?.saldo_atual || 0).toFixed(2)} {produtoCombustivelSelecionado?.unidade_medida}
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             ) : (
               <div>
@@ -471,7 +492,13 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Litros</Label>
-                <Input type="number" value={itemForm.litros || ''} onChange={(e) => onUpdate({ ...itemForm, litros: Number(e.target.value) })} />
+                <Input
+                  type="number"
+                  value={itemForm.litros || ''}
+                  onChange={(e) => onUpdate({ ...itemForm, litros: Number(e.target.value) })}
+                  disabled={!!produtoCombustivelSelecionado && Number(produtoCombustivelSelecionado.saldo_atual || 0) <= 0}
+                  className={estoqueCombustivelInsuficiente ? 'border-destructive' : ''}
+                />
               </div>
               <div>
                 <Label>Custo Total (R$)</Label>
