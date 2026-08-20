@@ -22,7 +22,7 @@ export function useLancamentos(safraId?: string) {
             servico_ref:servicos(id, nome, custo_padrao, unidade_medida),
             item:itens(*)
           ),
-          abastecimento:abastecimentos(
+          abastecimento:abastecimentos!lancamentos_abastecimento_id_fkey(
             id,
             data,
             horimetro,
