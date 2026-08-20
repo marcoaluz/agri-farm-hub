@@ -41,7 +41,8 @@ import {
   Wrench,
   Truck,
   AlertTriangle,
-  Fuel
+  Fuel,
+  Cog
 } from 'lucide-react'
 
 // Interfaces
@@ -83,7 +84,7 @@ export function LancamentoForm() {
   const [loading, setLoading] = useState(false)
   const [loadingItens, setLoadingItens] = useState(false)
   const [validandoEstoque, setValidandoEstoque] = useState(false)
-  const [adicionandoTipo, setAdicionandoTipo] = useState<'produto' | 'maquina' | 'servico_simples' | 'abastecimento' | null>(null)
+  const [adicionandoTipo, setAdicionandoTipo] = useState<'produto' | 'maquina' | 'servico_simples' | 'abastecimento' | 'manutencao' | null>(null)
   const [custoAltoDialog, setCustoAltoDialog] = useState<{
     open: boolean
     valor: string
@@ -141,6 +142,15 @@ export function LancamentoForm() {
         .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
     },
     enabled: !!propriedadeAtual?.id
+  })
+
+  const { data: categoriasManutencao } = useQuery({
+    queryKey: ['categorias-manutencao'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_categorias_manutencao')
+      if (error) throw error
+      return (data as { id: string; nome: string }[]) || []
+    },
   })
 
   const { data: servicosSimples } = useQuery({
@@ -214,6 +224,10 @@ export function LancamentoForm() {
             horimetro_informado: li.horimetro_informado ?? undefined,
             momento_abastecimento: li.momento_abastecimento || null,
             observacao: li.observacao || '',
+            categoria_manutencao: li.categoria_manutencao || '',
+            descricao: li.descricao || '',
+            oficina: li.oficina || '',
+            proximo_horimetro: li.proximo_horimetro ?? undefined,
           })) || []
         }
         setFormData(loaded)
@@ -415,6 +429,35 @@ export function LancamentoForm() {
     }))
     setAdicionandoTipo(null)
   }
+
+  const adicionarManutencao = (maquinaId: string) => {
+    const maquina = maquinas?.find(m => m.id === maquinaId)
+    if (!maquina) return
+    if (formData.itens.some(i => i.tipo_ref === 'manutencao' && i.maquina_id === maquinaId)) {
+      toast({ title: 'Já existe manutenção para essa máquina neste lançamento', variant: 'destructive' })
+      return
+    }
+    setFormData(prev => ({
+      ...prev,
+      itens: [...prev.itens, {
+        tipo_ref: 'manutencao',
+        maquina_id: maquina.id,
+        nome: `Manutenção — ${maquina.nome}`,
+        categoria_manutencao: '',
+        descricao: '',
+        oficina: '',
+        custo_total: 0,
+        custo_unitario: 0,
+        horimetro_informado: maquina.horimetro_atual || 0,
+        proximo_horimetro: undefined,
+        observacao: '',
+        quantidade: 1,
+      }]
+    }))
+    setAdicionandoTipo(null)
+  }
+
+
 
   const adicionarServicoSimples = (servicoRefId: string) => {
     const svc = servicosSimples?.find(s => s.id === servicoRefId)
@@ -635,6 +678,7 @@ export function LancamentoForm() {
 
         // PASSO 3: Deletar itens antigos
         await supabase.from('lancamentos_itens').delete().eq('lancamento_id', lancamentoId)
+        await supabase.from('maquina_manutencoes').delete().eq('lancamento_id', lancamentoId)
 
         // PASSO 4: Atualizar cabeçalho
         const { error: erroLanc } = await supabase
@@ -670,12 +714,17 @@ export function LancamentoForm() {
               horimetro_informado: item.horimetro_informado ?? null,
               momento_abastecimento: item.momento_abastecimento || null,
               observacao: item.observacao || null,
+              categoria_manutencao: item.categoria_manutencao || null,
+              descricao: item.descricao || null,
+              oficina: item.oficina || null,
+              proximo_horimetro: item.proximo_horimetro ?? null,
             })))
           if (erroItens) throw erroItens
         }
 
         // PASSO 6: Aplicar novo consumo
         await aplicarConsumoEHorimetro(itensComCusto)
+        await sincronizarManutencoes(lancamentoId, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
 
         return { id: lancamentoId }
       }
@@ -718,11 +767,16 @@ export function LancamentoForm() {
             horimetro_informado: item.horimetro_informado ?? null,
             momento_abastecimento: item.momento_abastecimento || null,
             observacao: item.observacao || null,
+            categoria_manutencao: item.categoria_manutencao || null,
+            descricao: item.descricao || null,
+            oficina: item.oficina || null,
+            proximo_horimetro: item.proximo_horimetro ?? null,
           })))
         if (erroItens) throw erroItens
       }
 
       await aplicarConsumoEHorimetro(itensComCusto)
+      await sincronizarManutencoes(novoLancamento.id, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
 
       return { id: novoLancamento.id }
     },
@@ -758,6 +812,8 @@ export function LancamentoForm() {
       queryClient.invalidateQueries({ queryKey: ['preview-custo-direto'] })
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
       queryClient.invalidateQueries({ queryKey: ['maquinas'] })
+      queryClient.invalidateQueries({ queryKey: ['manutencoes-proximas'] })
+      queryClient.invalidateQueries({ queryKey: ['manutencoes-todas'] })
 
       navigate('/lancamentos')
     },
@@ -774,10 +830,38 @@ export function LancamentoForm() {
     }
   })
 
+  // Helper: sincronizar registros em maquina_manutencoes a partir dos itens de manutenção do lançamento
+  const sincronizarManutencoes = async (
+    lancamentoIdSalvo: string,
+    itens: ItemLancamento[],
+    dataExecucao: string,
+    propriedadeId: string,
+    userId?: string
+  ) => {
+    const manutencoes = itens.filter(i => i.tipo_ref === 'manutencao' && i.maquina_id)
+    if (manutencoes.length === 0) return
+    await supabase.from('maquina_manutencoes').insert(manutencoes.map(item => ({
+      propriedade_id: propriedadeId,
+      maquina_id: item.maquina_id,
+      tipo: item.categoria_manutencao || 'Outros',
+      descricao: item.descricao || item.nome || 'Manutenção',
+      data_realizada: dataExecucao,
+      status: 'realizada',
+      horimetro_na_manutencao: item.horimetro_informado ?? null,
+      proximo_horimetro: item.proximo_horimetro ?? null,
+      custo: item.custo_total ?? null,
+      oficina: item.oficina || null,
+      observacoes: item.observacao || null,
+      usuario_id: userId || null,
+      lancamento_id: lancamentoIdSalvo,
+    })))
+  }
+
   // Helper: aplicar consumo FIFO e horímetro
   const aplicarConsumoEHorimetro = async (itens: ItemLancamento[]) => {
     const prioridade = (it: any): number => {
       if (it.tipo_ref === 'abastecimento' && it.momento_abastecimento !== 'depois') return 0
+      if (it.tipo_ref === 'manutencao') return 0
       if (it.tipo_ref === 'maquina') return 1
       if (it.tipo_ref === 'abastecimento' && it.momento_abastecimento === 'depois') return 2
       return 1
@@ -841,6 +925,12 @@ export function LancamentoForm() {
             }
           }
         }
+      }
+      // Manutenção: apenas atualiza o horímetro informado, se preenchido (sem baixa de estoque)
+      if (item.tipo_ref === 'manutencao' && item.maquina_id && item.horimetro_informado != null) {
+        await supabase.from('maquinas').update({
+          horimetro_atual: item.horimetro_informado
+        }).eq('id', item.maquina_id)
       }
     }
   }
@@ -1087,6 +1177,7 @@ export function LancamentoForm() {
                         itemForm={itemForm}
                         produtos={produtos}
                         temMaquinaNoLancamento={!!itemForm.maquina_id && formData.itens.some(i => i.tipo_ref === 'maquina' && i.maquina_id === itemForm.maquina_id)}
+                        categoriasManutencao={categoriasManutencao}
                         onUpdate={(updated) => {
                           const newItens = [...formData.itens]
                           newItens[index] = updated
@@ -1123,6 +1214,10 @@ export function LancamentoForm() {
                       <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'abastecimento' ? null : 'abastecimento')}>
                         <Fuel className="h-4 w-4 mr-1" />
                         + Abastecimento
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'manutencao' ? null : 'manutencao')}>
+                        <Cog className="h-4 w-4 mr-1" />
+                        + Manutenção
                       </Button>
                     </div>
 
@@ -1208,6 +1303,31 @@ export function LancamentoForm() {
                             {maquinas?.map(m => (
                               <SelectItem key={m.id} value={m.id}>
                                 {m.nome} — R$ {(m.custo_hora || 0).toFixed(2)}/h
+                              </SelectItem>
+                            ))}
+                            {(!maquinas || maquinas.length === 0) && (
+                              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                Nenhuma máquina cadastrada
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {adicionandoTipo === 'manutencao' && (
+                      <div className="mt-3">
+                        <Select onValueChange={(maquinaId) => {
+                          adicionarManutencao(maquinaId)
+                          setAdicionandoTipo(null)
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a máquina em manutenção..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {maquinas?.map(m => (
+                              <SelectItem key={m.id} value={m.id}>
+                                {m.nome} — Horímetro: {m.horimetro_atual ?? 0}h
                               </SelectItem>
                             ))}
                             {(!maquinas || maquinas.length === 0) && (

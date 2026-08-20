@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 
 export interface ItemLancamento {
   // Novo: referências diretas
-  tipo_ref?: 'produto' | 'maquina' | 'servico_simples' | 'abastecimento'
+  tipo_ref?: 'produto' | 'maquina' | 'servico_simples' | 'abastecimento' | 'manutencao'
   produto_id?: string | null
   maquina_id?: string | null
   servico_ref_id?: string | null
@@ -46,6 +46,12 @@ export interface ItemLancamento {
   momento_abastecimento?: 'antes' | 'depois' | null
   observacao?: string
 
+  // Manutenção
+  categoria_manutencao?: string
+  descricao?: string
+  oficina?: string
+  proximo_horimetro?: number
+
   // Legado
   item?: {
     id: string
@@ -71,6 +77,7 @@ interface ItemLancamentoCardProps {
   onRemove: () => void
   produtos?: ProdutoCombustivel[]
   temMaquinaNoLancamento?: boolean
+  categoriasManutencao?: { id: string; nome: string }[]
 }
 
 function getTipoConfig(tipoRef?: string, itemTipo?: string) {
@@ -83,6 +90,12 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   if (tipoRef === 'servico_simples') {
     return { label: 'Serviço', icon: Wrench, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' }
   }
+  if (tipoRef === 'abastecimento') {
+    return { label: 'Abastecimento', icon: Wrench, color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' }
+  }
+  if (tipoRef === 'manutencao') {
+    return { label: 'Manutenção', icon: Wrench, color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' }
+  }
   const config = {
     'produto_estoque': { label: 'Produto de Estoque', icon: Package, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
     'servico': { label: 'Serviço', icon: Wrench, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' },
@@ -91,7 +104,7 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   return config[itemTipo as keyof typeof config] || { label: itemTipo || 'Item', icon: Package, color: 'bg-gray-100 text-gray-800' }
 }
 
-export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento }: ItemLancamentoCardProps) {
+export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao }: ItemLancamentoCardProps) {
   const [quantidade, setQuantidade] = useState(itemForm.quantidade)
   const [editandoCusto, setEditandoCusto] = useState(false)
   const [custoEditavel, setCustoEditavel] = useState('')
@@ -107,7 +120,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
   // Preview de custo direto (novo sistema) — para produtos usa FIFO, ignora override
   const { data: previewDireto, isLoading: loadingPreviewDireto } = usePreviewCustoDireto(
-    usaRefDireta ? itemForm.tipo_ref : undefined,
+    usaRefDireta && itemForm.tipo_ref !== 'manutencao' ? (itemForm.tipo_ref as 'produto' | 'maquina' | 'servico_simples' | 'abastecimento') : undefined,
     itemForm.produto_id,
     itemForm.maquina_id,
     itemForm.servico_ref_id,
@@ -255,8 +268,8 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
           )}
         </div>
 
-        {/* Info do Item (não se aplica a abastecimento — usa seus próprios campos) */}
-        {itemForm.tipo_ref !== 'abastecimento' && (
+        {/* Info do Item (não se aplica a abastecimento/manutenção — usam seus próprios campos) */}
+        {itemForm.tipo_ref !== 'abastecimento' && itemForm.tipo_ref !== 'manutencao' && (
         <Alert className="bg-muted/50">
           <Info className="h-4 w-4" />
           <AlertDescription>
@@ -366,8 +379,8 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
         </Alert>
         )}
 
-        {/* Input de Quantidade (não se aplica a abastecimento — usa o campo Litros) */}
-        {itemForm.tipo_ref !== 'abastecimento' && (
+        {/* Input de Quantidade (não se aplica a abastecimento/manutenção) */}
+        {itemForm.tipo_ref !== 'abastecimento' && itemForm.tipo_ref !== 'manutencao' && (
         <div className="space-y-2">
           <Label htmlFor={`quantidade-${itemForm.produto_id || itemForm.maquina_id || itemForm.servico_ref_id || itemForm.item_id}`}>
             Quantidade:
@@ -504,6 +517,86 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                 value={itemForm.observacao || ''}
                 onChange={(e) => onUpdate({ ...itemForm, observacao: e.target.value })}
                 placeholder="Ex: Abasteci no posto da entrada, tanque não encheu totalmente"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Formulário de edição para manutenção */}
+        {itemForm.tipo_ref === 'manutencao' && (
+          <div className="space-y-3 rounded-lg border border-red-200 bg-red-50/30 dark:border-red-800/40 dark:bg-red-950/10 p-3">
+            <div>
+              <Label>Categoria da manutenção</Label>
+              <Select value={itemForm.categoria_manutencao || ''} onValueChange={(v) => onUpdate({ ...itemForm, categoria_manutencao: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
+                <SelectContent>
+                  {categoriasManutencao?.map(cat => (
+                    <SelectItem key={cat.id} value={cat.nome}>{cat.nome}</SelectItem>
+                  ))}
+                  {(!categoriasManutencao || categoriasManutencao.length === 0) && (
+                    <div className="px-2 py-3 text-xs text-muted-foreground">
+                      Nenhuma categoria. Crie uma em Máquinas → Registrar Manutenção.
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Descrição *</Label>
+              <Input
+                value={itemForm.descricao || ''}
+                onChange={(e) => onUpdate({ ...itemForm, descricao: e.target.value })}
+                placeholder="Ex: Troca de óleo do motor"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Custo (R$)</Label>
+                <Input
+                  type="number" step="0.01"
+                  value={itemForm.custo_total || ''}
+                  onChange={(e) => onUpdate({ ...itemForm, custo_total: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <Label>Oficina (opcional)</Label>
+                <Input
+                  value={itemForm.oficina || ''}
+                  onChange={(e) => onUpdate({ ...itemForm, oficina: e.target.value })}
+                  placeholder="Nome da oficina"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Horímetro na manutenção</Label>
+                <Input
+                  type="number"
+                  value={itemForm.horimetro_informado ?? ''}
+                  onChange={(e) => onUpdate({ ...itemForm, horimetro_informado: Number(e.target.value) })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Substitui o horímetro atual, não soma.
+                </p>
+              </div>
+              <div>
+                <Label>Próximo horímetro (opcional)</Label>
+                <Input
+                  type="number"
+                  value={itemForm.proximo_horimetro ?? ''}
+                  onChange={(e) => onUpdate({ ...itemForm, proximo_horimetro: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Observação (opcional)</Label>
+              <Input
+                value={itemForm.observacao || ''}
+                onChange={(e) => onUpdate({ ...itemForm, observacao: e.target.value })}
               />
             </div>
           </div>
