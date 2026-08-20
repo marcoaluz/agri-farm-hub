@@ -281,6 +281,27 @@ export default function Pecuaria() {
 
   async function handleDelete() {
     if (!deleteId) return
+
+    // Remove primeiro os eventos sanitários do lote — dispara a limpeza de despesa e estoque vinculados
+    const { error: erroSanitario } = await supabase
+      .from('sanitario_eventos' as any)
+      .delete()
+      .eq('rebanho_id', deleteId)
+    if (erroSanitario) {
+      toast({ title: 'Erro ao excluir eventos sanitários do lote', description: erroSanitario.message, variant: 'destructive' })
+      return
+    }
+
+    // Remove as movimentações do lote — dispara a limpeza das despesas/receitas correspondentes no Financeiro
+    const { error: erroMovs } = await supabase
+      .from('rebanho_movimentacoes' as any)
+      .delete()
+      .eq('rebanho_id', deleteId)
+    if (erroMovs) {
+      toast({ title: 'Erro ao excluir movimentações do lote', description: erroMovs.message, variant: 'destructive' })
+      return
+    }
+
     const { data: removidos, error } = await supabase
       .from('rebanhos' as any)
       .update({ ativo: false })
@@ -295,7 +316,13 @@ export default function Pecuaria() {
       return
     }
     queryClient.invalidateQueries({ queryKey: ['rebanhos'] })
-    toast({ title: 'Lote excluído' })
+    queryClient.invalidateQueries({ queryKey: ['rebanho-movimentacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['rebanho_movimentacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['sanitario-eventos'] })
+    queryClient.invalidateQueries({ queryKey: ['sanitario-contagem'] })
+    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
+    toast({ title: 'Lote excluído. Movimentações, eventos sanitários e lançamentos financeiros vinculados também foram removidos.' })
     setDeleteId(null)
   }
 
