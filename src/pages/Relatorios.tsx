@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useGlobal } from '@/contexts/GlobalContext'
 
 import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, type Coluna } from '@/lib/exportTabela'
@@ -1147,6 +1148,8 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   const [itemFiltro, setItemFiltro] = useState<{ tipo: string; id: string } | null>(null)
   const [talhaoFiltro, setTalhaoFiltro] = useState('')
   const [ordenarPor, setOrdenarPor] = useState('valor_desc')
+  const [incluirOperacional, setIncluirOperacional] = useState(true)
+  const [incluirFinanceiro, setIncluirFinanceiro] = useState(true)
 
   const itensFiltraveisQ = useQuery({
     queryKey: ['rel-itens-filtraveis', propId],
@@ -1273,11 +1276,11 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
             nomeArquivo: 'custos-detalhados',
             propriedadeNome,
             safraNome: safraAtual?.nome,
-            operacional,
-            financeiro,
-            totalOperacional,
-            totalDespesas,
-            totalReceitas,
+            operacional: incluirOperacional ? operacional : [],
+            financeiro: incluirFinanceiro ? financeiro : [],
+            totalOperacional: incluirOperacional ? totalOperacional : 0,
+            totalDespesas: incluirFinanceiro ? totalDespesas : 0,
+            totalReceitas: incluirFinanceiro ? totalReceitas : 0,
           })}
         >
           <FileText className="h-4 w-4 mr-1" /> Exportar PDF
@@ -1360,17 +1363,27 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
               Limpar filtros
             </Button>
           )}
+          <div className="flex gap-4 items-center mt-3">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={incluirOperacional} onCheckedChange={(v) => setIncluirOperacional(!!v)} />
+              Operacional
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={incluirFinanceiro} onCheckedChange={(v) => setIncluirFinanceiro(!!v)} />
+              Financeiro
+            </label>
+          </div>
         </CardContent>
       </Card>
 
       {relatorioQ.isLoading ? (
         <SkeletonAba />
-      ) : operacional.length === 0 && financeiro.length === 0 ? (
+      ) : (incluirOperacional ? operacional : []).length === 0 && (incluirFinanceiro ? financeiro : []).length === 0 ? (
         <Card><CardContent className="pt-6"><EmptyState message="Nenhum custo encontrado com esses filtros" /></CardContent></Card>
       ) : (
         <>
           {/* Seção Operacional */}
-          {operacional.length > 0 && (
+          {incluirOperacional && operacional.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
@@ -1406,7 +1419,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
           )}
 
           {/* Seção Financeiro */}
-          {financeiro.length > 0 && (
+          {incluirFinanceiro && financeiro.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
