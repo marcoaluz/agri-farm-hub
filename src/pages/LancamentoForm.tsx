@@ -863,6 +863,28 @@ export function LancamentoForm() {
     }
   })
 
+// Helper: sincronizar registros em abastecimentos a partir dos itens de abastecimento do lançamento
+  // (mantém o Histórico de Abastecimentos e "Últ. abastecimento" da tela Máquinas em dia)
+  const sincronizarAbastecimentos = async (
+    lancamentoIdSalvo: string,
+    itens: ItemLancamento[],
+    dataExecucao: string
+  ) => {
+    const abastecimentosDoLancamento = itens.filter(i => i.tipo_ref === 'abastecimento' && i.maquina_id)
+    if (abastecimentosDoLancamento.length === 0) return
+    await supabase.from('abastecimentos').insert(abastecimentosDoLancamento.map(item => ({
+      maquina_id: item.maquina_id,
+      data: dataExecucao,
+      horimetro: item.horimetro_informado ?? 0,
+      combustivel_tipo: item.combustivel_tipo || null,
+      quantidade_litros: item.litros || 0,
+      custo_total: item.custo_total || 0,
+      custo_litro: item.litros && item.litros > 0 ? (item.custo_total || 0) / item.litros : null,
+      observacoes: item.observacao || null,
+      lancamento_id: lancamentoIdSalvo,
+    })))
+  }
+
   // Helper: sincronizar registros em maquina_manutencoes a partir dos itens de manutenção do lançamento
   const sincronizarManutencoes = async (
     lancamentoIdSalvo: string,
