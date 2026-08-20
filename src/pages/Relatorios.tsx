@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useGlobal } from '@/contexts/GlobalContext'
 
 import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, type Coluna } from '@/lib/exportTabela'
@@ -1147,6 +1148,8 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   const [itemFiltro, setItemFiltro] = useState<{ tipo: string; id: string } | null>(null)
   const [talhaoFiltro, setTalhaoFiltro] = useState('')
   const [ordenarPor, setOrdenarPor] = useState('valor_desc')
+  const [incluirOperacional, setIncluirOperacional] = useState(true)
+  const [incluirFinanceiro, setIncluirFinanceiro] = useState(true)
 
   const itensFiltraveisQ = useQuery({
     queryKey: ['rel-itens-filtraveis', propId],
