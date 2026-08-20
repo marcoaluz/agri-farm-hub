@@ -1286,8 +1286,12 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
             nomeArquivo: 'custos-detalhados',
             propriedadeNome,
             safraNome: safraAtual?.nome,
-            operacional: incluirOperacional ? operacional : [],
-            financeiro: incluirFinanceiro ? financeiro : [],
+            operacional: incluirOperacional
+              ? operacional.map((g: any) => ({ ...g, grupo: labelGrupo(g.grupo) }))
+              : [],
+            financeiro: incluirFinanceiro
+              ? financeiro.map((g: any) => ({ ...g, grupo: labelGrupo(g.grupo) }))
+              : [],
             totalOperacional: incluirOperacional ? totalOperacional : 0,
             totalDespesas: incluirFinanceiro ? totalDespesas : 0,
             totalReceitas: incluirFinanceiro ? totalReceitas : 0,
