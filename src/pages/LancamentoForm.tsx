@@ -518,7 +518,12 @@ export function LancamentoForm() {
            i.quantidade > 0 &&
            (i.detalhamento_lotes === null || 
             (Array.isArray(i.detalhamento_lotes) && i.detalhamento_lotes.length === 0))
-    )
+    ) || itensValidos.some(i => {
+      if (i.tipo_ref !== 'abastecimento' || !i.origem_estoque || !i.produto_id) return false
+      const produtoSel = (produtos as any[] | undefined)?.find(p => p.id === i.produto_id)
+      if (!produtoSel) return false
+      return Number(i.litros || 0) > Number(produtoSel.saldo_atual || 0)
+    })
     
     return {
       totalItens: itensValidos.length,
@@ -531,7 +536,7 @@ export function LancamentoForm() {
       totalManutencao,
       temEstoqueInsuficiente
     }
-  }, [formData.itens, areaHa])
+  }, [formData.itens, areaHa, produtos])
 
   // Detectar se houve mudança real (para modo edição)
   const temAlteracaoReal = useMemo(() => {
