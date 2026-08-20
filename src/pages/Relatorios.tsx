@@ -1229,7 +1229,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
       (grupo.itens || []).forEach((item: any) => {
         linhas.push({
           secao: 'Operacional',
-          categoria: grupo.grupo,
+          categoria: labelGrupo(grupo.grupo),
           item: item.nome,
           quantidade: item.quantidade ?? '',
           unidade: item.unidade ?? '',
