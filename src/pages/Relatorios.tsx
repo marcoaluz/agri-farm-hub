@@ -1276,11 +1276,11 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
             nomeArquivo: 'custos-detalhados',
             propriedadeNome,
             safraNome: safraAtual?.nome,
-            operacional,
-            financeiro,
-            totalOperacional,
-            totalDespesas,
-            totalReceitas,
+            operacional: incluirOperacional ? operacional : [],
+            financeiro: incluirFinanceiro ? financeiro : [],
+            totalOperacional: incluirOperacional ? totalOperacional : 0,
+            totalDespesas: incluirFinanceiro ? totalDespesas : 0,
+            totalReceitas: incluirFinanceiro ? totalReceitas : 0,
           })}
         >
           <FileText className="h-4 w-4 mr-1" /> Exportar PDF
