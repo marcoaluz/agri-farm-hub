@@ -243,8 +243,11 @@ export async function exportarCustosDetalhadosPDF(opts: {
 
     doc.setFontSize(9); doc.setFont('helvetica', 'normal')
     grupo.itens.forEach((item: any) => {
+      const detalhe = item.quantidade != null
+        ? ` (${item.quantidade} ${item.unidade || ''} · méd. R$ ${item.preco_medio}/${item.unidade || ''})`
+        : ''
       doc.setTextColor(90)
-      doc.text(item.nome, margin + 4, y)
+      doc.text(`${item.nome}${detalhe}`, margin + 4, y)
       doc.setTextColor(item.tipo === 'receita' ? 34 : 180)
       doc.text(`${item.tipo === 'receita' ? '+' : '-'} R$ ${Number(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin, y, { align: 'right' })
       doc.setTextColor(0)
