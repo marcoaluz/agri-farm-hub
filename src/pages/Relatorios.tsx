@@ -52,6 +52,25 @@ const fmtData = (s?: string) => (s ? format(new Date(String(s).substring(0, 10) 
 // Remove sufixo entre parênteses do fim da unidade (ex: "Sacas (60kg)" -> "Sacas")
 const unidadeCurta = (u?: string) => (u || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
 
+// Formata a linha de um item Operacional de acordo com o tipo (produto/máquina/serviço/abastecimento/manutenção)
+const formatarItemOperacional = (item: any) => {
+  const qtd = item.quantidade != null ? fmtN(Number(item.quantidade)) : null
+  const un = unidadeCurta(item.unidade)
+  switch (item.tipo_ref) {
+    case 'produto':
+      return `${item.nome} ${item.vezes}x${qtd != null ? `, ${qtd} (${un})` : ''}`
+    case 'maquina':
+    case 'servico_simples':
+      return `${item.nome} ${item.vezes}x${qtd != null ? ` ${qtd}(${un})` : ''}`
+    case 'abastecimento':
+      return `${item.nome} ${item.vezes}x${qtd != null ? ` (${qtd} ${un})` : ''}`
+    case 'manutencao':
+      return `${item.nome} ${item.vezes}x`
+    default:
+      return `${item.nome}${item.vezes != null ? ` ${item.vezes}x` : ''}`
+  }
+}
+
 const PALETTE = [
   'hsl(142,70%,40%)', 'hsl(0,72%,51%)', 'hsl(40,90%,50%)', 'hsl(200,70%,50%)',
   'hsl(270,60%,50%)', 'hsl(180,60%,40%)', 'hsl(20,80%,55%)', 'hsl(330,65%,55%)',
@@ -1420,12 +1439,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                     </div>
                     {(grupo.itens || []).map((item: any, idx: number) => (
                       <div key={idx} className="flex items-center justify-between text-sm pl-4 py-1 text-foreground/80">
-                        <span>
-                          {item.nome}
-                          {item.vezes != null && (
-                            <span className="text-xs ml-1 text-foreground/80">{item.vezes}x</span>
-                          )}
-                        </span>
+                        <span>{formatarItemOperacional(item)}</span>
                         <span>= {fmt(Number(item.valor))}</span>
                       </div>
                     ))}
