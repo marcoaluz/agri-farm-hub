@@ -631,6 +631,24 @@ export function LancamentoForm() {
             custo_total: custoItem,
           })
           custoTotal += custoItem
+
+        } else if (itemForm.tipo_ref === 'abastecimento' && itemForm.maquina_id) {
+          const custoItem = itemForm.custo_total || 0
+          itensComCusto.push({
+            ...itemForm,
+            custo_unitario: 0,
+            custo_total: custoItem,
+          })
+          custoTotal += custoItem
+
+        } else if (itemForm.tipo_ref === 'manutencao' && itemForm.maquina_id) {
+          const custoItem = itemForm.custo_total || 0
+          itensComCusto.push({
+            ...itemForm,
+            custo_unitario: 0,
+            custo_total: custoItem,
+          })
+          custoTotal += custoItem
         }
       }
 
