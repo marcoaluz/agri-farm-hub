@@ -120,7 +120,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
   // Preview de custo direto (novo sistema) — para produtos usa FIFO, ignora override
   const { data: previewDireto, isLoading: loadingPreviewDireto } = usePreviewCustoDireto(
-    usaRefDireta ? itemForm.tipo_ref : undefined,
+    usaRefDireta && itemForm.tipo_ref !== 'manutencao' ? (itemForm.tipo_ref as 'produto' | 'maquina' | 'servico_simples' | 'abastecimento') : undefined,
     itemForm.produto_id,
     itemForm.maquina_id,
     itemForm.servico_ref_id,
