@@ -77,7 +77,7 @@ export function Lancamentos() {
             custo_unitario,
             custo_total
           ),
-          abastecimento:abastecimentos(
+          abastecimento:abastecimentos!lancamentos_abastecimento_id_fkey(
             id,
             data,
             horimetro,
