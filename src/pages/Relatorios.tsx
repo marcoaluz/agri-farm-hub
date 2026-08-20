@@ -1543,9 +1543,9 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3 flex-wrap">
-          <StatCard title="Total de Produtos" value={totalProdutos} icon={<Boxes className="h-4 w-4" />} />
-          <StatCard title="Itens Zerados" value={totalZerados} icon={<FileX className="h-4 w-4" />} className={totalZerados > 0 ? 'negative' : undefined} />
-          <StatCard title="Abaixo do Mínimo" value={totalAbaixoMinimo} icon={<AlertTriangle className="h-4 w-4" />} className={totalAbaixoMinimo > 0 ? 'negative' : undefined} />
+          <StatCard title="Total de Produtos" value={totalProdutos} icon={Boxes} />
+          <StatCard title="Itens Zerados" value={totalZerados} icon={FileX} variant={totalZerados > 0 ? 'warning' : 'default'} />
+          <StatCard title="Abaixo do Mínimo" value={totalAbaixoMinimo} icon={AlertTriangle} variant={totalAbaixoMinimo > 0 ? 'warning' : 'default'} />
         </div>
         <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={grupos.length === 0}>
           <FileText className="h-4 w-4 mr-1" /> Exportar PDF
