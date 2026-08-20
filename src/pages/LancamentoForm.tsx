@@ -710,6 +710,7 @@ export function LancamentoForm() {
         // PASSO 3: Deletar itens antigos
         await supabase.from('lancamentos_itens').delete().eq('lancamento_id', lancamentoId)
         await supabase.from('maquina_manutencoes').delete().eq('lancamento_id', lancamentoId)
+        await supabase.from('abastecimentos').delete().eq('lancamento_id', lancamentoId)
 
         // PASSO 4: Atualizar cabeçalho
         const { error: erroLanc } = await supabase
