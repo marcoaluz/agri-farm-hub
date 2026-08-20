@@ -495,8 +495,16 @@ export function LancamentoForm() {
     const totalMaquinas = itensValidos
       .filter(i => i.tipo_ref === 'maquina')
       .reduce((sum, i) => sum + (i.custo_total || 0), 0)
-    
-    const custoTotal = totalProdutos + totalServicos + totalMaquinas
+
+    const totalAbastecimento = itensValidos
+      .filter(i => i.tipo_ref === 'abastecimento')
+      .reduce((sum, i) => sum + (i.custo_total || 0), 0)
+
+    const totalManutencao = itensValidos
+      .filter(i => i.tipo_ref === 'manutencao')
+      .reduce((sum, i) => sum + (i.custo_total || 0), 0)
+
+    const custoTotal = totalProdutos + totalServicos + totalMaquinas + totalAbastecimento + totalManutencao
     const custoPorHa = areaHa && areaHa > 0 ? custoTotal / areaHa : null
     
     const temEstoqueInsuficiente = itensValidos.some(
@@ -513,6 +521,8 @@ export function LancamentoForm() {
       totalProdutos,
       totalServicos,
       totalMaquinas,
+      totalAbastecimento,
+      totalManutencao,
       temEstoqueInsuficiente
     }
   }, [formData.itens, areaHa])
@@ -1437,6 +1447,30 @@ export function LancamentoForm() {
                           </div>
                           <span className="font-semibold text-orange-700">
                             R$ {resumoFinanceiro.totalMaquinas.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
+                      {resumoFinanceiro.totalAbastecimento > 0 && (
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Fuel className="h-4 w-4 text-amber-600" />
+                            <span className="text-sm">Abastecimento</span>
+                          </div>
+                          <span className="font-semibold text-amber-700">
+                            R$ {resumoFinanceiro.totalAbastecimento.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
+                      {resumoFinanceiro.totalManutencao > 0 && (
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Cog className="h-4 w-4 text-red-600" />
+                            <span className="text-sm">Manutenção</span>
+                          </div>
+                          <span className="font-semibold text-red-700">
+                            R$ {resumoFinanceiro.totalManutencao.toFixed(2)}
                           </span>
                         </div>
                       )}
