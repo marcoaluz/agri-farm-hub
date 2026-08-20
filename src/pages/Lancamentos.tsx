@@ -186,7 +186,7 @@ export function Lancamentos() {
   }
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('pt-BR')
+    return format(new Date(dateStr + 'T12:00:00'), 'dd/MM/yyyy')
   }
 
   const formatCurrency = (value: number) => {
