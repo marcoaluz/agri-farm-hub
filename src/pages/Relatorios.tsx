@@ -6,7 +6,7 @@ import { ptBR } from 'date-fns/locale'
 import {
   BarChart3, ClipboardList, DollarSign, Sprout, TrendingUp, Package,
   ArrowUpDown, ChevronUp, ChevronDown, Download, FileX, Lock, Circle, Leaf,
-  FileSpreadsheet, FileText, ListTree,
+  FileSpreadsheet, FileText, ListTree, Boxes, AlertTriangle,
 
 
 
@@ -16,6 +16,7 @@ import {
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 import { PizzaCategoria } from '@/components/charts/PizzaCategoria'
+import { StatCard } from '@/components/common/StatCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -28,7 +29,7 @@ import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useGlobal } from '@/contexts/GlobalContext'
 
-import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, type Coluna } from '@/lib/exportTabela'
+import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, exportarEstoquePDF, type Coluna } from '@/lib/exportTabela'
 import { TRANSACAO_CATEGORIA_LABELS } from '@/lib/enumLabels'
 
 function labelGrupo(valor: any): string {
@@ -182,6 +183,7 @@ export function Relatorios() {
             <TabsTrigger value="comparativo" className="whitespace-nowrap"><TrendingUp className="h-4 w-4 mr-1" />Comparativo</TabsTrigger>
             <TabsTrigger value="insumos" className="whitespace-nowrap"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
             <TabsTrigger value="custos" className="whitespace-nowrap"><ListTree className="h-4 w-4 mr-1" />Custos Detalhados</TabsTrigger>
+            <TabsTrigger value="estoque" className="whitespace-nowrap"><Boxes className="h-4 w-4 mr-1" />Estoque</TabsTrigger>
 
           </TabsList>
         </div>
@@ -193,6 +195,7 @@ export function Relatorios() {
         <TabsContent value="comparativo"><AbaComparativo propId={propId} safraAtualId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="insumos"><AbaInsumos propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="custos"><AbaCustosDetalhados propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="estoque"><AbaEstoque propId={propId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
 
 
       </Tabs>
@@ -1503,6 +1506,106 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
             Os totais de Operacional e Financeiro não são somados entre si — são duas visões diferentes do mesmo dinheiro (consumo aplicado vs. dinheiro que saiu do banco).
           </p>
         </>
+      )}
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════
+   ABA — ESTOQUE
+   ════════════════════════════════════════════════ */
+function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNome: string }) {
+  const estoqueQ = useQuery({
+    queryKey: ['rel-estoque', propId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc('get_relatorio_estoque', { p_propriedade_id: propId })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+    enabled: !!propId,
+  })
+
+  const grupos = estoqueQ.data || []
+  const totalProdutos = grupos.reduce((s: number, g: any) => s + Number(g.total_itens || 0), 0)
+  const totalZerados = grupos.reduce((s: number, g: any) => s + Number(g.itens_zerados || 0), 0)
+  const totalAbaixoMinimo = grupos.reduce(
+    (s: number, g: any) => s + (g.itens || []).filter((i: any) => i.abaixo_minimo).length,
+    0
+  )
+
+  const handleExportPDF = () => {
+    exportarEstoquePDF({ nomeArquivo: 'estoque', propriedadeNome, grupos })
+  }
+
+  if (estoqueQ.isLoading) return <Skeleton className="h-40 w-full" />
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          <StatCard title="Total de Produtos" value={totalProdutos} icon={Boxes} />
+          <StatCard title="Itens Zerados" value={totalZerados} icon={FileX} variant={totalZerados > 0 ? 'warning' : 'default'} />
+          <StatCard title="Abaixo do Mínimo" value={totalAbaixoMinimo} icon={AlertTriangle} variant={totalAbaixoMinimo > 0 ? 'warning' : 'default'} />
+        </div>
+        <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={grupos.length === 0}>
+          <FileText className="h-4 w-4 mr-1" /> Exportar PDF
+        </Button>
+      </div>
+
+      {grupos.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center text-muted-foreground">
+            Nenhum produto em estoque.
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Estoque</span>
+              <span className="text-sm font-normal text-muted-foreground">
+                {totalProdutos} {totalProdutos === 1 ? 'produto' : 'produtos'}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <div className="flex items-center text-xs font-medium text-muted-foreground pb-2 border-b">
+              <span className="flex-1">Produto</span>
+              <span className="w-36 text-right">Qtde. em estoque</span>
+            </div>
+
+            {grupos.map((grupo: any) => (
+              <div key={grupo.grupo} className="py-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold text-sm">{grupo.grupo}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {grupo.total_itens} {grupo.total_itens === 1 ? 'item' : 'itens'}
+                  </span>
+                </div>
+                <div className="border-t pt-1" />
+
+                {(grupo.itens || []).map((item: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={`flex items-center justify-between py-1 text-sm ${item.abaixo_minimo ? 'text-red-600' : ''}`}
+                  >
+                    <span className="flex-1 truncate">
+                      {item.nome}
+                      {item.abaixo_minimo && (
+                        <Badge variant="destructive" className="ml-2 text-[10px] py-0 px-1.5">
+                          abaixo do mínimo
+                        </Badge>
+                      )}
+                    </span>
+                    <span className="w-36 text-right font-medium">
+                      {fmtN(Number(item.saldo_atual))} {unidadeCurta(item.unidade)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
     </div>
   )
