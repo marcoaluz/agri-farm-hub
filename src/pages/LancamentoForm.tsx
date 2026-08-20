@@ -437,6 +437,7 @@ export function LancamentoForm() {
       toast({ title: 'Já existe manutenção para essa máquina neste lançamento', variant: 'destructive' })
       return
     }
+    const temHorasNoMesmoLancamento = formData.itens.some(i => i.tipo_ref === 'maquina' && i.maquina_id === maquinaId)
     setFormData(prev => ({
       ...prev,
       itens: [...prev.itens, {
@@ -449,6 +450,7 @@ export function LancamentoForm() {
         custo_total: 0,
         custo_unitario: 0,
         horimetro_informado: maquina.horimetro_atual || 0,
+        momento_manutencao: temHorasNoMesmoLancamento ? 'antes' : null,
         proximo_horimetro: undefined,
         observacao: '',
         quantidade: 1,
