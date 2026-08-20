@@ -49,6 +49,9 @@ const fmtN = (v: number, d = 2) =>
 const fmtPct = (v: number) => `${(Number(v) || 0).toFixed(1)}%`
 const fmtData = (s?: string) => (s ? format(new Date(String(s).substring(0, 10) + 'T12:00:00'), 'dd/MM/yyyy') : '-')
 
+// Remove sufixo entre parênteses do fim da unidade (ex: "Sacas (60kg)" -> "Sacas")
+const unidadeCurta = (u?: string) => (u || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
+
 const PALETTE = [
   'hsl(142,70%,40%)', 'hsl(0,72%,51%)', 'hsl(40,90%,50%)', 'hsl(200,70%,50%)',
   'hsl(270,60%,50%)', 'hsl(180,60%,40%)', 'hsl(20,80%,55%)', 'hsl(330,65%,55%)',
@@ -1416,11 +1419,11 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                       <span>{fmt(Number(grupo.subtotal))}</span>
                     </div>
                     {(grupo.itens || []).map((item: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between text-sm pl-4 py-1 text-muted-foreground">
+                      <div key={idx} className="flex items-center justify-between text-sm pl-4 py-1 text-foreground/80">
                         <span>
                           {item.nome}
                           {item.vezes != null && (
-                            <span className="text-xs ml-1 text-muted-foreground">{item.vezes}x</span>
+                            <span className="text-xs ml-1 text-foreground/80">{item.vezes}x</span>
                           )}
                         </span>
                         <span>= {fmt(Number(item.valor))}</span>
@@ -1453,16 +1456,16 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                       <span>{fmt(Number(grupo.subtotal))}</span>
                     </div>
                     {(grupo.itens || []).map((item: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between text-sm pl-4 py-1 text-muted-foreground">
+                      <div key={idx} className="flex items-center justify-between text-sm pl-4 py-1 text-foreground/80">
                         <span>
                           {item.nome}
                           {item.quantidade != null && (
                             <span className="text-xs ml-1">
-                              ({fmtN(item.quantidade)} {item.unidade}{item.preco_medio != null ? ` · média R$${item.preco_medio}/${item.unidade}` : ''})
+                              ({fmtN(item.quantidade)} {unidadeCurta(item.unidade)}{item.preco_medio != null ? ` · média R$${fmtN(item.preco_medio)}/${item.unidade}` : ''})
                             </span>
                           )}
                         </span>
-                        <span className={item.tipo === 'receita' ? 'text-green-600' : ''}>
+                        <span className={item.tipo === 'receita' ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
                           {item.tipo === 'receita' ? '+' : '-'} {fmt(Number(item.valor))}
                         </span>
                       </div>
