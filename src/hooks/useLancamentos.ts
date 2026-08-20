@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Lancamento } from '@/types/supabase-local'
 import { toast } from 'sonner'
+import { format } from 'date-fns'
 
 export function useLancamentos(safraId?: string) {
   return useQuery({
@@ -118,7 +119,7 @@ export function useSolicitarExclusao() {
           usuario_id: propriedade.user_id,
           tipo: 'solicitacao_exclusao',
           titulo: 'Solicitação de Exclusão de Lançamento',
-          mensagem: `Solicitação para excluir o lançamento "${servico?.nome || 'Serviço'}" de ${new Date(lancamento.data_execucao).toLocaleDateString('pt-BR')} (R$ ${lancamento.custo_total?.toFixed(2)}). Motivo: ${motivo}`,
+          mensagem: `Solicitação para excluir o lançamento "${servico?.nome || 'Serviço'}" de ${format(new Date(lancamento.data_execucao + 'T12:00:00'), 'dd/MM/yyyy')} (R$ ${lancamento.custo_total?.toFixed(2)}). Motivo: ${motivo}`,
           dados: {
             lancamento_id: lancamentoId,
             solicitado_por: usuarioId,
@@ -184,7 +185,7 @@ export function useSolicitarEdicao() {
           usuario_id: propriedade.user_id,
           tipo: 'solicitacao_edicao',
           titulo: 'Solicitação de Edição de Lançamento',
-          mensagem: `Solicitação para editar o lançamento "${servico?.nome || 'Serviço'}" de ${new Date(lancamento.data_execucao).toLocaleDateString('pt-BR')}. Motivo: ${motivo}`,
+          mensagem: `Solicitação para editar o lançamento "${servico?.nome || 'Serviço'}" de ${format(new Date(lancamento.data_execucao + 'T12:00:00'), 'dd/MM/yyyy')}. Motivo: ${motivo}`,
           dados: {
             lancamento_id: lancamentoId,
             solicitado_por: usuarioId,
