@@ -1514,27 +1514,57 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
 /* ════════════════════════════════════════════════
    ABA — ESTOQUE
    ════════════════════════════════════════════════ */
+const TIPO_ESTOQUE_LABEL: Record<string, string> = {
+  agricola: 'Agrícola',
+  pecuario: 'Pecuária',
+  geral: 'Geral',
+}
+
 function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNome: string }) {
-  const estoqueQ = useQuery({
-    queryKey: ['rel-estoque', propId],
+  const [categoriaFiltro, setCategoriaFiltro] = useState('')
+
+  const categoriasQ = useQuery({
+    queryKey: ['rel-estoque-categorias', propId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc('get_relatorio_estoque', { p_propriedade_id: propId })
+      const { data, error } = await db.rpc('listar_categorias_estoque_usadas', { p_propriedade_id: propId })
+      if (error) throw error
+      return (data || []) as { tipo_estoque: string; categoria: string }[]
+    },
+    enabled: !!propId,
+  })
+
+  const categoriasDisponiveis = useMemo(() => {
+    const set = new Set((categoriasQ.data || []).map((c) => c.categoria))
+    return Array.from(set).sort()
+  }, [categoriasQ.data])
+
+  const estoqueQ = useQuery({
+    queryKey: ['rel-estoque', propId, categoriaFiltro],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('get_relatorio_estoque', {
+        p_propriedade_id: propId,
+        p_categoria: categoriaFiltro || null,
+      })
       if (error) throw error
       return (data || []) as any[]
     },
     enabled: !!propId,
   })
 
-  const grupos = estoqueQ.data || []
-  const totalProdutos = grupos.reduce((s: number, g: any) => s + Number(g.total_itens || 0), 0)
-  const totalZerados = grupos.reduce((s: number, g: any) => s + Number(g.itens_zerados || 0), 0)
-  const totalAbaixoMinimo = grupos.reduce(
-    (s: number, g: any) => s + (g.itens || []).filter((i: any) => i.abaixo_minimo).length,
+  const tipos = estoqueQ.data || []
+  const totalProdutos = tipos.reduce((s: number, t: any) => s + Number(t.total_itens || 0), 0)
+  const totalZerados = tipos.reduce((s: number, t: any) => s + Number(t.itens_zerados || 0), 0)
+  const totalAbaixoMinimo = tipos.reduce(
+    (s: number, t: any) =>
+      s + (t.categorias || []).reduce(
+        (s2: number, c: any) => s2 + (c.itens || []).filter((i: any) => i.abaixo_minimo).length,
+        0
+      ),
     0
   )
 
   const handleExportPDF = () => {
-    exportarEstoquePDF({ nomeArquivo: 'estoque', propriedadeNome, grupos })
+    exportarEstoquePDF({ nomeArquivo: 'estoque', propriedadeNome, tipos })
   }
 
   if (estoqueQ.isLoading) return <Skeleton className="h-40 w-full" />
@@ -1547,65 +1577,81 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
           <StatCard title="Itens Zerados" value={totalZerados} icon={FileX} variant={totalZerados > 0 ? 'warning' : 'default'} />
           <StatCard title="Abaixo do Mínimo" value={totalAbaixoMinimo} icon={AlertTriangle} variant={totalAbaixoMinimo > 0 ? 'warning' : 'default'} />
         </div>
-        <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={grupos.length === 0}>
+      </div>
+
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <Select value={categoriaFiltro || 'todas'} onValueChange={(v) => setCategoriaFiltro(v === 'todas' ? '' : v)}>
+          <SelectTrigger className="w-56">
+            <SelectValue placeholder="Todas as categorias" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas as categorias</SelectItem>
+            {categoriasDisponiveis.map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={tipos.length === 0}>
           <FileText className="h-4 w-4 mr-1" /> Exportar PDF
         </Button>
       </div>
 
-      {grupos.length === 0 ? (
+      {tipos.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
-            Nenhum produto em estoque.
+            Nenhum produto em estoque{categoriaFiltro ? ' nessa categoria' : ''}.
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Estoque</span>
-              <span className="text-sm font-normal text-muted-foreground">
-                {totalProdutos} {totalProdutos === 1 ? 'produto' : 'produtos'}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            <div className="flex items-center text-xs font-medium text-muted-foreground pb-2 border-b">
-              <span className="flex-1">Produto</span>
-              <span className="w-36 text-right">Qtde. em estoque</span>
-            </div>
+        tipos.map((tipo: any) => (
+          <Card key={tipo.tipo_estoque}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>{TIPO_ESTOQUE_LABEL[tipo.tipo_estoque] || tipo.tipo_estoque}</span>
+                <span className="text-sm font-normal text-muted-foreground">
+                  {tipo.total_itens} {tipo.total_itens === 1 ? 'produto' : 'produtos'}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              <div className="flex items-center text-xs font-medium text-muted-foreground pb-2 border-b">
+                <span className="flex-1">Produto</span>
+                <span className="w-36 text-right">Qtde. em estoque</span>
+              </div>
 
-            {grupos.map((grupo: any) => (
-              <div key={grupo.grupo} className="py-2">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-semibold text-sm">{grupo.grupo}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {grupo.total_itens} {grupo.total_itens === 1 ? 'item' : 'itens'}
-                  </span>
-                </div>
-                <div className="border-t pt-1" />
-
-                {(grupo.itens || []).map((item: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className={`flex items-center justify-between py-1 text-sm ${item.abaixo_minimo ? 'text-red-600' : ''}`}
-                  >
-                    <span className="flex-1 truncate">
-                      {item.nome}
-                      {item.abaixo_minimo && (
-                        <Badge variant="destructive" className="ml-2 text-[10px] py-0 px-1.5">
-                          abaixo do mínimo
-                        </Badge>
-                      )}
-                    </span>
-                    <span className="w-36 text-right font-medium">
-                      {fmtN(Number(item.saldo_atual))} {unidadeCurta(item.unidade)}
+              {(tipo.categorias || []).map((cat: any) => (
+                <div key={cat.categoria} className="py-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-sm">{cat.categoria}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {cat.total_itens} {cat.total_itens === 1 ? 'item' : 'itens'}
                     </span>
                   </div>
-                ))}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+                  <div className="border-t pt-1" />
+
+                  {(cat.itens || []).map((item: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className={`flex items-center justify-between py-1 text-sm ${item.abaixo_minimo ? 'text-red-600' : ''}`}
+                    >
+                      <span className="flex-1 truncate">
+                        {item.nome}
+                        {item.abaixo_minimo && (
+                          <Badge variant="destructive" className="ml-2 text-[10px] py-0 px-1.5">
+                            abaixo do mínimo
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="w-36 text-right font-medium">
+                        {fmtN(Number(item.saldo_atual))} {unidadeCurta(item.unidade)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ))
       )}
     </div>
   )

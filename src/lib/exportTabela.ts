@@ -309,12 +309,28 @@ export async function exportarCustosDetalhadosPDF(opts: {
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 }
 
+const TIPO_ESTOQUE_LABEL_PDF: Record<string, string> = {
+  agricola: 'Agrícola',
+  pecuario: 'Pecuária',
+  geral: 'Geral',
+}
+
 export async function exportarEstoquePDF(opts: {
   nomeArquivo: string
   propriedadeNome: string
-  grupos: { grupo: string; total_itens: number; itens_zerados: number; itens: { nome: string; saldo_atual: number; unidade: string; abaixo_minimo: boolean }[] }[]
+  tipos: {
+    tipo_estoque: string
+    total_itens: number
+    itens_zerados: number
+    categorias: {
+      categoria: string
+      total_itens: number
+      itens_zerados: number
+      itens: { nome: string; saldo_atual: number; unidade: string; abaixo_minimo: boolean }[]
+    }[]
+  }[]
 }) {
-  const { nomeArquivo, propriedadeNome, grupos } = opts
+  const { nomeArquivo, propriedadeNome, tipos } = opts
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -363,46 +379,48 @@ export async function exportarEstoquePDF(opts: {
   doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, 36)
   y = 44
 
-  const totalProdutos = grupos.reduce((s, g) => s + Number(g.total_itens || 0), 0)
+  tipos.forEach((tipo) => {
+    novaPaginaSeNecessario(16)
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold')
+    doc.text(TIPO_ESTOQUE_LABEL_PDF[tipo.tipo_estoque] || tipo.tipo_estoque, margin, y)
+    doc.text(`${tipo.total_itens} produtos`, pageWidth - margin, y, { align: 'right' })
+    y += 6
 
-  doc.setFontSize(12); doc.setFont('helvetica', 'bold')
-  doc.text('Estoque', margin, y)
-  doc.text(`${totalProdutos} produtos`, pageWidth - margin, y, { align: 'right' })
-  y += 6
-
-  doc.setFontSize(8); doc.setFont('helvetica', 'bold')
-  doc.setTextColor(140)
-  doc.text('Qtde. em estoque', pageWidth - margin, y, { align: 'right' })
-  doc.setTextColor(0)
-  y += 4
-
-  grupos.forEach((grupo) => {
-    novaPaginaSeNecessario(10 + grupo.itens.length * 6)
-
-    doc.setFontSize(10); doc.setFont('helvetica', 'bold')
-    doc.text(grupo.grupo, margin, y)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8); doc.setTextColor(140)
-    doc.text(`${grupo.total_itens} ${grupo.total_itens === 1 ? 'item' : 'itens'}`, pageWidth - margin, y, { align: 'right' })
+    doc.setFontSize(8); doc.setFont('helvetica', 'bold')
+    doc.setTextColor(140)
+    doc.text('Qtde. em estoque', pageWidth - margin, y, { align: 'right' })
     doc.setTextColor(0)
-    y += 1
-    doc.setDrawColor(200)
-    doc.line(margin, y, pageWidth - margin, y)
-    y += 5
+    y += 4
 
-    doc.setFontSize(9); doc.setFont('helvetica', 'normal')
-    grupo.itens.forEach((item) => {
-      if (item.abaixo_minimo) {
-        doc.setTextColor(...COR_ALERTA)
-      } else {
-        doc.setTextColor(COR_TEXTO)
-      }
-      doc.text(item.abaixo_minimo ? `${item.nome} (abaixo do mínimo)` : item.nome, margin + 4, y)
-      doc.text(`${fmt2(item.saldo_atual)} ${unidadeCurta(item.unidade)}`, pageWidth - margin, y, { align: 'right' })
+    ;(tipo.categorias || []).forEach((cat) => {
+      novaPaginaSeNecessario(10 + cat.itens.length * 6)
+
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold')
+      doc.text(cat.categoria, margin, y)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8); doc.setTextColor(140)
+      doc.text(`${cat.total_itens} ${cat.total_itens === 1 ? 'item' : 'itens'}`, pageWidth - margin, y, { align: 'right' })
       doc.setTextColor(0)
-      y += 5.5
+      y += 1
+      doc.setDrawColor(200)
+      doc.line(margin, y, pageWidth - margin, y)
+      y += 5
+
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal')
+      cat.itens.forEach((item) => {
+        if (item.abaixo_minimo) {
+          doc.setTextColor(...COR_ALERTA)
+        } else {
+          doc.setTextColor(COR_TEXTO)
+        }
+        doc.text(item.abaixo_minimo ? `${item.nome} (abaixo do mínimo)` : item.nome, margin + 4, y)
+        doc.text(`${fmt2(item.saldo_atual)} ${unidadeCurta(item.unidade)}`, pageWidth - margin, y, { align: 'right' })
+        doc.setTextColor(0)
+        y += 5.5
+      })
+      y += 3
     })
-    y += 3
+    y += 4
   })
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
