@@ -1445,7 +1445,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 {financeiro.map((grupo: any) => (
                   <div key={grupo.grupo}>
                     <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
-                      <span className="capitalize">{String(grupo.grupo).replace(/_/g, ' ')}</span>
+                      <span>{labelGrupo(grupo.grupo)}</span>
                       <span>{fmt(Number(grupo.subtotal))}</span>
                     </div>
                     {(grupo.itens || []).map((item: any, idx: number) => (
