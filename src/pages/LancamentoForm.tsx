@@ -757,6 +757,7 @@ export function LancamentoForm() {
 
         // PASSO 6: Aplicar novo consumo
         await aplicarConsumoEHorimetro(itensComCusto)
+        await sincronizarAbastecimentos(lancamentoId, itensComCusto, data.data_execucao)
         await sincronizarManutencoes(lancamentoId, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
 
         return { id: lancamentoId }
