@@ -201,13 +201,19 @@ export function LancamentoForm() {
             produto_id: li.produto_id || null,
             maquina_id: li.maquina_id || null,
             servico_ref_id: li.servico_ref_id || null,
-            nome: li.produto?.nome || li.maquina?.nome || li.servico_ref?.nome || '',
+            nome: li.produto?.nome || li.maquina?.nome || (li.tipo_ref === 'abastecimento' ? `Abastecimento — ${li.maquina?.nome || ''}` : li.servico_ref?.nome) || '',
             unidade: li.produto?.unidade_medida || li.servico_ref?.unidade_medida || 'hora',
             custo_unitario_ref: li.maquina?.custo_hora || li.servico_ref?.custo_padrao || undefined,
             quantidade: li.quantidade,
             custo_unitario: li.custo_unitario,
             custo_total: li.custo_total,
             detalhamento_lotes: li.detalhamento_lotes,
+            origem_estoque: li.tipo_ref === 'abastecimento' ? !!li.produto_id : undefined,
+            litros: li.litros ?? undefined,
+            combustivel_tipo: li.combustivel_tipo || '',
+            horimetro_informado: li.horimetro_informado ?? undefined,
+            momento_abastecimento: li.momento_abastecimento || null,
+            observacao: li.observacao || '',
           })) || []
         }
         setFormData(loaded)
@@ -364,7 +370,7 @@ export function LancamentoForm() {
   const adicionarMaquina = (maquinaId: string) => {
     const maquina = maquinas?.find(m => m.id === maquinaId)
     if (!maquina) return
-    if (formData.itens.some(i => i.maquina_id === maquinaId)) {
+    if (formData.itens.some(i => i.tipo_ref === 'maquina' && i.maquina_id === maquinaId)) {
       toast({ title: 'Máquina já adicionada', variant: 'destructive' })
       return
     }
@@ -403,6 +409,7 @@ export function LancamentoForm() {
         custo_total: 0,
         horimetro_informado: maquina.horimetro_atual || 0,
         momento_abastecimento: temHorasNoMesmoLancamento ? 'antes' : null,
+        observacao: '',
         quantidade: 1,
       }]
     }))
@@ -658,6 +665,11 @@ export function LancamentoForm() {
               custo_unitario: item.custo_unitario,
               custo_total: item.custo_total,
               detalhamento_lotes: item.detalhamento_lotes || null,
+              litros: item.litros ?? null,
+              combustivel_tipo: item.combustivel_tipo || null,
+              horimetro_informado: item.horimetro_informado ?? null,
+              momento_abastecimento: item.momento_abastecimento || null,
+              observacao: item.observacao || null,
             })))
           if (erroItens) throw erroItens
         }
