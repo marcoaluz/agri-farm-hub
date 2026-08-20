@@ -29,6 +29,16 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useGlobal } from '@/contexts/GlobalContext'
 
 import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, type Coluna } from '@/lib/exportTabela'
+import { TRANSACAO_CATEGORIA_LABELS } from '@/lib/enumLabels'
+
+function labelGrupo(valor: any): string {
+  const v = String(valor ?? '')
+  if (!v) return ''
+  if (TRANSACAO_CATEGORIA_LABELS[v]) return TRANSACAO_CATEGORIA_LABELS[v]
+  return v
+    .replace(/_/g, ' ')
+    .replace(/\b\p{L}/gu, (c) => c.toUpperCase())
+}
 
 
 /* ───────────────── helpers ───────────────── */
