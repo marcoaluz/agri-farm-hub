@@ -51,6 +51,7 @@ export interface ItemLancamento {
   descricao?: string
   oficina?: string
   proximo_horimetro?: number
+  momento_manutencao?: 'antes' | 'depois' | null
 
   // Legado
   item?: {
@@ -591,6 +592,28 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                 />
               </div>
             </div>
+
+            {temMaquinaNoLancamento && (
+              <div>
+                <Label>Essa leitura de horímetro da manutenção foi antes ou depois do trabalho com a máquina?</Label>
+                <div className="flex gap-2 mt-1">
+                  <Button
+                    type="button" size="sm"
+                    variant={itemForm.momento_manutencao === 'antes' ? 'default' : 'outline'}
+                    onClick={() => onUpdate({ ...itemForm, momento_manutencao: 'antes' })}
+                  >
+                    Antes do trabalho
+                  </Button>
+                  <Button
+                    type="button" size="sm"
+                    variant={itemForm.momento_manutencao === 'depois' ? 'default' : 'outline'}
+                    onClick={() => onUpdate({ ...itemForm, momento_manutencao: 'depois' })}
+                  >
+                    Depois do trabalho
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div>
               <Label>Observação (opcional)</Label>

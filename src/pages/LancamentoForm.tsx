@@ -228,6 +228,7 @@ export function LancamentoForm() {
             descricao: li.descricao || '',
             oficina: li.oficina || '',
             proximo_horimetro: li.proximo_horimetro ?? undefined,
+            momento_manutencao: li.momento_manutencao || null,
           })) || []
         }
         setFormData(loaded)
@@ -730,6 +731,7 @@ export function LancamentoForm() {
               descricao: item.descricao || null,
               oficina: item.oficina || null,
               proximo_horimetro: item.proximo_horimetro ?? null,
+              momento_manutencao: item.momento_manutencao || null,
             })))
           if (erroItens) throw erroItens
         }
@@ -779,11 +781,12 @@ export function LancamentoForm() {
             horimetro_informado: item.horimetro_informado ?? null,
             momento_abastecimento: item.momento_abastecimento || null,
             observacao: item.observacao || null,
-            categoria_manutencao: item.categoria_manutencao || null,
-            descricao: item.descricao || null,
-            oficina: item.oficina || null,
-            proximo_horimetro: item.proximo_horimetro ?? null,
-          })))
+              categoria_manutencao: item.categoria_manutencao || null,
+              descricao: item.descricao || null,
+              oficina: item.oficina || null,
+              proximo_horimetro: item.proximo_horimetro ?? null,
+              momento_manutencao: item.momento_manutencao || null,
+            })))
         if (erroItens) throw erroItens
       }
 
@@ -873,9 +876,10 @@ export function LancamentoForm() {
   const aplicarConsumoEHorimetro = async (itens: ItemLancamento[]) => {
     const prioridade = (it: any): number => {
       if (it.tipo_ref === 'abastecimento' && it.momento_abastecimento !== 'depois') return 0
-      if (it.tipo_ref === 'manutencao') return 0
+      if (it.tipo_ref === 'manutencao' && it.momento_manutencao !== 'depois') return 0
       if (it.tipo_ref === 'maquina') return 1
       if (it.tipo_ref === 'abastecimento' && it.momento_abastecimento === 'depois') return 2
+      if (it.tipo_ref === 'manutencao' && it.momento_manutencao === 'depois') return 2
       return 1
     }
 
