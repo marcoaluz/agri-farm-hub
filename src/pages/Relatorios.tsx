@@ -52,22 +52,25 @@ const fmtData = (s?: string) => (s ? format(new Date(String(s).substring(0, 10) 
 // Remove sufixo entre parênteses do fim da unidade (ex: "Sacas (60kg)" -> "Sacas")
 const unidadeCurta = (u?: string) => (u || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
 
-// Formata a linha de um item Operacional de acordo com o tipo (produto/máquina/serviço/abastecimento/manutenção)
-const formatarItemOperacional = (item: any) => {
+// Formata só a coluna de Quantidade de um item Operacional, de acordo com o tipo.
+// Nota: item.vezes (quantas vezes o item apareceu no lançamento) continua vindo do backend
+// normalmente, só não é mais exibido aqui — fica disponível pra reexibir no futuro sem precisar
+// mudar o RPC de novo.
+const formatarQtdeOperacional = (item: any): string => {
   const qtd = item.quantidade != null ? fmtN(Number(item.quantidade)) : null
   const un = unidadeCurta(item.unidade)
   switch (item.tipo_ref) {
     case 'produto':
-      return `${item.nome} ${item.vezes}x${qtd != null ? `, ${qtd} (${un})` : ''}`
+      return qtd != null ? `${qtd} (${un})` : '-'
     case 'maquina':
     case 'servico_simples':
-      return `${item.nome} ${item.vezes}x${qtd != null ? ` ${qtd}(${un})` : ''}`
+      return qtd != null ? `${qtd}(${un})` : '-'
     case 'abastecimento':
-      return `${item.nome} ${item.vezes}x${qtd != null ? ` (${qtd} ${un})` : ''}`
+      return qtd != null ? `(${qtd} ${un})` : '-'
     case 'manutencao':
-      return `${item.nome} ${item.vezes}x`
+      return '-'
     default:
-      return `${item.nome}${item.vezes != null ? ` ${item.vezes}x` : ''}`
+      return qtd != null ? `${qtd}${un ? ` (${un})` : ''}` : '-'
   }
 }
 
@@ -1431,6 +1434,11 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
+                  <span className="flex-1">Item</span>
+                  <span className="w-36 text-right">Qtde.</span>
+                  <span className="w-28 text-right">Valor</span>
+                </div>
                 {operacional.map((grupo: any) => (
                   <div key={grupo.grupo}>
                     <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
@@ -1438,9 +1446,10 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                       <span>{fmt(Number(grupo.subtotal))}</span>
                     </div>
                     {(grupo.itens || []).map((item: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between text-sm pl-4 py-1 text-foreground/80">
-                        <span>{formatarItemOperacional(item)}</span>
-                        <span>= {fmt(Number(item.valor))}</span>
+                      <div key={idx} className="flex items-center text-sm pl-4 py-1 text-foreground/80">
+                        <span className="flex-1">{item.nome}</span>
+                        <span className="w-36 text-right text-xs text-muted-foreground">{formatarQtdeOperacional(item)}</span>
+                        <span className="w-28 text-right font-medium">{fmt(Number(item.valor))}</span>
                       </div>
                     ))}
                   </div>
