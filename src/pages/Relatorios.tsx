@@ -1554,6 +1554,12 @@ const TIPO_ESTOQUE_LABEL: Record<string, string> = {
 function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNome: string }) {
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
 
+  const [incluirAgricola, setIncluirAgricola] = useState(true)
+
+  const [incluirPecuario, setIncluirPecuario] = useState(true)
+
+  const [incluirGeral, setIncluirGeral] = useState(true)
+
   const categoriasQ = useQuery({
     queryKey: ['rel-estoque-categorias', propId],
     queryFn: async () => {
@@ -1582,9 +1588,16 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
     enabled: !!propId,
   })
 
-  const tipos = estoqueQ.data || []
+  const incluidos: Record<string, boolean> = { agricola: incluirAgricola, pecuario: incluirPecuario, geral: incluirGeral }
+
+  const todosOsTipos = estoqueQ.data || []
+
+  const tipos = todosOsTipos.filter((t: any) => incluidos[t.tipo_estoque] !== false)
+
   const totalProdutos = tipos.reduce((s: number, t: any) => s + Number(t.total_itens || 0), 0)
+
   const totalZerados = tipos.reduce((s: number, t: any) => s + Number(t.itens_zerados || 0), 0)
+
   const totalAbaixoMinimo = tipos.reduce(
     (s: number, t: any) =>
       s + (t.categorias || []).reduce(
@@ -1609,6 +1622,36 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
           <StatCard title="Abaixo do Mínimo" value={totalAbaixoMinimo} icon={AlertTriangle} variant={totalAbaixoMinimo > 0 ? 'warning' : 'default'} />
         </div>
       </div>
+
+      <div className="flex items-center gap-4 flex-wrap text-sm">
+
+        <label className="flex items-center gap-2 cursor-pointer">
+
+          <Checkbox checked={incluirAgricola} onCheckedChange={(v) => setIncluirAgricola(!!v)} />
+
+          Agrícola
+
+        </label>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+
+          <Checkbox checked={incluirPecuario} onCheckedChange={(v) => setIncluirPecuario(!!v)} />
+
+          Pecuária
+
+        </label>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+
+          <Checkbox checked={incluirGeral} onCheckedChange={(v) => setIncluirGeral(!!v)} />
+
+          Geral
+
+        </label>
+
+      </div>
+
+
 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <Select value={categoriaFiltro || 'todas'} onValueChange={(v) => setCategoriaFiltro(v === 'todas' ? '' : v)}>
