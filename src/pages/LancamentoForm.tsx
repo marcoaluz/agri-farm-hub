@@ -850,6 +850,7 @@ export function LancamentoForm() {
       queryClient.invalidateQueries({ queryKey: ['maquinas'] })
       queryClient.invalidateQueries({ queryKey: ['manutencoes-proximas'] })
       queryClient.invalidateQueries({ queryKey: ['manutencoes-todas'] })
+      queryClient.invalidateQueries({ queryKey: ['abastecimentos-stats'] })
 
       navigate('/lancamentos')
     },
