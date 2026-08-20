@@ -150,6 +150,25 @@ export async function exportarCustosDetalhadosPDF(opts: {
   // Remove sufixo entre parênteses do fim da unidade (ex: "Sacas (60kg)" -> "Sacas")
   const unidadeCurta = (unidade?: string) => (unidade || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
 
+  // Formata a linha de um item Operacional de acordo com o tipo (produto/máquina/serviço/abastecimento/manutenção)
+  const formatarItemOperacional = (item: any): string => {
+    const qtd = item.quantidade != null ? fmt2(Number(item.quantidade)) : null
+    const un = unidadeCurta(item.unidade)
+    switch (item.tipo_ref) {
+      case 'produto':
+        return `${item.nome} ${item.vezes}x${qtd != null ? `, ${qtd} (${un})` : ''}`
+      case 'maquina':
+      case 'servico_simples':
+        return `${item.nome} ${item.vezes}x${qtd != null ? ` ${qtd}(${un})` : ''}`
+      case 'abastecimento':
+        return `${item.nome} ${item.vezes}x${qtd != null ? ` (${qtd} ${un})` : ''}`
+      case 'manutencao':
+        return `${item.nome} ${item.vezes}x`
+      default:
+        return `${item.nome}${item.vezes != null ? ` ${item.vezes}x` : ''}`
+    }
+  }
+
   const COR_TEXTO = 55 as const
   const COR_RECEITA: [number, number, number] = [21, 101, 52]
   const COR_DESPESA: [number, number, number] = [180, 30, 30]
@@ -235,7 +254,7 @@ export async function exportarCustosDetalhadosPDF(opts: {
 
   if (operacional.length > 0) {
     desenharSecao('Operacional', totalOperacional, operacional, (item) => [
-      `${item.nome}${item.vezes != null ? ` ${item.vezes}x` : ''}`,
+      formatarItemOperacional(item),
       `= R$ ${fmt2(item.valor)}`,
     ])
   }
