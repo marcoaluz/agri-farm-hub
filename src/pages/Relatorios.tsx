@@ -6,7 +6,7 @@ import { ptBR } from 'date-fns/locale'
 import {
   BarChart3, ClipboardList, DollarSign, Sprout, TrendingUp, Package,
   ArrowUpDown, ChevronUp, ChevronDown, Download, FileX, Lock, Circle, Leaf,
-  FileSpreadsheet, FileText, ListTree,
+  FileSpreadsheet, FileText, ListTree, Boxes,
 
 
 
@@ -28,7 +28,7 @@ import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useGlobal } from '@/contexts/GlobalContext'
 
-import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, type Coluna } from '@/lib/exportTabela'
+import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, exportarEstoquePDF, type Coluna } from '@/lib/exportTabela'
 import { TRANSACAO_CATEGORIA_LABELS } from '@/lib/enumLabels'
 
 function labelGrupo(valor: any): string {
@@ -182,6 +182,7 @@ export function Relatorios() {
             <TabsTrigger value="comparativo" className="whitespace-nowrap"><TrendingUp className="h-4 w-4 mr-1" />Comparativo</TabsTrigger>
             <TabsTrigger value="insumos" className="whitespace-nowrap"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
             <TabsTrigger value="custos" className="whitespace-nowrap"><ListTree className="h-4 w-4 mr-1" />Custos Detalhados</TabsTrigger>
+            <TabsTrigger value="estoque" className="whitespace-nowrap"><Boxes className="h-4 w-4 mr-1" />Estoque</TabsTrigger>
 
           </TabsList>
         </div>
@@ -193,6 +194,7 @@ export function Relatorios() {
         <TabsContent value="comparativo"><AbaComparativo propId={propId} safraAtualId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="insumos"><AbaInsumos propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="custos"><AbaCustosDetalhados propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="estoque"><AbaEstoque propId={propId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
 
 
       </Tabs>

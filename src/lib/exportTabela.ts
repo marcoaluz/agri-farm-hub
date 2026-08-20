@@ -308,3 +308,102 @@ export async function exportarCustosDetalhadosPDF(opts: {
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 }
+
+export async function exportarEstoquePDF(opts: {
+  nomeArquivo: string
+  propriedadeNome: string
+  grupos: { grupo: string; total_itens: number; itens_zerados: number; itens: { nome: string; saldo_atual: number; unidade: string; abaixo_minimo: boolean }[] }[]
+}) {
+  const { nomeArquivo, propriedadeNome, grupos } = opts
+  const doc = new jsPDF()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 14
+  let y = 14
+
+  const fmt2 = (v: number) =>
+    Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const unidadeCurta = (u?: string) => (u || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
+
+  const COR_TEXTO = 55 as const
+  const COR_ALERTA: [number, number, number] = [180, 30, 30]
+
+  const logo = await getLogoBase64()
+  const desenharMarcaDagua = () => {
+    if (!logo) return
+    try {
+      const tamanho = 90
+      doc.saveGraphicsState()
+      // @ts-ignore
+      doc.setGState(new (doc as any).GState({ opacity: 0.06 }))
+      doc.addImage(logo, 'PNG', (pageWidth - tamanho) / 2, (pageHeight - tamanho) / 2, tamanho, tamanho)
+      doc.restoreGraphicsState()
+    } catch {}
+  }
+
+  const novaPaginaSeNecessario = (alturaNecessaria: number) => {
+    if (y + alturaNecessaria > pageHeight - 20) {
+      doc.addPage()
+      desenharMarcaDagua()
+      y = 14
+    }
+  }
+
+  desenharMarcaDagua()
+  let textX = margin
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', margin, 8, 12, 12); textX = margin + 16 } catch {}
+  }
+  doc.setFontSize(14); doc.setFont('helvetica', 'bold')
+  doc.text('Agro GFI', textX, 14)
+  doc.setFontSize(11); doc.setFont('helvetica', 'normal')
+  doc.text('Relatório: Estoque', textX, 20)
+  doc.setFontSize(10)
+  doc.text(`Propriedade: ${propriedadeNome}`, margin, 30)
+  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, 36)
+  y = 44
+
+  const totalProdutos = grupos.reduce((s, g) => s + Number(g.total_itens || 0), 0)
+
+  doc.setFontSize(12); doc.setFont('helvetica', 'bold')
+  doc.text('Estoque', margin, y)
+  doc.text(`${totalProdutos} produtos`, pageWidth - margin, y, { align: 'right' })
+  y += 6
+
+  doc.setFontSize(8); doc.setFont('helvetica', 'bold')
+  doc.setTextColor(140)
+  doc.text('Qtde. em estoque', pageWidth - margin, y, { align: 'right' })
+  doc.setTextColor(0)
+  y += 4
+
+  grupos.forEach((grupo) => {
+    novaPaginaSeNecessario(10 + grupo.itens.length * 6)
+
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold')
+    doc.text(grupo.grupo, margin, y)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8); doc.setTextColor(140)
+    doc.text(`${grupo.total_itens} ${grupo.total_itens === 1 ? 'item' : 'itens'}`, pageWidth - margin, y, { align: 'right' })
+    doc.setTextColor(0)
+    y += 1
+    doc.setDrawColor(200)
+    doc.line(margin, y, pageWidth - margin, y)
+    y += 5
+
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal')
+    grupo.itens.forEach((item) => {
+      if (item.abaixo_minimo) {
+        doc.setTextColor(...COR_ALERTA)
+      } else {
+        doc.setTextColor(COR_TEXTO)
+      }
+      doc.text(item.abaixo_minimo ? `${item.nome} (abaixo do mínimo)` : item.nome, margin + 4, y)
+      doc.text(`${fmt2(item.saldo_atual)} ${unidadeCurta(item.unidade)}`, pageWidth - margin, y, { align: 'right' })
+      doc.setTextColor(0)
+      y += 5.5
+    })
+    y += 3
+  })
+
+  doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+}
