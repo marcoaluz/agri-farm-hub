@@ -47,8 +47,12 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
 
   const semIdentificacao = (animais || []).filter((a: any) => a.identificado === false)
 
-  async function handleRemoverIdentificacao(animal: any) {
-    if (!confirm(`Remover a identificação de "${animal.nome || animal.numero_brinco}"? Ele volta a aparecer como não identificado (peso e valor de compra são mantidos).`)) return
+  const [animalParaRemoverIdent, setAnimalParaRemoverIdent] = useState<any>(null)
+  const [removendoIdent, setRemovendoIdent] = useState(false)
+
+  async function confirmarRemoverIdentificacao() {
+    if (!animalParaRemoverIdent) return
+    setRemovendoIdent(true)
     const { error } = await supabase.from('animais' as any).update({
       identificado: false,
       nome: null,
@@ -57,7 +61,8 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
       sexo: 'nao_definido',
       data_nascimento: null,
       observacoes: null,
-    }).eq('id', animal.id)
+    }).eq('id', animalParaRemoverIdent.id)
+    setRemovendoIdent(false)
     if (error) {
       toast({ title: 'Erro ao remover identificação', description: error.message, variant: 'destructive' })
       return
@@ -65,6 +70,7 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
     queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
     queryClient.invalidateQueries({ queryKey: ['alertas-identificacao-pecuaria'] })
     toast({ title: 'Identificação removida — animal voltou pra fila de identificação' })
+    setAnimalParaRemoverIdent(null)
   }
 
   return (
