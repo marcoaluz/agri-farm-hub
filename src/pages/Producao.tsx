@@ -114,7 +114,7 @@ export default function Producao() {
         return (
           <div
             key={cultura.cultura_id}
-            className="mb-4 flex flex-col gap-4 rounded-lg bg-muted/30 p-4 sm:flex-row sm:items-center"
+            className="mb-4 flex flex-col gap-4 rounded-lg bg-muted/30 p-4 sm:flex-row sm:flex-wrap sm:items-center"
           >
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="h-fit">{cultura.cultura_nome}</Badge>
@@ -128,7 +128,7 @@ export default function Producao() {
                 Histórico
               </Button>
             </div>
-            <div className="grid flex-1 grid-cols-2 gap-4 md:grid-cols-5">
+            <div className="grid flex-1 min-w-full sm:min-w-[280px] grid-cols-2 gap-4 md:grid-cols-5">
               <div>
                 <p className="text-xs text-muted-foreground">Total Colhido</p>
                 <p className="font-bold">{fmtNum(cultura.total_colhido)} {cultura.unidade_label}</p>
@@ -143,17 +143,17 @@ export default function Producao() {
                   {fmtNum(cultura.estoque_disponivel)} {cultura.unidade_label}
                 </p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Receita</p>
-                <p className="font-bold text-green-700">
-                  R$ {receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                <p className="font-bold text-green-700 break-words">
+                  R$ {receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 }).replace(/\u00A0/g, ' ')}
                 </p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Preço médio</p>
-                <p className="font-bold">
+                <p className="font-bold break-words">
                   {precoMedio > 0
-                    ? `R$ ${precoMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/${cultura.unidade_label}`
+                    ? `R$ ${precoMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 }).replace(/\u00A0/g, ' ')}/${cultura.unidade_label}`
                     : '—'}
                 </p>
               </div>
