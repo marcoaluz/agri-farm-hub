@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { supabase } from '@/lib/supabase'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Plus, Scale, LineChart, Syringe, ArrowRightLeft, DollarSign, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { NovoAnimalModal } from './NovoAnimalModal'
@@ -43,8 +47,12 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
 
   const semIdentificacao = (animais || []).filter((a: any) => a.identificado === false)
 
-  async function handleRemoverIdentificacao(animal: any) {
-    if (!confirm(`Remover a identificação de "${animal.nome || animal.numero_brinco}"? Ele volta a aparecer como não identificado (peso e valor de compra são mantidos).`)) return
+  const [animalParaRemoverIdent, setAnimalParaRemoverIdent] = useState<any>(null)
+  const [removendoIdent, setRemovendoIdent] = useState(false)
+
+  async function confirmarRemoverIdentificacao() {
+    if (!animalParaRemoverIdent) return
+    setRemovendoIdent(true)
     const { error } = await supabase.from('animais' as any).update({
       identificado: false,
       nome: null,
@@ -53,7 +61,8 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
       sexo: 'nao_definido',
       data_nascimento: null,
       observacoes: null,
-    }).eq('id', animal.id)
+    }).eq('id', animalParaRemoverIdent.id)
+    setRemovendoIdent(false)
     if (error) {
       toast({ title: 'Erro ao remover identificação', description: error.message, variant: 'destructive' })
       return
@@ -61,6 +70,7 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
     queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
     queryClient.invalidateQueries({ queryKey: ['alertas-identificacao-pecuaria'] })
     toast({ title: 'Identificação removida — animal voltou pra fila de identificação' })
+    setAnimalParaRemoverIdent(null)
   }
 
   return (
@@ -160,7 +170,7 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                       <Button size="icon" variant="ghost" onClick={() => setAnimalParaIdentificar(animal)} title="Editar">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleRemoverIdentificacao(animal)} title="Excluir identificação">
+                      <Button size="icon" variant="ghost" className="text-destructive" onClick={() => setAnimalParaRemoverIdent(animal)} title="Excluir identificação">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -191,7 +201,7 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                         <DropdownMenuItem onClick={() => setAnimalParaIdentificar(animal)}>
                           <Pencil className="mr-2 h-4 w-4" /> Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleRemoverIdentificacao(animal)} className="text-destructive">
+                        <DropdownMenuItem onClick={() => setAnimalParaRemoverIdent(animal)} className="text-destructive">
                           <Trash2 className="mr-2 h-4 w-4" /> Excluir identificação
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -252,6 +262,28 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
           animalIdInicial={movAnimal.animal.id}
         />
       )}
+
+      <AlertDialog open={!!animalParaRemoverIdent} onOpenChange={(o) => { if (!o) setAnimalParaRemoverIdent(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir identificação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O animal <strong>{animalParaRemoverIdent?.nome || animalParaRemoverIdent?.numero_brinco}</strong> volta a aparecer como não identificado.
+              Peso e valor de compra são mantidos — só os dados de identificação (nome, brinco, sexo, nascimento) são apagados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarRemoverIdentificacao}
+              disabled={removendoIdent}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removendoIdent ? 'Removendo...' : 'Remover'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
