@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { parseGeometria } from "./MapaDesenho";
-import { Plus, Check, X, Loader2 } from "lucide-react";
+import { NovaCulturaDialog } from "./NovaCulturaDialog";
+import { Plus } from "lucide-react";
+
 
 interface Talhao {
   id: string;
@@ -34,12 +36,11 @@ interface TalhaoFormProps {
   onSuccess: () => void;
 }
 
-/** Label da quantidade de plantas conforme a cultura */
-function labelQuantidadePes(nome?: string) {
-  const n = (nome || "").toLowerCase();
-  if (n.includes("café") || n.includes("cafe")) return "Pés de café";
+/** Rótulo da quantidade de plantas — genérico, sem regra por cultura no código */
+function labelQuantidadePes() {
   return "Plantas";
 }
+
 
 export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps) {
   const { toast } = useToast();
