@@ -15,9 +15,11 @@ interface NovoAnimalModalProps {
   onOpenChange: (open: boolean) => void
   propriedadeId: string
   rebanho: any
+  /** Quando informado, o modal identifica esse animal-placeholder (criado em lote na compra) em vez de criar um novo. */
+  animalParaIdentificar?: any
 }
 
-export function NovoAnimalModal({ open, onOpenChange, propriedadeId, rebanho }: NovoAnimalModalProps) {
+export function NovoAnimalModal({ open, onOpenChange, propriedadeId, rebanho, animalParaIdentificar }: NovoAnimalModalProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [saving, setSaving] = useState(false)
@@ -34,17 +36,29 @@ export function NovoAnimalModal({ open, onOpenChange, propriedadeId, rebanho }: 
 
   useEffect(() => {
     if (open) {
-      setNome('')
-      setBrinco('')
-      setSexo('nao_definido')
-      setRaca(rebanho?.raca || '')
-      setDataNascimento('')
-      setDataEntrada(format(new Date(), 'yyyy-MM-dd'))
-      setPesoEntrada('')
-      setValorCompra('')
-      setObservacoes('')
+      if (animalParaIdentificar) {
+        setNome(animalParaIdentificar.nome || '')
+        setBrinco(animalParaIdentificar.numero_brinco || '')
+        setSexo(animalParaIdentificar.sexo || 'nao_definido')
+        setRaca(animalParaIdentificar.raca || rebanho?.raca || '')
+        setDataNascimento(animalParaIdentificar.data_nascimento || '')
+        setDataEntrada(animalParaIdentificar.data_entrada || format(new Date(), 'yyyy-MM-dd'))
+        setPesoEntrada(animalParaIdentificar.peso_inicial_kg != null ? String(animalParaIdentificar.peso_inicial_kg) : '')
+        setValorCompra(animalParaIdentificar.valor_compra != null ? String(animalParaIdentificar.valor_compra) : '')
+        setObservacoes(animalParaIdentificar.observacoes || '')
+      } else {
+        setNome('')
+        setBrinco('')
+        setSexo('nao_definido')
+        setRaca(rebanho?.raca || '')
+        setDataNascimento('')
+        setDataEntrada(format(new Date(), 'yyyy-MM-dd'))
+        setPesoEntrada('')
+        setValorCompra('')
+        setObservacoes('')
+      }
     }
-  }, [open, rebanho])
+  }, [open, rebanho, animalParaIdentificar])
 
   async function handleSave() {
     if (!nome && !brinco) {
@@ -54,7 +68,7 @@ export function NovoAnimalModal({ open, onOpenChange, propriedadeId, rebanho }: 
     setSaving(true)
     const { data: userData } = await supabase.auth.getUser()
 
-    const { error } = await supabase.from('animais' as any).insert({
+    const payload = {
       rebanho_id: rebanho.id,
       propriedade_id: propriedadeId,
       nome: nome || null,
@@ -69,8 +83,23 @@ export function NovoAnimalModal({ open, onOpenChange, propriedadeId, rebanho }: 
       valor_compra: valorCompra ? parseFloat(valorCompra) : null,
       observacoes: observacoes || null,
       situacao: 'ativo',
-      criado_por: userData?.user?.id || null,
-    } as any)
+      identificado: true,
+    }
+
+    let error: any = null
+    let animalId: string | undefined = animalParaIdentificar?.id
+
+    if (animalParaIdentificar) {
+      const res = await supabase.from('animais' as any).update(payload).eq('id', animalParaIdentificar.id)
+      error = res.error
+    } else {
+      const res = await supabase.from('animais' as any)
+        .insert({ ...payload, criado_por: userData?.user?.id || null } as any)
+        .select('id')
+        .single()
+      error = res.error
+      animalId = (res.data as any)?.id
+    }
 
     if (error) {
       setSaving(false)
@@ -78,27 +107,18 @@ export function NovoAnimalModal({ open, onOpenChange, propriedadeId, rebanho }: 
       return
     }
 
-    if (pesoEntrada) {
-      const { data: novoAnimal } = await supabase
-        .from('animais' as any)
-        .select('id')
-        .eq('rebanho_id', rebanho.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (novoAnimal) {
-        await supabase.rpc('registrar_pesagem' as any, {
-          p_animal_id: (novoAnimal as any).id,
-          p_peso_kg: parseFloat(pesoEntrada),
-          p_data_pesagem: dataEntrada,
-          p_observacoes: 'Peso de entrada',
-        })
-      }
+    if (pesoEntrada && animalId) {
+      await supabase.rpc('registrar_pesagem' as any, {
+        p_animal_id: animalId,
+        p_peso_kg: parseFloat(pesoEntrada),
+        p_data_pesagem: dataEntrada,
+        p_observacoes: 'Peso de entrada',
+      })
     }
 
     setSaving(false)
     queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
+    queryClient.invalidateQueries({ queryKey: ['alertas-identificacao-pecuaria'] })
     toast({ title: 'Animal identificado' })
     onOpenChange(false)
   }

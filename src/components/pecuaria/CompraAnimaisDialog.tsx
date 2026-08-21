@@ -17,7 +17,7 @@ interface CompraAnimaisDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   propriedadeId: string
-  rebanho: { id: string; nome: string } | null
+  rebanho: { id: string; nome: string; especie?: string; raca?: string } | null
   /** Quando informado, o diálogo entra em modo edição. */
   movimentacao?: any | null
 }
@@ -118,6 +118,35 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
       return
     }
 
+    // Cria os animais "placeholder" do lote, aguardando identificação individual depois
+    if (!editando && rebanho) {
+      const { data: userData } = await supabase.auth.getUser()
+      const { count: quantidadeExistente } = await supabase
+        .from('animais' as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('rebanho_id', rebanho.id)
+
+      const baseNumero = quantidadeExistente || 0
+      const novosAnimais = Array.from({ length: Number(quantidade) }).map((_, i) => ({
+        rebanho_id: rebanho.id,
+        propriedade_id: propriedadeId,
+        identificador: `Novo #${baseNumero + i + 1}`,
+        especie: rebanho.especie,
+        raca: rebanho.raca || null,
+        peso_inicial_kg: pesoMedio ? Number(pesoMedio) : null,
+        valor_compra: Number(valorUnitario),
+        data_entrada: dataCompra,
+        identificado: false,
+        situacao: 'ativo',
+        criado_por: userData?.user?.id || null,
+      }))
+
+      const { error: erroAnimais } = await supabase.from('animais' as any).insert(novosAnimais)
+      if (erroAnimais) {
+        toast({ title: 'Compra registrada, mas houve erro ao criar os animais do lote', description: erroAnimais.message, variant: 'destructive' })
+      }
+    }
+
     // Parcelamento: localiza a transação gerada pelo trigger e cria as parcelas
     if (!editando && statusPagamento === 'parcelado' && registroId) {
       const { data: transacao } = await supabase
@@ -170,7 +199,13 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
     queryClient.invalidateQueries({ queryKey: ['anexos'] })
     queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
     queryClient.invalidateQueries({ queryKey: ['anexo', 'rebanho_movimentacao', registroId] })
-    toast({ title: editando ? 'Movimentação atualizada. Financeiro sincronizado automaticamente.' : 'Compra registrada e despesa criada no Financeiro' })
+    queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
+    queryClient.invalidateQueries({ queryKey: ['alertas-identificacao-pecuaria'] })
+    toast({
+      title: editando
+        ? 'Movimentação atualizada. Financeiro sincronizado automaticamente.'
+        : `Compra registrada. ${quantidade} ${Number(quantidade) === 1 ? 'animal aguardando identificação' : 'animais aguardando identificação'}.`
+    })
     onOpenChange(false)
   }
 

@@ -185,6 +185,18 @@ export default function Pecuaria() {
 
   // === DERIVED DATA ===
   const totalAnimais = (rebanhos || []).reduce((s: number, r: any) => s + (r.quantidade_atual || 0), 0)
+
+  const { data: alertasIdentificacao } = useQuery({
+    queryKey: ['alertas-identificacao-pecuaria', propId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_alertas_identificacao_pecuaria' as any, { p_propriedade_id: propId })
+      if (error) throw error
+      const mapa: Record<string, number> = {}
+      ;(data || []).forEach((r: any) => { mapa[r.rebanho_id] = Number(r.sem_identificacao) })
+      return mapa
+    },
+    enabled: !!propId,
+  })
   const totalLotes = (rebanhos || []).length
 
   const valorRebanho = useMemo(() => {
@@ -387,6 +399,20 @@ export default function Pecuaria() {
                       </CardTitle>
                       <Badge variant="secondary">{ESPECIE_LABEL[r.especie] || r.especie}</Badge>
                     </div>
+                    {(r.quantidade_atual === 0 || (alertasIdentificacao?.[r.id] || 0) > 0) && (
+                      <div className="flex gap-2 flex-wrap mt-2">
+                        {r.quantidade_atual === 0 && (
+                          <span className="text-[10px] font-medium uppercase bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-1.5 py-0.5 rounded">
+                            Lote vazio
+                          </span>
+                        )}
+                        {(alertasIdentificacao?.[r.id] || 0) > 0 && (
+                          <span className="text-[10px] font-medium uppercase bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                            {alertasIdentificacao[r.id]} sem identificação
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <div className="grid grid-cols-2 gap-2 text-sm">
