@@ -9,6 +9,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UNIDADES_PRODUCAO, FORMAS_ARMAZENAMENTO, unidadePorCodigo } from "@/lib/unidadesProducao";
+import { cn } from "@/lib/utils";
+
+/** Ícones disponíveis para representar a cultura */
+const ICONES_CULTURA = [
+  "🌱", "🌾", "🌽", "☕", "🫘", "🍚", "🌻", "🥜",
+  "🍊", "🍋", "🍌", "🍇", "🍎", "🍓", "🍍", "🥭",
+  "🥑", "🍅", "🥕", "🥔", "🧄", "🧅", "🥬", "🥦",
+  "🎋", "🌲", "🌳", "🌴", "🌵", "🫒", "🌰", "🍫",
+];
+
 
 interface NovaCulturaDialogProps {
   open: boolean;
@@ -113,16 +123,34 @@ export function NovaCulturaDialog({ open, onOpenChange, onCriada }: NovaCulturaD
             {erros.nome && <p className="text-sm text-destructive mt-1">{erros.nome}</p>}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label>Ícone</Label>
-              <Input value={icone} onChange={(ev) => setIcone(ev.target.value)} placeholder="🌲" maxLength={4} />
+          <div>
+            <Label>Ícone</Label>
+            <div className="mt-1 grid grid-cols-8 gap-1.5 rounded-md border p-2">
+              {ICONES_CULTURA.map((ic) => (
+                <button
+                  key={ic}
+                  type="button"
+                  onClick={() => setIcone(icone === ic ? "" : ic)}
+                  title={ic}
+                  className={cn(
+                    "flex h-9 w-full items-center justify-center rounded-md text-lg transition-colors hover:bg-muted",
+                    icone === ic && "bg-primary/10 ring-2 ring-primary"
+                  )}
+                >
+                  {ic}
+                </button>
+              ))}
             </div>
-            <div>
-              <Label>Produto produzido</Label>
-              <Input value={tipoProduto} onChange={(ev) => setTipoProduto(ev.target.value)} placeholder="Ex: Madeira" />
-            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {icone ? "Clique novamente para remover a seleção." : "Opcional — selecione um ícone para a cultura."}
+            </p>
           </div>
+
+          <div>
+            <Label>Produto produzido</Label>
+            <Input value={tipoProduto} onChange={(ev) => setTipoProduto(ev.target.value)} placeholder="Ex: Madeira" />
+          </div>
+
 
           <div>
             <Label>Unidade de produção *</Label>
