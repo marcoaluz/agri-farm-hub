@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { supabase } from '@/lib/supabase'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Plus, Scale, LineChart, Syringe, ArrowRightLeft, DollarSign, MoreVertical } from 'lucide-react'
+import { Plus, Scale, LineChart, Syringe, ArrowRightLeft, DollarSign, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 import { NovoAnimalModal } from './NovoAnimalModal'
 import { PesagemAnimalModal } from './PesagemAnimalModal'
 import { HistoricoPesoModal } from './HistoricoPesoModal'
@@ -21,6 +22,8 @@ interface AnimaisRebanhoDialogProps {
 }
 
 export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanho, rebanhos }: AnimaisRebanhoDialogProps) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
   const [showNovoAnimal, setShowNovoAnimal] = useState(false)
   const [animalParaIdentificar, setAnimalParaIdentificar] = useState<any>(null)
   const [animalPesagem, setAnimalPesagem] = useState<any>(null)
@@ -39,6 +42,26 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
   })
 
   const semIdentificacao = (animais || []).filter((a: any) => a.identificado === false)
+
+  async function handleRemoverIdentificacao(animal: any) {
+    if (!confirm(`Remover a identificação de "${animal.nome || animal.numero_brinco}"? Ele volta a aparecer como não identificado (peso e valor de compra são mantidos).`)) return
+    const { error } = await supabase.from('animais' as any).update({
+      identificado: false,
+      nome: null,
+      numero_brinco: null,
+      identificador: 'Aguardando identificação',
+      sexo: 'nao_definido',
+      data_nascimento: null,
+      observacoes: null,
+    }).eq('id', animal.id)
+    if (error) {
+      toast({ title: 'Erro ao remover identificação', description: error.message, variant: 'destructive' })
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
+    queryClient.invalidateQueries({ queryKey: ['alertas-identificacao-pecuaria'] })
+    toast({ title: 'Identificação removida — animal voltou pra fila de identificação' })
+  }
 
   return (
     <>
@@ -134,6 +157,12 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                       <Button size="icon" variant="ghost" onClick={() => setAnimalHistorico(animal)} title="Histórico de peso">
                         <LineChart className="h-4 w-4" />
                       </Button>
+                      <Button size="icon" variant="ghost" onClick={() => setAnimalParaIdentificar(animal)} title="Editar">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => handleRemoverIdentificacao(animal)} title="Excluir identificação">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                     )}
                     {animal.identificado !== false && (
@@ -158,6 +187,12 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setAnimalHistorico(animal)}>
                           <LineChart className="mr-2 h-4 w-4" /> Histórico de peso
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setAnimalParaIdentificar(animal)}>
+                          <Pencil className="mr-2 h-4 w-4" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleRemoverIdentificacao(animal)} className="text-destructive">
+                          <Trash2 className="mr-2 h-4 w-4" /> Excluir identificação
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
