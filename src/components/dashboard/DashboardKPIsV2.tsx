@@ -31,7 +31,7 @@ interface Props {
 export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
   if (isLoading || !data) {
     return (
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-32 rounded-xl" />
         ))}
@@ -52,7 +52,7 @@ export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
   const isPositivo = resultado >= 0
 
   return (
-    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       <Link to="/financeiro?tab=custos" className="block min-w-0">
         <StatCard
           title="Custo da Safra"
