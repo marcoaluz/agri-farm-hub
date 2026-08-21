@@ -2,9 +2,10 @@ import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, Landmark, BarChart
 import { Link } from 'react-router-dom'
 import { StatCard } from '@/components/common/StatCard'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 const fmt = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v ?? 0)
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v ?? 0).replace(/\u00A0/g, ' ')
 
 interface KPIData {
   custo_safra_ativa: number
@@ -52,7 +53,7 @@ export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
 
   return (
     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-      <Link to="/financeiro?tab=custos">
+      <Link to="/financeiro?tab=custos" className="block min-w-0">
         <StatCard
           title="Custo da Safra"
           value={fmt(data.custo_safra_ativa ?? 0)}
@@ -89,7 +90,7 @@ export function DashboardKPIsV2({ data, isLoading, onAlertClick }: Props) {
         variant={isPositivo ? 'success' : 'warning'}
         className="border-l-[3px] border-l-accent"
       />
-      <div onClick={onAlertClick} className={onAlertClick ? 'cursor-pointer' : ''}>
+      <div onClick={onAlertClick} className={cn('min-w-0', onAlertClick ? 'cursor-pointer' : '')}>
         <StatCard
           title="Alertas"
           value={totalAlertas}
