@@ -108,12 +108,8 @@ export function LoginPage() {
     }
   }
 
-  const handleGoogleLogin = async () => {
-    toast({
-      title: "Login com Google",
-      description: "Funcionalidade será configurada em breve.",
-    });
-  };
+
+
 
   // Carregar email salvo
   useEffect(() => {
