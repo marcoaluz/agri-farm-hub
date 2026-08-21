@@ -177,63 +177,48 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
 
       <div>
         <Label>Cultura *</Label>
-        {!showNovaCultura ? (
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Select value={culturaId} onValueChange={setCulturaId}>
-                <SelectTrigger className={errors.cultura_id ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Selecione a cultura" />
-                </SelectTrigger>
-                <SelectContent>
-                  {culturas?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nome_exibicao}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="button" size="icon" variant="outline" onClick={() => setShowNovaCultura(true)} title="Nova cultura">
-              <Plus className="h-4 w-4" />
-            </Button>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Select value={culturaId} onValueChange={setCulturaId}>
+              <SelectTrigger className={errors.cultura_id ? "border-destructive" : ""}>
+                <SelectValue placeholder="Selecione a cultura" />
+              </SelectTrigger>
+              <SelectContent>
+                {culturas?.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.icone && c.icone.length <= 4 ? `${c.icone} ` : ""}{c.nome_exibicao}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        ) : (
-          <div className="flex gap-2">
-            <Input
-              placeholder="Nome da nova cultura"
-              value={novaCulturaNome}
-              onChange={(e) => setNovaCulturaNome(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdicionarCultura(); } }}
-              autoFocus
-              className="flex-1"
-            />
-            <Button type="button" size="icon" onClick={handleAdicionarCultura} disabled={salvandoCultura || !novaCulturaNome.trim()}>
-              {salvandoCultura ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            </Button>
-            <Button type="button" size="icon" variant="ghost" onClick={() => { setShowNovaCultura(false); setNovaCulturaNome(""); }}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+          <Button type="button" size="icon" variant="outline" onClick={() => setShowNovaCultura(true)} title="Nova cultura">
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
         {errors.cultura_id && <p className="text-sm text-destructive mt-1">{errors.cultura_id}</p>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <Label>{labelQuantidadePes(culturaSel?.nome_exibicao)}</Label>
-          <Input
-            type="number"
-            min="0"
-            step="1"
-            value={quantidadePes}
-            onChange={(e) => setQuantidadePes(e.target.value)}
-            placeholder="Opcional"
-          />
-        </div>
+        {permitePlantas && (
+          <div>
+            <Label>{labelQuantidadePes()}</Label>
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              value={quantidadePes}
+              onChange={(e) => setQuantidadePes(e.target.value)}
+              placeholder="Opcional"
+              className={errors.quantidade_pes ? "border-destructive" : ""}
+            />
+            {errors.quantidade_pes && <p className="text-sm text-destructive mt-1">{errors.quantidade_pes}</p>}
+          </div>
+        )}
 
         <div>
           <Label>
-            Estimativa de colheita{culturaSel?.unidade_label ? ` (${culturaSel.unidade_label})` : ""}
+            Estimativa de produção{unidadeLabel ? ` (${unidadeLabel})` : ""}
           </Label>
           <Input
             type="number"
@@ -241,9 +226,13 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
             step="0.01"
             value={estimativa}
             onChange={(e) => setEstimativa(e.target.value)}
-            placeholder="Opcional"
+            disabled={!culturaId}
+            placeholder={culturaId ? "Opcional" : "Selecione uma cultura primeiro"}
+            className={errors.estimativa ? "border-destructive" : ""}
           />
+          {errors.estimativa && <p className="text-sm text-destructive mt-1">{errors.estimativa}</p>}
         </div>
+
 
         <div>
           <Label>Ano de plantio</Label>
