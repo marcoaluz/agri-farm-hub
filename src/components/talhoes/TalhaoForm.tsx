@@ -263,6 +263,13 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
           {mutation.isPending ? "Salvando..." : "Salvar"}
         </Button>
       </div>
+
+      <NovaCulturaDialog
+        open={showNovaCultura}
+        onOpenChange={setShowNovaCultura}
+        onCriada={(id) => setCulturaId(id)}
+      />
     </div>
+
   );
 }
