@@ -51,7 +51,7 @@ export function StatCard({
         <div className="space-y-1.5 min-w-0 flex-1">
           <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate" title={title}>{title}</p>
           <div className="flex items-baseline gap-2 flex-wrap">
-            <h3 className="font-display text-lg sm:text-xl xl:text-2xl font-bold tracking-tight text-foreground [overflow-wrap:anywhere]">{value}</h3>
+            <h3 className="font-display text-lg sm:text-xl 2xl:text-2xl font-bold tracking-tight text-foreground [overflow-wrap:anywhere]">{value}</h3>
             {trend && (
               <span
                 className={cn(
