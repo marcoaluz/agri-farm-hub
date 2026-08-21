@@ -9,6 +9,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UNIDADES_PRODUCAO, FORMAS_ARMAZENAMENTO, unidadePorCodigo } from "@/lib/unidadesProducao";
+import { cn } from "@/lib/utils";
+
+/** Ícones disponíveis para representar a cultura */
+const ICONES_CULTURA = [
+  "🌱", "🌾", "🌽", "☕", "🫘", "🍚", "🌻", "🥜",
+  "🍊", "🍋", "🍌", "🍇", "🍎", "🍓", "🍍", "🥭",
+  "🥑", "🍅", "🥕", "🥔", "🧄", "🧅", "🥬", "🥦",
+  "🎋", "🌲", "🌳", "🌴", "🌵", "🫒", "🌰", "🍫",
+];
+
 
 interface NovaCulturaDialogProps {
   open: boolean;
