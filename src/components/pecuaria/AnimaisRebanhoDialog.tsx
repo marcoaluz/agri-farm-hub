@@ -262,6 +262,28 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
           animalIdInicial={movAnimal.animal.id}
         />
       )}
+
+      <AlertDialog open={!!animalParaRemoverIdent} onOpenChange={(o) => { if (!o) setAnimalParaRemoverIdent(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir identificação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O animal <strong>{animalParaRemoverIdent?.nome || animalParaRemoverIdent?.numero_brinco}</strong> volta a aparecer como não identificado.
+              Peso e valor de compra são mantidos — só os dados de identificação (nome, brinco, sexo, nascimento) são apagados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarRemoverIdentificacao}
+              disabled={removendoIdent}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removendoIdent ? 'Removendo...' : 'Remover'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
