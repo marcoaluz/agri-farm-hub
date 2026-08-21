@@ -8,9 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { parseGeometria } from "./MapaDesenho";
-import { NovaCulturaDialog } from "./NovaCulturaDialog";
-import { Plus } from "lucide-react";
-
+import { Plus, Check, X, Loader2 } from "lucide-react";
 
 interface Talhao {
   id: string;
@@ -36,11 +34,12 @@ interface TalhaoFormProps {
   onSuccess: () => void;
 }
 
-/** Rótulo da quantidade de plantas — genérico, sem regra por cultura no código */
-function labelQuantidadePes() {
+/** Label da quantidade de plantas conforme a cultura */
+function labelQuantidadePes(nome?: string) {
+  const n = (nome || "").toLowerCase();
+  if (n.includes("café") || n.includes("cafe")) return "Pés de café";
   return "Plantas";
 }
-
 
 export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps) {
   const { toast } = useToast();
@@ -55,7 +54,27 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
   const [variedade, setVariedade] = useState(talhao?.variedade || "");
 
   const [showNovaCultura, setShowNovaCultura] = useState(false);
+  const [novaCulturaNome, setNovaCulturaNome] = useState("");
+  const [salvandoCultura, setSalvandoCultura] = useState(false);
 
+  const handleAdicionarCultura = async () => {
+    const nome = novaCulturaNome.trim();
+    if (!nome) return;
+    setSalvandoCultura(true);
+    const { data, error } = await supabase.rpc("criar_cultura_config" as any, {
+      p_nome_exibicao: nome,
+    });
+    setSalvandoCultura(false);
+    if (error) {
+      toast({ title: "Erro ao criar cultura", description: error.message, variant: "destructive" });
+      return;
+    }
+    setCulturaId((data as any).id);
+    setNovaCulturaNome("");
+    setShowNovaCultura(false);
+    queryClient.invalidateQueries({ queryKey: ["culturas-config"] });
+    toast({ title: "Cultura criada com sucesso" });
+  };
 
   const [geo, setGeo] = useState<{
     geometria: GeoJSON.Polygon | null;
@@ -82,26 +101,15 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
   });
 
   const culturaSel = culturas?.find((c) => c.id === culturaId);
-  /** Unidade de produção vem sempre da configuração da cultura (banco) */
-  const unidadeLabel: string | null = culturaSel?.unidade_label || null;
-  /** Culturas antigas (sem a coluna configurada) continuam exibindo o campo Plantas */
-  const permitePlantas = culturaSel ? culturaSel.permite_quantidade_plantas !== false : false;
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
     if (!areaHa || parseFloat(areaHa) <= 0) newErrors.area_ha = "Área deve ser maior que zero";
     if (!culturaId) newErrors.cultura_id = "Selecione a cultura";
-    if (estimativa && (isNaN(Number(estimativa)) || Number(estimativa) < 0)) {
-      newErrors.estimativa = "Informe um valor numérico maior ou igual a zero";
-    }
-    if (permitePlantas && quantidadePes && (!Number.isInteger(Number(quantidadePes)) || Number(quantidadePes) < 0)) {
-      newErrors.quantidade_pes = "Informe um número inteiro positivo";
-    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -177,48 +185,63 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
 
       <div>
         <Label>Cultura *</Label>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Select value={culturaId} onValueChange={setCulturaId}>
-              <SelectTrigger className={errors.cultura_id ? "border-destructive" : ""}>
-                <SelectValue placeholder="Selecione a cultura" />
-              </SelectTrigger>
-              <SelectContent>
-                {culturas?.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.icone && c.icone.length <= 4 ? `${c.icone} ` : ""}{c.nome_exibicao}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {!showNovaCultura ? (
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Select value={culturaId} onValueChange={setCulturaId}>
+                <SelectTrigger className={errors.cultura_id ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Selecione a cultura" />
+                </SelectTrigger>
+                <SelectContent>
+                  {culturas?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nome_exibicao}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="button" size="icon" variant="outline" onClick={() => setShowNovaCultura(true)} title="Nova cultura">
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
-          <Button type="button" size="icon" variant="outline" onClick={() => setShowNovaCultura(true)} title="Nova cultura">
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
+        ) : (
+          <div className="flex gap-2">
+            <Input
+              placeholder="Nome da nova cultura"
+              value={novaCulturaNome}
+              onChange={(e) => setNovaCulturaNome(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdicionarCultura(); } }}
+              autoFocus
+              className="flex-1"
+            />
+            <Button type="button" size="icon" onClick={handleAdicionarCultura} disabled={salvandoCultura || !novaCulturaNome.trim()}>
+              {salvandoCultura ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            </Button>
+            <Button type="button" size="icon" variant="ghost" onClick={() => { setShowNovaCultura(false); setNovaCulturaNome(""); }}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
         {errors.cultura_id && <p className="text-sm text-destructive mt-1">{errors.cultura_id}</p>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {permitePlantas && (
-          <div>
-            <Label>{labelQuantidadePes()}</Label>
-            <Input
-              type="number"
-              min="0"
-              step="1"
-              value={quantidadePes}
-              onChange={(e) => setQuantidadePes(e.target.value)}
-              placeholder="Opcional"
-              className={errors.quantidade_pes ? "border-destructive" : ""}
-            />
-            {errors.quantidade_pes && <p className="text-sm text-destructive mt-1">{errors.quantidade_pes}</p>}
-          </div>
-        )}
+        <div>
+          <Label>{labelQuantidadePes(culturaSel?.nome_exibicao)}</Label>
+          <Input
+            type="number"
+            min="0"
+            step="1"
+            value={quantidadePes}
+            onChange={(e) => setQuantidadePes(e.target.value)}
+            placeholder="Opcional"
+          />
+        </div>
 
         <div>
           <Label>
-            Estimativa de produção{unidadeLabel ? ` (${unidadeLabel})` : ""}
+            Estimativa de colheita{culturaSel?.unidade_label ? ` (${culturaSel.unidade_label})` : ""}
           </Label>
           <Input
             type="number"
@@ -226,13 +249,9 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
             step="0.01"
             value={estimativa}
             onChange={(e) => setEstimativa(e.target.value)}
-            disabled={!culturaId}
-            placeholder={culturaId ? "Opcional" : "Selecione uma cultura primeiro"}
-            className={errors.estimativa ? "border-destructive" : ""}
+            placeholder="Opcional"
           />
-          {errors.estimativa && <p className="text-sm text-destructive mt-1">{errors.estimativa}</p>}
         </div>
-
 
         <div>
           <Label>Ano de plantio</Label>
@@ -263,13 +282,6 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
           {mutation.isPending ? "Salvando..." : "Salvar"}
         </Button>
       </div>
-
-      <NovaCulturaDialog
-        open={showNovaCultura}
-        onOpenChange={setShowNovaCultura}
-        onCriada={(id) => setCulturaId(id)}
-      />
     </div>
-
   );
 }
