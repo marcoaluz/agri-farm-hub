@@ -408,8 +408,10 @@ function LoteCard({
             {validadeStatus && <Badge className={validadeStatus.className}>{validadeStatus.label}</Badge>}
           </div>
 
-          {/* Action buttons for disponivel */}
-          {(isDisponivel || consumoStatus.status === 'parcial') && !isEditing && (
+          {/* Action buttons — disponível para qualquer status; se o lote já foi consumido
+              em lançamentos, o próprio banco bloqueia a exclusão (erro de chave estrangeira,
+              já tratado no onError do deleteMutation com mensagem clara pro usuário) */}
+          {!isEditing && (
             <div className="flex gap-1">
               <Button variant="outline" size="sm" onClick={onEdit}>
                 <Pencil className="h-3 w-3 mr-1" /> Editar
