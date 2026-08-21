@@ -201,7 +201,7 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                         <DropdownMenuItem onClick={() => setAnimalParaIdentificar(animal)}>
                           <Pencil className="mr-2 h-4 w-4" /> Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleRemoverIdentificacao(animal)} className="text-destructive">
+                        <DropdownMenuItem onClick={() => setAnimalParaRemoverIdent(animal)} className="text-destructive">
                           <Trash2 className="mr-2 h-4 w-4" /> Excluir identificação
                         </DropdownMenuItem>
                       </DropdownMenuContent>
