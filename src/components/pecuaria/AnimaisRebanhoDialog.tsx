@@ -22,6 +22,7 @@ interface AnimaisRebanhoDialogProps {
 
 export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanho, rebanhos }: AnimaisRebanhoDialogProps) {
   const [showNovoAnimal, setShowNovoAnimal] = useState(false)
+  const [animalParaIdentificar, setAnimalParaIdentificar] = useState<any>(null)
   const [animalPesagem, setAnimalPesagem] = useState<any>(null)
   const [animalHistorico, setAnimalHistorico] = useState<any>(null)
   const [animalVacina, setAnimalVacina] = useState<any>(null)
@@ -36,6 +37,8 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
     },
     enabled: open && !!rebanho?.id,
   })
+
+  const semIdentificacao = (animais || []).filter((a: any) => a.identificado === false)
 
   return (
     <>
@@ -55,6 +58,12 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
             </Button>
           </div>
 
+          {semIdentificacao.length > 0 && (
+            <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+              {semIdentificacao.length} {semIdentificacao.length === 1 ? 'animal aguardando identificação' : 'animais aguardando identificação'} — clique em "Identificar" no card do animal.
+            </div>
+          )}
+
           {isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16" />)}
@@ -70,8 +79,13 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium">
-                        {animal.nome || animal.identificador || animal.numero_brinco || 'Sem identificação'}
+                      <p className="font-medium flex items-center gap-2 flex-wrap">
+                        {animal.nome || animal.numero_brinco || animal.identificador}
+                        {animal.identificado === false && (
+                          <span className="text-[10px] font-medium uppercase bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                            Sem identificação
+                          </span>
+                        )}
                       </p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                         {animal.numero_brinco && <span>Brinco: {animal.numero_brinco}</span>}
@@ -83,6 +97,11 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
+                    {animal.identificado === false ? (
+                      <Button size="sm" onClick={() => setAnimalParaIdentificar(animal)}>
+                        Identificar
+                      </Button>
+                    ) : (
                     <div className="text-right">
                       {animal.peso_atual ? (
                         <>
@@ -97,6 +116,8 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                         <p className="text-sm text-muted-foreground">Sem pesagem</p>
                       )}
                     </div>
+                    )}
+                    {animal.identificado !== false && (
                     <div className="hidden gap-1 sm:flex">
                       <Button size="icon" variant="ghost" onClick={() => setAnimalPesagem(animal)} title="Pesar">
                         <Scale className="h-4 w-4" />
@@ -114,6 +135,8 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                         <LineChart className="h-4 w-4" />
                       </Button>
                     </div>
+                    )}
+                    {animal.identificado !== false && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild className="sm:hidden">
                         <Button size="icon" variant="ghost" aria-label="Ações do animal">
@@ -138,6 +161,7 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    )}
                   </div>
                 </div>
               ))}
@@ -157,6 +181,15 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
       </Dialog>
 
       <NovoAnimalModal open={showNovoAnimal} onOpenChange={setShowNovoAnimal} propriedadeId={propriedadeId} rebanho={rebanho} />
+      {animalParaIdentificar && (
+        <NovoAnimalModal
+          open={!!animalParaIdentificar}
+          onOpenChange={(o) => { if (!o) setAnimalParaIdentificar(null) }}
+          propriedadeId={propriedadeId}
+          rebanho={rebanho}
+          animalParaIdentificar={animalParaIdentificar}
+        />
+      )}
       {animalPesagem && (
         <PesagemAnimalModal open={!!animalPesagem} onOpenChange={o => { if (!o) setAnimalPesagem(null) }} animal={animalPesagem} />
       )}
