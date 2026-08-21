@@ -47,15 +47,15 @@ export function StatCard({
         className
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-2 min-w-0 flex-1">
-          <p className="text-sm font-medium text-muted-foreground truncate">{title}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="space-y-1.5 min-w-0 flex-1">
+          <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate" title={title}>{title}</p>
           <div className="flex items-baseline gap-2 flex-wrap">
-            <h3 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground break-words">{value}</h3>
+            <h3 className="font-display text-lg sm:text-xl xl:text-2xl font-bold tracking-tight text-foreground [overflow-wrap:anywhere]">{value}</h3>
             {trend && (
               <span
                 className={cn(
-                  'text-sm font-medium shrink-0',
+                  'text-xs sm:text-sm font-medium shrink-0',
                   trend.isPositive ? 'text-success' : 'text-destructive'
                 )}
               >
@@ -64,9 +64,10 @@ export function StatCard({
             )}
           </div>
           {description && (
-            <p className="text-sm text-muted-foreground break-words">{description}</p>
+            <p className="text-xs text-muted-foreground line-clamp-2 [overflow-wrap:anywhere]" title={description}>{description}</p>
           )}
         </div>
+
         <div className={cn('rounded-lg p-2.5 sm:p-3 shrink-0', iconStyles[variant])}>
           <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
         </div>
