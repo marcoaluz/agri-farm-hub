@@ -170,7 +170,7 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                       <Button size="icon" variant="ghost" onClick={() => setAnimalParaIdentificar(animal)} title="Editar">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleRemoverIdentificacao(animal)} title="Excluir identificação">
+                      <Button size="icon" variant="ghost" className="text-destructive" onClick={() => setAnimalParaRemoverIdent(animal)} title="Excluir identificação">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
