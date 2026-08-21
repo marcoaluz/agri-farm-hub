@@ -82,15 +82,26 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
   });
 
   const culturaSel = culturas?.find((c) => c.id === culturaId);
+  /** Unidade de produção vem sempre da configuração da cultura (banco) */
+  const unidadeLabel: string | null = culturaSel?.unidade_label || null;
+  /** Culturas antigas (sem a coluna configurada) continuam exibindo o campo Plantas */
+  const permitePlantas = culturaSel ? culturaSel.permite_quantidade_plantas !== false : false;
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
     if (!areaHa || parseFloat(areaHa) <= 0) newErrors.area_ha = "Área deve ser maior que zero";
     if (!culturaId) newErrors.cultura_id = "Selecione a cultura";
+    if (estimativa && (isNaN(Number(estimativa)) || Number(estimativa) < 0)) {
+      newErrors.estimativa = "Informe um valor numérico maior ou igual a zero";
+    }
+    if (permitePlantas && quantidadePes && (!Number.isInteger(Number(quantidadePes)) || Number(quantidadePes) < 0)) {
+      newErrors.quantidade_pes = "Informe um número inteiro positivo";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
 
   const mutation = useMutation({
     mutationFn: async () => {
