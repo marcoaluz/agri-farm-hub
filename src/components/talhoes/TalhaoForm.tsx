@@ -55,27 +55,7 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
   const [variedade, setVariedade] = useState(talhao?.variedade || "");
 
   const [showNovaCultura, setShowNovaCultura] = useState(false);
-  const [novaCulturaNome, setNovaCulturaNome] = useState("");
-  const [salvandoCultura, setSalvandoCultura] = useState(false);
 
-  const handleAdicionarCultura = async () => {
-    const nome = novaCulturaNome.trim();
-    if (!nome) return;
-    setSalvandoCultura(true);
-    const { data, error } = await supabase.rpc("criar_cultura_config" as any, {
-      p_nome_exibicao: nome,
-    });
-    setSalvandoCultura(false);
-    if (error) {
-      toast({ title: "Erro ao criar cultura", description: error.message, variant: "destructive" });
-      return;
-    }
-    setCulturaId((data as any).id);
-    setNovaCulturaNome("");
-    setShowNovaCultura(false);
-    queryClient.invalidateQueries({ queryKey: ["culturas-config"] });
-    toast({ title: "Cultura criada com sucesso" });
-  };
 
   const [geo, setGeo] = useState<{
     geometria: GeoJSON.Polygon | null;
