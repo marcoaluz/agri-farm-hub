@@ -14,7 +14,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Package, Search, AlertTriangle, DollarSign, PackagePlus, Pencil } from 'lucide-react';
+import { Plus, Package, Boxes, Search, AlertTriangle, DollarSign, PackagePlus, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LotesDialog } from '@/components/estoque/LotesDialog';
 import { EntradaEstoqueForm } from '@/components/estoque/EntradaEstoqueForm';
@@ -173,8 +173,8 @@ export function Estoque() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-            <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-            Estoque
+            <Boxes className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+            Estoque/Insumos
           </h1>
           <p className="text-sm text-muted-foreground">
             Gerencie produtos, lotes e custos (FIFO)
