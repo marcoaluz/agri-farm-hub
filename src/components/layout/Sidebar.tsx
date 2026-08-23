@@ -8,7 +8,6 @@ import {
   LayoutDashboard, 
   MapPin, 
   Package, 
-  Boxes,
   ClipboardList,
   Tractor,
   DollarSign,
@@ -38,6 +37,7 @@ import { useModulos } from '@/hooks/useModulos'
 import { useModulosAcesso } from '@/hooks/useModulosAcesso'
 import { UpgradeRequiredModal } from '@/components/modulos/UpgradeRequiredModal'
 import { Lock } from 'lucide-react'
+import { PrateleiraIcon } from '@/components/icons/PrateleiraIcon'
 import { supabase } from '@/lib/supabase'
 
 interface SidebarProps {
@@ -51,7 +51,7 @@ const routes = [
   { label: 'Usuários',      icon: Users,           href: '/equipe',       sempre: true, hideForAdmin: true },
   { label: 'Safras',        icon: Calendar,        href: '/safras',       modulo: 'lavoura' as const },
   { label: 'Talhões',       icon: MapPin,          href: '/talhoes',      modulo: 'lavoura' as const },
-  { label: 'Estoque/Insumos', icon: Boxes,          href: '/estoque',      sempre: true },
+  { label: 'Estoque/Insumos', icon: PrateleiraIcon, href: '/estoque',      sempre: true },
   { label: 'Produção',      icon: Sprout,          href: '/producao',     sempre: true },
   { label: 'Serviços',      icon: Wheat,           href: '/servicos',     sempre: true },
   { label: 'Lançamentos',   icon: ClipboardList,   href: '/lancamentos',  sempre: true },

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Info, AlertCircle, Package, Boxes, Wrench, Truck, Gauge, Pencil, Tractor } from 'lucide-react'
+import { X, Info, AlertCircle, Package, Wrench, Truck, Gauge, Pencil, Tractor } from 'lucide-react'
+import { PrateleiraIcon } from '@/components/icons/PrateleiraIcon'
 import { usePreviewCustoDireto } from '@/hooks/usePreviewCusto'
 import { PreviewConsumoFIFO } from './PreviewConsumoFIFO'
 import { Card, CardContent } from '@/components/ui/card'
@@ -85,7 +86,7 @@ interface ItemLancamentoCardProps {
 
 function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   if (tipoRef === 'produto') {
-    return { label: 'Produto de Estoque', icon: Boxes, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' }
+    return { label: 'Produto de Estoque', icon: PrateleiraIcon, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' }
   }
   if (tipoRef === 'maquina') {
     return { label: 'Hora de Máquina', icon: Truck, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' }
