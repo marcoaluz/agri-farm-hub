@@ -104,18 +104,28 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
           .eq('id', maquina.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.rpc('criar_maquina_compartilhada' as any, {
-          p_propriedade_id: propriedadeAtual?.id,
-          p_nome: formData.nome,
-          p_modelo: formData.modelo || null,
-          p_ano_fabricacao: formData.ano_fabricacao ? parseInt(formData.ano_fabricacao) : null,
-          p_horimetro_inicial: formData.horimetro_inicial || 0,
-          p_custo_hora: formData.custo_hora ? parseFloat(formData.custo_hora) : null,
-          p_compartilhado: compartilhado,
-          p_unidade_calculo: unidadeCalculo,
-          p_km_atual: isKm ? (formData.km_atual ? parseFloat(formData.km_atual) : 0) : null,
-          p_custo_km: isKm ? (formData.custo_km ? parseFloat(formData.custo_km) : null) : null,
-        });
+        const { data: userData } = await supabase.auth.getUser();
+        const kmInicial = isKm ? (formData.km_atual ? parseFloat(formData.km_atual) : 0) : null;
+        const horimetroInicial = isKm ? 0 : (formData.horimetro_inicial || 0);
+
+        const { error } = await supabase
+          .from('maquinas')
+          .insert({
+            propriedade_id: propriedadeAtual?.id,
+            usuario_id: userData?.user?.id,
+            nome: formData.nome,
+            modelo: formData.modelo || null,
+            ano_fabricacao: formData.ano_fabricacao ? parseInt(formData.ano_fabricacao) : null,
+            unidade_calculo: unidadeCalculo,
+            horimetro_inicial: horimetroInicial,
+            horimetro_atual: horimetroInicial,
+            custo_hora: formData.custo_hora ? parseFloat(formData.custo_hora) : null,
+            km_inicial: kmInicial,
+            km_atual: kmInicial,
+            custo_km: isKm && formData.custo_km ? parseFloat(formData.custo_km) : null,
+            compartilhado,
+            ativo: true,
+          } as any);
         if (error) throw error;
       }
     },
