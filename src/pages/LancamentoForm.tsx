@@ -42,7 +42,8 @@ import {
   Truck,
   AlertTriangle,
   Fuel,
-  Cog
+  Cog,
+  Tractor
 } from 'lucide-react'
 
 // Interfaces
@@ -87,7 +88,8 @@ export function LancamentoForm() {
   const [loading, setLoading] = useState(false)
   const [loadingItens, setLoadingItens] = useState(false)
   const [validandoEstoque, setValidandoEstoque] = useState(false)
-  const [adicionandoTipo, setAdicionandoTipo] = useState<'produto' | 'maquina' | 'servico_simples' | 'abastecimento' | 'manutencao' | null>(null)
+  const [adicionandoTipo, setAdicionandoTipo] = useState<'produto' | 'maquina' | 'servico_simples' | 'abastecimento' | 'manutencao' | 'reposicao' | null>(null)
+  const [reposicaoMaquinaId, setReposicaoMaquinaId] = useState<string | null>(null)
   const [custoAltoDialog, setCustoAltoDialog] = useState<{
     open: boolean
     valor: string
@@ -464,6 +466,30 @@ export function LancamentoForm() {
   }
 
 
+
+  const adicionarReposicao = (produtoId: string) => {
+    if (!reposicaoMaquinaId) return
+    const produto = produtos?.find(p => p.id === produtoId)
+    const maquina = maquinas?.find(m => m.id === reposicaoMaquinaId)
+    if (!produto || !maquina) return
+    if (formData.itens.some(i => i.tipo_ref === 'produto' && i.produto_id === produtoId && i.maquina_id === reposicaoMaquinaId)) {
+      toast({ title: 'Essa peça já foi adicionada para essa máquina', variant: 'destructive' })
+      return
+    }
+    setFormData(prev => ({
+      ...prev,
+      itens: [...prev.itens, {
+        tipo_ref: 'produto',
+        produto_id: produto.id,
+        maquina_id: maquina.id,
+        nome: produto.nome,
+        unidade: produto.unidade_medida || 'unidade',
+        quantidade: 0,
+        estoque_disponivel: produto.saldo_atual,
+      }]
+    }))
+    // Não fecha o seletor nem reseta a máquina — permite adicionar mais peças pra mesma máquina
+  }
 
   const adicionarServicoSimples = (servicoRefId: string) => {
     const svc = servicosSimples?.find(s => s.id === servicoRefId)
@@ -1287,6 +1313,17 @@ export function LancamentoForm() {
                         <Cog className="h-4 w-4 mr-1" />
                         + Manutenção
                       </Button>
+                      <Button
+                        type="button" variant="outline" size="sm"
+                        onClick={() => {
+                          const abrindo = adicionandoTipo !== 'reposicao'
+                          setAdicionandoTipo(abrindo ? 'reposicao' : null)
+                          if (!abrindo) setReposicaoMaquinaId(null)
+                        }}
+                      >
+                        <Tractor className="h-4 w-4 mr-1" />
+                        + Troca/Reposição
+                      </Button>
                     </div>
 
                     {/* Select para tipo selecionado */}
@@ -1405,6 +1442,56 @@ export function LancamentoForm() {
                             )}
                           </SelectContent>
                         </Select>
+                      </div>
+                    )}
+
+                    {adicionandoTipo === 'reposicao' && (
+                      <div className="mt-3 space-y-3">
+                        {!reposicaoMaquinaId ? (
+                          <Select onValueChange={setReposicaoMaquinaId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o trator/máquina..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {maquinas?.map(m => (
+                                <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                              ))}
+                              {(!maquinas || maquinas.length === 0) && (
+                                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                  Nenhuma máquina cadastrada
+                                </div>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-between text-sm bg-muted/50 rounded-md px-3 py-2">
+                              <span>Máquina: <strong>{maquinas?.find(m => m.id === reposicaoMaquinaId)?.nome}</strong></span>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => setReposicaoMaquinaId(null)}>Trocar</Button>
+                            </div>
+                            <Select onValueChange={adicionarReposicao}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione a peça (categoria Máquina)..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {produtos?.filter(p => (p.categoria || '').toLowerCase().includes('máquina') || (p.categoria || '').toLowerCase().includes('maquina')).map(p => (
+                                  <SelectItem key={p.id} value={p.id}>{p.nome} — {p.saldo_atual} {p.unidade_medida}</SelectItem>
+                                ))}
+                                {(!produtos || produtos.filter(p => (p.categoria || '').toLowerCase().includes('máquina') || (p.categoria || '').toLowerCase().includes('maquina')).length === 0) && (
+                                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                    Nenhum produto cadastrado na categoria "Máquina"
+                                  </div>
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              type="button" variant="outline" size="sm" className="w-full"
+                              onClick={() => { setAdicionandoTipo(null); setReposicaoMaquinaId(null) }}
+                            >
+                              Concluir
+                            </Button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
