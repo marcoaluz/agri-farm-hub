@@ -82,6 +82,7 @@ interface ItemLancamentoCardProps {
   temMaquinaNoLancamento?: boolean
   categoriasManutencao?: { id: string; nome: string }[]
   descricoesManutencao?: { id: string; nome: string }[]
+  maquinas?: any[]
 }
 
 function getTipoConfig(tipoRef?: string, itemTipo?: string) {
@@ -108,7 +109,7 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   return config[itemTipo as keyof typeof config] || { label: itemTipo || 'Item', icon: Package, color: 'bg-gray-100 text-gray-800' }
 }
 
-export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao }: ItemLancamentoCardProps) {
+export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao, maquinas }: ItemLancamentoCardProps) {
   const [quantidade, setQuantidade] = useState(itemForm.quantidade)
   const [editandoCusto, setEditandoCusto] = useState(false)
   const [custoEditavel, setCustoEditavel] = useState('')
@@ -221,6 +222,9 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
   const itemNome = itemForm.nome || itemForm.item?.nome || 'Item'
   const itemUnidade = itemForm.unidade || itemForm.item?.unidade_medida || ''
+  const maquinaVinculada = maquinas?.find(m => m.id === itemForm.maquina_id)
+  const ehMaquinaKm = maquinaVinculada?.unidade_calculo === 'km'
+  const labelMedidor = ehMaquinaKm ? 'Km' : 'Horímetro'
   const ehReposicao = itemForm.tipo_ref === 'produto' && !!itemForm.maquina_id
   const tipoConfig = ehReposicao
     ? { label: 'Troca/Reposição', icon: Tractor, color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' }
@@ -533,13 +537,13 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
             </div>
 
             <div>
-              <Label>Horímetro no momento do abastecimento</Label>
+              <Label>{labelMedidor} no momento do abastecimento</Label>
               <Input
                 type="number" value={itemForm.horimetro_informado ?? ''}
                 onChange={(e) => onUpdate({ ...itemForm, horimetro_informado: Number(e.target.value) })}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Digite o valor exato do painel — isso substitui o horímetro atual, não soma.
+                Digite o valor exato do painel — isso substitui o {labelMedidor.toLowerCase()} atual, não soma.
               </p>
             </div>
 
@@ -698,18 +702,18 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Horímetro na manutenção</Label>
+                <Label>{labelMedidor} na manutenção</Label>
                 <Input
                   type="number"
                   value={itemForm.horimetro_informado ?? ''}
                   onChange={(e) => onUpdate({ ...itemForm, horimetro_informado: Number(e.target.value) })}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Substitui o horímetro atual, não soma.
+                  Substitui o {labelMedidor.toLowerCase()} atual, não soma.
                 </p>
               </div>
               <div>
-                <Label>Próximo horímetro (opcional)</Label>
+                <Label>Próximo {labelMedidor.toLowerCase()} (opcional)</Label>
                 <Input
                   type="number"
                   value={itemForm.proximo_horimetro ?? ''}
@@ -720,7 +724,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
             {temMaquinaNoLancamento && (
               <div>
-                <Label>Essa leitura de horímetro da manutenção foi antes ou depois do trabalho com a máquina?</Label>
+                <Label>Essa leitura de {labelMedidor.toLowerCase()} da manutenção foi antes ou depois do trabalho com a máquina?</Label>
                 <div className="flex gap-2 mt-1">
                   <Button
                     type="button" size="sm"
