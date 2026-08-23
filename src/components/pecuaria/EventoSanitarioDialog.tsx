@@ -155,6 +155,8 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
       queryClient.invalidateQueries({ queryKey: ['produtos'] })
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
       queryClient.invalidateQueries({ queryKey: ['produtos-pecuarios'] })
+      queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
+      queryClient.invalidateQueries({ queryKey: ['rel-custos-detalhado'] })
     }
 
     queryClient.invalidateQueries({ queryKey: ['sanitario'] })
@@ -231,6 +233,62 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
               </p>
             )}
           </div>
+          <div className="flex items-center gap-2 border-t pt-3">
+            <Switch
+              checked={usarEstoque}
+              onCheckedChange={(v) => {
+                setUsarEstoque(v)
+                setProdutoId('')
+                setQuantidadeUsada('')
+                if (v) setForm(f => ({ ...f, custo: '0' }))
+              }}
+            />
+            <Label className="text-sm font-normal">Usar produto do estoque (desconta saldo)</Label>
+          </div>
+
+          {usarEstoque && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/30 p-3 rounded-lg">
+              <div>
+                <Label>Produto do estoque (Pecuária)</Label>
+                <Select
+                  value={produtoId}
+                  onValueChange={(v) => {
+                    setProdutoId(v)
+                    const prod = (produtosPecuarios || []).find((p: any) => (p.id || p.produto_id) === v)
+                    if (prod && !quantidadeUsada) {
+                      setQuantidadeUsada('1')
+                    }
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {(produtosPecuarios || []).map((prod: any) => (
+                      <SelectItem key={prod.id || prod.produto_id} value={prod.id || prod.produto_id}>
+                        {prod.nome} (saldo: {prod.saldo_atual ?? 0} {prod.unidade_medida})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Quantidade / Dose usada</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={quantidadeUsada}
+                  onChange={e => {
+                    setQuantidadeUsada(e.target.value)
+                    setForm(f => ({ ...f, quantidade_dose: e.target.value }))
+                  }}
+                  placeholder="Ex: 50"
+                />
+              </div>
+              <p className="sm:col-span-2 text-xs text-muted-foreground">
+                O custo desse produto vai aparecer em Lançamentos (já foi pago na compra do insumo), não gera nova despesa no Financeiro.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Data de aplicação</Label>
@@ -264,55 +322,15 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Dose (ml)</Label>
-              <Input type="number" step="0.01" value={form.quantidade_dose} onChange={e => setForm(f => ({ ...f, quantidade_dose: e.target.value }))} />
+              <Input type="number" step="0.01" value={form.quantidade_dose} onChange={e => setForm(f => ({ ...f, quantidade_dose: e.target.value }))} disabled={usarEstoque} />
+              {usarEstoque && <p className="text-xs text-muted-foreground mt-1">Preenchida junto com "Quantidade / Dose usada" acima.</p>}
             </div>
             <div>
               <Label>Custo R$</Label>
-              <Input type="number" step="0.01" value={form.custo} onChange={e => setForm(f => ({ ...f, custo: e.target.value }))} />
+              <Input type="number" step="0.01" value={form.custo} onChange={e => setForm(f => ({ ...f, custo: e.target.value }))} disabled={usarEstoque} />
+              {usarEstoque && <p className="text-xs text-muted-foreground mt-1">Calculado automaticamente pelo custo médio do produto.</p>}
             </div>
           </div>
-
-          <div className="flex items-center gap-2 border-t pt-3">
-            <Switch
-              checked={usarEstoque}
-              onCheckedChange={(v) => {
-                setUsarEstoque(v)
-                if (v) setForm(f => ({ ...f, custo: '0' }))
-              }}
-            />
-            <Label className="text-sm font-normal">Usar produto do estoque (desconta saldo)</Label>
-          </div>
-
-          {usarEstoque && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/30 p-3 rounded-lg">
-              <div>
-                <Label>Produto do estoque</Label>
-                <Select value={produtoId} onValueChange={setProdutoId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {(produtosPecuarios || []).map((prod: any) => (
-                      <SelectItem key={prod.id || prod.produto_id} value={prod.id || prod.produto_id}>
-                        {prod.nome} (saldo: {prod.saldo_atual ?? 0} {prod.unidade_medida})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Quantidade usada</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={quantidadeUsada}
-                  onChange={e => setQuantidadeUsada(e.target.value)}
-                  placeholder="Ex: 50"
-                />
-              </div>
-              <p className="sm:col-span-2 text-xs text-muted-foreground">
-                O custo não será lançado no financeiro pois o produto já foi pago na compra.
-              </p>
-            </div>
-          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
