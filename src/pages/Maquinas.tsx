@@ -204,11 +204,20 @@ export function Maquinas() {
   );
 
   const totalMaquinas = maquinas?.length || 0;
-  const maquinasComCusto = maquinas?.filter((m) => m.custo_hora != null) || [];
+  const maquinasHora = maquinas?.filter((m: any) => m.unidade_calculo !== 'km') || [];
+  const maquinasKm = maquinas?.filter((m: any) => m.unidade_calculo === 'km') || [];
+
+  const kmTotal = maquinasKm.reduce((sum, m: any) => sum + (m.km_atual || 0), 0);
+  const maquinasComCustoKm = maquinasKm.filter((m: any) => m.custo_km != null);
+  const custoMedioKm = maquinasComCustoKm.length
+    ? maquinasComCustoKm.reduce((sum, m: any) => sum + (m.custo_km || 0), 0) / maquinasComCustoKm.length
+    : 0;
+
+  const maquinasComCusto = maquinasHora.filter((m) => m.custo_hora != null) || [];
   const custoMedioHora = maquinasComCusto.length
     ? maquinasComCusto.reduce((sum, m) => sum + (m.custo_hora || 0), 0) / maquinasComCusto.length
     : 0;
-  const horimetroTotal = maquinas?.reduce((sum, m) => sum + m.horimetro_atual, 0) || 0;
+  const horimetroTotal = maquinasHora.reduce((sum, m) => sum + m.horimetro_atual, 0) || 0;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
