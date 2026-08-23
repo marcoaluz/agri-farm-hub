@@ -537,13 +537,13 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
             </div>
 
             <div>
-              <Label>Horímetro no momento do abastecimento</Label>
+              <Label>{labelMedidor} no momento do abastecimento</Label>
               <Input
                 type="number" value={itemForm.horimetro_informado ?? ''}
                 onChange={(e) => onUpdate({ ...itemForm, horimetro_informado: Number(e.target.value) })}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Digite o valor exato do painel — isso substitui o horímetro atual, não soma.
+                Digite o valor exato do painel — isso substitui o {labelMedidor.toLowerCase()} atual, não soma.
               </p>
             </div>
 
@@ -702,18 +702,18 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Horímetro na manutenção</Label>
+                <Label>{labelMedidor} na manutenção</Label>
                 <Input
                   type="number"
                   value={itemForm.horimetro_informado ?? ''}
                   onChange={(e) => onUpdate({ ...itemForm, horimetro_informado: Number(e.target.value) })}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Substitui o horímetro atual, não soma.
+                  Substitui o {labelMedidor.toLowerCase()} atual, não soma.
                 </p>
               </div>
               <div>
-                <Label>Próximo horímetro (opcional)</Label>
+                <Label>Próximo {labelMedidor.toLowerCase()} (opcional)</Label>
                 <Input
                   type="number"
                   value={itemForm.proximo_horimetro ?? ''}
@@ -724,7 +724,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
             {temMaquinaNoLancamento && (
               <div>
-                <Label>Essa leitura de horímetro da manutenção foi antes ou depois do trabalho com a máquina?</Label>
+                <Label>Essa leitura de {labelMedidor.toLowerCase()} da manutenção foi antes ou depois do trabalho com a máquina?</Label>
                 <div className="flex gap-2 mt-1">
                   <Button
                     type="button" size="sm"
