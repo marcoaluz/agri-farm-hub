@@ -271,7 +271,7 @@ export function Maquinas() {
                 <Gauge className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
               <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm text-muted-foreground">Horímetro</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Horímetro (tratores/colheitadeiras)</p>
                 <p className="text-lg sm:text-2xl font-bold">{horimetroTotal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}h</p>
               </div>
             </div>
@@ -464,9 +464,13 @@ export function Maquinas() {
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1">
-                        <Gauge className="h-3 w-3" /> Horímetro
+                        <Gauge className="h-3 w-3" /> {maquina.unidade_calculo === 'km' ? 'Quilometragem' : 'Horímetro'}
                       </span>
-                      <span className="font-medium">{fmtHorimetro(maquina.horimetro_atual)}</span>
+                      <span className="font-medium">
+                        {maquina.unidade_calculo === 'km'
+                          ? `${fmtHorimetro(maquina.km_atual || 0)} km`
+                          : fmtHorimetro(maquina.horimetro_atual)}
+                      </span>
                     </div>
                     {analise && analise.consumo_medio_lh > 0 && (
                       <div className="flex justify-between text-sm">
@@ -493,9 +497,11 @@ export function Maquinas() {
                       </div>
                     )}
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Custo/Hora</span>
+                      <span className="text-muted-foreground">{maquina.unidade_calculo === 'km' ? 'Custo/Km' : 'Custo/Hora'}</span>
                       <span className="font-medium">
-                        {maquina.custo_hora != null ? fmtCurrency(maquina.custo_hora) : 'Não definido'}
+                        {maquina.unidade_calculo === 'km'
+                          ? (maquina.custo_km != null ? fmtCurrency(maquina.custo_km) : 'Não definido')
+                          : (maquina.custo_hora != null ? fmtCurrency(maquina.custo_hora) : 'Não definido')}
                       </span>
                     </div>
                     {analise?.ultimo_abastecimento && (
