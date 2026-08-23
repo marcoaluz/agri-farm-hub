@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
@@ -23,6 +24,13 @@ interface MovimentacaoDialogProps {
 }
 
 const TIPOS_COM_ANIMAIS = ['transferencia', 'venda', 'morte']
+
+const fmtMoeda = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+interface AnimalPreco {
+  peso: string
+  preco: string
+}
 
 export function MovimentacaoDialog({
   open,
@@ -54,6 +62,10 @@ export function MovimentacaoDialog({
   const [observacoes, setObservacoes] = useState('')
   const [animaisSelecionados, setAnimaisSelecionados] = useState<string[]>([])
 
+  // Venda — peso e preço por animal, ou venda do lote inteiro
+  const [venderLoteInteiro, setVenderLoteInteiro] = useState(false)
+  const [animaisComPreco, setAnimaisComPreco] = useState<Record<string, AnimalPreco>>({})
+
   // Nascimento — identificação opcional
   const [nomeAnimal, setNomeAnimal] = useState('')
   const [brincoAnimal, setBrincoAnimal] = useState('')
@@ -77,6 +89,8 @@ export function MovimentacaoDialog({
       setRebanhoDestinoId('')
       setObservacoes('')
       setAnimaisSelecionados(animalIdInicial ? [animalIdInicial] : [])
+      setVenderLoteInteiro(false)
+      setAnimaisComPreco({})
       setNomeAnimal('')
       setBrincoAnimal('')
       setSexoAnimal('nao_definido')
@@ -95,10 +109,50 @@ export function MovimentacaoDialog({
     enabled: open && !!rebanhoId && TIPOS_COM_ANIMAIS.includes(tipo),
   })
 
-  const qtdNum = parseInt(quantidade || '0') || 0
-  const totalCalculado = tipoPreco === 'unitario'
-    ? (parseFloat(valorUnitario || '0') || 0) * qtdNum
-    : (parseFloat(valorTotal || '0') || 0)
+  // Pré-preenche peso de cada animal selecionado (venda), sem sobrescrever o que já foi digitado
+  useEffect(() => {
+    if (tipo !== 'venda' || venderLoteInteiro) return
+    setAnimaisComPreco(prev => {
+      const next: Record<string, AnimalPreco> = {}
+      animaisSelecionados.forEach(id => {
+        if (prev[id]) {
+          next[id] = prev[id]
+        } else {
+          const animal = animaisRebanho?.find((a: any) => a.id === id)
+          next[id] = { peso: animal?.peso_atual ? String(animal.peso_atual) : '', preco: '' }
+        }
+      })
+      return next
+    })
+  }, [animaisSelecionados, tipo, venderLoteInteiro, animaisRebanho])
+
+  const pesoTotalLote = (animaisRebanho || []).reduce((s: number, a: any) => s + (Number(a.peso_atual) || 0), 0)
+  const valorCompraTotalLote = (animaisRebanho || []).reduce((s: number, a: any) => s + (Number(a.valor_compra) || 0), 0)
+
+  const qtdNum = tipo === 'transferencia'
+    ? animaisSelecionados.length
+    : tipo === 'venda'
+      ? (venderLoteInteiro ? (animaisRebanho?.length || 0) : animaisSelecionados.length)
+      : (parseInt(quantidade || '0') || 0)
+
+  const totalVendaPorAnimal = Object.values(animaisComPreco).reduce((s, d) => s + (parseFloat(d.preco) || 0), 0)
+
+  const totalCalculado = tipo === 'venda'
+    ? (venderLoteInteiro ? (parseFloat(valorTotal || '0') || 0) : totalVendaPorAnimal)
+    : (tipoPreco === 'unitario'
+      ? (parseFloat(valorUnitario || '0') || 0) * qtdNum
+      : (parseFloat(valorTotal || '0') || 0))
+
+  // Lucro estimado da venda: preço de venda menos o valor pago na compra de cada animal
+  const custoAquisicaoSelecionados = animaisSelecionados.reduce((s, id) => {
+    const animal = animaisRebanho?.find((a: any) => a.id === id)
+    return s + (Number(animal?.valor_compra) || 0)
+  }, 0)
+  const lucroEstimado = tipo === 'venda'
+    ? (venderLoteInteiro
+      ? (parseFloat(valorTotal || '0') || 0) - valorCompraTotalLote
+      : totalVendaPorAnimal - custoAquisicaoSelecionados)
+    : 0
 
   function renderPreco(labelUnitario: string) {
     return (
@@ -122,7 +176,7 @@ export function MovimentacaoDialog({
             <Input type="number" step="0.01" value={valorUnitario} onChange={e => setValorUnitario(e.target.value)} />
             {valorUnitario && qtdNum > 0 && (
               <p className="text-sm mt-1">
-                Total: R$ {(parseFloat(valorUnitario) * qtdNum).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                Total: R$ {fmtMoeda((parseFloat(valorUnitario) || 0) * qtdNum)}
               </p>
             )}
           </div>
@@ -132,7 +186,7 @@ export function MovimentacaoDialog({
             <Input type="number" step="0.01" value={valorTotal} onChange={e => setValorTotal(e.target.value)} />
             {valorTotal && qtdNum > 0 && (
               <p className="text-sm mt-1">
-                Valor por cabeça: R$ {(parseFloat(valorTotal) / qtdNum).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                Valor por cabeça: R$ {fmtMoeda((parseFloat(valorTotal) || 0) / qtdNum)}
               </p>
             )}
           </div>
@@ -141,13 +195,15 @@ export function MovimentacaoDialog({
     )
   }
 
-  function renderSelecaoAnimais() {
+  function renderSelecaoAnimais(obrigatorio = false) {
     if (!TIPOS_COM_ANIMAIS.includes(tipo) || !animaisRebanho?.length) return null
     return (
       <div className="space-y-2">
-        <Label>Selecionar animais (opcional)</Label>
+        <Label>{obrigatorio ? 'Selecionar animais *' : 'Selecionar animais (opcional)'}</Label>
         <p className="text-xs text-muted-foreground">
-          Marque os animais específicos ou deixe em branco para movimentação genérica
+          {obrigatorio
+            ? 'Marque os animais que serão movimentados.'
+            : 'Marque os animais específicos ou deixe em branco para movimentação genérica'}
         </p>
         <div className="max-h-48 overflow-y-auto border rounded-lg p-2 space-y-1">
           {animaisRebanho.map((animal: any) => (
@@ -174,45 +230,103 @@ export function MovimentacaoDialog({
   }
 
   async function handleSave() {
-    if (!rebanhoId || !quantidade || qtdNum < 1) {
-      toast({ title: 'Preencha rebanho e quantidade', variant: 'destructive' })
+    if (!rebanhoId) {
+      toast({ title: 'Selecione o rebanho', variant: 'destructive' })
       return
     }
-    if (tipo === 'transferencia' && !rebanhoDestinoId) {
-      toast({ title: 'Selecione o rebanho destino', variant: 'destructive' })
-      return
+    if (tipo === 'transferencia') {
+      if (animaisSelecionados.length === 0) {
+        toast({ title: 'Selecione pelo menos um animal para transferir', variant: 'destructive' })
+        return
+      }
+      if (!rebanhoDestinoId) {
+        toast({ title: 'Selecione o rebanho destino', variant: 'destructive' })
+        return
+      }
     }
-    if (tipo === 'venda' && !valorUnitario && !valorTotal) {
-      toast({ title: 'Informe o valor da venda', variant: 'destructive' })
+    if (tipo === 'venda') {
+      if (venderLoteInteiro) {
+        if (!valorTotal) {
+          toast({ title: 'Informe o valor total da venda', variant: 'destructive' })
+          return
+        }
+      } else {
+        if (animaisSelecionados.length === 0) {
+          toast({ title: 'Selecione os animais ou marque "Vender o lote inteiro"', variant: 'destructive' })
+          return
+        }
+        const semPreco = animaisSelecionados.some(id => !animaisComPreco[id]?.preco)
+        if (semPreco) {
+          toast({ title: 'Informe o preço de cada animal selecionado', variant: 'destructive' })
+          return
+        }
+      }
+    }
+    if (!TIPOS_COM_ANIMAIS.includes(tipo) && qtdNum < 1) {
+      toast({ title: 'Preencha a quantidade', variant: 'destructive' })
       return
     }
 
     setLoading(true)
     const { data: userData } = await supabase.auth.getUser()
 
-    const { error } = await supabase.rpc('registrar_movimentacao_animais' as any, {
-      p_rebanho_id: rebanhoId,
-      p_propriedade_id: propriedadeId,
-      p_tipo: tipo,
-      p_quantidade: qtdNum,
-      p_data_evento: dataEvento,
-      p_valor_unitario: tipoPreco === 'unitario' && valorUnitario ? parseFloat(valorUnitario) : null,
-      p_valor_total: tipoPreco === 'total' && valorTotal ? parseFloat(valorTotal) : null,
-      p_tipo_preco: tipoPreco,
-      p_peso_medio_kg: pesoMedio ? parseFloat(pesoMedio) : null,
-      p_fornecedor_comprador: fornecedor || null,
-      p_numero_nota_fiscal: notaFiscal || null,
-      p_status_pagamento: statusPagamento || 'pago',
-      p_data_vencimento: dataVencimento || null,
-      p_rebanho_destino_id: tipo === 'transferencia' ? rebanhoDestinoId : null,
-      p_observacoes: observacoes || null,
-      p_animal_ids: animaisSelecionados.length > 0 ? animaisSelecionados : null,
-    })
+    if (tipo === 'venda' && !venderLoteInteiro) {
+      // Uma movimentação por animal — cada um com seu próprio peso e preço
+      for (const animalId of animaisSelecionados) {
+        const dados = animaisComPreco[animalId] || { peso: '', preco: '' }
+        const { error } = await supabase.rpc('registrar_movimentacao_animais' as any, {
+          p_rebanho_id: rebanhoId,
+          p_propriedade_id: propriedadeId,
+          p_tipo: 'venda',
+          p_quantidade: 1,
+          p_data_evento: dataEvento,
+          p_valor_unitario: parseFloat(dados.preco) || 0,
+          p_valor_total: null,
+          p_tipo_preco: 'unitario',
+          p_peso_medio_kg: dados.peso ? parseFloat(dados.peso) : null,
+          p_fornecedor_comprador: fornecedor || null,
+          p_numero_nota_fiscal: notaFiscal || null,
+          p_status_pagamento: statusPagamento || 'pago',
+          p_data_vencimento: dataVencimento || null,
+          p_rebanho_destino_id: null,
+          p_observacoes: observacoes || null,
+          p_animal_ids: [animalId],
+        })
+        if (error) {
+          setLoading(false)
+          toast({ title: 'Erro ao registrar venda', description: error.message, variant: 'destructive' })
+          return
+        }
+      }
+    } else {
+      const pesoMedioEnviado = tipo === 'venda' && venderLoteInteiro
+        ? (qtdNum > 0 ? pesoTotalLote / qtdNum : null)
+        : (pesoMedio ? parseFloat(pesoMedio) : null)
 
-    if (error) {
-      setLoading(false)
-      toast({ title: 'Erro ao registrar movimentação', description: error.message, variant: 'destructive' })
-      return
+      const { error } = await supabase.rpc('registrar_movimentacao_animais' as any, {
+        p_rebanho_id: rebanhoId,
+        p_propriedade_id: propriedadeId,
+        p_tipo: tipo,
+        p_quantidade: qtdNum,
+        p_data_evento: dataEvento,
+        p_valor_unitario: tipoPreco === 'unitario' && valorUnitario ? parseFloat(valorUnitario) : null,
+        p_valor_total: tipoPreco === 'total' && valorTotal ? parseFloat(valorTotal) : null,
+        p_tipo_preco: tipoPreco,
+        p_peso_medio_kg: pesoMedioEnviado,
+        p_fornecedor_comprador: fornecedor || null,
+        p_numero_nota_fiscal: notaFiscal || null,
+        p_status_pagamento: statusPagamento || 'pago',
+        p_data_vencimento: dataVencimento || null,
+        p_rebanho_destino_id: tipo === 'transferencia' ? rebanhoDestinoId : null,
+        p_observacoes: observacoes || null,
+        p_animal_ids: animaisSelecionados.length > 0 ? animaisSelecionados : null,
+      })
+
+      if (error) {
+        setLoading(false)
+        toast({ title: 'Erro ao registrar movimentação', description: error.message, variant: 'destructive' })
+        return
+      }
     }
 
     if (tipo === 'nascimento' && (nomeAnimal || brincoAnimal)) {
@@ -339,31 +453,97 @@ export function MovimentacaoDialog({
           {/* VENDA */}
           {tipo === 'venda' && (
             <>
-              <div>
-                <Label>Quantidade *</Label>
-                <Input type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
+              <div className="flex items-center gap-3 p-3 border rounded-lg">
+                <Switch
+                  checked={venderLoteInteiro}
+                  onCheckedChange={v => { setVenderLoteInteiro(v); setAnimaisSelecionados([]); setAnimaisComPreco({}) }}
+                />
+                <span className="text-sm font-medium">Vender o lote inteiro</span>
               </div>
-              {renderPreco('Valor por cabeça (R$) *')}
-              {renderSelecaoAnimais()}
+
+              {venderLoteInteiro ? (
+                <>
+                  <div className="space-y-1 text-sm text-muted-foreground border rounded-lg p-3 bg-muted/30">
+                    <p>Animais no lote: <span className="font-medium text-foreground">{animaisRebanho?.length || 0}</span></p>
+                    <p>Peso total estimado: <span className="font-medium text-foreground">{pesoTotalLote.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} kg</span></p>
+                    <p>Custo de aquisição do lote: <span className="font-medium text-foreground">R$ {fmtMoeda(valorCompraTotalLote)}</span></p>
+                  </div>
+
+                  <div>
+                    <Label>Valor total da venda (R$) *</Label>
+                    <Input type="number" step="0.01" value={valorTotal} onChange={e => { setTipoPreco('total'); setValorTotal(e.target.value) }} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  {renderSelecaoAnimais(true)}
+                  {animaisSelecionados.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Peso e preço por animal</Label>
+                      {animaisSelecionados.map(id => {
+                        const animal = animaisRebanho?.find((a: any) => a.id === id)
+                        const dados = animaisComPreco[id] || { peso: '', preco: '' }
+                        const custoAquisicao = Number(animal?.valor_compra) || 0
+                        const precoNum = parseFloat(dados.preco) || 0
+                        const lucroAnimal = dados.preco ? precoNum - custoAquisicao : null
+                        return (
+                          <div key={id} className="border rounded-lg p-3 space-y-2">
+                            <p className="text-sm font-medium">
+                              {animal?.nome || animal?.identificador || animal?.numero_brinco}
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <Label className="text-xs">Peso (kg)</Label>
+                                <Input type="number" step="0.1" value={dados.peso}
+                                  onChange={e => setAnimaisComPreco(prev => ({ ...prev, [id]: { ...dados, peso: e.target.value } }))}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Preço (R$) *</Label>
+                                <Input type="number" step="0.01" value={dados.preco}
+                                  onChange={e => setAnimaisComPreco(prev => ({ ...prev, [id]: { ...dados, preco: e.target.value } }))}
+                                />
+                              </div>
+                            </div>
+                            {custoAquisicao > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                Custo de aquisição: R$ {fmtMoeda(custoAquisicao)}
+                                {lucroAnimal !== null && (
+                                  <span className={lucroAnimal >= 0 ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}>
+                                    {' · '}{lucroAnimal >= 0 ? 'Lucro' : 'Prejuízo'}: R$ {fmtMoeda(Math.abs(lucroAnimal))}
+                                  </span>
+                                )}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {totalCalculado > 0 && (
+                <div className="space-y-1 border rounded-lg p-3 bg-muted/30">
+                  <p className="text-sm font-medium text-green-700">
+                    Receita: R$ {fmtMoeda(totalCalculado)}
+                  </p>
+                  {(venderLoteInteiro ? valorCompraTotalLote > 0 : custoAquisicaoSelecionados > 0) && (
+                    <p className={`text-sm ${lucroEstimado >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                      {lucroEstimado >= 0 ? 'Lucro estimado' : 'Prejuízo estimado'}: R$ {fmtMoeda(Math.abs(lucroEstimado))}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div>
                 <Label>Comprador</Label>
                 <Input value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Nota Fiscal</Label>
-                  <Input value={notaFiscal} onChange={e => setNotaFiscal(e.target.value)} />
-                </div>
-                <div>
-                  <Label>Peso médio (kg)</Label>
-                  <Input type="number" value={pesoMedio} onChange={e => setPesoMedio(e.target.value)} />
-                </div>
+              <div>
+                <Label>Nota Fiscal</Label>
+                <Input value={notaFiscal} onChange={e => setNotaFiscal(e.target.value)} />
               </div>
-              {totalCalculado > 0 && (
-                <p className="text-sm font-medium text-green-700">
-                  Receita: R$ {totalCalculado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
-              )}
             </>
           )}
 
@@ -423,7 +603,7 @@ export function MovimentacaoDialog({
               {renderSelecaoAnimais()}
               {valorUnitario && (
                 <p className="text-sm text-red-600">
-                  Prejuízo: R$ {totalCalculado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} — será registrado no financeiro como perda
+                  Prejuízo: R$ {fmtMoeda(totalCalculado)} — será registrado no financeiro como perda
                 </p>
               )}
             </>
@@ -432,10 +612,6 @@ export function MovimentacaoDialog({
           {/* TRANSFERÊNCIA */}
           {tipo === 'transferencia' && (
             <>
-              <div>
-                <Label>Quantidade *</Label>
-                <Input type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
-              </div>
               <div>
                 <Label>Transferir para *</Label>
                 <Select value={rebanhoDestinoId} onValueChange={setRebanhoDestinoId}>
@@ -447,7 +623,12 @@ export function MovimentacaoDialog({
                   </SelectContent>
                 </Select>
               </div>
-              {renderSelecaoAnimais()}
+              {renderSelecaoAnimais(true)}
+              {(!animaisRebanho || animaisRebanho.length === 0) && (
+                <p className="text-sm text-muted-foreground">
+                  Esse rebanho não tem animais identificados para selecionar.
+                </p>
+              )}
             </>
           )}
 
