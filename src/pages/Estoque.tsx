@@ -14,7 +14,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Package, Boxes, Search, AlertTriangle, DollarSign, PackagePlus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Package, Search, AlertTriangle, DollarSign, PackagePlus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { PrateleiraIcon } from '@/components/icons/PrateleiraIcon';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -200,7 +201,7 @@ export function Estoque() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-            <Boxes className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+            <PrateleiraIcon className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
             Estoque/Insumos
           </h1>
           <p className="text-sm text-muted-foreground">

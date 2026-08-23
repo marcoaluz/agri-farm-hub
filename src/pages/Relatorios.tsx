@@ -6,11 +6,12 @@ import { ptBR } from 'date-fns/locale'
 import {
   BarChart3, ClipboardList, DollarSign, Sprout, TrendingUp, Package,
   ArrowUpDown, ChevronUp, ChevronDown, Download, FileX, Lock, Circle, Leaf,
-  FileSpreadsheet, FileText, ListTree, Boxes, AlertTriangle,
+  FileSpreadsheet, FileText, ListTree, AlertTriangle,
 
 
 
 } from 'lucide-react'
+import { PrateleiraIcon } from '@/components/icons/PrateleiraIcon'
 import {
   BarChart, Bar, ComposedChart, Line, PieChart, Pie, Cell, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
@@ -183,7 +184,7 @@ export function Relatorios() {
             <TabsTrigger value="comparativo" className="whitespace-nowrap"><TrendingUp className="h-4 w-4 mr-1" />Comparativo</TabsTrigger>
             <TabsTrigger value="insumos" className="whitespace-nowrap"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
             <TabsTrigger value="custos" className="whitespace-nowrap"><ListTree className="h-4 w-4 mr-1" />Custos Detalhados</TabsTrigger>
-            <TabsTrigger value="estoque" className="whitespace-nowrap"><Boxes className="h-4 w-4 mr-1" />Estoque/Insumos</TabsTrigger>
+            <TabsTrigger value="estoque" className="whitespace-nowrap"><PrateleiraIcon className="h-4 w-4 mr-1" />Estoque/Insumos</TabsTrigger>
 
           </TabsList>
         </div>
@@ -1617,7 +1618,7 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3 flex-wrap">
-          <StatCard title="Total de Produtos" value={totalProdutos} icon={Boxes} />
+          <StatCard title="Total de Produtos" value={totalProdutos} icon={PrateleiraIcon} />
           <StatCard title="Itens Zerados" value={totalZerados} icon={FileX} variant={totalZerados > 0 ? 'warning' : 'default'} />
           <StatCard title="Abaixo do Mínimo" value={totalAbaixoMinimo} icon={AlertTriangle} variant={totalAbaixoMinimo > 0 ? 'warning' : 'default'} />
         </div>
