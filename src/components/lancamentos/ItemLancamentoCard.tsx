@@ -613,24 +613,88 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Custo (R$)</Label>
-                <Input
-                  type="number" step="0.01"
-                  value={itemForm.custo_total || ''}
-                  onChange={(e) => onUpdate({ ...itemForm, custo_total: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <Label>Oficina (opcional)</Label>
-                <Input
-                  value={itemForm.oficina || ''}
-                  onChange={(e) => onUpdate({ ...itemForm, oficina: e.target.value })}
-                  placeholder="Nome da oficina"
-                />
-              </div>
+            <div className="flex gap-2">
+              <Button
+                type="button" size="sm"
+                variant={itemForm.origem_estoque ? 'default' : 'outline'}
+                onClick={() => onUpdate({ ...itemForm, origem_estoque: true, custo_total: 0 })}
+              >
+                Do Estoque
+              </Button>
+              <Button
+                type="button" size="sm"
+                variant={!itemForm.origem_estoque ? 'default' : 'outline'}
+                onClick={() => onUpdate({ ...itemForm, origem_estoque: false, produto_id: null, quantidade: 0 })}
+              >
+                Livre
+              </Button>
             </div>
+
+            {itemForm.origem_estoque ? (
+              <>
+                <div>
+                  <Label>Peça / produto do estoque</Label>
+                  <Select
+                    value={itemForm.produto_id || ''}
+                    onValueChange={(v) => {
+                      const prod = produtos?.find(p => p.id === v)
+                      const custo = prod ? Number(itemForm.quantidade || 0) * Number(prod.custo_medio || 0) : 0
+                      onUpdate({ ...itemForm, produto_id: v, custo_total: Number(custo.toFixed(2)) })
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      {produtos?.filter(p => (p.categoria || '').toLowerCase().includes('manutenç') || (p.categoria || '').toLowerCase().includes('manutenc')).map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.nome} (saldo: {p.saldo_atual ?? 0} {p.unidade_medida})</SelectItem>
+                      ))}
+                      {(!produtos || produtos.filter(p => (p.categoria || '').toLowerCase().includes('manutenç') || (p.categoria || '').toLowerCase().includes('manutenc')).length === 0) && (
+                        <div className="px-2 py-3 text-xs text-muted-foreground">
+                          Nenhum produto na categoria "Manutenção".
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Quantidade</Label>
+                    <Input
+                      type="number" step="0.01"
+                      value={itemForm.quantidade || ''}
+                      onChange={(e) => {
+                        const qtd = Number(e.target.value)
+                        const prod = produtos?.find(p => p.id === itemForm.produto_id)
+                        const custo = prod ? qtd * Number(prod.custo_medio || 0) : 0
+                        onUpdate({ ...itemForm, quantidade: qtd, custo_total: Number(custo.toFixed(2)) })
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label>Custo (R$)</Label>
+                    <Input type="number" step="0.01" value={itemForm.custo_total || ''} disabled />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Custo (R$)</Label>
+                  <Input
+                    type="number" step="0.01"
+                    value={itemForm.custo_total || ''}
+                    onChange={(e) => onUpdate({ ...itemForm, custo_total: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label>Oficina (opcional)</Label>
+                  <Input
+                    value={itemForm.oficina || ''}
+                    onChange={(e) => onUpdate({ ...itemForm, oficina: e.target.value })}
+                    placeholder="Nome da oficina"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
