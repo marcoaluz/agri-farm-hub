@@ -47,6 +47,7 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
     data_formacao: undefined as Date | undefined,
     observacoes: '',
     vacinavel: true,
+    controle_individual: true,
   })
 
 
