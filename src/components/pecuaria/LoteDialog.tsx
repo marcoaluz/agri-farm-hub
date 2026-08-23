@@ -121,6 +121,38 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
             <Label>Nome do lote *</Label>
             <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} />
           </div>
+
+          {!lote && (
+            <div className="space-y-2">
+              <Label>Como você vai controlar os animais deste lote? *</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, controle_individual: true }))}
+                  className={cn(
+                    'text-left p-3 border rounded-lg text-sm space-y-1',
+                    form.controle_individual ? 'border-primary bg-primary/5' : 'border-border'
+                  )}
+                >
+                  <p className="font-medium">Lote Individual</p>
+                  <p className="text-xs text-muted-foreground">Cada animal é identificado (brinco, peso, valor de compra próprios).</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, controle_individual: false }))}
+                  className={cn(
+                    'text-left p-3 border rounded-lg text-sm space-y-1',
+                    !form.controle_individual ? 'border-primary bg-primary/5' : 'border-border'
+                  )}
+                >
+                  <p className="font-medium">Lote Fechado</p>
+                  <p className="text-xs text-muted-foreground">Só controla a quantidade total e o valor — sem identificar cada animal.</p>
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">Essa escolha não pode ser alterada depois de criado o lote.</p>
+            </div>
+          )}
+
           <div>
             <Label>Espécie</Label>
             <Select value={form.especie} onValueChange={v => setForm(f => ({ ...f, especie: v }))}>
