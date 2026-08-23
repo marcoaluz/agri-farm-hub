@@ -70,6 +70,7 @@ interface ProdutoCombustivel {
   categoria?: string
   saldo_atual?: number
   unidade_medida?: string
+  custo_medio?: number
 }
 
 interface ItemLancamentoCardProps {
