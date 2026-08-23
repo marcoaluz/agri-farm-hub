@@ -83,7 +83,7 @@ export default function RelatorioDinamico() {
 
   const getChave = useCallback((item: any, dim: string, src: Fonte): string => {
     if (src === 'lancamentos') {
-      if (dim === 'talhao') return item.talhao?.nome || 'Sem talhão'
+      if (dim === 'talhao') return item.talhao?.nome || 'Propriedade'
       if (dim === 'mes') return item.data_execucao?.substring(0, 7) || 'Sem data'
       if (dim === 'servico') return item.servico?.nome || 'Sem serviço'
       if (dim === 'categoria') return item.servico?.categoria || 'Outros'
@@ -98,11 +98,11 @@ export default function RelatorioDinamico() {
     }
     if (src === 'insumos') {
       if (dim === 'produto') return item.produto?.nome || 'Sem produto'
-      if (dim === 'talhao') return item.lancamento?.talhao?.nome || 'Sem talhão'
+      if (dim === 'talhao') return item.lancamento?.talhao?.nome || 'Propriedade'
       if (dim === 'mes') return item.lancamento?.data_execucao?.substring(0, 7) || 'Sem data'
     }
     if (src === 'producao') {
-      if (dim === 'talhao') return item.talhao?.nome || 'Sem talhão'
+      if (dim === 'talhao') return item.talhao?.nome || 'Propriedade'
       if (dim === 'cultura') return item.cultura?.nome_exibicao || 'Sem cultura'
       if (dim === 'mes') return item.data_colheita?.substring(0, 7) || 'Sem data'
     }

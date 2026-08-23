@@ -452,7 +452,9 @@ export function Lancamentos() {
                     {lancamento.talhao ? (
                       <Badge variant="outline">{lancamento.talhao.nome}</Badge>
                     ) : (
-                      <span className="text-muted-foreground">-</span>
+                      <Badge variant="secondary" title="Custo geral da propriedade, não vinculado a um talhão específico">
+                        Propriedade
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell>
@@ -543,7 +545,7 @@ export function Lancamentos() {
                       <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                         <div>
                           {formatDate(lancamento.data_execucao)}
-                          {lancamento.talhao?.nome ? ` · ${lancamento.talhao.nome}` : ''}
+                          {' · '}{lancamento.talhao?.nome || 'Propriedade'}
                         </div>
                         <div>
                           {lancamento.abastecimento

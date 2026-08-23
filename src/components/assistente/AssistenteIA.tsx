@@ -142,7 +142,7 @@ ${(maquinas || []).map((m: any) =>
 
 ÚLTIMOS LANÇAMENTOS (safra atual):
 ${(lancamentos || []).slice(0, 10).map((l: any) =>
-  `- ${l.data_execucao}: ${l.servico?.nome || 'Serviço'} em ${l.talhao?.nome || 'sem talhão'} — R$ ${l.custo_total}`
+  `- ${l.data_execucao}: ${l.servico?.nome || 'Serviço'} em ${l.talhao?.nome || 'toda a propriedade (custo geral)'} — R$ ${l.custo_total}`
 ).join('\n') || 'Nenhum lançamento'}
 
 MOVIMENTAÇÕES FINANCEIRAS (safra atual):
