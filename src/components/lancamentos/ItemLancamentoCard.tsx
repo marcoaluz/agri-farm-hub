@@ -82,6 +82,7 @@ interface ItemLancamentoCardProps {
   temMaquinaNoLancamento?: boolean
   categoriasManutencao?: { id: string; nome: string }[]
   descricoesManutencao?: { id: string; nome: string }[]
+  maquinas?: any[]
 }
 
 function getTipoConfig(tipoRef?: string, itemTipo?: string) {
@@ -108,7 +109,7 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   return config[itemTipo as keyof typeof config] || { label: itemTipo || 'Item', icon: Package, color: 'bg-gray-100 text-gray-800' }
 }
 
-export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao }: ItemLancamentoCardProps) {
+export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao, maquinas }: ItemLancamentoCardProps) {
   const [quantidade, setQuantidade] = useState(itemForm.quantidade)
   const [editandoCusto, setEditandoCusto] = useState(false)
   const [custoEditavel, setCustoEditavel] = useState('')
@@ -221,6 +222,9 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
   const itemNome = itemForm.nome || itemForm.item?.nome || 'Item'
   const itemUnidade = itemForm.unidade || itemForm.item?.unidade_medida || ''
+  const maquinaVinculada = maquinas?.find(m => m.id === itemForm.maquina_id)
+  const ehMaquinaKm = maquinaVinculada?.unidade_calculo === 'km'
+  const labelMedidor = ehMaquinaKm ? 'Km' : 'Horímetro'
   const ehReposicao = itemForm.tipo_ref === 'produto' && !!itemForm.maquina_id
   const tipoConfig = ehReposicao
     ? { label: 'Troca/Reposição', icon: Tractor, color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' }
