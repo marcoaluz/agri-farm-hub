@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Tractor, Car } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Maquina {
   id: string;
@@ -19,6 +20,9 @@ interface Maquina {
   horimetro_inicial: number;
   horimetro_atual: number;
   custo_hora?: number;
+  unidade_calculo?: 'h' | 'km';
+  km_atual?: number;
+  custo_km?: number;
   ativo: boolean;
   created_at: string;
   compartilhado?: boolean;
@@ -40,8 +44,11 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
     ano_fabricacao: '',
     horimetro_inicial: 0,
     horimetro_atual: 0,
-    custo_hora: ''
+    custo_hora: '',
+    km_atual: '',
+    custo_km: '',
   });
+  const [unidadeCalculo, setUnidadeCalculo] = useState<'h' | 'km'>('h');
   const [compartilhado, setCompartilhado] = useState(false);
 
   useEffect(() => {
@@ -52,28 +59,48 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
         ano_fabricacao: maquina.ano_fabricacao?.toString() || '',
         horimetro_inicial: maquina.horimetro_inicial,
         horimetro_atual: maquina.horimetro_atual,
-        custo_hora: maquina.custo_hora?.toString() || ''
+        custo_hora: maquina.custo_hora?.toString() || '',
+        km_atual: maquina.km_atual?.toString() || '',
+        custo_km: maquina.custo_km?.toString() || '',
       });
+      setUnidadeCalculo(maquina.unidade_calculo === 'km' ? 'km' : 'h');
       setCompartilhado(!!maquina.compartilhado);
     } else {
+      setUnidadeCalculo('h');
       setCompartilhado(false);
     }
   }, [maquina]);
 
+  const isKm = unidadeCalculo === 'km';
+
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const payload: any = {
+        nome: formData.nome,
+        modelo: formData.modelo || null,
+        ano_fabricacao: formData.ano_fabricacao ? parseInt(formData.ano_fabricacao) : null,
+        unidade_calculo: unidadeCalculo,
+        compartilhado,
+      };
+
+      if (isKm) {
+        payload.horimetro_inicial = formData.horimetro_inicial || 0;
+        payload.horimetro_atual = formData.horimetro_atual || 0;
+        payload.custo_hora = formData.custo_hora ? parseFloat(formData.custo_hora) : null;
+        payload.km_atual = formData.km_atual ? parseFloat(formData.km_atual) : 0;
+        payload.custo_km = formData.custo_km ? parseFloat(formData.custo_km) : null;
+      } else {
+        payload.horimetro_inicial = formData.horimetro_inicial;
+        payload.horimetro_atual = formData.horimetro_atual;
+        payload.custo_hora = formData.custo_hora ? parseFloat(formData.custo_hora) : null;
+        payload.km_atual = null;
+        payload.custo_km = null;
+      }
+
       if (maquina) {
         const { error } = await supabase
           .from('maquinas')
-          .update({
-            nome: formData.nome,
-            modelo: formData.modelo || null,
-            ano_fabricacao: formData.ano_fabricacao ? parseInt(formData.ano_fabricacao) : null,
-            horimetro_inicial: formData.horimetro_inicial,
-            horimetro_atual: formData.horimetro_atual,
-            custo_hora: formData.custo_hora ? parseFloat(formData.custo_hora) : null,
-            compartilhado,
-          } as any)
+          .update(payload)
           .eq('id', maquina.id);
         if (error) throw error;
       } else {
@@ -85,6 +112,9 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
           p_horimetro_inicial: formData.horimetro_inicial || 0,
           p_custo_hora: formData.custo_hora ? parseFloat(formData.custo_hora) : null,
           p_compartilhado: compartilhado,
+          p_unidade_calculo: unidadeCalculo,
+          p_km_atual: isKm ? (formData.km_atual ? parseFloat(formData.km_atual) : 0) : null,
+          p_custo_km: isKm ? (formData.custo_km ? parseFloat(formData.custo_km) : null) : null,
         });
         if (error) throw error;
       }
@@ -108,6 +138,9 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
 
 
   const isValid = formData.nome.trim().length > 0;
+
+  const labelMedidor = isKm ? 'Quilometragem' : 'Horímetro';
+  const unidadeMedidor = isKm ? 'km' : 'h';
 
   return (
     <div className="space-y-6">
@@ -152,6 +185,43 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
         </div>
 
         <div className="space-y-2">
+          <Label>Tipo de Controle</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setUnidadeCalculo('h')}
+              className={cn(
+                'flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium transition-colors',
+                !isKm
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-background text-muted-foreground hover:bg-accent'
+              )}
+            >
+              <Tractor className="h-4 w-4" />
+              Horímetro (h)
+            </button>
+            <button
+              type="button"
+              onClick={() => setUnidadeCalculo('km')}
+              className={cn(
+                'flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium transition-colors',
+                isKm
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-background text-muted-foreground hover:bg-accent'
+              )}
+            >
+              <Car className="h-4 w-4" />
+              Quilometragem (km)
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {isKm
+              ? 'Para carros e caminhões — controle por km rodado.'
+              : 'Para tratores e colheitadeiras — controle por horímetro.'}
+          </p>
+        </div>
+
+        <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Checkbox
               id="compartilhado"
@@ -164,55 +234,69 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
           </div>
           {compartilhado && (
             <p className="text-xs text-muted-foreground">
-              O horímetro desta máquina será único e compartilhado entre todas as propriedades.
+              O {labelMedidor.toLowerCase()} desta máquina será único e compartilhado entre todas as propriedades.
             </p>
           )}
         </div>
 
-
-
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label>Horímetro Inicial (h)</Label>
+            <Label>{labelMedidor} Inicial ({unidadeMedidor})</Label>
             <Input
               type="number"
               step="0.01"
               min="0"
               value={formData.horimetro_inicial || ''}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                horimetro_inicial: parseFloat(e.target.value) || 0 
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
+                horimetro_inicial: parseFloat(e.target.value) || 0
               }))}
               placeholder="0.00"
             />
           </div>
           <div>
-            <Label>Horímetro Atual (h)</Label>
+            <Label>{labelMedidor} Atual ({unidadeMedidor})</Label>
             <Input
               type="number"
               step="0.01"
               min="0"
-              value={formData.horimetro_atual || ''}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                horimetro_atual: parseFloat(e.target.value) || 0 
-              }))}
+              value={isKm ? formData.km_atual : (formData.horimetro_atual || '')}
+              onChange={(e) => setFormData(prev => {
+                if (isKm) {
+                  return { ...prev, km_atual: e.target.value };
+                }
+                return { ...prev, horimetro_atual: parseFloat(e.target.value) || 0 };
+              })}
               placeholder="0.00"
             />
           </div>
         </div>
 
-        <div>
-          <Label>Custo por Hora (R$)</Label>
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.custo_hora}
-            onChange={(e) => setFormData(prev => ({ ...prev, custo_hora: e.target.value }))}
-            placeholder="0.00"
-          />
-        </div>
+        {isKm ? (
+          <div>
+            <Label>Custo por Km (R$)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.custo_km}
+              onChange={(e) => setFormData(prev => ({ ...prev, custo_km: e.target.value }))}
+              placeholder="0.00"
+            />
+          </div>
+        ) : (
+          <div>
+            <Label>Custo por Hora (R$)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.custo_hora}
+              onChange={(e) => setFormData(prev => ({ ...prev, custo_hora: e.target.value }))}
+              placeholder="0.00"
+            />
+          </div>
+        )}
       </div>
 
       <div className="sticky bottom-0 z-10 -mb-2 mt-2 flex justify-end gap-2 border-t bg-background py-3">

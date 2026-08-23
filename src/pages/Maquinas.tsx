@@ -204,11 +204,20 @@ export function Maquinas() {
   );
 
   const totalMaquinas = maquinas?.length || 0;
-  const maquinasComCusto = maquinas?.filter((m) => m.custo_hora != null) || [];
+  const maquinasHora = maquinas?.filter((m: any) => m.unidade_calculo !== 'km') || [];
+  const maquinasKm = maquinas?.filter((m: any) => m.unidade_calculo === 'km') || [];
+
+  const kmTotal = maquinasKm.reduce((sum, m: any) => sum + (m.km_atual || 0), 0);
+  const maquinasComCustoKm = maquinasKm.filter((m: any) => m.custo_km != null);
+  const custoMedioKm = maquinasComCustoKm.length
+    ? maquinasComCustoKm.reduce((sum, m: any) => sum + (m.custo_km || 0), 0) / maquinasComCustoKm.length
+    : 0;
+
+  const maquinasComCusto = maquinasHora.filter((m) => m.custo_hora != null) || [];
   const custoMedioHora = maquinasComCusto.length
     ? maquinasComCusto.reduce((sum, m) => sum + (m.custo_hora || 0), 0) / maquinasComCusto.length
     : 0;
-  const horimetroTotal = maquinas?.reduce((sum, m) => sum + m.horimetro_atual, 0) || 0;
+  const horimetroTotal = maquinasHora.reduce((sum, m) => sum + m.horimetro_atual, 0) || 0;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -293,6 +302,36 @@ export function Maquinas() {
             </div>
           </CardContent>
         </Card>
+        {maquinasKm.length > 0 && (
+          <Card>
+            <CardContent className="p-3 sm:pt-6 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-accent">
+                  <Gauge className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
+                </div>
+                <div className="text-center sm:text-left">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Quilometragem (carros/caminhões)</p>
+                  <p className="text-lg sm:text-2xl font-bold">{kmTotal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}km</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {maquinasKm.length > 0 && (
+          <Card>
+            <CardContent className="p-3 sm:pt-6 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-accent">
+                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
+                </div>
+                <div className="text-center sm:text-left">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Custo/km</p>
+                  <p className="text-lg sm:text-2xl font-bold">R$ {custoMedioKm.toFixed(2)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         <Card>
           <CardContent className="p-3 sm:pt-6 sm:p-6">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
