@@ -183,7 +183,7 @@ export function Relatorios() {
             <TabsTrigger value="comparativo" className="whitespace-nowrap"><TrendingUp className="h-4 w-4 mr-1" />Comparativo</TabsTrigger>
             <TabsTrigger value="insumos" className="whitespace-nowrap"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
             <TabsTrigger value="custos" className="whitespace-nowrap"><ListTree className="h-4 w-4 mr-1" />Custos Detalhados</TabsTrigger>
-            <TabsTrigger value="estoque" className="whitespace-nowrap"><Boxes className="h-4 w-4 mr-1" />Estoque</TabsTrigger>
+            <TabsTrigger value="estoque" className="whitespace-nowrap"><Boxes className="h-4 w-4 mr-1" />Estoque/Insumos</TabsTrigger>
 
           </TabsList>
         </div>

@@ -37,6 +37,7 @@ interface CategoriaProdutoRow {
 
 
 const UNIDADES = [
+  { value: "g", label: "Grama (g)" },
   { value: "kg", label: "Quilograma (kg)" },
   { value: "ton", label: "Tonelada (ton)" },
   { value: "litro", label: "Litro (L)" },
