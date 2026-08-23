@@ -43,7 +43,8 @@ import {
   AlertTriangle,
   Fuel,
   Cog,
-  Tractor
+  Tractor,
+  Boxes
 } from 'lucide-react'
 
 // Interfaces
@@ -515,15 +516,20 @@ export function LancamentoForm() {
   // Calcular resumo financeiro em tempo real
   const resumoFinanceiro = useMemo(() => {
     const itensValidos = formData.itens.filter(i => i.quantidade && i.quantidade > 0)
-    
+
+    // Produto de estoque comum (não vinculado a máquina) — Troca/Reposição tem linha própria
     const totalProdutos = itensValidos
-      .filter(i => i.tipo_ref === 'produto')
+      .filter(i => i.tipo_ref === 'produto' && !i.maquina_id)
       .reduce((sum, i) => sum + (i.custo_total || 0), 0)
-    
+
+    const totalReposicao = itensValidos
+      .filter(i => i.tipo_ref === 'produto' && !!i.maquina_id)
+      .reduce((sum, i) => sum + (i.custo_total || 0), 0)
+
     const totalServicos = itensValidos
       .filter(i => i.tipo_ref === 'servico_simples')
       .reduce((sum, i) => sum + (i.custo_total || 0), 0)
-    
+
     const totalMaquinas = itensValidos
       .filter(i => i.tipo_ref === 'maquina')
       .reduce((sum, i) => sum + (i.custo_total || 0), 0)
@@ -536,13 +542,13 @@ export function LancamentoForm() {
       .filter(i => i.tipo_ref === 'manutencao')
       .reduce((sum, i) => sum + (i.custo_total || 0), 0)
 
-    const custoTotal = totalProdutos + totalServicos + totalMaquinas + totalAbastecimento + totalManutencao
+    const custoTotal = totalProdutos + totalReposicao + totalServicos + totalMaquinas + totalAbastecimento + totalManutencao
     const custoPorHa = areaHa && areaHa > 0 ? custoTotal / areaHa : null
-    
+
     const temEstoqueInsuficiente = itensValidos.some(
-      i => i.tipo_ref === 'produto' && 
+      i => i.tipo_ref === 'produto' &&
            i.quantidade > 0 &&
-           (i.detalhamento_lotes === null || 
+           (i.detalhamento_lotes === null ||
             (Array.isArray(i.detalhamento_lotes) && i.detalhamento_lotes.length === 0))
     ) || itensValidos.some(i => {
       if (i.tipo_ref !== 'abastecimento' || !i.origem_estoque || !i.produto_id) return false
@@ -550,12 +556,13 @@ export function LancamentoForm() {
       if (!produtoSel) return false
       return Number(i.litros || 0) > Number(produtoSel.saldo_atual || 0)
     })
-    
+
     return {
       totalItens: itensValidos.length,
       custoTotal,
       custoPorHa,
       totalProdutos,
+      totalReposicao,
       totalServicos,
       totalMaquinas,
       totalAbastecimento,
@@ -1294,16 +1301,16 @@ export function LancamentoForm() {
                     <p className="text-sm font-medium mb-3">Adicionar ao Lançamento</p>
                     <div className="flex flex-wrap gap-2">
                       <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'produto' ? null : 'produto')}>
-                        <Package className="h-4 w-4 mr-1" />
+                        <Boxes className="h-4 w-4 mr-1" />
                         + Produto do Estoque
                       </Button>
                       <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'maquina' ? null : 'maquina')}>
-                        <Truck className="h-4 w-4 mr-1" />
+                        <Tractor className="h-4 w-4 mr-1" />
                         + Máquina
                       </Button>
                       <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'servico_simples' ? null : 'servico_simples')}>
                         <Wrench className="h-4 w-4 mr-1" />
-                        + Custo de Serviço
+                        + Custo Diária
                       </Button>
                       <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'abastecimento' ? null : 'abastecimento')}>
                         <Fuel className="h-4 w-4 mr-1" />
@@ -1563,7 +1570,7 @@ export function LancamentoForm() {
                       {resumoFinanceiro.totalProdutos > 0 && (
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <Package className="h-4 w-4 text-blue-600" />
+                            <Boxes className="h-4 w-4 text-blue-600" />
                             <span className="text-sm">Produtos</span>
                           </div>
                           <span className="font-semibold text-blue-700">
@@ -1571,7 +1578,19 @@ export function LancamentoForm() {
                           </span>
                         </div>
                       )}
-                      
+
+                      {resumoFinanceiro.totalReposicao > 0 && (
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Tractor className="h-4 w-4 text-amber-600" />
+                            <span className="text-sm">Troca/Reposição</span>
+                          </div>
+                          <span className="font-semibold text-amber-700">
+                            R$ {resumoFinanceiro.totalReposicao.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
                       {resumoFinanceiro.totalServicos > 0 && (
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
@@ -1583,11 +1602,11 @@ export function LancamentoForm() {
                           </span>
                         </div>
                       )}
-                      
+
                       {resumoFinanceiro.totalMaquinas > 0 && (
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <Wrench className="h-4 w-4 text-orange-600" />
+                            <Tractor className="h-4 w-4 text-orange-600" />
                             <span className="text-sm">Máquinas</span>
                           </div>
                           <span className="font-semibold text-orange-700">
