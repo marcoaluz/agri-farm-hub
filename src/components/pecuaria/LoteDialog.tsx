@@ -76,7 +76,7 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
       return
     }
     setLoading(true)
-    const payload = {
+    const payload: any = {
       nome: form.nome,
       especie: form.especie,
       raca: form.raca || null,
@@ -86,7 +86,12 @@ export function LoteDialog({ open, onOpenChange, propriedadeId, lote }: LoteDial
       observacoes: form.observacoes || null,
       vacinavel: form.vacinavel,
       propriedade_id: propriedadeId,
+    }
 
+    // O tipo de controle só é definido na criação — não muda depois, pra não
+    // deixar animais já identificados "órfãos" ou vice-versa.
+    if (!lote) {
+      payload.controle_individual = form.controle_individual
     }
 
     const { error } = lote
