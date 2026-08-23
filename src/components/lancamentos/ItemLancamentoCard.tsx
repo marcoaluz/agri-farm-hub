@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Info, AlertCircle, Package, Boxes, Wrench, Truck, Gauge, Pencil } from 'lucide-react'
+import { X, Info, AlertCircle, Package, Boxes, Wrench, Truck, Gauge, Pencil, Tractor } from 'lucide-react'
 import { usePreviewCustoDireto } from '@/hooks/usePreviewCusto'
 import { PreviewConsumoFIFO } from './PreviewConsumoFIFO'
 import { Card, CardContent } from '@/components/ui/card'
@@ -219,7 +219,10 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
   const itemNome = itemForm.nome || itemForm.item?.nome || 'Item'
   const itemUnidade = itemForm.unidade || itemForm.item?.unidade_medida || ''
-  const tipoConfig = getTipoConfig(itemForm.tipo_ref, itemForm.item?.tipo)
+  const ehReposicao = itemForm.tipo_ref === 'produto' && !!itemForm.maquina_id
+  const tipoConfig = ehReposicao
+    ? { label: 'Troca/Reposição', icon: Tractor, color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' }
+    : getTipoConfig(itemForm.tipo_ref, itemForm.item?.tipo)
   const TipoIcon = tipoConfig.icon
   const isMaquina = itemForm.tipo_ref === 'maquina' || itemForm.item?.tipo === 'maquina_hora'
   const estoqueInsuficiente = isProduto && preview && !preview.estoque_suficiente
