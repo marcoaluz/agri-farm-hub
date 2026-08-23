@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '@/lib/supabase';
 import { useGlobal } from '@/contexts/GlobalContext';
@@ -14,8 +14,13 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Package, Boxes, Search, AlertTriangle, DollarSign, PackagePlus, Pencil } from 'lucide-react';
+import { Plus, Package, Boxes, Search, AlertTriangle, DollarSign, PackagePlus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { LotesDialog } from '@/components/estoque/LotesDialog';
 import { EntradaEstoqueForm } from '@/components/estoque/EntradaEstoqueForm';
 import { ProdutoForm } from '@/components/estoque/ProdutoForm';
@@ -50,6 +55,28 @@ export function Estoque() {
   const [dialogProdutoOpen, setDialogProdutoOpen] = useState(false);
   const [produtoEditando, setProdutoEditando] = useState<any>(null);
   const [produtoVenda, setProdutoVenda] = useState<ProdutoComCusto | null>(null);
+  const [produtoParaExcluir, setProdutoParaExcluir] = useState<ProdutoComCusto | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const excluirProdutoMutation = useMutation({
+    mutationFn: async (produto: ProdutoComCusto) => {
+      const { error } = await supabase.from('produtos' as any).update({ ativo: false }).eq('id', produto.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos-custos'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos-lancamento'] });
+      queryClient.invalidateQueries({ queryKey: ['rel-estoque'] });
+      queryClient.invalidateQueries({ queryKey: ['rel-estoque-categorias'] });
+      toast({ title: 'Produto excluído. Lançamentos e lotes existentes não foram afetados.' });
+      setProdutoParaExcluir(null);
+    },
+    onError: (err: any) => {
+      toast({ title: 'Erro ao excluir produto', description: err.message, variant: 'destructive' });
+    },
+  });
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightLoteId = searchParams.get('highlight');
   const [loteDestacado, setLoteDestacado] = useState<string | null>(null);
@@ -339,10 +366,33 @@ export function Estoque() {
                 setProdutoEditando(produto);
                 setDialogProdutoOpen(true);
               }}
+              onExcluir={() => setProdutoParaExcluir(produto)}
             />
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!produtoParaExcluir} onOpenChange={(open) => { if (!open) setProdutoParaExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O produto <strong>{produtoParaExcluir?.nome}</strong> será desativado e some do Estoque.
+              Lançamentos e lotes já registrados não serão afetados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluirProdutoMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => produtoParaExcluir && excluirProdutoMutation.mutate(produtoParaExcluir)}
+              disabled={excluirProdutoMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {excluirProdutoMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Excluindo...</> : 'Sim, Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog de Lotes */}
       <Dialog open={dialogLotesOpen} onOpenChange={(open) => { setDialogLotesOpen(open); if (!open) setLoteDestacado(null); }}>
@@ -397,11 +447,13 @@ function ProdutoCard({
   onVerLotes,
   onVender,
   onEditar,
+  onExcluir,
 }: { 
   produto: ProdutoComCusto; 
   onVerLotes: () => void;
   onVender: () => void;
   onEditar: () => void;
+  onExcluir: () => void;
 }) {
   const getStatusEstoque = () => {
     if (produto.saldo_atual === 0) {
@@ -502,6 +554,9 @@ function ProdutoCard({
           </Button>
           <Button size="sm" variant="outline" onClick={onEditar} className="gap-1">
             <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={onExcluir} className="gap-1 text-destructive hover:text-destructive">
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
           {produto.vendavel && produto.saldo_atual > 0 && (
             <Button size="sm" variant="default" onClick={onVender} className="gap-1">
