@@ -43,9 +43,9 @@ import {
   AlertTriangle,
   Fuel,
   Cog,
-  Tractor,
-  Boxes
+  Tractor
 } from 'lucide-react'
+import { PrateleiraIcon } from '@/components/icons/PrateleiraIcon'
 
 // Interfaces
 interface LancamentoFormData {
@@ -526,14 +526,26 @@ export function LancamentoForm() {
   const resumoFinanceiro = useMemo(() => {
     const itensValidos = formData.itens.filter(i => i.quantidade && i.quantidade > 0)
 
+    const nomeMaquina = (maquinaId?: string | null) =>
+      (maquinas as any[] | undefined)?.find(m => m.id === maquinaId)?.nome || 'Máquina'
+
+    const agruparPorMaquina = (itens: any[]) => {
+      const mapa = new Map()
+      itens.forEach(i => {
+        const nome = nomeMaquina(i.maquina_id)
+        mapa.set(nome, (mapa.get(nome) || 0) + (i.custo_total || 0))
+      })
+      return Array.from(mapa.entries()).map(([nome, valor]) => ({ nome, valor }))
+    }
+
     // Produto de estoque comum (não vinculado a máquina) — Troca/Reposição tem linha própria
     const totalProdutos = itensValidos
       .filter(i => i.tipo_ref === 'produto' && !i.maquina_id)
       .reduce((sum, i) => sum + (i.custo_total || 0), 0)
 
-    const totalReposicao = itensValidos
-      .filter(i => i.tipo_ref === 'produto' && !!i.maquina_id)
-      .reduce((sum, i) => sum + (i.custo_total || 0), 0)
+    const itensReposicao = itensValidos.filter(i => i.tipo_ref === 'produto' && !!i.maquina_id)
+    const totalReposicao = itensReposicao.reduce((sum, i) => sum + (i.custo_total || 0), 0)
+    const reposicaoPorMaquina = agruparPorMaquina(itensReposicao)
 
     const totalServicos = itensValidos
       .filter(i => i.tipo_ref === 'servico_simples')
@@ -543,9 +555,9 @@ export function LancamentoForm() {
       .filter(i => i.tipo_ref === 'maquina')
       .reduce((sum, i) => sum + (i.custo_total || 0), 0)
 
-    const totalAbastecimento = itensValidos
-      .filter(i => i.tipo_ref === 'abastecimento')
-      .reduce((sum, i) => sum + (i.custo_total || 0), 0)
+    const itensAbastecimento = itensValidos.filter(i => i.tipo_ref === 'abastecimento')
+    const totalAbastecimento = itensAbastecimento.reduce((sum, i) => sum + (i.custo_total || 0), 0)
+    const abastecimentoPorMaquina = agruparPorMaquina(itensAbastecimento)
 
     const totalManutencao = itensValidos
       .filter(i => i.tipo_ref === 'manutencao')
@@ -572,13 +584,15 @@ export function LancamentoForm() {
       custoPorHa,
       totalProdutos,
       totalReposicao,
+      reposicaoPorMaquina,
       totalServicos,
       totalMaquinas,
       totalAbastecimento,
+      abastecimentoPorMaquina,
       totalManutencao,
       temEstoqueInsuficiente
     }
-  }, [formData.itens, areaHa, produtos])
+  }, [formData.itens, areaHa, produtos, maquinas])
 
   // Detectar se houve mudança real (para modo edição)
   const temAlteracaoReal = useMemo(() => {
@@ -1311,7 +1325,7 @@ export function LancamentoForm() {
                     <p className="text-sm font-medium mb-3">Adicionar ao Lançamento</p>
                     <div className="flex flex-wrap gap-2">
                       <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'produto' ? null : 'produto')}>
-                        <Boxes className="h-4 w-4 mr-1" />
+                        <PrateleiraIcon className="h-4 w-4 mr-1" />
                         + Produto do Estoque
                       </Button>
                       <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'maquina' ? null : 'maquina')}>
@@ -1580,8 +1594,8 @@ export function LancamentoForm() {
                       {resumoFinanceiro.totalProdutos > 0 && (
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <Boxes className="h-4 w-4 text-blue-600" />
-                            <span className="text-sm">Produtos</span>
+                            <PrateleiraIcon className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm">Insumos</span>
                           </div>
                           <span className="font-semibold text-blue-700">
                             R$ {resumoFinanceiro.totalProdutos.toFixed(2)}
@@ -1590,14 +1604,23 @@ export function LancamentoForm() {
                       )}
 
                       {resumoFinanceiro.totalReposicao > 0 && (
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <Tractor className="h-4 w-4 text-amber-600" />
-                            <span className="text-sm">Troca/Reposição</span>
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <Tractor className="h-4 w-4 text-amber-600" />
+                              <span className="text-sm">Troca/Reposição</span>
+                            </div>
+                            <span className="font-semibold text-amber-700">
+                              R$ {resumoFinanceiro.totalReposicao.toFixed(2)}
+                            </span>
                           </div>
-                          <span className="font-semibold text-amber-700">
-                            R$ {resumoFinanceiro.totalReposicao.toFixed(2)}
-                          </span>
+
+                          {resumoFinanceiro.reposicaoPorMaquina.map((m: any) => (
+                            <div key={m.nome} className="flex justify-between items-center pl-6 text-xs text-muted-foreground">
+                              <span>{m.nome}</span>
+                              <span>R$ {m.valor.toFixed(2)}</span>
+                            </div>
+                          ))}
                         </div>
                       )}
 
@@ -1626,14 +1649,23 @@ export function LancamentoForm() {
                       )}
 
                       {resumoFinanceiro.totalAbastecimento > 0 && (
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <Fuel className="h-4 w-4 text-amber-600" />
-                            <span className="text-sm">Abastecimento</span>
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <Fuel className="h-4 w-4 text-amber-600" />
+                              <span className="text-sm">Abastecimento</span>
+                            </div>
+                            <span className="font-semibold text-amber-700">
+                              R$ {resumoFinanceiro.totalAbastecimento.toFixed(2)}
+                            </span>
                           </div>
-                          <span className="font-semibold text-amber-700">
-                            R$ {resumoFinanceiro.totalAbastecimento.toFixed(2)}
-                          </span>
+
+                          {resumoFinanceiro.abastecimentoPorMaquina.map((m: any) => (
+                            <div key={m.nome} className="flex justify-between items-center pl-6 text-xs text-muted-foreground">
+                              <span>{m.nome}</span>
+                              <span>R$ {m.valor.toFixed(2)}</span>
+                            </div>
+                          ))}
                         </div>
                       )}
 
