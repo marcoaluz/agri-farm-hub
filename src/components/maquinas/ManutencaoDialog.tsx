@@ -68,6 +68,62 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
   const [salvandoCategoria, setSalvandoCategoria] = useState(false);
   const [categoriaParaExcluir, setCategoriaParaExcluir] = useState<CategoriaManutencaoRow | null>(null);
 
+  // ── Descrições dinâmicas ──
+  const { data: descricoesLista = [], refetch: refetchDescricoes } = useQuery<{ id: string; nome: string }[]>({
+    queryKey: ['descricoes-manutencao'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_descricoes_manutencao');
+      if (error) throw error;
+      return (data as { id: string; nome: string }[]) || [];
+    },
+  });
+
+  const [showNovaDescricao, setShowNovaDescricao] = useState(false);
+  const [novaDescricaoNome, setNovaDescricaoNome] = useState('');
+  const [salvandoDescricao, setSalvandoDescricao] = useState(false);
+  const [descricaoParaExcluir, setDescricaoParaExcluir] = useState<{ id: string; nome: string } | null>(null);
+
+  const handleAdicionarDescricao = async () => {
+    const nome = novaDescricaoNome.trim();
+    if (!nome) return;
+    setSalvandoDescricao(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.from('descricoes_manutencao').insert({
+      usuario_id: userData?.user?.id,
+      nome,
+      ativo: true,
+    } as any);
+    setSalvandoDescricao(false);
+    if (error) {
+      toast({
+        title: (error as any).code === '23505' ? 'Descrição já existe' : 'Erro ao criar descrição',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setDescricao(nome);
+    setNovaDescricaoNome('');
+    setShowNovaDescricao(false);
+    refetchDescricoes();
+    toast({ title: 'Descrição criada' });
+  };
+
+  const handleExcluirDescricao = async () => {
+    if (!descricaoParaExcluir) return;
+    const { error } = await supabase
+      .from('descricoes_manutencao')
+      .update({ ativo: false } as any)
+      .eq('id', descricaoParaExcluir.id);
+    setDescricaoParaExcluir(null);
+    if (error) {
+      toast({ title: 'Erro ao remover descrição', variant: 'destructive' });
+      return;
+    }
+    setDescricao('');
+    refetchDescricoes();
+    toast({ title: 'Descrição removida' });
+  };
+
   const handleAdicionarCategoria = async () => {
     const nome = novaCategoriaNome.trim();
     if (!nome) return;
@@ -286,11 +342,84 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
 
           <div className="space-y-2">
             <Label>Descrição *</Label>
-            <Input
-              placeholder="Ex: Troca de óleo do motor"
-              value={descricao}
-              onChange={e => setDescricao(e.target.value)}
-            />
+            {!showNovaDescricao ? (
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Select value={descricao} onValueChange={setDescricao}>
+                    <SelectTrigger><SelectValue placeholder="Selecione a descrição" /></SelectTrigger>
+                    <SelectContent>
+                      {descricoesLista.length === 0 && (
+                        <div className="px-2 py-3 text-xs text-muted-foreground">
+                          Nenhuma descrição. Use + para criar.
+                        </div>
+                      )}
+                      {descricoesLista.map(d => (
+                        <SelectItem key={d.id} value={d.nome}>{d.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setShowNovaDescricao(true)}
+                  title="Nova descrição"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+                {descricao && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    title="Excluir descrição"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => {
+                      const d = descricoesLista.find(x => x.nome === descricao);
+                      if (d) setDescricaoParaExcluir(d);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Nome da nova descrição (ex: Troca de óleo do motor)"
+                  value={novaDescricaoNome}
+                  onChange={e => setNovaDescricaoNome(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAdicionarDescricao();
+                    }
+                  }}
+                  autoFocus
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  onClick={handleAdicionarDescricao}
+                  disabled={salvandoDescricao || !novaDescricaoNome.trim()}
+                >
+                  {salvandoDescricao ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowNovaDescricao(false);
+                    setNovaDescricaoNome('');
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -374,6 +503,21 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleExcluirCategoria}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!descricaoParaExcluir} onOpenChange={o => { if (!o) setDescricaoParaExcluir(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir descrição?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A descrição "{descricaoParaExcluir?.nome}" deixará de aparecer na lista.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirDescricao}>Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -159,6 +159,15 @@ export function LancamentoForm() {
     },
   })
 
+  const { data: descricoesManutencao } = useQuery({
+    queryKey: ['descricoes-manutencao'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_descricoes_manutencao')
+      if (error) throw error
+      return (data as { id: string; nome: string }[]) || []
+    },
+  })
+
   const { data: servicosSimples } = useQuery({
     queryKey: ['servicos-simples-lancamento', propriedadeAtual?.id],
     queryFn: async () => {
@@ -1279,6 +1288,7 @@ export function LancamentoForm() {
                         produtos={produtos}
                         temMaquinaNoLancamento={!!itemForm.maquina_id && formData.itens.some(i => i.tipo_ref === 'maquina' && i.maquina_id === itemForm.maquina_id)}
                         categoriasManutencao={categoriasManutencao}
+                        descricoesManutencao={descricoesManutencao}
                         onUpdate={(updated) => {
                           const newItens = [...formData.itens]
                           newItens[index] = updated

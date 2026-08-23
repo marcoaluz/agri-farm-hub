@@ -164,7 +164,7 @@ export async function exportarCustosDetalhadosPDF(opts: {
       case 'abastecimento':
         return qtd != null ? `(${qtd} ${un})` : '-'
       case 'manutencao':
-        return '-'
+        return item.descricao || '-'
       default:
         return qtd != null ? `${qtd}${un ? ` (${un})` : ''}` : '-'
     }

@@ -80,6 +80,7 @@ interface ItemLancamentoCardProps {
   produtos?: ProdutoCombustivel[]
   temMaquinaNoLancamento?: boolean
   categoriasManutencao?: { id: string; nome: string }[]
+  descricoesManutencao?: { id: string; nome: string }[]
 }
 
 function getTipoConfig(tipoRef?: string, itemTipo?: string) {
@@ -106,7 +107,7 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   return config[itemTipo as keyof typeof config] || { label: itemTipo || 'Item', icon: Package, color: 'bg-gray-100 text-gray-800' }
 }
 
-export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao }: ItemLancamentoCardProps) {
+export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao }: ItemLancamentoCardProps) {
   const [quantidade, setQuantidade] = useState(itemForm.quantidade)
   const [editandoCusto, setEditandoCusto] = useState(false)
   const [custoEditavel, setCustoEditavel] = useState('')
@@ -596,11 +597,19 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
             <div>
               <Label>Descrição *</Label>
-              <Input
-                value={itemForm.descricao || ''}
-                onChange={(e) => onUpdate({ ...itemForm, descricao: e.target.value })}
-                placeholder="Ex: Troca de óleo do motor"
-              />
+              <Select value={itemForm.descricao || ''} onValueChange={(v) => onUpdate({ ...itemForm, descricao: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione a descrição" /></SelectTrigger>
+                <SelectContent>
+                  {descricoesManutencao?.map(d => (
+                    <SelectItem key={d.id} value={d.nome}>{d.nome}</SelectItem>
+                  ))}
+                  {(!descricoesManutencao || descricoesManutencao.length === 0) && (
+                    <div className="px-2 py-3 text-xs text-muted-foreground">
+                      Nenhuma descrição. Crie uma em Máquinas → Registrar Manutenção.
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
