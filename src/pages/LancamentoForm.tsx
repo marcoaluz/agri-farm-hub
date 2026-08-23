@@ -404,14 +404,15 @@ export function LancamentoForm() {
       toast({ title: 'Máquina já adicionada', variant: 'destructive' })
       return
     }
+    const ehKm = (maquina as any).unidade_calculo === 'km'
     setFormData(prev => ({
       ...prev,
       itens: [...prev.itens, {
         tipo_ref: 'maquina',
         maquina_id: maquina.id,
         nome: maquina.nome,
-        unidade: 'hora',
-        custo_unitario_ref: maquina.custo_hora || 0,
+        unidade: ehKm ? 'km' : 'hora',
+        custo_unitario_ref: (ehKm ? (maquina as any).custo_km : maquina.custo_hora) || 0,
         quantidade: 0,
       }]
     }))
@@ -1303,6 +1304,7 @@ export function LancamentoForm() {
                         temMaquinaNoLancamento={!!itemForm.maquina_id && formData.itens.some(i => i.tipo_ref === 'maquina' && i.maquina_id === itemForm.maquina_id)}
                         categoriasManutencao={categoriasManutencao}
                         descricoesManutencao={descricoesManutencao}
+                        maquinas={maquinas}
                         onUpdate={(updated) => {
                           const newItens = [...formData.itens]
                           newItens[index] = updated
@@ -1391,7 +1393,9 @@ export function LancamentoForm() {
                           <SelectContent>
                             {maquinas?.map(m => (
                               <SelectItem key={m.id} value={m.id}>
-                                {m.nome} — R$ {(m.custo_hora || 0).toFixed(2)}/h
+                                {(m as any).unidade_calculo === 'km'
+                                  ? `${m.nome} — R$ ${((m as any).custo_km || 0).toFixed(2)}/km`
+                                  : `${m.nome} — R$ ${(m.custo_hora || 0).toFixed(2)}/h`}
                               </SelectItem>
                             ))}
                             {(!maquinas || maquinas.length === 0) && (
