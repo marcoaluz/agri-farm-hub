@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Info, AlertCircle, Package, Wrench, Truck, Gauge, Pencil } from 'lucide-react'
+import { X, Info, AlertCircle, Package, Boxes, Wrench, Truck, Gauge, Pencil } from 'lucide-react'
 import { usePreviewCustoDireto } from '@/hooks/usePreviewCusto'
 import { PreviewConsumoFIFO } from './PreviewConsumoFIFO'
 import { Card, CardContent } from '@/components/ui/card'
@@ -83,7 +83,7 @@ interface ItemLancamentoCardProps {
 
 function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   if (tipoRef === 'produto') {
-    return { label: 'Produto de Estoque', icon: Package, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' }
+    return { label: 'Produto de Estoque', icon: Boxes, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' }
   }
   if (tipoRef === 'maquina') {
     return { label: 'Hora de Máquina', icon: Truck, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' }
@@ -457,7 +457,16 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
             {itemForm.origem_estoque ? (
               <div>
                 <Label>Combustível (do estoque)</Label>
-                <Select value={itemForm.produto_id || ''} onValueChange={(v) => onUpdate({ ...itemForm, produto_id: v })}>
+                <Select
+                  value={itemForm.produto_id || ''}
+                  onValueChange={(v) => {
+                    const prod = produtos?.find(p => p.id === v)
+                    const custoTotal = prod && itemForm.litros
+                      ? Number((Number(itemForm.litros) * Number(prod.custo_medio || 0)).toFixed(2))
+                      : itemForm.custo_total
+                    onUpdate({ ...itemForm, produto_id: v, custo_total: custoTotal })
+                  }}
+                >
                   <SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
                   <SelectContent>
                     {produtos?.filter(p => (p.categoria || '').toLowerCase().includes('combust')).map(p => (
@@ -495,7 +504,13 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                 <Input
                   type="number"
                   value={itemForm.litros || ''}
-                  onChange={(e) => onUpdate({ ...itemForm, litros: Number(e.target.value) })}
+                  onChange={(e) => {
+                    const litros = Number(e.target.value)
+                    const custoTotal = produtoCombustivelSelecionado
+                      ? Number((litros * Number(produtoCombustivelSelecionado.custo_medio || 0)).toFixed(2))
+                      : itemForm.custo_total
+                    onUpdate({ ...itemForm, litros, custo_total: custoTotal })
+                  }}
                   disabled={!!produtoCombustivelSelecionado && Number(produtoCombustivelSelecionado.saldo_atual || 0) <= 0}
                   className={estoqueCombustivelInsuficiente ? 'border-destructive' : ''}
                 />
@@ -503,6 +518,11 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
               <div>
                 <Label>Custo Total (R$)</Label>
                 <Input type="number" value={itemForm.custo_total || ''} onChange={(e) => onUpdate({ ...itemForm, custo_total: Number(e.target.value) })} disabled={itemForm.origem_estoque} />
+                {produtoCombustivelSelecionado && Number(produtoCombustivelSelecionado.custo_medio || 0) > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Preço médio: R$ {Number(produtoCombustivelSelecionado.custo_medio).toFixed(2)}/{produtoCombustivelSelecionado.unidade_medida}
+                  </p>
+                )}
               </div>
             </div>
 
