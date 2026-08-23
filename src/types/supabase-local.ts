@@ -135,6 +135,9 @@ export interface Maquina {
   horimetro_inicial: number
   horimetro_atual: number
   custo_hora?: number
+  unidade_calculo?: 'h' | 'km'
+  km_atual?: number
+  custo_km?: number
   ativo: boolean
   created_at: string
 }
