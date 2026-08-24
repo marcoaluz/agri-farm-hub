@@ -80,9 +80,30 @@ export function Maquinas() {
         p_propriedade_id: propId,
       });
       if (error) throw error;
-      return ((data as any[]) || [])
-        .filter((m: any) => m.ativo !== false)
-        .sort((a: any, b: any) => (a.nome || '').localeCompare(b.nome || '')) as Maquina[];
+      const lista = ((data as any[]) || []).filter((m: any) => m.ativo !== false);
+
+      // A RPC pode não retornar as colunas novas (unidade_calculo, km_atual, custo_km).
+      // Enriquecemos a partir da tabela para garantir os labels/ícones corretos.
+      if (lista.length > 0) {
+        const { data: extras } = await supabase
+          .from('maquinas' as any)
+          .select('id, unidade_calculo, km_atual, km_inicial, custo_km')
+          .in('id', lista.map((m: any) => m.id));
+        if (extras) {
+          const map = new Map((extras as any[]).map((e: any) => [e.id, e]));
+          lista.forEach((m: any) => {
+            const e = map.get(m.id);
+            if (e) {
+              m.unidade_calculo = e.unidade_calculo ?? m.unidade_calculo;
+              m.km_atual = e.km_atual ?? m.km_atual;
+              m.custo_km = e.custo_km ?? m.custo_km;
+            }
+          });
+        }
+      }
+
+      return lista.sort((a: any, b: any) => (a.nome || '').localeCompare(b.nome || '')) as Maquina[];
+
     },
     enabled: !!propId,
   });
