@@ -193,6 +193,15 @@ export function LancamentoForm() {
     },
   })
 
+  const { data: tiposCombustivel } = useQuery({
+    queryKey: ['tipos-combustivel'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_tipos_combustivel')
+      if (error) throw error
+      return (data as { id: string; nome: string }[]) || []
+    },
+  })
+
   const { data: servicosSimples } = useQuery({
     queryKey: ['servicos-simples-lancamento', propriedadeAtual?.id],
     queryFn: async () => {
