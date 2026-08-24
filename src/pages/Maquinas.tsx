@@ -60,7 +60,7 @@ const fmtHorimetro = (v: number) =>
   `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`;
 
 export function Maquinas() {
-  const { propriedadeAtual } = useGlobal();
+  const { propriedadeAtual, safraAtual } = useGlobal();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -72,6 +72,24 @@ export function Maquinas() {
   const [maquinaManutencao, setMaquinaManutencao] = useState<Maquina | null>(null);
 
   const propId = propriedadeAtual?.id;
+  const safraId = safraAtual?.id;
+
+  const { data: statsSafra } = useQuery({
+    queryKey: ['maquinas-stats-safra', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_maquinas_stats_safra' as any, {
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
+      });
+      if (error) throw error;
+      return data as {
+        horas_logadas: number; custo_horas_logadas: number;
+        km_logados: number; custo_km_logados: number;
+        diesel_litros_safra: number; manutencoes_realizadas_safra: number;
+      };
+    },
+    enabled: !!propId && !!safraId,
+  });
 
   const { data: maquinas, isLoading } = useQuery({
     queryKey: ['maquinas', propId],
@@ -283,7 +301,7 @@ export function Maquinas() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 sm:gap-4">
         <Card>
           <CardContent className="p-3 sm:pt-6 sm:p-6">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
@@ -304,8 +322,8 @@ export function Maquinas() {
                 <Gauge className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
               <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm text-muted-foreground">Horímetro (tratores/colheitadeiras)</p>
-                <p className="text-lg sm:text-2xl font-bold">{horimetroTotal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}h</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Horas trabalhadas (safra)</p>
+                <p className="text-lg sm:text-2xl font-bold">{(statsSafra?.horas_logadas ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}h</p>
               </div>
             </div>
           </CardContent>
@@ -317,8 +335,8 @@ export function Maquinas() {
                 <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
               <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm text-muted-foreground">Custo/h</p>
-                <p className="text-lg sm:text-2xl font-bold">R$ {custoMedioHora.toFixed(0)}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Custo/h (safra)</p>
+                <p className="text-lg sm:text-2xl font-bold">R$ {(statsSafra?.custo_horas_logadas ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
               </div>
             </div>
           </CardContent>
@@ -331,8 +349,8 @@ export function Maquinas() {
                   <Gauge className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
                 </div>
                 <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Quilometragem (carros/caminhões)</p>
-                  <p className="text-lg sm:text-2xl font-bold">{kmTotal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}km</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Km rodados (safra)</p>
+                  <p className="text-lg sm:text-2xl font-bold">{(statsSafra?.km_logados ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}km</p>
                 </div>
               </div>
             </CardContent>
@@ -346,8 +364,8 @@ export function Maquinas() {
                   <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
                 </div>
                 <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Custo/km</p>
-                  <p className="text-lg sm:text-2xl font-bold">R$ {custoMedioKm.toFixed(2)}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Custo/km (safra)</p>
+                  <p className="text-lg sm:text-2xl font-bold">R$ {(statsSafra?.custo_km_logados ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
                 </div>
               </div>
             </CardContent>
@@ -360,8 +378,22 @@ export function Maquinas() {
                 <Droplets className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
               <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm text-muted-foreground">Diesel/mês</p>
-                <p className="text-xl sm:text-2xl font-bold">{(dieselMes ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}L</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Diesel (safra)</p>
+                <p className="text-xl sm:text-2xl font-bold">{(statsSafra?.diesel_litros_safra ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}L</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-accent">
+                <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
+              </div>
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Manutenções (safra)</p>
+                <p className="text-xl sm:text-2xl font-bold">{statsSafra?.manutencoes_realizadas_safra ?? 0}</p>
+                <p className="text-xs text-muted-foreground">já realizadas</p>
               </div>
             </div>
           </CardContent>
@@ -533,7 +565,7 @@ export function Maquinas() {
                       </span>
                       <span className="font-medium">
                         {maquina.unidade_calculo === 'km'
-                          ? `${fmtHorimetro(maquina.km_atual || 0)} km`
+                          ? `${(maquina.km_atual || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} km`
                           : fmtHorimetro(maquina.horimetro_atual)}
                       </span>
                     </div>
