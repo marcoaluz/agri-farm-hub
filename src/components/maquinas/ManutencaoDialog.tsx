@@ -243,7 +243,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
 
         {maquina && (
           <p className="text-sm text-muted-foreground">
-            Máquina: <strong>{maquina.nome}</strong> · Horímetro atual: {maquina.horimetro_atual}h
+            Máquina: <strong>{maquina.nome}</strong> · {labelMedidor} atual: {medidorAtual}{ehKm ? 'km' : 'h'}
           </p>
         )}
 
@@ -463,11 +463,11 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Horímetro na Manutenção</Label>
+              <Label>{labelMedidor} na Manutenção</Label>
               <Input type="number" placeholder="Ex: 1500" value={horimetroManutencao} onChange={e => setHorimetroManutencao(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Próximo Horímetro</Label>
+              <Label>Próximo {labelMedidor}</Label>
               <Input type="number" placeholder="Ex: 1750" value={proximoHorimetro} onChange={e => setProximoHorimetro(e.target.value)} />
             </div>
           </div>
