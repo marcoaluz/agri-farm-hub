@@ -1003,6 +1003,7 @@ export function LancamentoForm() {
     if (manutencoes.length === 0) return
     await supabase.from('maquina_manutencoes').insert(manutencoes.map(item => ({
       propriedade_id: propriedadeId,
+      safra_id: safraAtual?.id || null,
       maquina_id: item.maquina_id,
       tipo: item.categoria_manutencao || 'Outros',
       descricao: item.descricao || item.nome || 'Manutenção',
