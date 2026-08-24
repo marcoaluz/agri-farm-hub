@@ -40,7 +40,62 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
   const today = new Date().toISOString().split('T')[0];
   const [data, setData] = useState(today);
   const [horimetro, setHorimetro] = useState('');
-  const [combustivel, setCombustivel] = useState('Diesel S10');
+  const { data: tiposCombustivel = [], refetch: refetchTiposCombustivel } = useQuery<{ id: string; nome: string }[]>({
+    queryKey: ['tipos-combustivel'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_tipos_combustivel' as any);
+      if (error) throw error;
+      return (data as { id: string; nome: string }[]) || [];
+    },
+  });
+
+  const [showNovoCombustivel, setShowNovoCombustivel] = useState(false);
+  const [novoCombustivelNome, setNovoCombustivelNome] = useState('');
+  const [salvandoCombustivel, setSalvandoCombustivel] = useState(false);
+  const [combustivelParaExcluir, setCombustivelParaExcluir] = useState<{ id: string; nome: string } | null>(null);
+
+  const handleAdicionarCombustivel = async () => {
+    const nome = novoCombustivelNome.trim();
+    if (!nome) return;
+    setSalvandoCombustivel(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.from('tipos_combustivel' as any).insert({
+      usuario_id: userData?.user?.id,
+      nome,
+      ativo: true,
+    } as any);
+    setSalvandoCombustivel(false);
+    if (error) {
+      toast({
+        title: (error as any).code === '23505' ? 'Tipo de combustível já existe' : 'Erro ao criar tipo de combustível',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setCombustivel(nome);
+    setNovoCombustivelNome('');
+    setShowNovoCombustivel(false);
+    refetchTiposCombustivel();
+    toast({ title: 'Tipo de combustível criado' });
+  };
+
+  const handleExcluirCombustivel = async () => {
+    if (!combustivelParaExcluir) return;
+    const { error } = await supabase
+      .from('tipos_combustivel' as any)
+      .update({ ativo: false } as any)
+      .eq('id', combustivelParaExcluir.id);
+    setCombustivelParaExcluir(null);
+    if (error) {
+      toast({ title: 'Erro ao remover tipo de combustível', variant: 'destructive' });
+      return;
+    }
+    setCombustivel('');
+    refetchTiposCombustivel();
+    toast({ title: 'Tipo de combustível removido' });
+  };
+
+  const [combustivel, setCombustivel] = useState('');
   const [litros, setLitros] = useState('');
   const [custoTotal, setCustoTotal] = useState('');
   const [posto, setPosto] = useState('');
