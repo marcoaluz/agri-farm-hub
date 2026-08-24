@@ -17,6 +17,8 @@ interface AbastecimentoFormProps {
     id: string;
     nome: string;
     horimetro_atual: number;
+    unidade_calculo?: string;
+    km_atual?: number;
   };
   onSuccess: () => void;
 }
@@ -26,6 +28,10 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
   const queryClient = useQueryClient();
   const { propriedadeAtual, safraAtual } = useGlobal();
   const { user } = useAuth();
+
+  const ehKm = maquina.unidade_calculo === 'km';
+  const medidorAtual = ehKm ? (maquina.km_atual || 0) : maquina.horimetro_atual;
+  const labelMedidor = ehKm ? 'Km' : 'Horímetro';
 
   const today = new Date().toISOString().split('T')[0];
   const [data, setData] = useState(today);
@@ -45,8 +51,8 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
       if (!data || isNaN(horimetroNum) || litrosNum <= 0 || custoNum < 0) {
         throw new Error('Preencha todos os campos obrigatórios');
       }
-      if (horimetroNum < maquina.horimetro_atual) {
-        throw new Error(`Horímetro deve ser >= ${maquina.horimetro_atual}`);
+      if (horimetroNum < medidorAtual) {
+        throw new Error(`${labelMedidor} deve ser >= ${medidorAtual}`);
       }
 
       // 1. Inserir abastecimento
@@ -68,13 +74,13 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
 
       const abastecimentoId = (abastecimentoData as any).id;
 
-      // 2. Update horimetro if new value is higher
-      if (horimetroNum > maquina.horimetro_atual) {
+      // 2. Update horímetro ou km, o que for o caso, se o novo valor for maior
+      if (horimetroNum > medidorAtual) {
         const { error: updateError } = await supabase
           .from('maquinas' as any)
-          .update({ horimetro_atual: horimetroNum })
+          .update(ehKm ? { km_atual: horimetroNum } : { horimetro_atual: horimetroNum })
           .eq('id', maquina.id);
-        if (updateError) console.error('Erro ao atualizar horímetro:', updateError);
+        if (updateError) console.error(`Erro ao atualizar ${labelMedidor.toLowerCase()}:`, updateError);
       }
 
       // 3. Criar lançamento vinculado (se houver safra ativa)
@@ -105,7 +111,7 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
       if (servicoError) throw servicoError;
 
       // 5. Criar lançamento vinculado
-      const obsLancamento = `Abastecimento: ${litrosNum}L ${combustivel} - Horímetro: ${horimetroNum}h${posto ? ` - Posto: ${posto}` : ''}${observacoes ? `\n${observacoes}` : ''}`;
+      const obsLancamento = `Abastecimento: ${litrosNum}L ${combustivel} - ${labelMedidor}: ${horimetroNum}${ehKm ? 'km' : 'h'}${posto ? ` - Posto: ${posto}` : ''}${observacoes ? `\n${observacoes}` : ''}`;
 
       const { error: lancError } = await supabase
         .from('lancamentos')
@@ -153,16 +159,16 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
           <Input type="date" value={data} onChange={e => setData(e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label>Horímetro *</Label>
+          <Label>{labelMedidor} *</Label>
           <Input
             type="number"
             step="0.01"
-            placeholder={`≥ ${maquina.horimetro_atual}`}
+            placeholder={`≥ ${medidorAtual}`}
             value={horimetro}
             onChange={e => setHorimetro(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            Atual: {maquina.horimetro_atual.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}h
+            Atual: {medidorAtual.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}{ehKm ? 'km' : 'h'}
           </p>
         </div>
       </div>

@@ -14,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { CalendarIcon, Wrench, Plus, Check, X, Trash2, Loader2 } from 'lucide-react';
+import { CalendarIcon, Wrench, Plus, Check, X, Trash2, Loader2, Tractor, Truck } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,8 @@ interface Maquina {
   id: string;
   nome: string;
   horimetro_atual: number;
+  unidade_calculo?: string;
+  km_atual?: number;
 }
 
 interface CategoriaManutencaoRow {
@@ -38,6 +40,9 @@ interface ManutencaoDialogProps {
 }
 
 export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }: ManutencaoDialogProps) {
+  const ehKm = maquina?.unidade_calculo === 'km';
+  const medidorAtual = ehKm ? (maquina?.km_atual || 0) : (maquina?.horimetro_atual || 0);
+  const labelMedidor = ehKm ? 'Km' : 'Horímetro';
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
@@ -238,7 +243,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
 
         {maquina && (
           <p className="text-sm text-muted-foreground">
-            Máquina: <strong>{maquina.nome}</strong> · Horímetro atual: {maquina.horimetro_atual}h
+            Máquina: <strong>{maquina.nome}</strong> · {labelMedidor} atual: {medidorAtual}{ehKm ? 'km' : 'h'}
           </p>
         )}
 
@@ -458,11 +463,11 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Horímetro na Manutenção</Label>
+              <Label>{labelMedidor} na Manutenção</Label>
               <Input type="number" placeholder="Ex: 1500" value={horimetroManutencao} onChange={e => setHorimetroManutencao(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Próximo Horímetro</Label>
+              <Label>Próximo {labelMedidor}</Label>
               <Input type="number" placeholder="Ex: 1750" value={proximoHorimetro} onChange={e => setProximoHorimetro(e.target.value)} />
             </div>
           </div>
