@@ -1358,6 +1358,7 @@ export function LancamentoForm() {
                         categoriasManutencao={categoriasManutencao}
                         descricoesManutencao={descricoesManutencao}
                         maquinas={maquinas}
+                        tiposCombustivel={tiposCombustivel}
                         onUpdate={(updated) => {
                           const newItens = [...formData.itens]
                           newItens[index] = updated
