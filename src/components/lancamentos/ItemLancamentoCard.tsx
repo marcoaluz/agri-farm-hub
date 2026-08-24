@@ -226,8 +226,11 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
   const ehMaquinaKm = maquinaVinculada?.unidade_calculo === 'km'
   const labelMedidor = ehMaquinaKm ? 'Km' : 'Horímetro'
   const ehReposicao = itemForm.tipo_ref === 'produto' && !!itemForm.maquina_id
+  const ehMaquinaHora = itemForm.tipo_ref === 'maquina' || itemForm.item?.tipo === 'maquina_hora'
   const tipoConfig = ehReposicao
     ? { label: 'Troca/Reposição', icon: Tractor, color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' }
+    : ehMaquinaHora
+    ? { label: ehMaquinaKm ? 'Km de Máquina' : 'Hora de Máquina', icon: ehMaquinaKm ? Truck : Tractor, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' }
     : getTipoConfig(itemForm.tipo_ref, itemForm.item?.tipo)
   const TipoIcon = tipoConfig.icon
   const isMaquina = itemForm.tipo_ref === 'maquina' || itemForm.item?.tipo === 'maquina_hora'
@@ -436,7 +439,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
           <div className="rounded-lg border border-orange-200 bg-orange-50/50 dark:border-orange-800/50 dark:bg-orange-950/20 p-3 space-y-1">
             <div className="flex items-center gap-2 text-sm font-medium text-orange-700 dark:text-orange-400">
               <Gauge className="h-4 w-4" />
-              Horímetro será atualizado automaticamente
+              {labelMedidor} será atualizado{ehMaquinaKm ? 'a' : ''} automaticamente
             </div>
           </div>
         )}
