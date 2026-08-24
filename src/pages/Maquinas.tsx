@@ -203,7 +203,12 @@ export function Maquinas() {
   });
 
   // Recent maintenance for history table (limit 20)
-  const manutencoes = useMemo(() => (todasManutencoes || []).slice(0, 20), [todasManutencoes]);
+  // Recent maintenance for history table — só da safra selecionada (limit 20)
+  const manutencoesSafra = useMemo(
+    () => (todasManutencoes || []).filter((m: any) => m.safra_id === safraId),
+    [todasManutencoes, safraId]
+  );
+  const manutencoes = useMemo(() => manutencoesSafra.slice(0, 20), [manutencoesSafra]);
 
   // Horímetro-based alerts per machine
   const alertasHorimetro = useMemo(() => {
