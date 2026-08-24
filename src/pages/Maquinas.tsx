@@ -60,7 +60,7 @@ const fmtHorimetro = (v: number) =>
   `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`;
 
 export function Maquinas() {
-  const { propriedadeAtual } = useGlobal();
+  const { propriedadeAtual, safraAtual } = useGlobal();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -72,6 +72,24 @@ export function Maquinas() {
   const [maquinaManutencao, setMaquinaManutencao] = useState<Maquina | null>(null);
 
   const propId = propriedadeAtual?.id;
+  const safraId = safraAtual?.id;
+
+  const { data: statsSafra } = useQuery({
+    queryKey: ['maquinas-stats-safra', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_maquinas_stats_safra' as any, {
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
+      });
+      if (error) throw error;
+      return data as {
+        horas_logadas: number; custo_horas_logadas: number;
+        km_logados: number; custo_km_logados: number;
+        diesel_litros_safra: number; manutencoes_realizadas_safra: number;
+      };
+    },
+    enabled: !!propId && !!safraId,
+  });
 
   const { data: maquinas, isLoading } = useQuery({
     queryKey: ['maquinas', propId],
@@ -533,7 +551,7 @@ export function Maquinas() {
                       </span>
                       <span className="font-medium">
                         {maquina.unidade_calculo === 'km'
-                          ? `${fmtHorimetro(maquina.km_atual || 0)} km`
+                          ? `${(maquina.km_atual || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} km`
                           : fmtHorimetro(maquina.horimetro_atual)}
                       </span>
                     </div>
