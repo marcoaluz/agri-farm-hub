@@ -73,6 +73,7 @@ export function Maquinas() {
 
   const propId = propriedadeAtual?.id;
   const safraId = safraAtual?.id;
+  const safraLabel = safraAtual?.nome ?? 'safra';
 
   const { data: statsSafra } = useQuery({
     queryKey: ['maquinas-stats-safra', propId, safraId],
@@ -322,7 +323,7 @@ export function Maquinas() {
                 <Gauge className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
               <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm text-muted-foreground">Horas trabalhadas (safra)</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Horas trabalhadas ({safraLabel})</p>
                 <p className="text-lg sm:text-2xl font-bold">{(statsSafra?.horas_logadas ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}h</p>
               </div>
             </div>
@@ -335,7 +336,7 @@ export function Maquinas() {
                 <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
               <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm text-muted-foreground">Custo/h (safra)</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Custo/h ({safraLabel})</p>
                 <p className="text-lg sm:text-2xl font-bold">R$ {(statsSafra?.custo_horas_logadas ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
               </div>
             </div>
@@ -349,7 +350,7 @@ export function Maquinas() {
                   <Gauge className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
                 </div>
                 <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Km rodados (safra)</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Km rodados ({safraLabel})</p>
                   <p className="text-lg sm:text-2xl font-bold">{(statsSafra?.km_logados ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}km</p>
                 </div>
               </div>
@@ -364,7 +365,7 @@ export function Maquinas() {
                   <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
                 </div>
                 <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Custo/km (safra)</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Custo/km ({safraLabel})</p>
                   <p className="text-lg sm:text-2xl font-bold">R$ {(statsSafra?.custo_km_logados ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
                 </div>
               </div>
@@ -378,7 +379,7 @@ export function Maquinas() {
                 <Droplets className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
               <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm text-muted-foreground">Diesel (safra)</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Diesel ({safraLabel})</p>
                 <p className="text-xl sm:text-2xl font-bold">{(statsSafra?.diesel_litros_safra ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}L</p>
               </div>
             </div>
@@ -391,7 +392,7 @@ export function Maquinas() {
                 <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
               </div>
               <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm text-muted-foreground">Manutenções (safra)</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Manutenções ({safraLabel})</p>
                 <p className="text-xl sm:text-2xl font-bold">{statsSafra?.manutencoes_realizadas_safra ?? 0}</p>
                 <p className="text-xs text-muted-foreground">já realizadas</p>
               </div>
