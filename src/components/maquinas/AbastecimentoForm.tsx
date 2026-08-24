@@ -234,18 +234,77 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
 
       <div className="space-y-1.5">
         <Label>Combustível *</Label>
-        <Select value={combustivel} onValueChange={setCombustivel}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Diesel S10">Diesel S10</SelectItem>
-            <SelectItem value="Diesel S500">Diesel S500</SelectItem>
-            <SelectItem value="Gasolina">Gasolina</SelectItem>
-            <SelectItem value="Etanol">Etanol</SelectItem>
-            <SelectItem value="Arla 32">Arla 32</SelectItem>
-          </SelectContent>
-        </Select>
+        {!showNovoCombustivel ? (
+          <div className="flex gap-2">
+            <Select value={combustivel} onValueChange={setCombustivel}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Selecione o combustível" />
+              </SelectTrigger>
+              <SelectContent>
+                {tiposCombustivel.length === 0 && (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    Nenhum tipo. Use + para criar.
+                  </div>
+                )}
+                {tiposCombustivel.map(t => (
+                  <SelectItem key={t.id} value={t.nome}>{t.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setShowNovoCombustivel(true)}
+              title="Novo tipo"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+            {combustivel && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  const t = tiposCombustivel.find(x => x.nome === combustivel);
+                  if (t) setCombustivelParaExcluir(t);
+                }}
+                title="Remover tipo selecionado"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="Nome do novo combustível"
+              value={novoCombustivelNome}
+              onChange={e => setNovoCombustivelNome(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdicionarCombustivel(); } }}
+              autoFocus
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              size="icon"
+              onClick={handleAdicionarCombustivel}
+              disabled={salvandoCombustivel}
+            >
+              {salvandoCombustivel ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => { setShowNovoCombustivel(false); setNovoCombustivelNome(''); }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
