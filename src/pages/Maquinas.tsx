@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Tractor, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets, Wrench, AlertTriangle, Info } from 'lucide-react';
+import { Plus, Tractor, Truck, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets, Wrench, AlertTriangle, Info } from 'lucide-react';
 import { MaquinaForm } from '@/components/maquinas/MaquinaForm';
 import { AbastecimentoForm } from '@/components/maquinas/AbastecimentoForm';
 import { HistoricoAbastecimentos } from '@/components/maquinas/HistoricoAbastecimentos';
@@ -481,7 +481,9 @@ export function Maquinas() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
-                        <Tractor className="h-5 w-5 text-accent-foreground" />
+                        {maquina.unidade_calculo === 'km'
+                          ? <Truck className="h-5 w-5 text-accent-foreground" />
+                          : <Tractor className="h-5 w-5 text-accent-foreground" />}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
