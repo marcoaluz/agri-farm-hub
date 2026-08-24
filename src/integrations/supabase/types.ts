@@ -385,6 +385,33 @@ export type Database = {
           },
         ]
       }
+      tipos_combustivel: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          usuario_id: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+          usuario_id?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -418,6 +445,13 @@ export type Database = {
         }[]
       }
       listar_categorias_manutencao: {
+        Args: never
+        Returns: {
+          id: string
+          nome: string
+        }[]
+      }
+      listar_tipos_combustivel: {
         Args: never
         Returns: {
           id: string

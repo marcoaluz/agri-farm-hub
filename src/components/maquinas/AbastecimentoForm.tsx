@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { useGlobal } from '@/contexts/GlobalContext';
@@ -10,7 +10,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Fuel } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from '@/components/ui/alert-dialog';
+import { Fuel, Plus, Trash2, Check, X, Loader2, ChevronDown } from 'lucide-react';
 
 interface AbastecimentoFormProps {
   maquina: {
@@ -36,7 +40,62 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
   const today = new Date().toISOString().split('T')[0];
   const [data, setData] = useState(today);
   const [horimetro, setHorimetro] = useState('');
-  const [combustivel, setCombustivel] = useState('Diesel S10');
+  const { data: tiposCombustivel = [], refetch: refetchTiposCombustivel } = useQuery<{ id: string; nome: string }[]>({
+    queryKey: ['tipos-combustivel'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_tipos_combustivel' as any);
+      if (error) throw error;
+      return (data as { id: string; nome: string }[]) || [];
+    },
+  });
+
+  const [showNovoCombustivel, setShowNovoCombustivel] = useState(false);
+  const [novoCombustivelNome, setNovoCombustivelNome] = useState('');
+  const [salvandoCombustivel, setSalvandoCombustivel] = useState(false);
+  const [combustivelParaExcluir, setCombustivelParaExcluir] = useState<{ id: string; nome: string } | null>(null);
+
+  const handleAdicionarCombustivel = async () => {
+    const nome = novoCombustivelNome.trim();
+    if (!nome) return;
+    setSalvandoCombustivel(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.from('tipos_combustivel' as any).insert({
+      usuario_id: userData?.user?.id,
+      nome,
+      ativo: true,
+    } as any);
+    setSalvandoCombustivel(false);
+    if (error) {
+      toast({
+        title: (error as any).code === '23505' ? 'Tipo de combustível já existe' : 'Erro ao criar tipo de combustível',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setCombustivel(nome);
+    setNovoCombustivelNome('');
+    setShowNovoCombustivel(false);
+    refetchTiposCombustivel();
+    toast({ title: 'Tipo de combustível criado' });
+  };
+
+  const handleExcluirCombustivel = async () => {
+    if (!combustivelParaExcluir) return;
+    const { error } = await supabase
+      .from('tipos_combustivel' as any)
+      .update({ ativo: false } as any)
+      .eq('id', combustivelParaExcluir.id);
+    setCombustivelParaExcluir(null);
+    if (error) {
+      toast({ title: 'Erro ao remover tipo de combustível', variant: 'destructive' });
+      return;
+    }
+    setCombustivel('');
+    refetchTiposCombustivel();
+    toast({ title: 'Tipo de combustível removido' });
+  };
+
+  const [combustivel, setCombustivel] = useState('');
   const [litros, setLitros] = useState('');
   const [custoTotal, setCustoTotal] = useState('');
   const [posto, setPosto] = useState('');
@@ -175,18 +234,77 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
 
       <div className="space-y-1.5">
         <Label>Combustível *</Label>
-        <Select value={combustivel} onValueChange={setCombustivel}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Diesel S10">Diesel S10</SelectItem>
-            <SelectItem value="Diesel S500">Diesel S500</SelectItem>
-            <SelectItem value="Gasolina">Gasolina</SelectItem>
-            <SelectItem value="Etanol">Etanol</SelectItem>
-            <SelectItem value="Arla 32">Arla 32</SelectItem>
-          </SelectContent>
-        </Select>
+        {!showNovoCombustivel ? (
+          <div className="flex gap-2">
+            <Select value={combustivel} onValueChange={setCombustivel}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Selecione o combustível" />
+              </SelectTrigger>
+              <SelectContent>
+                {tiposCombustivel.length === 0 && (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    Nenhum tipo. Use + para criar.
+                  </div>
+                )}
+                {tiposCombustivel.map(t => (
+                  <SelectItem key={t.id} value={t.nome}>{t.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setShowNovoCombustivel(true)}
+              title="Novo tipo"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+            {combustivel && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  const t = tiposCombustivel.find(x => x.nome === combustivel);
+                  if (t) setCombustivelParaExcluir(t);
+                }}
+                title="Remover tipo selecionado"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="Nome do novo combustível"
+              value={novoCombustivelNome}
+              onChange={e => setNovoCombustivelNome(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdicionarCombustivel(); } }}
+              autoFocus
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              size="icon"
+              onClick={handleAdicionarCombustivel}
+              disabled={salvandoCombustivel}
+            >
+              {salvandoCombustivel ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => { setShowNovoCombustivel(false); setNovoCombustivelNome(''); }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -235,6 +353,21 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
         <Fuel className="h-4 w-4" />
         {mutation.isPending ? 'Salvando...' : 'Registrar Abastecimento'}
       </Button>
+
+      <AlertDialog open={!!combustivelParaExcluir} onOpenChange={o => { if (!o) setCombustivelParaExcluir(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir tipo de combustível?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O tipo "{combustivelParaExcluir?.nome}" deixará de aparecer na lista.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirCombustivel}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
