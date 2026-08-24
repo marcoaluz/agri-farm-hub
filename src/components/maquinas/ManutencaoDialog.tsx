@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useGlobal } from '@/contexts/GlobalContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -185,6 +186,8 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
     setNovaCategoriaNome('');
   };
 
+  const { safraAtual } = useGlobal();
+
   const handleSave = async () => {
     if (!maquina || !descricao.trim()) {
       toast({ title: 'Preencha a descrição', variant: 'destructive' });
@@ -201,6 +204,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
         .from('maquina_manutencoes' as any)
         .insert({
           propriedade_id: propriedadeId,
+          safra_id: safraAtual?.id || null,
           maquina_id: maquina.id,
           tipo,
           descricao: descricao.trim(),
