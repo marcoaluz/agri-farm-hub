@@ -353,6 +353,21 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
         <Fuel className="h-4 w-4" />
         {mutation.isPending ? 'Salvando...' : 'Registrar Abastecimento'}
       </Button>
+
+      <AlertDialog open={!!combustivelParaExcluir} onOpenChange={o => { if (!o) setCombustivelParaExcluir(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir tipo de combustível?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O tipo "{combustivelParaExcluir?.nome}" deixará de aparecer na lista.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirCombustivel}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
