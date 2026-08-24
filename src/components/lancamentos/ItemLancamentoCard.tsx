@@ -545,6 +545,11 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                 type="number" value={itemForm.horimetro_informado ?? ''}
                 onChange={(e) => onUpdate({ ...itemForm, horimetro_informado: Number(e.target.value) })}
               />
+              {maquinaVinculada && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {labelMedidor} atual da máquina: {ehMaquinaKm ? (maquinaVinculada.km_atual ?? 0) : (maquinaVinculada.horimetro_atual ?? 0)}{ehMaquinaKm ? 'km' : 'h'}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
                 Digite o valor exato do painel — isso substitui o {labelMedidor.toLowerCase()} atual, não soma.
               </p>
@@ -735,6 +740,11 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                   value={itemForm.horimetro_informado ?? ''}
                   onChange={(e) => onUpdate({ ...itemForm, horimetro_informado: Number(e.target.value) })}
                 />
+                {maquinaVinculada && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {labelMedidor} atual da máquina: {ehMaquinaKm ? (maquinaVinculada.km_atual ?? 0) : (maquinaVinculada.horimetro_atual ?? 0)}{ehMaquinaKm ? 'km' : 'h'}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground mt-1">
                   Substitui o {labelMedidor.toLowerCase()} atual, não soma.
                 </p>

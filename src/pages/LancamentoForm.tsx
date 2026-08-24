@@ -640,6 +640,18 @@ export function LancamentoForm() {
       if (Number(atual.quantidade) !== Number(original.quantidade)) return true
       if (atual.custo_personalizado !== original.custo_personalizado) return true
       if (atual.custo_unitario_override !== original.custo_unitario_override) return true
+      if (Number(atual.custo_total || 0) !== Number(original.custo_total || 0)) return true
+      if ((atual.origem_estoque || false) !== (original.origem_estoque || false)) return true
+      if ((atual.litros ?? null) !== (original.litros ?? null)) return true
+      if ((atual.combustivel_tipo || '') !== (original.combustivel_tipo || '')) return true
+      if ((atual.horimetro_informado ?? null) !== (original.horimetro_informado ?? null)) return true
+      if ((atual.proximo_horimetro ?? null) !== (original.proximo_horimetro ?? null)) return true
+      if ((atual.momento_abastecimento || null) !== (original.momento_abastecimento || null)) return true
+      if ((atual.momento_manutencao || null) !== (original.momento_manutencao || null)) return true
+      if ((atual.categoria_manutencao || '') !== (original.categoria_manutencao || '')) return true
+      if ((atual.descricao || '') !== (original.descricao || '')) return true
+      if ((atual.oficina || '') !== (original.oficina || '')) return true
+      if ((atual.observacao || '') !== (original.observacao || '')) return true
     }
 
     return false
