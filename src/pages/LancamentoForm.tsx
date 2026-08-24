@@ -137,15 +137,40 @@ export function LancamentoForm() {
         p_propriedade_id: propriedadeAtual!.id,
       })
       if (error) throw error
-      return ((data as any[]) || [])
+      const lista = ((data as any[]) || [])
         .filter(m => m.ativo !== false)
         .map(m => ({
           id: m.id || m.maquina_id,
           nome: m.nome,
           custo_hora: m.custo_hora ?? null,
           horimetro_atual: m.horimetro_atual ?? 0,
+          unidade_calculo: m.unidade_calculo ?? 'h',
+          km_atual: m.km_atual ?? 0,
+          custo_km: m.custo_km ?? null,
         }))
-        .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+
+      // A RPC pode não retornar as colunas novas — enriquece direto da tabela.
+      const ids = lista.map(m => m.id).filter(Boolean)
+      if (ids.length) {
+        const { data: extras } = await supabase
+          .from('maquinas' as any)
+          .select('id, unidade_calculo, km_atual, custo_km')
+          .in('id', ids)
+        if (extras) {
+          const byId = new Map((extras as any[]).map(e => [e.id, e]))
+          lista.forEach(m => {
+            const e = byId.get(m.id)
+            if (e) {
+              m.unidade_calculo = e.unidade_calculo ?? m.unidade_calculo
+              m.km_atual = e.km_atual ?? m.km_atual
+              m.custo_km = e.custo_km ?? m.custo_km
+            }
+          })
+        }
+      }
+
+      return lista.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+
     },
     enabled: !!propriedadeAtual?.id
   })
