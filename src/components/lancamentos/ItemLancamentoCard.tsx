@@ -683,24 +683,48 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                 </div>
               </>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Custo (R$)</Label>
-                  <Input
-                    type="number" step="0.01"
-                    value={itemForm.custo_total || ''}
-                    onChange={(e) => onUpdate({ ...itemForm, custo_total: Number(e.target.value) })}
-                  />
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Quantidade</Label>
+                    <Input
+                      type="number" step="0.01"
+                      value={itemForm.quantidade || ''}
+                      onChange={(e) => {
+                        const qtd = Number(e.target.value)
+                        const unit = Number(itemForm.custo_unitario || 0)
+                        onUpdate({ ...itemForm, quantidade: qtd, custo_total: Number((qtd * unit).toFixed(2)) })
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label>Valor unitário (R$)</Label>
+                    <Input
+                      type="number" step="0.01"
+                      value={itemForm.custo_unitario || ''}
+                      onChange={(e) => {
+                        const unit = Number(e.target.value)
+                        const qtd = Number(itemForm.quantidade || 0) || 1
+                        onUpdate({ ...itemForm, custo_unitario: unit, custo_total: Number((qtd * unit).toFixed(2)) })
+                      }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label>Oficina (opcional)</Label>
-                  <Input
-                    value={itemForm.oficina || ''}
-                    onChange={(e) => onUpdate({ ...itemForm, oficina: e.target.value })}
-                    placeholder="Nome da oficina"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Custo Total (R$)</Label>
+                    <Input type="number" step="0.01" value={itemForm.custo_total || ''} disabled />
+                  </div>
+                  <div>
+                    <Label>Oficina (opcional)</Label>
+                    <Input
+                      value={itemForm.oficina || ''}
+                      onChange={(e) => onUpdate({ ...itemForm, oficina: e.target.value })}
+                      placeholder="Nome da oficina"
+                    />
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             <div className="grid grid-cols-2 gap-3">

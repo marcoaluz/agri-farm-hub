@@ -1035,17 +1035,23 @@ export function LancamentoForm() {
           }
         }
       }
-      // Atualizar horímetro
+      // Atualizar horímetro ou quilometragem, conforme o tipo da máquina
       if (item.tipo_ref === 'maquina' && item.maquina_id && item.quantidade > 0) {
         const { data: maq } = await supabase
           .from('maquinas')
-          .select('horimetro_atual')
+          .select('horimetro_atual, km_atual, unidade_calculo')
           .eq('id', item.maquina_id)
           .single()
         if (maq) {
-          await supabase.from('maquinas').update({
-            horimetro_atual: maq.horimetro_atual + item.quantidade
-          }).eq('id', item.maquina_id)
+          if ((maq as any).unidade_calculo === 'km') {
+            await supabase.from('maquinas').update({
+              km_atual: Number((maq as any).km_atual || 0) + item.quantidade
+            }).eq('id', item.maquina_id)
+          } else {
+            await supabase.from('maquinas').update({
+              horimetro_atual: maq.horimetro_atual + item.quantidade
+            }).eq('id', item.maquina_id)
+          }
         }
       }
       // Abastecimento: atualiza horímetro informado e baixa combustível do estoque (FIFO)
