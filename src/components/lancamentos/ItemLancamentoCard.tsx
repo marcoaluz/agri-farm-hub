@@ -83,6 +83,7 @@ interface ItemLancamentoCardProps {
   categoriasManutencao?: { id: string; nome: string }[]
   descricoesManutencao?: { id: string; nome: string }[]
   maquinas?: any[]
+  tiposCombustivel?: { id: string; nome: string }[]
 }
 
 function getTipoConfig(tipoRef?: string, itemTipo?: string) {
