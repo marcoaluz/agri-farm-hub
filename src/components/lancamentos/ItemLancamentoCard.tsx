@@ -83,6 +83,7 @@ interface ItemLancamentoCardProps {
   categoriasManutencao?: { id: string; nome: string }[]
   descricoesManutencao?: { id: string; nome: string }[]
   maquinas?: any[]
+  tiposCombustivel?: { id: string; nome: string }[]
 }
 
 function getTipoConfig(tipoRef?: string, itemTipo?: string) {
@@ -109,7 +110,7 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   return config[itemTipo as keyof typeof config] || { label: itemTipo || 'Item', icon: Package, color: 'bg-gray-100 text-gray-800' }
 }
 
-export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao, maquinas }: ItemLancamentoCardProps) {
+export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao, maquinas, tiposCombustivel }: ItemLancamentoCardProps) {
   const [quantidade, setQuantidade] = useState(itemForm.quantidade)
   const [editandoCusto, setEditandoCusto] = useState(false)
   const [custoEditavel, setCustoEditavel] = useState('')
@@ -507,7 +508,19 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
             ) : (
               <div>
                 <Label>Tipo de combustível</Label>
-                <Input value={itemForm.combustivel_tipo || ''} onChange={(e) => onUpdate({ ...itemForm, combustivel_tipo: e.target.value })} placeholder="Ex: Diesel" />
+                <Select value={itemForm.combustivel_tipo || ''} onValueChange={(v) => onUpdate({ ...itemForm, combustivel_tipo: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o combustível" /></SelectTrigger>
+                  <SelectContent>
+                    {tiposCombustivel?.map(t => (
+                      <SelectItem key={t.id} value={t.nome}>{t.nome}</SelectItem>
+                    ))}
+                    {(!tiposCombustivel || tiposCombustivel.length === 0) && (
+                      <div className="px-2 py-3 text-xs text-muted-foreground">
+                        Nenhum tipo cadastrado. Crie um em Máquinas → Abastecer.
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
