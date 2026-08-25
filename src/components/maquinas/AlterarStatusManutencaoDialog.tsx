@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { restaurarFIFO } from '@/lib/fifoConsumo';
+import { consumirFIFO, restaurarFIFO } from '@/lib/fifoConsumo';
 
 interface AlterarStatusManutencaoDialogProps {
   open: boolean;
@@ -22,9 +22,12 @@ interface AlterarStatusManutencaoDialogProps {
     id: string;
     descricao: string;
     observacoes: string | null;
+    status?: string;
     maquina_id?: string;
     horimetro_na_manutencao?: number | null;
     horimetro_anterior?: number | null;
+    produto_id?: string | null;
+    quantidade_produto?: number | null;
     detalhamento_lotes?: any;
   } | null;
   maquina?: { id: string; unidade_calculo?: string } | null;
@@ -50,10 +53,15 @@ export function AlterarStatusManutencaoDialog({
   const ehKm = maquina?.unidade_calculo === 'km';
   const campoMedidor = ehKm ? 'km_atual' : 'horimetro_atual';
 
+  // Cancelar de uma manutenção Realizada = desfazer (volta pra pendente).
+  // Cancelar de uma Agendada = cancelamento definitivo (exige motivo).
+  const revertendo = modo === 'cancelar' && manutencao?.status === 'realizada';
+  const cancelandoDefinitivo = modo === 'cancelar' && manutencao?.status !== 'realizada';
+
   async function handleConfirm() {
     if (!manutencao) return;
 
-    if (modo === 'cancelar' && !motivoCancelamento.trim()) {
+    if (cancelandoDefinitivo && !motivoCancelamento.trim()) {
       toast({ title: 'Informe o motivo do cancelamento', variant: 'destructive' });
       return;
     }
@@ -63,11 +71,23 @@ export function AlterarStatusManutencaoDialog({
     if (modo === 'realizar') {
       const dataRealFormatada = dataRealizada ? format(dataRealizada, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
       const horimetroNum = horimetroRealizacao ? Number(horimetroRealizacao) : null;
-
       const payload: any = { status: 'realizada', data_realizada: dataRealFormatada };
+
+      // Se tem produto planejado do estoque e ainda não deu baixa, dá baixa agora
+      if (manutencao.produto_id && !manutencao.detalhamento_lotes) {
+        try {
+          const resultado = await consumirFIFO(manutencao.produto_id, manutencao.quantidade_produto || 0);
+          payload.custo = resultado.custoTotal;
+          payload.detalhamento_lotes = resultado.detalhamento;
+        } catch (e: any) {
+          setSaving(false);
+          toast({ title: 'Erro ao dar baixa no estoque', description: e.message, variant: 'destructive' });
+          return;
+        }
+      }
+
       let vaiAtualizarMedidor = false;
       let medidorAnterior: number | null = null;
-
       if (horimetroNum != null && manutencao.maquina_id) {
         const { data: maq } = await supabase
           .from('maquinas' as any)
@@ -95,24 +115,41 @@ export function AlterarStatusManutencaoDialog({
       }
 
       toast({ title: 'Manutenção marcada como realizada. Lançamento gerado no Financeiro.' });
+      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos-manutencao'] });
+      queryClient.invalidateQueries({ queryKey: ['lotes'] });
     } else {
-      const payload: any = {
-        status: 'cancelada',
-        observacoes: manutencao.observacoes
-          ? `${manutencao.observacoes}\n[Cancelado] ${motivoCancelamento.trim()}`
-          : `[Cancelado] ${motivoCancelamento.trim()}`,
-      };
+      // modo === 'cancelar'
+      const payload: any = revertendo
+        ? {
+            status: 'agendada',
+            data_realizada: null,
+            custo: null,
+            detalhamento_lotes: null,
+            horimetro_anterior: null,
+            ...(motivoCancelamento.trim()
+              ? {
+                  observacoes: manutencao.observacoes
+                    ? `${manutencao.observacoes}\n[Voltou p/ pendente] ${motivoCancelamento.trim()}`
+                    : `[Voltou p/ pendente] ${motivoCancelamento.trim()}`,
+                }
+              : {}),
+          }
+        : {
+            status: 'cancelada',
+            observacoes: manutencao.observacoes
+              ? `${manutencao.observacoes}\n[Cancelado] ${motivoCancelamento.trim()}`
+              : `[Cancelado] ${motivoCancelamento.trim()}`,
+          };
 
       const { error } = await supabase.from('maquina_manutencoes' as any).update(payload).eq('id', manutencao.id);
       if (error) {
         setSaving(false);
-        toast({ title: 'Erro ao cancelar manutenção', description: error.message, variant: 'destructive' });
+        toast({ title: 'Erro ao atualizar manutenção', description: error.message, variant: 'destructive' });
         return;
       }
 
       let horimetroRevertido = false;
-
-      // Reverte o horímetro/km só se ninguém mexeu nele depois desta manutenção
       if (manutencao.horimetro_anterior != null && manutencao.horimetro_na_manutencao != null && manutencao.maquina_id) {
         const { data: revertido } = await supabase
           .from('maquinas' as any)
@@ -123,13 +160,14 @@ export function AlterarStatusManutencaoDialog({
         horimetroRevertido = !!(revertido && revertido.length > 0);
       }
 
-      // Devolve ao estoque o que foi consumido via FIFO, se veio do estoque
       if (manutencao.detalhamento_lotes) {
         await restaurarFIFO(manutencao.detalhamento_lotes);
       }
 
       toast({
-        title: 'Manutenção cancelada. Lançamento removido do Financeiro (se existia).',
+        title: revertendo
+          ? 'Manutenção voltou para Pendente. Lançamento removido e estoque devolvido.'
+          : 'Manutenção cancelada. Lançamento removido do Financeiro (se existia).',
         description:
           manutencao.horimetro_anterior != null && !horimetroRevertido
             ? 'Observação: o horímetro/km não foi revertido porque já foi atualizado por outro evento depois.'
@@ -160,7 +198,11 @@ export function AlterarStatusManutencaoDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {modo === 'realizar' ? 'Marcar manutenção como realizada' : 'Cancelar manutenção'}
+            {modo === 'realizar'
+              ? 'Marcar manutenção como realizada'
+              : revertendo
+              ? 'Voltar manutenção para pendente'
+              : 'Cancelar manutenção'}
           </DialogTitle>
         </DialogHeader>
 
@@ -202,8 +244,29 @@ export function AlterarStatusManutencaoDialog({
               </p>
             </div>
 
+            {manutencao?.produto_id && (
+              <p className="text-xs text-muted-foreground">
+                Isso vai dar baixa no estoque da peça planejada ({manutencao.quantidade_produto ?? 0}) e gerar o lançamento
+                no Financeiro.
+              </p>
+            )}
+            {!manutencao?.produto_id && (
+              <p className="text-xs text-muted-foreground">
+                Isso vai gerar (ou atualizar) o lançamento correspondente no Financeiro.
+              </p>
+            )}
+          </div>
+        ) : revertendo ? (
+          <div className="space-y-2">
+            <Label>Motivo (opcional)</Label>
+            <Textarea
+              value={motivoCancelamento}
+              onChange={(e) => setMotivoCancelamento(e.target.value)}
+              placeholder="Ex: Ainda não foi feito, reagendando..."
+            />
             <p className="text-xs text-muted-foreground">
-              Isso vai gerar (ou atualizar) o lançamento correspondente no Financeiro.
+              A manutenção volta para "Agendada". O lançamento no Financeiro é removido, o horímetro/km é revertido (se
+              nada mudou depois) e o estoque consumido é devolvido.
             </p>
           </div>
         ) : (
@@ -215,8 +278,7 @@ export function AlterarStatusManutencaoDialog({
               placeholder="Ex: Orçamento não aprovado, serviço não será mais necessário..."
             />
             <p className="text-xs text-muted-foreground">
-              A manutenção continua no histórico. O lançamento no Financeiro é removido, o horímetro/km é revertido (se
-              nada mudou depois) e o estoque consumido (se veio do estoque) é devolvido.
+              A manutenção continua no histórico como "Cancelada".
             </p>
           </div>
         )}
@@ -234,6 +296,8 @@ export function AlterarStatusManutencaoDialog({
               ? 'Salvando...'
               : modo === 'realizar'
               ? 'Confirmar realização'
+              : revertendo
+              ? 'Confirmar'
               : 'Confirmar cancelamento'}
           </Button>
         </DialogFooter>
