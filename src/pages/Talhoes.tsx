@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, Plus, Edit, Trash2, Maximize2, AlertCircle, Search } from "lucide-react";
+import { MapPin, Plus, Edit, Trash2, Maximize2, AlertCircle, Search, Sprout } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TalhaoForm } from "@/components/talhoes/TalhaoForm";
 
