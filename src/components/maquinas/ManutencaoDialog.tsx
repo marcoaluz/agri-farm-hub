@@ -64,7 +64,11 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
   const [origemEstoque, setOrigemEstoque] = useState(false);
   const [produtoId, setProdutoId] = useState('');
   const [quantidadeProduto, setQuantidadeProduto] = useState('1');
-  const [custo, setCusto] = useState('');
+  const [quantidadeLivre, setQuantidadeLivre] = useState('1');
+  const [valorUnitarioLivre, setValorUnitarioLivre] = useState('');
+  const qtdLivreNum = parseFloat(quantidadeLivre) || 0;
+  const valorUnitLivreNum = parseFloat(valorUnitarioLivre) || 0;
+  const custoLivreTotal = qtdLivreNum * valorUnitLivreNum;
 
   const { data: produtosEstoque = [] } = useQuery({
     queryKey: ['produtos-manutencao', propriedadeId],
@@ -85,7 +89,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
   const custoEstoqueEstimado = produtoSelecionado ? qtdProdutoNum * Number(produtoSelecionado.custo_medio || 0) : 0;
   const estoqueInsuficiente = origemEstoque && produtoSelecionado && qtdProdutoNum > Number(produtoSelecionado.saldo_atual || 0);
 
-  const custoFinalExibido = origemEstoque ? custoEstoqueEstimado : (parseFloat(custo) || 0);
+  
 
   // ── Categorias dinâmicas ──
   const { data: categorias = [], refetch: refetchCategorias } = useQuery<CategoriaManutencaoRow[]>({
@@ -207,7 +211,8 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
     setDataRealizada(new Date());
     setHorimetroManutencao('');
     setProximoHorimetro('');
-    setCusto('');
+    setQuantidadeLivre('1');
+    setValorUnitarioLivre('');
     setOficina('');
     setObservacoes('');
     setShowNovaCategoria(false);
@@ -241,7 +246,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
     try {
       // A baixa de estoque (FIFO) só acontece quando a manutenção está Realizada.
       // Se for Agendada, guardamos produto/quantidade planejados e não mexemos no estoque ainda.
-      let custoFinal: number | null = origemEstoque ? null : (custo ? Number(custo) : null);
+      let custoFinal: number | null = origemEstoque ? null : (custoLivreTotal > 0 ? custoLivreTotal : null);
       let detalhamentoLotes: any = null;
       if (origemEstoque && produtoId && status === 'realizada') {
         const resultado = await consumirFIFO(produtoId, qtdProdutoNum);
@@ -627,14 +632,26 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Custo R$</Label>
-                <Input type="number" step="0.01" placeholder="0,00" value={custo} onChange={e => setCusto(e.target.value)} />
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Quantidade</Label>
+                  <Input type="number" step="0.01" value={quantidadeLivre} onChange={e => setQuantidadeLivre(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Valor unitário (R$)</Label>
+                  <Input type="number" step="0.01" placeholder="0,00" value={valorUnitarioLivre} onChange={e => setValorUnitarioLivre(e.target.value)} />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Oficina</Label>
-                <Input placeholder="Nome da oficina" value={oficina} onChange={e => setOficina(e.target.value)} />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Custo Total (R$)</Label>
+                  <Input type="number" step="0.01" value={custoLivreTotal.toFixed(2)} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label>Oficina</Label>
+                  <Input placeholder="Nome da oficina" value={oficina} onChange={e => setOficina(e.target.value)} />
+                </div>
               </div>
             </div>
           )}
