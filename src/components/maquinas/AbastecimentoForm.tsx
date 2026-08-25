@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { useGlobal } from '@/contexts/GlobalContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,8 +28,6 @@ interface AbastecimentoFormProps {
 export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { propriedadeAtual, safraAtual } = useGlobal();
-  const { user } = useAuth();
 
   const ehKm = maquina.unidade_calculo === 'km';
   const medidorAtual = ehKm ? (maquina.km_atual || 0) : maquina.horimetro_atual;
