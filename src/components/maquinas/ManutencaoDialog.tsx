@@ -89,7 +89,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
   const custoEstoqueEstimado = produtoSelecionado ? qtdProdutoNum * Number(produtoSelecionado.custo_medio || 0) : 0;
   const estoqueInsuficiente = origemEstoque && produtoSelecionado && qtdProdutoNum > Number(produtoSelecionado.saldo_atual || 0);
 
-  const custoFinalExibido = origemEstoque ? custoEstoqueEstimado : (parseFloat(custo) || 0);
+  
 
   // ── Categorias dinâmicas ──
   const { data: categorias = [], refetch: refetchCategorias } = useQuery<CategoriaManutencaoRow[]>({
