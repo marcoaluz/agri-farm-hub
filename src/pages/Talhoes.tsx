@@ -16,6 +16,7 @@ import { MapPin, Plus, Edit, Trash2, Maximize2, AlertCircle, Search, Sprout } fr
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TalhaoForm } from "@/components/talhoes/TalhaoForm";
+import { IconeCultura } from "@/components/culturas/IconeCultura";
 
 interface Talhao {
   id: string;
