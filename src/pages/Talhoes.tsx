@@ -52,8 +52,28 @@ export function Talhoes() {
     enabled: !!propriedadeAtual?.id,
   });
 
+const { data: culturas } = useQuery({
+    queryKey: ["culturas-config"],
+    queryFn: async () => {
+      const { data } = await supabase.from("culturas_config" as any).select("*");
+      return (data || []) as any[];
+    },
+  });
+
   const talhoesFiltrados = talhoes?.filter((t) => t.nome.toLowerCase().includes(busca.toLowerCase()));
   const areaTotal = talhoes?.reduce((sum, t) => sum + (t.area_ha || 0), 0) || 0;
+
+  const grupos = (talhoesFiltrados || []).reduce((acc: Record<string, { cultura: any; talhoes: Talhao[] }>, t) => {
+    const chave = t.cultura_id || "sem_cultura";
+    if (!acc[chave]) {
+      acc[chave] = { cultura: culturas?.find((c) => c.id === t.cultura_id) || null, talhoes: [] };
+    }
+    acc[chave].talhoes.push(t);
+    return acc;
+  }, {});
+  const gruposOrdenados = Object.values(grupos).sort((a, b) =>
+    (a.cultura?.nome_exibicao || "Sem cultura").localeCompare(b.cultura?.nome_exibicao || "Sem cultura")
+  );
 
   if (!propriedadeAtual) {
     return (
