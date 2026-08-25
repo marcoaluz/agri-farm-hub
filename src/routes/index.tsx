@@ -16,6 +16,7 @@ import Dashboard from '@/pages/Dashboard'
 import { Propriedades } from '@/pages/Propriedades'
 import { SafrasPage } from '@/pages/Safras'
 import { Talhoes } from '@/pages/Talhoes'
+import Culturas from '@/pages/Culturas'
 import { Estoque } from '@/pages/Estoque'
 import Producao from '@/pages/Producao'
 
