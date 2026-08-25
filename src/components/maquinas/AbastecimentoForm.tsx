@@ -115,7 +115,7 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
       }
 
       // 1. Inserir abastecimento
-      const { data: abastecimentoData, error } = await supabase
+      const { error } = await supabase
         .from('abastecimentos' as any)
         .insert({
           maquina_id: maquina.id,
@@ -126,9 +126,7 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
           custo_total: custoNum,
           posto: posto || null,
           observacoes: observacoes || null,
-        })
-        .select('id')
-        .single();
+        });
       if (error) throw error;
 
       // 2. Update horímetro ou km, o que for o caso, se o novo valor for maior
