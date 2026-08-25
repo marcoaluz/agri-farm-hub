@@ -632,14 +632,26 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Custo R$</Label>
-                <Input type="number" step="0.01" placeholder="0,00" value={custo} onChange={e => setCusto(e.target.value)} />
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Quantidade</Label>
+                  <Input type="number" step="0.01" value={quantidadeLivre} onChange={e => setQuantidadeLivre(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Valor unitário (R$)</Label>
+                  <Input type="number" step="0.01" placeholder="0,00" value={valorUnitarioLivre} onChange={e => setValorUnitarioLivre(e.target.value)} />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Oficina</Label>
-                <Input placeholder="Nome da oficina" value={oficina} onChange={e => setOficina(e.target.value)} />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Custo Total (R$)</Label>
+                  <Input type="number" step="0.01" value={custoLivreTotal.toFixed(2)} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label>Oficina</Label>
+                  <Input placeholder="Nome da oficina" value={oficina} onChange={e => setOficina(e.target.value)} />
+                </div>
               </div>
             </div>
           )}
