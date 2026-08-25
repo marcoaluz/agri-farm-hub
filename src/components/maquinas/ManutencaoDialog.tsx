@@ -239,10 +239,11 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
 
     setSaving(true);
     try {
-      // Se vier do estoque, consome FIFO primeiro
-      let custoFinal: number | null = origemEstoque ? custoEstoqueEstimado : (custo ? Number(custo) : null);
+      // A baixa de estoque (FIFO) só acontece quando a manutenção está Realizada.
+      // Se for Agendada, guardamos produto/quantidade planejados e não mexemos no estoque ainda.
+      let custoFinal: number | null = origemEstoque ? null : (custo ? Number(custo) : null);
       let detalhamentoLotes: any = null;
-      if (origemEstoque && produtoId) {
+      if (origemEstoque && produtoId && status === 'realizada') {
         const resultado = await consumirFIFO(produtoId, qtdProdutoNum);
         custoFinal = resultado.custoTotal;
         detalhamentoLotes = resultado.detalhamento;
