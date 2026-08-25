@@ -16,12 +16,14 @@ import { MapPin, Plus, Edit, Trash2, Maximize2, AlertCircle, Search, Sprout } fr
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TalhaoForm } from "@/components/talhoes/TalhaoForm";
+import { IconeCultura } from "@/components/culturas/IconeCultura";
 
 interface Talhao {
   id: string;
   nome: string;
   area_ha: number;
   cultura_atual?: string;
+  cultura_id?: string | null;
   localizacao?: string;
   propriedade_id: string;
   ativo: boolean;
@@ -50,8 +52,28 @@ export function Talhoes() {
     enabled: !!propriedadeAtual?.id,
   });
 
+const { data: culturas } = useQuery({
+    queryKey: ["culturas-config"],
+    queryFn: async () => {
+      const { data } = await supabase.from("culturas_config" as any).select("*");
+      return (data || []) as any[];
+    },
+  });
+
   const talhoesFiltrados = talhoes?.filter((t) => t.nome.toLowerCase().includes(busca.toLowerCase()));
   const areaTotal = talhoes?.reduce((sum, t) => sum + (t.area_ha || 0), 0) || 0;
+
+  const grupos = (talhoesFiltrados || []).reduce((acc: Record<string, { cultura: any; talhoes: Talhao[] }>, t) => {
+    const chave = t.cultura_id || "sem_cultura";
+    if (!acc[chave]) {
+      acc[chave] = { cultura: culturas?.find((c) => c.id === t.cultura_id) || null, talhoes: [] };
+    }
+    acc[chave].talhoes.push(t);
+    return acc;
+  }, {});
+  const gruposOrdenados = Object.values(grupos).sort((a, b) =>
+    (a.cultura?.nome_exibicao || "Sem cultura").localeCompare(b.cultura?.nome_exibicao || "Sem cultura")
+  );
 
   if (!propriedadeAtual) {
     return (
@@ -177,13 +199,30 @@ export function Talhoes() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {talhoesFiltrados?.map((talhao) => (
-            <TalhaoCard
-              key={talhao.id}
-              talhao={talhao}
-              onClick={() => setDetalheTalhao(talhao)}
-            />
+        <div className="space-y-6">
+          {gruposOrdenados.map((grupo) => (
+            <div key={grupo.cultura?.id || "sem_cultura"}>
+              <div className="mb-3 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent">
+                  <IconeCultura nome={grupo.cultura?.icone} className="h-4 w-4" />
+                </div>
+                <h2 className="text-lg font-semibold">{grupo.cultura?.nome_exibicao || "Sem cultura"}</h2>
+                <span className="text-sm text-muted-foreground">
+                  ({grupo.talhoes.length} {grupo.talhoes.length === 1 ? "talhão" : "talhões"} ·{" "}
+                  {grupo.talhoes.reduce((s, t) => s + (t.area_ha || 0), 0).toFixed(2)} ha)
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {grupo.talhoes.map((talhao) => (
+                  <TalhaoCard
+                    key={talhao.id}
+                    talhao={talhao}
+                    icone={grupo.cultura?.icone}
+                    onClick={() => setDetalheTalhao(talhao)}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -214,7 +253,7 @@ export function Talhoes() {
 
 /* ── TalhaoCard ── */
 
-function TalhaoCard({ talhao, onClick }: { talhao: Talhao; onClick: () => void }) {
+function TalhaoCard({ talhao, icone, onClick }: { talhao: Talhao; icone?: string; onClick: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -239,7 +278,10 @@ function TalhaoCard({ talhao, onClick }: { talhao: Talhao; onClick: () => void }
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h3 className="text-xl font-bold mb-1">{talhao.nome}</h3>
+            <div className="flex items-center gap-2 mb-1">
+              <IconeCultura nome={icone} className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-xl font-bold">{talhao.nome}</h3>
+            </div>
             <div className="flex items-center gap-2 text-sm">
               <Maximize2 className="h-4 w-4 text-muted-foreground" />
               <span className="font-semibold text-success text-lg">{talhao.area_ha} ha</span>
