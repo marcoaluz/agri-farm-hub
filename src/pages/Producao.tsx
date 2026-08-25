@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Sprout, Plus, DollarSign, History } from 'lucide-react'
+import { IconeCultura } from '@/components/culturas/IconeCultura'
 import { NovaColheitaModal } from '@/components/producao/NovaColheitaModal'
 import { VenderProducaoModal } from '@/components/producao/VenderProducaoModal'
 import { HistoricoProducaoModal } from '@/components/producao/HistoricoProducaoModal'
@@ -117,7 +118,10 @@ export default function Producao() {
             className="mb-4 flex flex-col gap-4 rounded-lg bg-muted/30 p-4 sm:flex-row sm:flex-wrap sm:items-center"
           >
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="h-fit">{cultura.cultura_nome}</Badge>
+              <Badge variant="secondary" className="h-fit gap-1.5">
+                <IconeCultura nome={cultura.cultura_icone} className="h-3.5 w-3.5" />
+                {cultura.cultura_nome}
+              </Badge>
               <Button
                 size="sm"
                 variant="ghost"
@@ -192,7 +196,12 @@ export default function Producao() {
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2">
                     <CardTitle className="text-base">{talhao.talhao_nome}</CardTitle>
-                    {talhao.cultura_nome && <Badge variant="outline">{talhao.cultura_nome}</Badge>}
+                    {talhao.cultura_nome && (
+                      <Badge variant="outline" className="gap-1.5">
+                        <IconeCultura nome={talhao.cultura_icone} className="h-3.5 w-3.5" />
+                        {talhao.cultura_nome}
+                      </Badge>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
