@@ -72,7 +72,15 @@ export function Maquinas() {
   const [manutencaoDialog, setManutencaoDialog] = useState(false);
   const [maquinaManutencao, setMaquinaManutencao] = useState<Maquina | null>(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [manutencaoStatusAlvo, setManutencaoStatusAlvo] = useState<{ id: string; descricao: string; observacoes: string | null } | null>(null);
+  const [manutencaoStatusAlvo, setManutencaoStatusAlvo] = useState<{
+    id: string;
+    descricao: string;
+    observacoes: string | null;
+    maquina_id?: string;
+    horimetro_na_manutencao?: number | null;
+    horimetro_anterior?: number | null;
+    detalhamento_lotes?: any;
+  } | null>(null);
   const [modoStatus, setModoStatus] = useState<'realizar' | 'cancelar' | null>(null);
   const [mesReferencia, setMesReferencia] = useState(() => startOfMonth(new Date()));
 
