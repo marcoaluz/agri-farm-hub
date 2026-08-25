@@ -199,13 +199,30 @@ const { data: culturas } = useQuery({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {talhoesFiltrados?.map((talhao) => (
-            <TalhaoCard
-              key={talhao.id}
-              talhao={talhao}
-              onClick={() => setDetalheTalhao(talhao)}
-            />
+        <div className="space-y-6">
+          {gruposOrdenados.map((grupo) => (
+            <div key={grupo.cultura?.id || "sem_cultura"}>
+              <div className="mb-3 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent">
+                  <IconeCultura nome={grupo.cultura?.icone} className="h-4 w-4" />
+                </div>
+                <h2 className="text-lg font-semibold">{grupo.cultura?.nome_exibicao || "Sem cultura"}</h2>
+                <span className="text-sm text-muted-foreground">
+                  ({grupo.talhoes.length} {grupo.talhoes.length === 1 ? "talhão" : "talhões"} ·{" "}
+                  {grupo.talhoes.reduce((s, t) => s + (t.area_ha || 0), 0).toFixed(2)} ha)
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {grupo.talhoes.map((talhao) => (
+                  <TalhaoCard
+                    key={talhao.id}
+                    talhao={talhao}
+                    icone={grupo.cultura?.icone}
+                    onClick={() => setDetalheTalhao(talhao)}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
