@@ -253,7 +253,7 @@ const { data: culturas } = useQuery({
 
 /* ── TalhaoCard ── */
 
-function TalhaoCard({ talhao, onClick }: { talhao: Talhao; onClick: () => void }) {
+function TalhaoCard({ talhao, icone, onClick }: { talhao: Talhao; icone?: string; onClick: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
