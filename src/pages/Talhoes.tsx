@@ -278,7 +278,10 @@ function TalhaoCard({ talhao, icone, onClick }: { talhao: Talhao; icone?: string
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h3 className="text-xl font-bold mb-1">{talhao.nome}</h3>
+            <div className="flex items-center gap-2 mb-1">
+              <IconeCultura nome={icone} className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-xl font-bold">{talhao.nome}</h3>
+            </div>
             <div className="flex items-center gap-2 text-sm">
               <Maximize2 className="h-4 w-4 text-muted-foreground" />
               <span className="font-semibold text-success text-lg">{talhao.area_ha} ha</span>
