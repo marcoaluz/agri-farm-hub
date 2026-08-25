@@ -119,7 +119,7 @@ export default function Producao() {
           >
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="h-fit gap-1.5">
-                <IconeCultura nome={cultura.cultura_icone} className="h-3.5 w-3.5" />
+                <IconeCultura nome={cultura.icone} className="h-3.5 w-3.5" />
                 {cultura.cultura_nome}
               </Badge>
               <Button
@@ -198,7 +198,7 @@ export default function Producao() {
                     <CardTitle className="text-base">{talhao.talhao_nome}</CardTitle>
                     {talhao.cultura_nome && (
                       <Badge variant="outline" className="gap-1.5">
-                        <IconeCultura nome={talhao.cultura_icone} className="h-3.5 w-3.5" />
+                        <IconeCultura nome={talhao.icone} className="h-3.5 w-3.5" />
                         {talhao.cultura_nome}
                       </Badge>
                     )}
