@@ -211,7 +211,8 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
     setDataRealizada(new Date());
     setHorimetroManutencao('');
     setProximoHorimetro('');
-    setCusto('');
+    setQuantidadeLivre('1');
+    setValorUnitarioLivre('');
     setOficina('');
     setObservacoes('');
     setShowNovaCategoria(false);
