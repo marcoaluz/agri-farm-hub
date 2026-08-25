@@ -23,6 +23,7 @@ interface Talhao {
   nome: string;
   area_ha: number;
   cultura_atual?: string;
+  cultura_id?: string | null;
   localizacao?: string;
   propriedade_id: string;
   ativo: boolean;
