@@ -64,7 +64,11 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
   const [origemEstoque, setOrigemEstoque] = useState(false);
   const [produtoId, setProdutoId] = useState('');
   const [quantidadeProduto, setQuantidadeProduto] = useState('1');
-  const [custo, setCusto] = useState('');
+  const [quantidadeLivre, setQuantidadeLivre] = useState('1');
+  const [valorUnitarioLivre, setValorUnitarioLivre] = useState('');
+  const qtdLivreNum = parseFloat(quantidadeLivre) || 0;
+  const valorUnitLivreNum = parseFloat(valorUnitarioLivre) || 0;
+  const custoLivreTotal = qtdLivreNum * valorUnitLivreNum;
 
   const { data: produtosEstoque = [] } = useQuery({
     queryKey: ['produtos-manutencao', propriedadeId],
