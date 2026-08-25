@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, Plus, Edit, Trash2, Maximize2, AlertCircle, Search } from "lucide-react";
+import { MapPin, Plus, Edit, Trash2, Maximize2, AlertCircle, Search, Sprout } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TalhaoForm } from "@/components/talhoes/TalhaoForm";
 
@@ -80,6 +81,10 @@ export function Talhoes() {
           <p className="text-muted-foreground mt-1">Gerencie as áreas de plantio de {propriedadeAtual.nome}</p>
         </div>
 
+        <div className="flex gap-2">
+        <Link to="/culturas">
+          <Button variant="outline"><Sprout className="h-4 w-4 mr-2" />Culturas</Button>
+        </Link>
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-2" />Novo Talhão</Button>
@@ -95,6 +100,7 @@ export function Talhoes() {
             />
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Cards de Resumo */}
