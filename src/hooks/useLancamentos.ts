@@ -215,6 +215,21 @@ export function useExcluirLancamento() {
     mutationFn: async (lancamentoId: string) => {
       console.log('🗑️ Iniciando exclusão do lançamento:', lancamentoId)
 
+      // Lançamentos vinculados a uma manutenção de máquina têm ciclo de vida próprio
+      // (Realizar/Cancelar em Máquinas) — não podem ser excluídos direto por aqui,
+      // senão o histórico de manutenção fica com status "realizada" órfão, sem lançamento.
+      const { data: lancamentoCheck, error: checkError } = await supabase
+        .from('lancamentos')
+        .select('manutencao_id')
+        .eq('id', lancamentoId)
+        .single()
+
+      if (checkError) throw checkError
+
+      if (lancamentoCheck?.manutencao_id) {
+        throw new Error('Este lançamento veio de uma manutenção de máquina. Para removê-lo, vá em Máquinas → Histórico de Manutenções e cancele a manutenção por lá.')
+      }
+
       // ETAPA 1: BUSCAR ITENS DO LANÇAMENTO
       const { data: itensLancamento, error: fetchError } = await supabase
         .from('lancamentos_itens')
