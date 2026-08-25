@@ -892,13 +892,7 @@ export function Maquinas() {
           }
         }}
         manutencao={manutencaoStatusAlvo}
-        maquina={
-          manutencaoStatusAlvo?.maquina_id
-            ? (maquinas?.find((mq: any) => mq.id === manutencaoStatusAlvo.maquina_id) as
-                | { id: string; unidade_calculo?: string }
-                | undefined) ?? null
-            : null
-        }
+        maquina={maquinas?.find((m: any) => m.id === manutencaoStatusAlvo?.maquina_id) || null}
         modo={modoStatus}
       />
     </div>
