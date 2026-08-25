@@ -120,6 +120,8 @@ export function AppRoutes() {
         <Route path="equipe" element={<MinhaEquipe />} />
         <Route path="safras" element={<SafrasPage />} />
         <Route path="talhoes" element={<Talhoes />} />
+        <Route path="culturas" element={<Culturas />} />
+
         
         <Route path="estoque" element={<Estoque />} />
         <Route path="producao" element={<Producao />} />
