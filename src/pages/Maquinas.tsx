@@ -12,14 +12,15 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format } from 'date-fns';
+import { format, addMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Tractor, Truck, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets, Wrench, AlertTriangle, Info } from 'lucide-react';
+import { Plus, Tractor, Truck, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets, Wrench, AlertTriangle, Info, ChevronLeft, ChevronRight } from 'lucide-react';
 import { MaquinaForm } from '@/components/maquinas/MaquinaForm';
 import { AbastecimentoForm } from '@/components/maquinas/AbastecimentoForm';
 import { HistoricoAbastecimentos } from '@/components/maquinas/HistoricoAbastecimentos';
 import { MaquinaCardAcoes } from '@/components/maquinas/MaquinaCardAcoes';
 import { ManutencaoDialog } from '@/components/maquinas/ManutencaoDialog';
+import { AlterarStatusManutencaoDialog } from '@/components/maquinas/AlterarStatusManutencaoDialog';
 import { cn } from '@/lib/utils';
 
 interface Maquina {
@@ -70,6 +71,10 @@ export function Maquinas() {
   const [abastecimentoDialogOpen, setAbastecimentoDialogOpen] = useState(false);
   const [manutencaoDialog, setManutencaoDialog] = useState(false);
   const [maquinaManutencao, setMaquinaManutencao] = useState<Maquina | null>(null);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [manutencaoStatusAlvo, setManutencaoStatusAlvo] = useState<{ id: string; descricao: string; observacoes: string | null } | null>(null);
+  const [modoStatus, setModoStatus] = useState<'realizar' | 'cancelar' | null>(null);
+  const [mesReferencia, setMesReferencia] = useState(() => startOfMonth(new Date()));
 
   const propId = propriedadeAtual?.id;
   const safraId = safraAtual?.id;
@@ -202,13 +207,27 @@ export function Maquinas() {
     enabled: !!propId,
   });
 
-  // Recent maintenance for history table (limit 20)
-  // Recent maintenance for history table — só da safra selecionada (limit 20)
+  // Histórico de manutenções — da safra selecionada, filtrado por mês de referência
   const manutencoesSafra = useMemo(
     () => (todasManutencoes || []).filter((m: any) => m.safra_id === safraId),
     [todasManutencoes, safraId]
   );
-  const manutencoes = useMemo(() => manutencoesSafra.slice(0, 20), [manutencoesSafra]);
+  const manutencoes = useMemo(() => {
+    const inicio = startOfMonth(mesReferencia);
+    const fim = endOfMonth(mesReferencia);
+    return manutencoesSafra
+      .filter((m: any) => {
+        const dataRef = m.data_realizada || m.data_prevista || m.created_at;
+        if (!dataRef) return false;
+        const d = new Date(String(dataRef).length === 10 ? `${dataRef}T12:00:00` : dataRef);
+        return d >= inicio && d <= fim;
+      })
+      .sort((a: any, b: any) => {
+        const da = a.data_realizada || a.data_prevista || a.created_at;
+        const db = b.data_realizada || b.data_prevista || b.created_at;
+        return new Date(db).getTime() - new Date(da).getTime();
+      });
+  }, [manutencoesSafra, mesReferencia]);
 
   // Horímetro-based alerts per machine
   const alertasHorimetro = useMemo(() => {
@@ -645,12 +664,25 @@ export function Maquinas() {
 
       {/* Histórico de Manutenções */}
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold text-foreground">Histórico de Manutenções</h2>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h2 className="text-lg font-semibold text-foreground">Histórico de Manutenções</h2>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => setMesReferencia((m) => addMonths(m, -1))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium capitalize min-w-[140px] text-center">
+              {format(mesReferencia, 'MMMM/yyyy', { locale: ptBR })}
+            </span>
+            <Button variant="outline" size="icon" onClick={() => setMesReferencia((m) => addMonths(m, 1))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
         {!manutencoes || manutencoes.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-8">
               <Wrench className="h-12 w-12 text-muted-foreground mb-3" />
-              <p className="text-muted-foreground text-sm">Nenhuma manutenção registrada</p>
+              <p className="text-muted-foreground text-sm">Nenhuma manutenção neste mês</p>
             </CardContent>
           </Card>
         ) : (
@@ -667,6 +699,7 @@ export function Maquinas() {
                     <TableHead>Horímetro</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Custo</TableHead>
+                    <TableHead>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -704,6 +737,49 @@ export function Maquinas() {
                       <TableCell className="text-right">
                         {m.custo != null ? fmtCurrency(Number(m.custo)) : '—'}
                       </TableCell>
+                      <TableCell>
+                        {m.status === 'agendada' && (
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setManutencaoStatusAlvo(m);
+                                setModoStatus('realizar');
+                                setStatusDialogOpen(true);
+                              }}
+                            >
+                              Realizar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() => {
+                                setManutencaoStatusAlvo(m);
+                                setModoStatus('cancelar');
+                                setStatusDialogOpen(true);
+                              }}
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        )}
+                        {m.status === 'realizada' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive"
+                            onClick={() => {
+                              setManutencaoStatusAlvo(m);
+                              setModoStatus('cancelar');
+                              setStatusDialogOpen(true);
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -739,6 +815,47 @@ export function Maquinas() {
                             {m.custo != null ? fmtCurrency(Number(m.custo)) : '—'}
                           </div>
                           <Badge variant="outline" className="mt-1 capitalize">{m.status}</Badge>
+                          {m.status === 'agendada' && (
+                            <div className="flex gap-1 mt-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setManutencaoStatusAlvo(m);
+                                  setModoStatus('realizar');
+                                  setStatusDialogOpen(true);
+                                }}
+                              >
+                                Realizar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive"
+                                onClick={() => {
+                                  setManutencaoStatusAlvo(m);
+                                  setModoStatus('cancelar');
+                                  setStatusDialogOpen(true);
+                                }}
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          )}
+                          {m.status === 'realizada' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive mt-2"
+                              onClick={() => {
+                                setManutencaoStatusAlvo(m);
+                                setModoStatus('cancelar');
+                                setStatusDialogOpen(true);
+                              }}
+                            >
+                              Cancelar
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -755,6 +872,19 @@ export function Maquinas() {
         onOpenChange={setManutencaoDialog}
         maquina={maquinaManutencao}
         propriedadeId={propriedadeAtual?.id || ''}
+      />
+
+      <AlterarStatusManutencaoDialog
+        open={statusDialogOpen}
+        onOpenChange={(o) => {
+          setStatusDialogOpen(o);
+          if (!o) {
+            setManutencaoStatusAlvo(null);
+            setModoStatus(null);
+          }
+        }}
+        manutencao={manutencaoStatusAlvo}
+        modo={modoStatus}
       />
     </div>
   );
