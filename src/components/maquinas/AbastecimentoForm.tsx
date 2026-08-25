@@ -131,8 +131,6 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
         .single();
       if (error) throw error;
 
-      const abastecimentoId = (abastecimentoData as any).id;
-
       // 2. Update horímetro ou km, o que for o caso, se o novo valor for maior
       if (horimetroNum > medidorAtual) {
         const { error: updateError } = await supabase
@@ -142,51 +140,9 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
         if (updateError) console.error(`Erro ao atualizar ${labelMedidor.toLowerCase()}:`, updateError);
       }
 
-      // 3. Criar lançamento vinculado (se houver safra ativa)
-      if (!propriedadeAtual?.id) return;
-
-      const { data: safraAtiva } = await supabase
-        .from('safras')
-        .select('id')
-        .eq('propriedade_id', propriedadeAtual.id)
-        .eq('ativa', true)
-        .maybeSingle();
-
-      if (!safraAtiva) {
-        toast({
-          title: 'Abastecimento registrado!',
-          description: 'Atenção: Sem safra ativa. O lançamento não foi criado.',
-        });
-        return;
-      }
-
-      // 4. Buscar ou criar serviço "Abastecimento - [nome da máquina]"
-      const { data: servicoId, error: servicoError } = await supabase
-        .rpc('get_or_create_servico_abastecimento', {
-          p_propriedade_id: propriedadeAtual.id,
-          p_maquina_nome: maquina.nome
-        });
-
-      if (servicoError) throw servicoError;
-
-      // 5. Criar lançamento vinculado
-      const obsLancamento = `Abastecimento: ${litrosNum}L ${combustivel} - ${labelMedidor}: ${horimetroNum}${ehKm ? 'km' : 'h'}${posto ? ` - Posto: ${posto}` : ''}${observacoes ? `\n${observacoes}` : ''}`;
-
-      const { error: lancError } = await supabase
-        .from('lancamentos')
-        .insert({
-          propriedade_id: propriedadeAtual.id,
-          safra_id: safraAtiva.id,
-          servico_id: servicoId,
-          talhao_id: null,
-          data_execucao: data,
-          custo_total: custoNum,
-          observacoes: obsLancamento,
-          abastecimento_id: abastecimentoId,
-          criado_por: user?.id || null,
-        } as any);
-
-      if (lancError) throw lancError;
+      // O lançamento vinculado é criado automaticamente pelo trigger do banco
+      // (fn_abastecimento_para_lancamento) assim que o abastecimento é inserido —
+      // não deve ser criado aqui de novo, senão duplica.
     },
     onSuccess: () => {
       toast({
