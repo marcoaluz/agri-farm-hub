@@ -54,7 +54,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
   const [descricao, setDescricao] = useState('');
   const [status, setStatus] = useState('agendada');
   const [dataPrevista, setDataPrevista] = useState<Date | undefined>(new Date());
-  const [dataRealizada, setDataRealizada] = useState<Date | undefined>();
+  const [dataRealizada, setDataRealizada] = useState<Date | undefined>(new Date());
   const [horimetroManutencao, setHorimetroManutencao] = useState('');
   const [proximoHorimetro, setProximoHorimetro] = useState('');
   const [oficina, setOficina] = useState('');
@@ -204,7 +204,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
     setDescricao('');
     setStatus('agendada');
     setDataPrevista(new Date());
-    setDataRealizada(undefined);
+    setDataRealizada(new Date());
     setHorimetroManutencao('');
     setProximoHorimetro('');
     setCusto('');
