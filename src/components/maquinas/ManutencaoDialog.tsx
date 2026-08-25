@@ -239,10 +239,11 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
 
     setSaving(true);
     try {
-      // Se vier do estoque, consome FIFO primeiro
-      let custoFinal: number | null = origemEstoque ? custoEstoqueEstimado : (custo ? Number(custo) : null);
+      // A baixa de estoque (FIFO) só acontece quando a manutenção está Realizada.
+      // Se for Agendada, guardamos produto/quantidade planejados e não mexemos no estoque ainda.
+      let custoFinal: number | null = origemEstoque ? null : (custo ? Number(custo) : null);
       let detalhamentoLotes: any = null;
-      if (origemEstoque && produtoId) {
+      if (origemEstoque && produtoId && status === 'realizada') {
         const resultado = await consumirFIFO(produtoId, qtdProdutoNum);
         custoFinal = resultado.custoTotal;
         detalhamentoLotes = resultado.detalhamento;
@@ -269,6 +270,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
           oficina: oficina.trim() || null,
           observacoes: observacoes.trim() || null,
           produto_id: origemEstoque ? produtoId : null,
+          quantidade_produto: origemEstoque ? qtdProdutoNum : null,
           detalhamento_lotes: detalhamentoLotes,
         });
 
@@ -604,10 +606,16 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Custo (R$)</Label>
+                  <Label>Custo estimado (R$)</Label>
                   <Input type="number" step="0.01" value={custoEstoqueEstimado.toFixed(2)} disabled />
                 </div>
               </div>
+
+              {status !== 'realizada' && (
+                <p className="text-xs text-muted-foreground">
+                  O estoque só será baixado quando a manutenção for marcada como Realizada.
+                </p>
+              )}
 
               {estoqueInsuficiente && (
                 <Alert variant="destructive">
