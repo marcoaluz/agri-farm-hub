@@ -269,6 +269,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
           oficina: oficina.trim() || null,
           observacoes: observacoes.trim() || null,
           produto_id: origemEstoque ? produtoId : null,
+          quantidade_produto: origemEstoque ? qtdProdutoNum : null,
           detalhamento_lotes: detalhamentoLotes,
         });
 
@@ -604,10 +605,16 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Custo (R$)</Label>
+                  <Label>Custo estimado (R$)</Label>
                   <Input type="number" step="0.01" value={custoEstoqueEstimado.toFixed(2)} disabled />
                 </div>
               </div>
+
+              {status !== 'realizada' && (
+                <p className="text-xs text-muted-foreground">
+                  O estoque só será baixado quando a manutenção for marcada como Realizada.
+                </p>
+              )}
 
               {estoqueInsuficiente && (
                 <Alert variant="destructive">
