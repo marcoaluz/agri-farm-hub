@@ -76,9 +76,12 @@ export function Maquinas() {
     id: string;
     descricao: string;
     observacoes: string | null;
+    status?: string;
     maquina_id?: string;
     horimetro_na_manutencao?: number | null;
     horimetro_anterior?: number | null;
+    produto_id?: string | null;
+    quantidade_produto?: number | null;
     detalhamento_lotes?: any;
   } | null>(null);
   const [modoStatus, setModoStatus] = useState<'realizar' | 'cancelar' | null>(null);
