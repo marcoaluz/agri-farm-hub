@@ -11,14 +11,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { CalendarIcon, Wrench, Plus, Check, X, Trash2, Loader2, Tractor, Truck } from 'lucide-react';
+import { CalendarIcon, Wrench, Plus, Check, X, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { consumirFIFO } from '@/lib/fifoConsumo';
 
 interface Maquina {
   id: string;
@@ -55,9 +57,35 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
   const [dataRealizada, setDataRealizada] = useState<Date | undefined>();
   const [horimetroManutencao, setHorimetroManutencao] = useState('');
   const [proximoHorimetro, setProximoHorimetro] = useState('');
-  const [custo, setCusto] = useState('');
   const [oficina, setOficina] = useState('');
   const [observacoes, setObservacoes] = useState('');
+
+  // ── Origem do custo: Estoque ou Livre ──
+  const [origemEstoque, setOrigemEstoque] = useState(false);
+  const [produtoId, setProdutoId] = useState('');
+  const [quantidadeProduto, setQuantidadeProduto] = useState('1');
+  const [custo, setCusto] = useState('');
+
+  const { data: produtosEstoque = [] } = useQuery({
+    queryKey: ['produtos-manutencao', propriedadeId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_produtos_usuario', {
+        p_propriedade_id: propriedadeId,
+      });
+      if (error) throw error;
+      return ((data as any[]) || []).filter(
+        (p) => p.ativo !== false && (p.categoria || '').toLowerCase().includes('manuten')
+      );
+    },
+    enabled: !!propriedadeId && open,
+  });
+
+  const produtoSelecionado = produtosEstoque.find((p: any) => p.id === produtoId);
+  const qtdProdutoNum = parseFloat(quantidadeProduto) || 0;
+  const custoEstoqueEstimado = produtoSelecionado ? qtdProdutoNum * Number(produtoSelecionado.custo_medio || 0) : 0;
+  const estoqueInsuficiente = origemEstoque && produtoSelecionado && qtdProdutoNum > Number(produtoSelecionado.saldo_atual || 0);
+
+  const custoFinalExibido = origemEstoque ? custoEstoqueEstimado : (parseFloat(custo) || 0);
 
   // ── Categorias dinâmicas ──
   const { data: categorias = [], refetch: refetchCategorias } = useQuery<CategoriaManutencaoRow[]>({
@@ -184,6 +212,9 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
     setObservacoes('');
     setShowNovaCategoria(false);
     setNovaCategoriaNome('');
+    setOrigemEstoque(false);
+    setProdutoId('');
+    setQuantidadeProduto('1');
   };
 
   const { safraAtual } = useGlobal();
@@ -197,9 +228,29 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
       toast({ title: 'Selecione o tipo de manutenção', variant: 'destructive' });
       return;
     }
+    if (origemEstoque && !produtoId) {
+      toast({ title: 'Selecione a peça/produto do estoque', variant: 'destructive' });
+      return;
+    }
+    if (estoqueInsuficiente) {
+      toast({ title: 'Estoque insuficiente para essa quantidade', variant: 'destructive' });
+      return;
+    }
 
     setSaving(true);
     try {
+      // Se vier do estoque, consome FIFO primeiro
+      let custoFinal: number | null = origemEstoque ? custoEstoqueEstimado : (custo ? Number(custo) : null);
+      let detalhamentoLotes: any = null;
+      if (origemEstoque && produtoId) {
+        const resultado = await consumirFIFO(produtoId, qtdProdutoNum);
+        custoFinal = resultado.custoTotal;
+        detalhamentoLotes = resultado.detalhamento;
+      }
+
+      // Se marcado como Realizada com horímetro maior que o atual, bump + guarda o valor anterior
+      const vaiAtualizarMedidor = status === 'realizada' && horimetroManutencao && Number(horimetroManutencao) > medidorAtual;
+
       const { error } = await supabase
         .from('maquina_manutencoes' as any)
         .insert({
@@ -212,13 +263,23 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
           data_prevista: dataPrevista ? format(dataPrevista, 'yyyy-MM-dd') : null,
           data_realizada: status === 'realizada' && dataRealizada ? format(dataRealizada, 'yyyy-MM-dd') : null,
           horimetro_na_manutencao: horimetroManutencao ? Number(horimetroManutencao) : null,
+          horimetro_anterior: vaiAtualizarMedidor ? medidorAtual : null,
           proximo_horimetro: proximoHorimetro ? Number(proximoHorimetro) : null,
-          custo: custo ? Number(custo) : null,
+          custo: custoFinal,
           oficina: oficina.trim() || null,
           observacoes: observacoes.trim() || null,
+          produto_id: origemEstoque ? produtoId : null,
+          detalhamento_lotes: detalhamentoLotes,
         });
 
       if (error) throw error;
+
+      if (vaiAtualizarMedidor) {
+        await supabase
+          .from('maquinas' as any)
+          .update(ehKm ? { km_atual: Number(horimetroManutencao) } : { horimetro_atual: Number(horimetroManutencao) })
+          .eq('id', maquina.id);
+      }
 
       toast({ title: 'Manutenção registrada com sucesso' });
       queryClient.invalidateQueries({ queryKey: ['manutencoes-proximas'] });
@@ -226,6 +287,9 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
       queryClient.invalidateQueries({ queryKey: ['maquinas'] });
       queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
       queryClient.invalidateQueries({ queryKey: ['transacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos-manutencao'] });
+      queryClient.invalidateQueries({ queryKey: ['lotes'] });
       resetForm();
       onOpenChange(false);
     } catch (err: any) {
@@ -469,6 +533,14 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
             <div className="space-y-2">
               <Label>{labelMedidor} na Manutenção</Label>
               <Input type="number" placeholder="Ex: 1500" value={horimetroManutencao} onChange={e => setHorimetroManutencao(e.target.value)} />
+              {status === 'realizada' && horimetroManutencao && Number(horimetroManutencao) > medidorAtual && (
+                <Alert className="py-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Vai atualizar o {labelMedidor.toLowerCase()} da máquina de {medidorAtual} para {horimetroManutencao}.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Próximo {labelMedidor}</Label>
@@ -476,16 +548,88 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Custo R$</Label>
-              <Input type="number" step="0.01" placeholder="0,00" value={custo} onChange={e => setCusto(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Oficina</Label>
-              <Input placeholder="Nome da oficina" value={oficina} onChange={e => setOficina(e.target.value)} />
+          {/* Origem do custo — Estoque ou Livre */}
+          <div className="space-y-2">
+            <Label>Peça / custo</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={origemEstoque ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => setOrigemEstoque(true)}
+              >
+                Do Estoque
+              </Button>
+              <Button
+                type="button"
+                variant={!origemEstoque ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => { setOrigemEstoque(false); setProdutoId(''); }}
+              >
+                Livre
+              </Button>
             </div>
           </div>
+
+          {origemEstoque ? (
+            <div className="space-y-4 rounded-lg border p-3 bg-muted/30">
+              <div className="space-y-2">
+                <Label>Peça / produto do estoque *</Label>
+                <Select value={produtoId} onValueChange={setProdutoId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a peça" /></SelectTrigger>
+                  <SelectContent>
+                    {produtosEstoque.length === 0 && (
+                      <div className="px-2 py-3 text-xs text-muted-foreground">
+                        Nenhum produto na categoria "Manutenção".
+                      </div>
+                    )}
+                    {produtosEstoque.map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.nome} (saldo: {Number(p.saldo_atual || 0).toFixed(0)} {p.unidade_medida})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Quantidade</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={quantidadeProduto}
+                    onChange={e => setQuantidadeProduto(e.target.value)}
+                    className={estoqueInsuficiente ? 'border-destructive' : ''}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Custo (R$)</Label>
+                  <Input type="number" step="0.01" value={custoEstoqueEstimado.toFixed(2)} disabled />
+                </div>
+              </div>
+
+              {estoqueInsuficiente && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Quantidade maior que o estoque disponível!
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Custo R$</Label>
+                <Input type="number" step="0.01" placeholder="0,00" value={custo} onChange={e => setCusto(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Oficina</Label>
+                <Input placeholder="Nome da oficina" value={oficina} onChange={e => setOficina(e.target.value)} />
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Observações</Label>
@@ -495,7 +639,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving || estoqueInsuficiente}>
             {saving ? 'Salvando...' : 'Salvar Manutenção'}
           </Button>
         </DialogFooter>
