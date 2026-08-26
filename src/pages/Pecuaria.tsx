@@ -27,6 +27,7 @@ import { OrdenhaDialog } from '@/components/pecuaria/OrdenhaDialog'
 import { RacaoDialog } from '@/components/pecuaria/RacaoDialog'
 import { PesagemDialog } from '@/components/pecuaria/PesagemDialog'
 import { AnimaisRebanhoDialog } from '@/components/pecuaria/AnimaisRebanhoDialog'
+import { RankingLeiteCard } from '@/components/pecuaria/RankingLeiteCard'
 
 const ESPECIE_EMOJI: Record<string, string> = {
   bovino_corte: '🐄', bovino_leite: '🐄', ave_postura: '🐔', ave_corte: '🐔',
@@ -538,6 +539,8 @@ export default function Pecuaria() {
               <div className="flex justify-end">
                 <Button onClick={() => { if (!verificarSafra('registrar ordenha')) return; setOrdenhaDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Plus className="h-4 w-4 mr-1" /> Registrar Ordenha</Button>
               </div>
+
+              <RankingLeiteCard propriedadeId={propId} />
 
               {loadingOrdenha ? <Skeleton className="h-48" /> : !ordenhas?.length ? (
                 <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhuma ordenha registrada.</CardContent></Card>
