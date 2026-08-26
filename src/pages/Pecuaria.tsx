@@ -540,6 +540,8 @@ export default function Pecuaria() {
                 <Button onClick={() => { if (!verificarSafra('registrar ordenha')) return; setOrdenhaDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Plus className="h-4 w-4 mr-1" /> Registrar Ordenha</Button>
               </div>
 
+              <RankingLeiteCard propriedadeId={propId} />
+
               {loadingOrdenha ? <Skeleton className="h-48" /> : !ordenhas?.length ? (
                 <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhuma ordenha registrada.</CardContent></Card>
               ) : (
