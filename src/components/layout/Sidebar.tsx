@@ -45,7 +45,7 @@ interface SidebarProps {
   onClose: () => void
 }
 
-const routes = [
+export const routes = [
   { label: 'Dashboard',     icon: LayoutDashboard, href: '/',             sempre: true },
   { label: 'Propriedades',  icon: Home,            href: '/propriedades', sempre: true },
   { label: 'Usuários',      icon: Users,           href: '/equipe',       sempre: true, hideForAdmin: true },
