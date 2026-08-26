@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import { OrdemMenuCard } from '@/components/configuracoes/OrdemMenuCard'
 
 const perfilLabels: Record<string, string> = {
   admin: 'Administrador',
@@ -107,6 +108,10 @@ export function Configuracoes() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Seção — Ordem do Menu */}
+
+          <OrdemMenuCard />
 
           {/* Seção 2 — Aparência */}
           <Card>
