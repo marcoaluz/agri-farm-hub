@@ -105,13 +105,41 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     return () => window.removeEventListener('sga-alertas-update', handler)
   }, [])
 
-  const routesFiltradas = routes.filter(route => {
+  const [menuOrder, setMenuOrder] = useState<string[] | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('user_profiles' as any)
+      .select('menu_order')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => setMenuOrder((data as any)?.menu_order || null))
+  }, [user])
+
+  const routesVisiveis = routes.filter(route => {
     if ((route as any).hideForAdmin && isAdmin) return false
     if (route.sempre) return true
     if (!propriedadeAtual) return false
     if (route.modulo) return modulos[route.modulo]
     return true
   })
+
+  // Dashboard sempre primeiro e fixo. O resto segue a ordem salva pelo usuário,
+  // com qualquer item novo/não-salvo indo pro final, na ordem padrão.
+  const routesFiltradas = (() => {
+    const dashboard = routesVisiveis.find(r => r.href === '/')
+    const resto = routesVisiveis.filter(r => r.href !== '/')
+    if (!menuOrder || menuOrder.length === 0) {
+      return dashboard ? [dashboard, ...resto] : resto
+    }
+    const ordenado = [...resto].sort((a, b) => {
+      const ia = menuOrder.indexOf(a.href)
+      const ib = menuOrder.indexOf(b.href)
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib)
+    })
+    return dashboard ? [dashboard, ...ordenado] : ordenado
+  })()
 
   useEffect(() => {
     async function checkAdmin() {
