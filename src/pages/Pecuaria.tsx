@@ -15,8 +15,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Beef, Syringe, Milk, ArrowLeftRight, MapPin, Pencil, Trash2, AlertTriangle, Wheat, Scale, ShoppingCart, Users } from 'lucide-react'
-import { format, addDays, startOfMonth, endOfMonth } from 'date-fns'
+import { Plus, Beef, Syringe, Milk, ArrowLeftRight, MapPin, Pencil, Trash2, AlertTriangle, Wheat, Scale, ShoppingCart, Users, ChevronLeft, ChevronRight } from 'lucide-react'
+import { format, addDays, addMonths, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { LoteDialog } from '@/components/pecuaria/LoteDialog'
@@ -84,7 +84,7 @@ export default function Pecuaria() {
   // Filters
   const [filtroSanTipo, setFiltroSanTipo] = useState('todos')
   const [filtroSanRebanho, setFiltroSanRebanho] = useState('todos')
-  const [paginaOrdenha, setPaginaOrdenha] = useState(0)
+  const [mesOrdenha, setMesOrdenha] = useState(() => startOfMonth(new Date()))
 
   // === QUERIES ===
   const { data: rebanhos, isLoading: loadingRebanhos } = useQuery({
@@ -254,8 +254,15 @@ export default function Pecuaria() {
     return filtered
   }, [eventosSanitarios, filtroSanTipo, filtroSanRebanho])
 
-  // Paginated ordenhas
-  const ordenhasPaginadas = useMemo(() => (ordenhas || []).slice(paginaOrdenha * 10, (paginaOrdenha + 1) * 10), [ordenhas, paginaOrdenha])
+  // Ordenhas do mês selecionado
+  const ordenhasDoMes = useMemo(() => {
+    const inicio = startOfMonth(mesOrdenha)
+    const fim = endOfMonth(mesOrdenha)
+    return (ordenhas || []).filter((o: any) => {
+      const d = new Date(o.data + 'T12:00:00')
+      return d >= inicio && d <= fim
+    })
+  }, [ordenhas, mesOrdenha])
 
   // Delete rebanho
   async function handleExcluirMovimentacao() {
@@ -536,50 +543,54 @@ export default function Pecuaria() {
                 </CardContent>
               </Card>
 
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setMesOrdenha(m => addMonths(m, -1))}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-medium capitalize min-w-[130px] text-center">
+                    {format(mesOrdenha, 'MMMM/yyyy', { locale: ptBR })}
+                  </span>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setMesOrdenha(m => addMonths(m, 1))}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
                 <Button onClick={() => { if (!verificarSafra('registrar ordenha')) return; setOrdenhaDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Plus className="h-4 w-4 mr-1" /> Registrar Ordenha</Button>
               </div>
 
               <RankingLeiteCard propriedadeId={propId} />
 
-              {loadingOrdenha ? <Skeleton className="h-48" /> : !ordenhas?.length ? (
-                <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhuma ordenha registrada.</CardContent></Card>
+              {loadingOrdenha ? <Skeleton className="h-48" /> : !ordenhasDoMes.length ? (
+                <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhuma ordenha neste mês.</CardContent></Card>
               ) : (
-                <>
-                  <Card>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Data</TableHead>
-                          <TableHead>Turno</TableHead>
-                          <TableHead>Litros</TableHead>
-                          <TableHead>Vacas</TableHead>
-                          <TableHead>Destino</TableHead>
-                          <TableHead className="text-right">Valor</TableHead>
+                <Card>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Turno</TableHead>
+                        <TableHead>Litros</TableHead>
+                        <TableHead className="hidden sm:table-cell">Descartado</TableHead>
+                        <TableHead>Vacas</TableHead>
+                        <TableHead>Destino</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {ordenhasDoMes.map((o: any) => (
+                        <TableRow key={o.id}>
+                          <TableCell>{format(new Date(o.data + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell className="capitalize">{o.turno}</TableCell>
+                          <TableCell>{Number(o.litros).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{Number(o.litros_descartados) > 0 ? `${Number(o.litros_descartados).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}L` : '-'}</TableCell>
+                          <TableCell>{o.vacas_ordenhadas || '-'}</TableCell>
+                          <TableCell className="capitalize">{o.destino?.replace('_', ' ') || '-'}</TableCell>
+                          <TableCell className="text-right">{o.valor_total ? `R$ ${Number(o.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {ordenhasPaginadas.map((o: any) => (
-                          <TableRow key={o.id}>
-                            <TableCell>{format(new Date(o.data), 'dd/MM/yyyy')}</TableCell>
-                            <TableCell className="capitalize">{o.turno}</TableCell>
-                            <TableCell>{Number(o.litros).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</TableCell>
-                            <TableCell>{o.vacas_ordenhadas || '-'}</TableCell>
-                            <TableCell className="capitalize">{o.destino?.replace('_', ' ') || '-'}</TableCell>
-                            <TableCell className="text-right">{o.valor_total ? `R$ ${Number(o.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </Card>
-                  {(ordenhas?.length || 0) > 10 && (
-                    <div className="flex justify-center gap-2">
-                      <Button size="sm" variant="outline" disabled={paginaOrdenha === 0} onClick={() => setPaginaOrdenha(p => p - 1)}>Anterior</Button>
-                      <span className="text-sm text-muted-foreground py-2">Página {paginaOrdenha + 1} de {Math.ceil((ordenhas?.length || 0) / 10)}</span>
-                      <Button size="sm" variant="outline" disabled={(paginaOrdenha + 1) * 10 >= (ordenhas?.length || 0)} onClick={() => setPaginaOrdenha(p => p + 1)}>Próxima</Button>
-                    </div>
-                  )}
-                </>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
               )}
             </>
           )}
