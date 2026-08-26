@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { parseGeometria } from "./MapaDesenho";
-import { Plus, Check, X, Loader2 } from "lucide-react";
+import { NovaCulturaDialog } from "./NovaCulturaDialog";
+import { Plus } from "lucide-react";
 
 interface Talhao {
   id: string;
@@ -53,28 +54,7 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
   const [anoPlantio, setAnoPlantio] = useState(talhao?.ano_plantio?.toString() || "");
   const [variedade, setVariedade] = useState(talhao?.variedade || "");
 
-  const [showNovaCultura, setShowNovaCultura] = useState(false);
-  const [novaCulturaNome, setNovaCulturaNome] = useState("");
-  const [salvandoCultura, setSalvandoCultura] = useState(false);
-
-  const handleAdicionarCultura = async () => {
-    const nome = novaCulturaNome.trim();
-    if (!nome) return;
-    setSalvandoCultura(true);
-    const { data, error } = await supabase.rpc("criar_cultura_config" as any, {
-      p_nome_exibicao: nome,
-    });
-    setSalvandoCultura(false);
-    if (error) {
-      toast({ title: "Erro ao criar cultura", description: error.message, variant: "destructive" });
-      return;
-    }
-    setCulturaId((data as any).id);
-    setNovaCulturaNome("");
-    setShowNovaCultura(false);
-    queryClient.invalidateQueries({ queryKey: ["culturas-config"] });
-    toast({ title: "Cultura criada com sucesso" });
-  };
+  const [novaCulturaDialogOpen, setNovaCulturaDialogOpen] = useState(false);
 
   const [geo, setGeo] = useState<{
     geometria: GeoJSON.Polygon | null;
@@ -118,7 +98,7 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
         area_ha: parseFloat(areaHa),
         cultura_id: culturaId,
         cultura_atual: culturaSel?.nome_exibicao || null,
-        quantidade_pes: quantidadePes ? parseInt(quantidadePes) : 0,
+        quantidade_pes: (culturaSel?.permite_quantidade_plantas ?? true) && quantidadePes ? parseInt(quantidadePes) : 0,
         estimativa_colheita: estimativa ? parseFloat(estimativa) : 0,
         ano_plantio: anoPlantio ? parseInt(anoPlantio) : null,
         variedade: variedade || null,
@@ -185,59 +165,48 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
 
       <div>
         <Label>Cultura *</Label>
-        {!showNovaCultura ? (
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Select value={culturaId} onValueChange={setCulturaId}>
-                <SelectTrigger className={errors.cultura_id ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Selecione a cultura" />
-                </SelectTrigger>
-                <SelectContent>
-                  {culturas?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nome_exibicao}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="button" size="icon" variant="outline" onClick={() => setShowNovaCultura(true)} title="Nova cultura">
-              <Plus className="h-4 w-4" />
-            </Button>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Select value={culturaId} onValueChange={setCulturaId}>
+              <SelectTrigger className={errors.cultura_id ? "border-destructive" : ""}>
+                <SelectValue placeholder="Selecione a cultura" />
+              </SelectTrigger>
+              <SelectContent>
+                {culturas?.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.nome_exibicao}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        ) : (
-          <div className="flex gap-2">
-            <Input
-              placeholder="Nome da nova cultura"
-              value={novaCulturaNome}
-              onChange={(e) => setNovaCulturaNome(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdicionarCultura(); } }}
-              autoFocus
-              className="flex-1"
-            />
-            <Button type="button" size="icon" onClick={handleAdicionarCultura} disabled={salvandoCultura || !novaCulturaNome.trim()}>
-              {salvandoCultura ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            </Button>
-            <Button type="button" size="icon" variant="ghost" onClick={() => { setShowNovaCultura(false); setNovaCulturaNome(""); }}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+          <Button type="button" size="icon" variant="outline" onClick={() => setNovaCulturaDialogOpen(true)} title="Nova cultura">
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
         {errors.cultura_id && <p className="text-sm text-destructive mt-1">{errors.cultura_id}</p>}
+
+        <NovaCulturaDialog
+          open={novaCulturaDialogOpen}
+          onOpenChange={setNovaCulturaDialogOpen}
+          onCreated={(cultura) => setCulturaId(cultura.id)}
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <Label>{labelQuantidadePes(culturaSel?.nome_exibicao)}</Label>
-          <Input
-            type="number"
-            min="0"
-            step="1"
-            value={quantidadePes}
-            onChange={(e) => setQuantidadePes(e.target.value)}
-            placeholder="Opcional"
-          />
-        </div>
+        {(culturaSel?.permite_quantidade_plantas ?? true) && (
+          <div>
+            <Label>{labelQuantidadePes(culturaSel?.nome_exibicao)}</Label>
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              value={quantidadePes}
+              onChange={(e) => setQuantidadePes(e.target.value)}
+              placeholder="Opcional"
+            />
+          </div>
+        )}
 
         <div>
           <Label>
