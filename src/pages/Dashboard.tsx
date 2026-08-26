@@ -25,6 +25,7 @@ import { CardAlertas } from '@/components/dashboard/CardAlertas'
 import { TabelaConsolidada } from '@/components/dashboard/TabelaConsolidada'
 import { TabelaConsolidadaV2 } from '@/components/dashboard/TabelaConsolidadaV2'
 import { CardProducao } from '@/components/dashboard/CardProducao'
+import { CardProducaoPecuaria } from '@/components/dashboard/CardProducaoPecuaria'
 import { CardClima } from '@/components/dashboard/CardClima'
 import { ClimaConsolidado } from '@/components/dashboard/ClimaConsolidado'
 import { GraficosConsolidados } from '@/components/dashboard/GraficosConsolidados'
@@ -517,8 +518,30 @@ export default function Dashboard() {
           {/* Pecuária */}
           {modulos.pecuaria && propId && <DashboardPecuaria propId={propId} navigate={navigate} />}
 
-          {/* Produção (unificado) */}
-          <CardProducao propriedadeId={propId || null} safraId={safraId || null} />
+          {/* Produção (Agrícola + Pecuária) */}
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+              🌾 Produção
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                  🌱 Agrícola
+                </h3>
+                <CardProducao propriedadeId={propId || null} safraId={safraId || null} />
+              </div>
+
+              {modulos.pecuaria && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                    🐄 Pecuária
+                  </h3>
+                  <CardProducaoPecuaria propriedadeId={propId || null} />
+                </div>
+              )}
+            </div>
+          </div>
 
 
           {/* Charts */}
