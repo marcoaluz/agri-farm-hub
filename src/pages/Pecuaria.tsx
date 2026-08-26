@@ -27,6 +27,7 @@ import { OrdenhaDialog } from '@/components/pecuaria/OrdenhaDialog'
 import { RacaoDialog } from '@/components/pecuaria/RacaoDialog'
 import { PesagemDialog } from '@/components/pecuaria/PesagemDialog'
 import { AnimaisRebanhoDialog } from '@/components/pecuaria/AnimaisRebanhoDialog'
+import { RankingLeiteCard } from '@/components/pecuaria/RankingLeiteCard'
 
 const ESPECIE_EMOJI: Record<string, string> = {
   bovino_corte: '🐄', bovino_leite: '🐄', ave_postura: '🐔', ave_corte: '🐔',
