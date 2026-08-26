@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -79,9 +79,9 @@ export function OrdenhaDialog({ open, onOpenChange, propriedadeId, rebanhosLeite
     enabled: open && !!form.rebanho_id && individual,
   })
 
-  // Produto "Leite" no Estoque desta propriedade, se já existir
-  const { data: produtoLeite } = useQuery({
-    queryKey: ['produto-leite', propriedadeId],
+  // Produtos de categoria "Leite" no Estoque desta propriedade (pode ter mais de um: Leite A, Leite B...)
+  const { data: produtosLeite } = useQuery({
+    queryKey: ['produtos-leite', propriedadeId],
     queryFn: async () => {
       const { data } = await supabase
         .from('produtos' as any)
@@ -89,12 +89,14 @@ export function OrdenhaDialog({ open, onOpenChange, propriedadeId, rebanhosLeite
         .eq('propriedade_id', propriedadeId)
         .eq('ativo', true)
         .ilike('categoria', '%leite%')
-        .limit(1)
-        .maybeSingle()
-      return data as any
+        .order('nome')
+      return (data || []) as any[]
     },
     enabled: open && !!propriedadeId,
   })
+
+  const [produtoEstoqueId, setProdutoEstoqueId] = useState('')
+  const produtoLeite = produtosLeite?.find(p => p.id === produtoEstoqueId)
 
   const litrosTotal = individual
     ? Object.values(litrosPorVaca).reduce((s, v) => s + (parseFloat(v) || 0), 0)
@@ -107,6 +109,13 @@ export function OrdenhaDialog({ open, onOpenChange, propriedadeId, rebanhosLeite
   const litrosDescartadosNum = parseFloat(form.litros_descartados) || 0
   const litrosUtil = Math.max(litrosTotal - litrosDescartadosNum, 0)
 
+  // Se só tem um produto de Leite cadastrado, já pré-seleciona (mas o campo continua editável)
+  useMemo(() => {
+    if (produtosLeite?.length === 1 && !produtoEstoqueId) {
+      setProdutoEstoqueId(produtosLeite[0].id)
+    }
+  }, [produtosLeite])
+
   function resetForm() {
     setForm({
       rebanho_id: '', data: new Date(), turno: 'unico', litros: '', vacas_ordenhadas: '',
@@ -114,6 +123,7 @@ export function OrdenhaDialog({ open, onOpenChange, propriedadeId, rebanhosLeite
       preco_litro: '', observacoes: '',
     })
     setLitrosPorVaca({})
+    setProdutoEstoqueId('')
   }
 
   async function handleSave() {
@@ -207,6 +217,7 @@ export function OrdenhaDialog({ open, onOpenChange, propriedadeId, rebanhosLeite
 
     queryClient.invalidateQueries({ queryKey: ['ordenhas'] })
     queryClient.invalidateQueries({ queryKey: ['ranking-leite'] })
+    queryClient.invalidateQueries({ queryKey: ['produtos-leite'] })
     queryClient.invalidateQueries({ queryKey: ['produtos'] })
     queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
     queryClient.invalidateQueries({ queryKey: ['lotes'] })
@@ -352,7 +363,24 @@ export function OrdenhaDialog({ open, onOpenChange, propriedadeId, rebanhosLeite
             <Input type="number" step="0.01" value={form.preco_litro} onChange={(e) => setForm(f => ({ ...f, preco_litro: e.target.value }))} />
           </div>
 
-          {!produtoLeite && (
+          {produtosLeite && produtosLeite.length > 0 ? (
+            <div>
+              <Label>Item do Estoque que vai receber esse leite *</Label>
+              <Select value={produtoEstoqueId} onValueChange={setProdutoEstoqueId}>
+                <SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
+                <SelectContent>
+                  {produtosLeite.map((p: any) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!produtoEstoqueId && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Sem selecionar, os litros dessa ordenha não entram no estoque.
+                </p>
+              )}
+            </div>
+          ) : (
             <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded p-2">
               Nenhum produto "Leite" encontrado no Estoque desta propriedade. Os litros dessa ordenha não vão entrar no estoque até você criar um produto com categoria "Leite" em Estoque/Insumos → Novo Produto.
             </p>
