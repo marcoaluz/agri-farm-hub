@@ -109,6 +109,10 @@ export function Configuracoes() {
             </CardContent>
           </Card>
 
+          {/* Seção — Ordem do Menu */}
+
+          <OrdemMenuCard />
+
           {/* Seção 2 — Aparência */}
           <Card>
             <CardHeader>
