@@ -1,9 +1,16 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useToast } from '@/hooks/use-toast'
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { History } from 'lucide-react'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { History, Undo2, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface HistoricoVendasProdutoModalProps {
@@ -11,6 +18,10 @@ interface HistoricoVendasProdutoModalProps {
 }
 
 export function HistoricoVendasProdutoModal({ produto }: HistoricoVendasProdutoModalProps) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [vendaParaCancelar, setVendaParaCancelar] = useState<any | null>(null)
+
   const { data: vendas, isLoading } = useQuery({
     queryKey: ['historico-vendas-produto', produto.id],
     queryFn: async () => {
@@ -21,6 +32,28 @@ export function HistoricoVendasProdutoModal({ produto }: HistoricoVendasProdutoM
         .order('data_venda', { ascending: false })
       if (error) throw error
       return (data || []) as any[]
+    },
+  })
+
+  const cancelarVendaMutation = useMutation({
+    mutationFn: async (vendaId: string) => {
+      const { data, error } = await supabase.rpc('cancelar_venda_estoque' as any, { p_venda_id: vendaId })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      toast({ title: 'Venda cancelada. Quantidade devolvida ao estoque e receita removida do Financeiro.' })
+      queryClient.invalidateQueries({ queryKey: ['historico-vendas-produto'] })
+      queryClient.invalidateQueries({ queryKey: ['produtos'] })
+      queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
+      queryClient.invalidateQueries({ queryKey: ['produtos-leite'] })
+      queryClient.invalidateQueries({ queryKey: ['producao-pecuaria-mes'] })
+      queryClient.invalidateQueries({ queryKey: ['lotes'] })
+      queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+      setVendaParaCancelar(null)
+    },
+    onError: (err: any) => {
+      toast({ title: 'Erro ao cancelar venda', description: err.message, variant: 'destructive' })
     },
   })
 
@@ -92,6 +125,16 @@ export function HistoricoVendasProdutoModal({ produto }: HistoricoVendasProdutoM
                         {v.comprador || 'Comprador não informado'}{v.numero_nf ? ` · NF ${v.numero_nf}` : ''}
                       </p>
                     </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => setVendaParaCancelar(v)}
+                      title="Cancelar venda"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </Button>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="text-sm">
@@ -111,6 +154,33 @@ export function HistoricoVendasProdutoModal({ produto }: HistoricoVendasProdutoM
           </div>
         </>
       )}
+
+      <AlertDialog open={!!vendaParaCancelar} onOpenChange={(o) => { if (!o) setVendaParaCancelar(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar esta venda?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {vendaParaCancelar?.quantidade} {produto.unidade_medida} voltam pro estoque (como um novo lote de estorno), e a
+              receita correspondente é removida do Financeiro. Não pode ser desfeito.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => vendaParaCancelar && cancelarVendaMutation.mutate(vendaParaCancelar.id)}
+              disabled={cancelarVendaMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {cancelarVendaMutation.isPending ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Cancelando...
+                </span>
+              ) : 'Confirmar cancelamento'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
