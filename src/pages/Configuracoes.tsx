@@ -29,24 +29,42 @@ export function Configuracoes() {
   const [perfil, setPerfil] = useState('')
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('sga_tema') === 'dark')
 
-  const [notifEmail, setNotifEmail] = useState(false)
-  const [notifEstoque, setNotifEstoque] = useState(false)
-  const [notifSafra, setNotifSafra] = useState(false)
+  const [prefs, setPrefs] = useState({ financeiro: true, estoque: true, manutencao: true, sanidade: true, tarefas: true })
+  const [savingPrefs, setSavingPrefs] = useState(false)
 
   useEffect(() => {
     if (!user) return
     supabase
       .from('user_profiles')
-      .select('full_name, perfil')
+      .select('full_name, perfil, notification_preferences')
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
           setFullName(data.full_name || '')
           setPerfil(data.perfil || '')
+          if (data.notification_preferences) {
+            setPrefs(p => ({ ...p, ...(data.notification_preferences as any) }))
+          }
         }
       })
   }, [user])
+
+  async function togglePref(chave: keyof typeof prefs, valor: boolean) {
+    const novasPrefs = { ...prefs, [chave]: valor }
+    setPrefs(novasPrefs)
+    if (!user) return
+    setSavingPrefs(true)
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ notification_preferences: novasPrefs })
+      .eq('id', user.id)
+    setSavingPrefs(false)
+    if (error) {
+      toast({ title: 'Erro ao salvar preferência', description: error.message, variant: 'destructive' })
+      setPrefs(prefs) // reverte
+    }
+  }
 
   useEffect(() => {
     if (darkMode) {
@@ -147,23 +165,31 @@ export function Configuracoes() {
                 <Bell className="h-5 w-5" />
                 Notificações
               </CardTitle>
-              <CardDescription>Gerencie como você recebe alertas</CardDescription>
+              <CardDescription>Escolha quais avisos você quer receber no sininho do app</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label htmlFor="notif-email" className="cursor-pointer">Notificações por e-mail</Label>
-                <Switch id="notif-email" checked={notifEmail} onCheckedChange={setNotifEmail} />
+                <Label htmlFor="notif-financeiro" className="cursor-pointer">Contas a pagar/receber (hoje, 3d, 7d)</Label>
+                <Switch id="notif-financeiro" checked={prefs.financeiro} onCheckedChange={v => togglePref('financeiro', v)} disabled={savingPrefs} />
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="notif-estoque" className="cursor-pointer">Alertas de estoque baixo</Label>
-                <Switch id="notif-estoque" checked={notifEstoque} onCheckedChange={setNotifEstoque} />
+                <Label htmlFor="notif-estoque" className="cursor-pointer">Estoque baixo ou zerado</Label>
+                <Switch id="notif-estoque" checked={prefs.estoque} onCheckedChange={v => togglePref('estoque', v)} disabled={savingPrefs} />
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="notif-safra" className="cursor-pointer">Lembretes de safra</Label>
-                <Switch id="notif-safra" checked={notifSafra} onCheckedChange={setNotifSafra} />
+                <Label htmlFor="notif-manutencao" className="cursor-pointer">Manutenção de máquina vencida</Label>
+                <Switch id="notif-manutencao" checked={prefs.manutencao} onCheckedChange={v => togglePref('manutencao', v)} disabled={savingPrefs} />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="notif-sanidade" className="cursor-pointer">Vacinação/sanidade (hoje, 3d, 7d)</Label>
+                <Switch id="notif-sanidade" checked={prefs.sanidade} onCheckedChange={v => togglePref('sanidade', v)} disabled={savingPrefs} />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="notif-tarefas" className="cursor-pointer">Tarefas da Agenda (hoje, 3d, 7d)</Label>
+                <Switch id="notif-tarefas" checked={prefs.tarefas} onCheckedChange={v => togglePref('tarefas', v)} disabled={savingPrefs} />
               </div>
               <p className="text-xs text-muted-foreground pt-1">
-                Configurações de e-mail serão ativadas em breve.
+                Notificação por e-mail e no celular fora do app ainda não estão disponíveis — em breve.
               </p>
             </CardContent>
           </Card>
