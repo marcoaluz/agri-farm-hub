@@ -39,6 +39,7 @@ import { UpgradeRequiredModal } from '@/components/modulos/UpgradeRequiredModal'
 import { Lock } from 'lucide-react'
 import { PrateleiraIcon } from '@/components/icons/PrateleiraIcon'
 import { supabase } from '@/lib/supabase'
+import { useQuery } from '@tanstack/react-query'
 
 interface SidebarProps {
   open: boolean
@@ -105,17 +106,18 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     return () => window.removeEventListener('sga-alertas-update', handler)
   }, [])
 
-  const [menuOrder, setMenuOrder] = useState<string[] | null>(null)
-
-  useEffect(() => {
-    if (!user) return
-    supabase
-      .from('user_profiles' as any)
-      .select('menu_order')
-      .eq('id', user.id)
-      .maybeSingle()
-      .then(({ data }) => setMenuOrder((data as any)?.menu_order || null))
-  }, [user])
+  const { data: menuOrder } = useQuery({
+    queryKey: ['menu-order', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_profiles' as any)
+        .select('menu_order')
+        .eq('id', user!.id)
+        .maybeSingle()
+      return ((data as any)?.menu_order as string[] | null) || null
+    },
+    enabled: !!user,
+  })
 
   const routesVisiveis = routes.filter(route => {
     if ((route as any).hideForAdmin && isAdmin) return false

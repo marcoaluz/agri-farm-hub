@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowUp, ArrowDown, ListOrdered, RotateCcw } from 'lucide-react'
@@ -12,6 +13,7 @@ const ROTAS_ORDENAVEIS = routes.filter(r => r.href !== '/')
 export function OrdemMenuCard() {
   const { user } = useAuth()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const [ordem, setOrdem] = useState(ROTAS_ORDENAVEIS)
   const [saving, setSaving] = useState(false)
 
@@ -48,6 +50,7 @@ export function OrdemMenuCard() {
       toast({ title: 'Erro ao salvar ordem do menu', description: error.message, variant: 'destructive' })
       return
     }
+    queryClient.invalidateQueries({ queryKey: ['menu-order'] })
     toast({ title: 'Ordem do menu atualizada' })
   }
 
@@ -68,7 +71,10 @@ export function OrdemMenuCard() {
       .update({ menu_order: null })
       .eq('id', user.id)
     setSaving(false)
-    if (!error) toast({ title: 'Ordem do menu restaurada ao padrão' })
+    if (!error) {
+      queryClient.invalidateQueries({ queryKey: ['menu-order'] })
+      toast({ title: 'Ordem do menu restaurada ao padrão' })
+    }
   }
 
   return (
