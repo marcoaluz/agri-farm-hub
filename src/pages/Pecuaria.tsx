@@ -28,6 +28,7 @@ import { RacaoDialog } from '@/components/pecuaria/RacaoDialog'
 import { PesagemDialog } from '@/components/pecuaria/PesagemDialog'
 import { AnimaisRebanhoDialog } from '@/components/pecuaria/AnimaisRebanhoDialog'
 import { RankingLeiteCard } from '@/components/pecuaria/RankingLeiteCard'
+import { RankingPesoCard } from '@/components/pecuaria/RankingPesoCard'
 
 const ESPECIE_EMOJI: Record<string, string> = {
   bovino_corte: '🐄', bovino_leite: '🐄', ave_postura: '🐔', ave_corte: '🐔',
@@ -650,6 +651,8 @@ export default function Pecuaria() {
           <div className="flex justify-end">
             <Button onClick={() => { if (!verificarSafra('registrar pesagem')) return; setPesagemDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Scale className="h-4 w-4 mr-1" /> Registrar Pesagem</Button>
           </div>
+
+          <RankingPesoCard propriedadeId={propId} />
 
           {loadingPesagens ? (
             <div className="space-y-3">
