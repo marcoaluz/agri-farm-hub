@@ -93,6 +93,10 @@ const schema = z.object({
   if (d.parcelar && !d.data_primeira_parcela) return false
   return true
 }, { message: 'Informe a data da 1ª parcela', path: ['data_primeira_parcela'] })
+.refine((d) => {
+  if (d.tipo === 'receita' && d.categoria === 'venda_producao' && !d.cultura_id) return false
+  return true
+}, { message: 'Selecione a cultura vendida', path: ['cultura_id'] })
 
 
 type FormData = z.infer<typeof schema>
@@ -170,14 +174,24 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const showCulturaFields = watchTipo === 'receita' && watchCategoria === 'venda_producao'
 
   const { data: culturasConfig } = useQuery({
-    queryKey: ['culturas-config'],
+    queryKey: ['culturas-com-estoque', propId],
     queryFn: async () => {
-      const { data } = await supabase.from('culturas_config')
-        .select('id, nome_exibicao, unidade_label').eq('ativo', true)
-      return data || []
+      const { data, error } = await supabase.rpc('get_culturas_com_estoque' as any, { p_propriedade_id: propId })
+      if (error) throw error
+      return (data || []).map((c: any) => ({
+        id: c.cultura_id,
+        nome_exibicao: c.nome_exibicao,
+        unidade_label: c.unidade_label,
+        estoque_disponivel: Number(c.estoque_disponivel),
+      }))
     },
-    enabled: showCulturaFields,
+    enabled: showCulturaFields && !!propId,
   })
+
+  const culturaSelStock = useMemo(() => {
+    const id = form.watch('cultura_id')
+    return culturasConfig?.find((c: any) => c.id === id)
+  }, [culturasConfig, form.watch('cultura_id')])
 
   const watchCulturaId = form.watch('cultura_id')
   const nomeCultura = useMemo(() => {
@@ -279,6 +293,28 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       if (isEditing) {
         await updateMutation.mutateAsync({ id: transacao!.id, ...payload })
         toast.success('Transação atualizada')
+      } else if (showCulturaFields && data.cultura_id) {
+        // Venda de produção agrícola sempre passa pela RPC validada (mesma da tela Produção) —
+        // valida estoque disponível, registra em vendas_producao e fica cancelável por lá.
+        const { error } = await supabase.rpc('registrar_venda_producao' as any, {
+          p_propriedade_id: propId,
+          p_cultura_id: data.cultura_id,
+          p_safra_id: safraId,
+          p_quantidade: data.quantidade_produzida,
+          p_preco_unitario: modoValor === 'unidade' ? precoUnitario : precoUnitarioCalc,
+          p_comprador: data.fornecedor_cliente || null,
+          p_numero_nf: data.numero_nf || null,
+          p_data_venda: format(data.data_vencimento, 'yyyy-MM-dd'),
+          p_observacoes: data.observacoes || null,
+          p_parcelado: data.parcelar,
+          p_num_parcelas: data.parcelar ? data.num_parcelas : 1,
+          p_data_primeira_parcela: data.parcelar ? data.data_primeira_parcela : null,
+        })
+        if (error) throw error
+        toast.success('Venda registrada')
+        queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+        queryClient.invalidateQueries({ queryKey: ['producao-safra'] })
+        queryClient.invalidateQueries({ queryKey: ['culturas-com-estoque'] })
       } else if (data.parcelar && data.num_parcelas && data.data_primeira_parcela) {
         setSalvandoParcelado(true)
         const { data: novaTransacao, error } = await supabase
@@ -383,16 +419,34 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                         <SelectContent className="bg-popover border border-border">
                           <SelectItem value="none">Nenhuma</SelectItem>
                           {culturasConfig?.map((c: any) => (
-                            <SelectItem key={c.id} value={c.id}>{c.nome_exibicao}</SelectItem>
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.nome_exibicao} — {c.estoque_disponivel.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} {c.unidade_label} disponível
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      {culturasConfig?.length === 0 && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          Nenhuma cultura com estoque disponível pra venda. Registre uma colheita em Produção primeiro.
+                        </p>
+                      )}
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="quantidade_produzida" render={({ field }) => (
                     <FormItem>
                       <FormLabel>{`Quantidade vendida (${unidadeLabel || 'unidades'})`}</FormLabel>
-                      <FormControl><Input type="number" step="0.01" min="0" value={field.value ?? ''} onChange={e => field.onChange(e.target.value)} placeholder="0" /></FormControl>
+                      <FormControl>
+                        <Input
+                          type="number" step="0.01" min="0"
+                          max={culturaSelStock?.estoque_disponivel}
+                          value={field.value ?? ''} onChange={e => field.onChange(e.target.value)} placeholder="0"
+                        />
+                      </FormControl>
+                      {culturaSelStock && (
+                        <p className="text-xs text-muted-foreground">
+                          Máximo disponível: {culturaSelStock.estoque_disponivel.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} {unidadeLabel}
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )} />
