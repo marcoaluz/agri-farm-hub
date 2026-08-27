@@ -1,29 +1,15 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { usePropriedades } from '@/hooks/usePropriedades'
+import { supabase } from '@/lib/supabase'
 import { PropriedadeForm } from '@/components/propriedades/PropriedadeForm'
 import { Propriedade } from '@/types'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -38,7 +24,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Plus, MoreVertical, Pencil, Trash2, Home, MapPin, Loader2 } from 'lucide-react'
+import { Plus, MoreVertical, Pencil, Trash2, Home, MapPin, Loader2, User, MapPinned } from 'lucide-react'
 
 export function Propriedades() {
   const {
@@ -57,12 +43,29 @@ export function Propriedades() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [propriedadeToDelete, setPropriedadeToDelete] = useState<string | null>(null)
 
+  const propriedadesLista = Array.isArray(propriedades) ? propriedades : []
+  const activePropriedades = propriedadesLista.filter((p) => p.ativo)
+
+  const { data: talhoesPorPropriedade } = useQuery({
+    queryKey: ['talhoes-count-por-propriedade', activePropriedades.map((p) => p.id).join(',')],
+    queryFn: async () => {
+      if (!activePropriedades.length) return {}
+      const { data } = await supabase
+        .from('talhoes')
+        .select('propriedade_id')
+        .eq('ativo', true)
+        .in('propriedade_id', activePropriedades.map((p) => p.id))
+      const contagem: Record<string, number> = {}
+      ;(data || []).forEach((t: any) => {
+        contagem[t.propriedade_id] = (contagem[t.propriedade_id] || 0) + 1
+      })
+      return contagem
+    },
+    enabled: activePropriedades.length > 0,
+  })
+
   const handleCreate = (data: Parameters<typeof createPropriedade>[0]) => {
-    createPropriedade(data, {
-      onSuccess: () => {
-        setFormOpen(false)
-      },
-    })
+    createPropriedade(data, { onSuccess: () => setFormOpen(false) })
   }
 
   const handleUpdate = (data: Parameters<typeof createPropriedade>[0]) => {
@@ -105,9 +108,6 @@ export function Propriedades() {
     setDeleteDialogOpen(true)
   }
 
-  const propriedadesLista = Array.isArray(propriedades) ? propriedades : []
-  const activePropriedades = propriedadesLista.filter((p) => p.ativo)
-
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
@@ -118,19 +118,11 @@ export function Propriedades() {
           </div>
           <Skeleton className="h-10 w-40" />
         </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-56 w-full" />
+          ))}
+        </div>
       </div>
     )
   }
@@ -141,7 +133,8 @@ export function Propriedades() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Propriedades</h1>
           <p className="text-muted-foreground">
-            Gerencie suas propriedades rurais
+            Total de {activePropriedades.length}{' '}
+            {activePropriedades.length === 1 ? 'propriedade ativa' : 'propriedades ativas'}
           </p>
         </div>
         <Button onClick={openCreateForm}>
@@ -156,9 +149,7 @@ export function Propriedades() {
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-4">
               <Home className="h-10 w-10 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">
-              Nenhuma propriedade cadastrada
-            </h3>
+            <h3 className="text-lg font-semibold mb-2">Nenhuma propriedade cadastrada</h3>
             <p className="text-sm text-muted-foreground mb-6 text-center max-w-sm">
               Comece cadastrando sua primeira propriedade rural para gerenciar safras, talhões e lançamentos.
             </p>
@@ -169,93 +160,85 @@ export function Propriedades() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Propriedades Cadastradas</CardTitle>
-            <CardDescription>
-              Total de {activePropriedades.length}{' '}
-              {activePropriedades.length === 1 ? 'propriedade ativa' : 'propriedades ativas'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Área Total</TableHead>
-                    <TableHead>Localização</TableHead>
-                    <TableHead>Responsável</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[70px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {activePropriedades.map((propriedade) => (
-                    <TableRow key={propriedade.id}>
-                      <TableCell className="font-medium">
-                        {propriedade.nome}
-                      </TableCell>
-                      <TableCell>
-                        {propriedade.area_total
-                          ? `${propriedade.area_total.toLocaleString('pt-BR', {
-                              minimumFractionDigits: 2,
-                            })} ha`
-                          : <span className="text-muted-foreground">-</span>}
-                      </TableCell>
-                      <TableCell>
-                        {propriedade.localizacao ? (
-                          <div className="flex items-center gap-1 max-w-xs truncate">
-                            <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                            <span className="truncate text-sm">
-                              {propriedade.localizacao}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {propriedade.responsavel || <span className="text-muted-foreground">-</span>}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={propriedade.ativo ? 'default' : 'secondary'}>
-                          {propriedade.ativo ? 'Ativa' : 'Inativa'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-popover border border-border">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => openEditForm(propriedade)}
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => openDeleteDialog(propriedade.id)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Remover
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {activePropriedades.map((propriedade) => {
+            const qtdTalhoes = talhoesPorPropriedade?.[propriedade.id] || 0
+            return (
+              <Card key={propriedade.id} className="overflow-hidden">
+                <div className="flex items-start justify-between p-4 pb-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary flex-shrink-0">
+                      <MapPinned className="h-5 w-5" />
+                    </div>
+                    <h3 className="font-semibold text-foreground truncate">{propriedade.nome}</h3>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="flex-shrink-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-popover border border-border">
+                      <DropdownMenuItem onClick={() => openEditForm(propriedade)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => openDeleteDialog(propriedade.id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Remover
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <div className="flex flex-wrap gap-2 px-4 pt-3">
+                  <Badge variant={propriedade.ativo ? 'default' : 'secondary'}>
+                    {propriedade.ativo ? 'Ativa' : 'Inativa'}
+                  </Badge>
+                  <Badge variant="outline">
+                    {qtdTalhoes} talhõe{qtdTalhoes === 1 ? '' : 's'}
+                  </Badge>
+                </div>
+
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Área total</span>
+                    <span className="font-medium text-foreground">
+                      {propriedade.area_total
+                        ? `${propriedade.area_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ha`
+                        : '-'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      Responsável
+                    </span>
+                    <span className="font-medium text-foreground truncate ml-2">
+                      {propriedade.responsavel || '-'}
+                    </span>
+                  </div>
+
+                  {propriedade.localizacao && (
+                    <div className="flex items-start justify-between text-sm gap-2">
+                      <span className="text-muted-foreground flex items-center gap-1 flex-shrink-0">
+                        <MapPin className="h-3 w-3" />
+                        Local
+                      </span>
+                      <span className="font-medium text-foreground text-right truncate">
+                        {propriedade.localizacao}
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
       )}
 
       <PropriedadeForm
@@ -271,8 +254,8 @@ export function Propriedades() {
           <AlertDialogHeader>
             <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação irá desativar a propriedade. Ela não será excluída
-              permanentemente e pode ser reativada posteriormente.
+              Esta ação irá desativar a propriedade. Ela não será excluída permanentemente e pode ser
+              reativada posteriormente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
