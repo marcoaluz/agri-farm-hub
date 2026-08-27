@@ -1,5 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useToast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -10,7 +12,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { ArrowDownToLine, ArrowUpFromLine, ArrowUpRight } from 'lucide-react'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { ArrowDownToLine, ArrowUpFromLine, ArrowUpRight, Undo2, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { fmtMoedaBR } from '@/lib/formatters'
 
@@ -27,6 +33,10 @@ interface Props {
 
 export function HistoricoProducaoModal({ cultura, propriedadeId, onClose }: Props) {
   const navigate = useNavigate()
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [vendaParaCancelar, setVendaParaCancelar] = useState<any | null>(null)
+
   const { data: historico, isLoading } = useQuery({
     queryKey: ['historico-producao', propriedadeId, cultura.cultura_id, cultura.talhao_id ?? null],
     queryFn: async () => {
@@ -41,105 +51,164 @@ export function HistoricoProducaoModal({ cultura, propriedadeId, onClose }: Prop
     enabled: !!cultura.cultura_id && !!propriedadeId,
   })
 
+  const cancelarVendaMutation = useMutation({
+    mutationFn: async (vendaId: string) => {
+      const { data, error } = await supabase.rpc('cancelar_venda_producao' as any, { p_venda_id: vendaId })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      toast({ title: 'Venda cancelada. Quantidade devolvida ao estoque e receita removida do Financeiro.' })
+      queryClient.invalidateQueries({ queryKey: ['historico-producao'] })
+      queryClient.invalidateQueries({ queryKey: ['producao-safra'] })
+      queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+      setVendaParaCancelar(null)
+    },
+    onError: (err: any) => {
+      toast({ title: 'Erro ao cancelar venda', description: err.message, variant: 'destructive' })
+    },
+  })
+
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            Histórico — {cultura.cultura_nome}
-            {cultura.talhao_nome && ` — ${cultura.talhao_nome}`}
-          </DialogTitle>
-          <DialogDescription>
-            {cultura.talhao_id
-              ? 'Colheitas registradas neste talhão.'
-              : 'Colheitas e vendas registradas para esta cultura.'}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Histórico — {cultura.cultura_nome}
+              {cultura.talhao_nome && ` — ${cultura.talhao_nome}`}
+            </DialogTitle>
+            <DialogDescription>
+              {cultura.talhao_id
+                ? 'Colheitas registradas neste talhão.'
+                : 'Colheitas e vendas registradas para esta cultura.'}
+            </DialogDescription>
+          </DialogHeader>
 
-        {isLoading && (
-          <div className="space-y-3">
-            <Skeleton className="h-14 w-full" />
-            <Skeleton className="h-14 w-full" />
-            <Skeleton className="h-14 w-full" />
-          </div>
-        )}
-
-        {!isLoading && (!historico || historico.length === 0) && (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            Nenhum movimento registrado ainda.
-          </p>
-        )}
-
-        <div>
-          {historico?.map((item: any) => (
-            <div key={item.id} className="flex items-start gap-3 border-b py-3 last:border-0">
-              <div
-                className={`rounded-full p-2 ${
-                  item.tipo === 'colheita'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-blue-100 text-blue-700'
-                }`}
-              >
-                {item.tipo === 'colheita' ? (
-                  <ArrowDownToLine className="h-4 w-4" />
-                ) : (
-                  <ArrowUpFromLine className="h-4 w-4" />
-                )}
-              </div>
-
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">
-                    {item.tipo === 'colheita' ? 'Colheita' : 'Venda'}
-                    {item.talhao_nome && ` — ${item.talhao_nome}`}
-                  </p>
-                  <span className="text-xs text-muted-foreground">
-                    {item.data ? new Date(`${String(item.data).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : ''}
-                  </span>
-                </div>
-
-                <div className="mt-1 flex flex-wrap items-center gap-3">
-                  <Badge variant={item.tipo === 'colheita' ? 'default' : 'secondary'}>
-                    {item.tipo === 'colheita' ? '+' : '-'}
-                    {item.quantidade}
-                  </Badge>
-                  {item.area_colhida > 0 && (
-                    <span className="text-xs text-muted-foreground">{item.area_colhida} ha</span>
-                  )}
-                  {item.valor_total && (
-                    <span className="text-xs font-medium text-green-600">
-                      R$ {Number(item.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      {item.preco_unitario && (
-                        <span className="text-xs text-muted-foreground ml-1">
-                          ({fmtMoedaBR(Number(item.preco_unitario))}/{item.unidade_medida || 'saca'})
-                        </span>
-                      )}
-                    </span>
-                  )}
-                  {item.comprador && (
-                    <span className="text-xs text-muted-foreground">→ {item.comprador}</span>
-                  )}
-                  {item.tipo === 'venda' && item.transacao_id && (
-                    <Button
-                      type="button"
-                      variant="link"
-                      size="sm"
-                      className="h-auto p-0 text-xs"
-                      onClick={() => navigate(`/financeiro?transacao=${item.transacao_id}`)}
-                    >
-                      Ver no Financeiro <ArrowUpRight className="ml-1 h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-
-                {item.observacoes && (
-                  <p className="mt-1 text-xs text-muted-foreground">{item.observacoes}</p>
-                )}
-              </div>
+          {isLoading && (
+            <div className="space-y-3">
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
             </div>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
+          )}
+
+          {!isLoading && (!historico || historico.length === 0) && (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nenhum movimento registrado ainda.
+            </p>
+          )}
+
+          <div>
+            {historico?.map((item: any) => (
+              <div key={item.id} className="flex items-start gap-3 border-b py-3 last:border-0">
+                <div
+                  className={`rounded-full p-2 ${
+                    item.tipo === 'colheita'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}
+                >
+                  {item.tipo === 'colheita' ? (
+                    <ArrowDownToLine className="h-4 w-4" />
+                  ) : (
+                    <ArrowUpFromLine className="h-4 w-4" />
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      {item.tipo === 'colheita' ? 'Colheita' : 'Venda'}
+                      {item.talhao_nome && ` — ${item.talhao_nome}`}
+                    </p>
+                    <span className="text-xs text-muted-foreground">
+                      {item.data ? new Date(`${String(item.data).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : ''}
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex flex-wrap items-center gap-3">
+                    <Badge variant={item.tipo === 'colheita' ? 'default' : 'secondary'}>
+                      {item.tipo === 'colheita' ? '+' : '-'}
+                      {item.quantidade}
+                    </Badge>
+                    {item.area_colhida > 0 && (
+                      <span className="text-xs text-muted-foreground">{item.area_colhida} ha</span>
+                    )}
+                    {item.valor_total && (
+                      <span className="text-xs font-medium text-green-600">
+                        R$ {Number(item.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        {item.preco_unitario && (
+                          <span className="text-xs text-muted-foreground ml-1">
+                            ({fmtMoedaBR(Number(item.preco_unitario))}/{item.unidade_medida || 'saca'})
+                          </span>
+                        )}
+                      </span>
+                    )}
+                    {item.comprador && (
+                      <span className="text-xs text-muted-foreground">→ {item.comprador}</span>
+                    )}
+                    {item.tipo === 'venda' && item.transacao_id && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => navigate(`/financeiro?transacao=${item.transacao_id}`)}
+                      >
+                        Ver no Financeiro <ArrowUpRight className="ml-1 h-3 w-3" />
+                      </Button>
+                    )}
+                    {item.tipo === 'venda' && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs text-destructive hover:text-destructive"
+                        onClick={() => setVendaParaCancelar(item)}
+                      >
+                        <Undo2 className="ml-0.5 h-3 w-3" />
+                        Cancelar venda
+                      </Button>
+                    )}
+                  </div>
+
+                  {item.observacoes && (
+                    <p className="mt-1 text-xs text-muted-foreground">{item.observacoes}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!vendaParaCancelar} onOpenChange={(o) => { if (!o) setVendaParaCancelar(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar esta venda?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {vendaParaCancelar?.quantidade} {vendaParaCancelar?.unidade_medida || ''} voltam pro estoque disponível, e a receita
+              correspondente é removida do Financeiro. Não pode ser desfeito.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => vendaParaCancelar && cancelarVendaMutation.mutate(vendaParaCancelar.id)}
+              disabled={cancelarVendaMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {cancelarVendaMutation.isPending ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Cancelando...
+                </span>
+              ) : 'Confirmar cancelamento'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
