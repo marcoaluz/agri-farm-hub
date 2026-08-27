@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
-import { Settings, User, Bell, Shield, Moon, Sun, ExternalLink } from 'lucide-react'
+import { Settings, User, Bell, Shield, Moon, Sun, ExternalLink, Smartphone, Check } from 'lucide-react'
+import { pushEhSuportado, statusInscricaoPush, ativarPushNotifications, desativarPushNotifications, enviarPushTeste } from '@/lib/pushNotifications'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -31,6 +32,45 @@ export function Configuracoes() {
 
   const [prefs, setPrefs] = useState({ financeiro: true, estoque: true, manutencao: true, sanidade: true, tarefas: true })
   const [savingPrefs, setSavingPrefs] = useState(false)
+  const [pushStatus, setPushStatus] = useState<'ativo' | 'inativo' | 'negado' | 'nao_suportado' | 'carregando'>('carregando')
+  const [pushLoading, setPushLoading] = useState(false)
+
+  useEffect(() => {
+    statusInscricaoPush().then(setPushStatus)
+  }, [])
+
+  async function handleAtivarPush() {
+    if (!user) return
+    setPushLoading(true)
+    try {
+      await ativarPushNotifications(user.id)
+      setPushStatus('ativo')
+      toast({ title: 'Notificações no celular ativadas!' })
+    } catch (e: any) {
+      toast({ title: 'Não foi possível ativar', description: e.message, variant: 'destructive' })
+      setPushStatus(await statusInscricaoPush())
+    }
+    setPushLoading(false)
+  }
+
+  async function handleDesativarPush() {
+    if (!user) return
+    setPushLoading(true)
+    await desativarPushNotifications(user.id)
+    setPushStatus('inativo')
+    setPushLoading(false)
+  }
+
+  async function handleTestarPush() {
+    setPushLoading(true)
+    const resultado = await enviarPushTeste()
+    setPushLoading(false)
+    if (resultado?.ok) {
+      toast({ title: 'Teste enviado! Deve chegar em alguns segundos.' })
+    } else {
+      toast({ title: 'Erro ao enviar teste', description: resultado?.error, variant: 'destructive' })
+    }
+  }
 
   useEffect(() => {
     if (!user) return
@@ -189,7 +229,56 @@ export function Configuracoes() {
                 <Switch id="notif-tarefas" checked={prefs.tarefas} onCheckedChange={v => togglePref('tarefas', v)} disabled={savingPrefs} />
               </div>
               <p className="text-xs text-muted-foreground pt-1">
-                Notificação por e-mail e no celular fora do app ainda não estão disponíveis — em breve.
+                Notificação por e-mail ainda não está disponível.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Seção — Notificações no celular (push) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Smartphone className="h-5 w-5" />
+                Notificações no Celular
+                <Badge variant="outline" className="ml-1 text-[10px]">beta</Badge>
+              </CardTitle>
+              <CardDescription>Receba avisos mesmo com o app fechado</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {pushStatus === 'nao_suportado' && (
+                <p className="text-sm text-muted-foreground">Este navegador não suporta notificações push.</p>
+              )}
+              {pushStatus === 'negado' && (
+                <p className="text-sm text-muted-foreground">
+                  Permissão negada. Ative manualmente nas configurações do navegador/celular pra esse site.
+                </p>
+              )}
+              {pushStatus === 'ativo' && (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-green-700">
+                    <Check className="h-4 w-4" /> Ativado neste aparelho
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={handleTestarPush} disabled={pushLoading}>
+                      Enviar teste
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleDesativarPush} disabled={pushLoading}>
+                      Desativar
+                    </Button>
+                  </div>
+                </>
+              )}
+              {pushStatus === 'inativo' && (
+                <Button onClick={handleAtivarPush} disabled={pushLoading} className="gap-2">
+                  <Smartphone className="h-4 w-4" />
+                  {pushLoading ? 'Ativando...' : 'Ativar notificações no celular'}
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground pt-1">
+                No iPhone, funciona só depois de "Adicionar à Tela de Início". No Android, funciona direto pelo Chrome.
+              </p>
+              <p className="text-xs text-amber-600">
+                Fase de teste — ainda não conectado aos avisos automáticos (financeiro, estoque, etc). É só pra validar que a entrega funciona no seu aparelho.
               </p>
             </CardContent>
           </Card>
