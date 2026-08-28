@@ -120,6 +120,58 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const [modoValor, setModoValor] = useState<'unidade' | 'total'>('unidade')
   const [precoUnitario, setPrecoUnitario] = useState<number>(0)
 
+  const { data: categorias, refetch: refetchCategorias } = useQuery({
+    queryKey: ['categorias-transacao'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categorias_transacao' as any)
+        .select('*')
+        .eq('ativo', true)
+        .order('nome_exibicao')
+      if (error) throw error
+      return (data || []) as unknown as { valor: string; nome_exibicao: string; id: string; usuario_id: string | null }[]
+    },
+  })
+
+  const [showNovaCategoria, setShowNovaCategoria] = useState(false)
+  const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
+  const [salvandoCategoria, setSalvandoCategoria] = useState(false)
+  const [categoriaParaExcluir, setCategoriaParaExcluir] = useState<{ id: string; nome_exibicao: string; valor: string } | null>(null)
+
+  const handleAdicionarCategoria = async () => {
+    const nome = novaCategoriaNome.trim()
+    if (!nome) return
+    setSalvandoCategoria(true)
+    const { data, error } = await supabase.rpc('criar_categoria_transacao' as any, { p_nome_exibicao: nome })
+    setSalvandoCategoria(false)
+    if (error) {
+      toast.error('Erro ao criar categoria: ' + error.message)
+      return
+    }
+    form.setValue('categoria', (data as any)?.valor ?? (Array.isArray(data) ? (data as any)[0]?.valor : ''))
+    setNovaCategoriaNome('')
+    setShowNovaCategoria(false)
+    refetchCategorias()
+    toast.success('Categoria criada')
+  }
+
+  const handleExcluirCategoria = async () => {
+    if (!categoriaParaExcluir) return
+    const { error } = await supabase
+      .from('categorias_transacao' as any)
+      .update({ ativo: false } as any)
+      .eq('id', categoriaParaExcluir.id)
+    setCategoriaParaExcluir(null)
+    if (error) {
+      toast.error('Erro ao remover categoria: ' + error.message)
+      return
+    }
+    if (form.getValues('categoria') === categoriaParaExcluir.valor) form.setValue('categoria', '')
+    refetchCategorias()
+    toast.success('Categoria removida')
+  }
+
+
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
