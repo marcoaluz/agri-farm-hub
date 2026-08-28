@@ -391,15 +391,56 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
               <FormField control={form.control} name="categoria" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoria *</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                    <SelectContent className="bg-popover border border-border">
-                      {categorias.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  {!showNovaCategoria ? (
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                          <SelectContent className="bg-popover border border-border">
+                            {categorias?.map(c => <SelectItem key={c.id} value={c.valor}>{c.nome_exibicao}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button type="button" variant="outline" size="icon" onClick={() => setShowNovaCategoria(true)} title="Nova categoria">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      {field.value && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          title="Remover categoria"
+                          onClick={() => {
+                            const c = categorias?.find(x => x.valor === field.value)
+                            if (c) setCategoriaParaExcluir(c)
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nome da categoria"
+                        value={novaCategoriaNome}
+                        onChange={(e) => setNovaCategoriaNome(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdicionarCategoria() } }}
+                        autoFocus
+                        className="flex-1"
+                      />
+                      <Button type="button" size="icon" onClick={handleAdicionarCategoria} disabled={salvandoCategoria}>
+                        {salvandoCategoria ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      </Button>
+                      <Button type="button" variant="outline" size="icon" onClick={() => { setShowNovaCategoria(false); setNovaCategoriaNome('') }}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                   <FormMessage />
                 </FormItem>
               )} />
+
             </div>
 
             {/* Cultura & Quantidade (venda_producao) */}
