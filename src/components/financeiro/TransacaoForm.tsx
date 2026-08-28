@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { format } from 'date-fns'
-import { CalendarIcon } from 'lucide-react'
+import { CalendarIcon, Plus, Check, X, Trash2, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,10 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ParcelasList } from '@/components/financeiro/ParcelasList'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -37,22 +41,6 @@ import { Anexos } from '@/components/Anexos'
 import { ContatoCombobox } from '@/components/financeiro/ContatoCombobox'
 
 
-const categorias = [
-  { value: 'insumos', label: 'Insumos' },
-  { value: 'combustivel', label: 'Combustível' },
-  { value: 'manutencao', label: 'Manutenção' },
-  { value: 'mao_de_obra', label: 'Mão de Obra' },
-  { value: 'arrendamento', label: 'Arrendamento' },
-  { value: 'maquinario', label: 'Maquinário' },
-  { value: 'venda_producao', label: 'Venda de Produção' },
-  { value: 'servicos_terceiros', label: 'Serviços de Terceiros' },
-  { value: 'impostos', label: 'Impostos' },
-  { value: 'sanidade_animal', label: '🐄 Sanidade Animal' },
-  { value: 'alimentacao_animal', label: '🌾 Alimentação / Ração' },
-  { value: 'compra_animais', label: '🐄 Compra de Animais' },
-  { value: 'venda_animais', label: '🐄 Venda de Animais' },
-  { value: 'outros', label: 'Outros' },
-]
 
 const formasPagamento = [
   { value: 'dinheiro', label: 'Dinheiro' },
@@ -119,6 +107,58 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
 
   const [modoValor, setModoValor] = useState<'unidade' | 'total'>('unidade')
   const [precoUnitario, setPrecoUnitario] = useState<number>(0)
+
+  const { data: categorias, refetch: refetchCategorias } = useQuery({
+    queryKey: ['categorias-transacao'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categorias_transacao' as any)
+        .select('*')
+        .eq('ativo', true)
+        .order('nome_exibicao')
+      if (error) throw error
+      return (data || []) as unknown as { valor: string; nome_exibicao: string; id: string; usuario_id: string | null }[]
+    },
+  })
+
+  const [showNovaCategoria, setShowNovaCategoria] = useState(false)
+  const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
+  const [salvandoCategoria, setSalvandoCategoria] = useState(false)
+  const [categoriaParaExcluir, setCategoriaParaExcluir] = useState<{ id: string; nome_exibicao: string; valor: string } | null>(null)
+
+  const handleAdicionarCategoria = async () => {
+    const nome = novaCategoriaNome.trim()
+    if (!nome) return
+    setSalvandoCategoria(true)
+    const { data, error } = await supabase.rpc('criar_categoria_transacao' as any, { p_nome_exibicao: nome })
+    setSalvandoCategoria(false)
+    if (error) {
+      toast.error('Erro ao criar categoria: ' + error.message)
+      return
+    }
+    form.setValue('categoria', (data as any)?.valor ?? (Array.isArray(data) ? (data as any)[0]?.valor : ''))
+    setNovaCategoriaNome('')
+    setShowNovaCategoria(false)
+    refetchCategorias()
+    toast.success('Categoria criada')
+  }
+
+  const handleExcluirCategoria = async () => {
+    if (!categoriaParaExcluir) return
+    const { error } = await supabase
+      .from('categorias_transacao' as any)
+      .update({ ativo: false } as any)
+      .eq('id', categoriaParaExcluir.id)
+    setCategoriaParaExcluir(null)
+    if (error) {
+      toast.error('Erro ao remover categoria: ' + error.message)
+      return
+    }
+    if (form.getValues('categoria') === categoriaParaExcluir.valor) form.setValue('categoria', '')
+    refetchCategorias()
+    toast.success('Categoria removida')
+  }
+
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -391,15 +431,56 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
               <FormField control={form.control} name="categoria" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoria *</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                    <SelectContent className="bg-popover border border-border">
-                      {categorias.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  {!showNovaCategoria ? (
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                          <SelectContent className="bg-popover border border-border">
+                            {categorias?.map(c => <SelectItem key={c.id} value={c.valor}>{c.nome_exibicao}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button type="button" variant="outline" size="icon" onClick={() => setShowNovaCategoria(true)} title="Nova categoria">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      {field.value && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          title="Remover categoria"
+                          onClick={() => {
+                            const c = categorias?.find(x => x.valor === field.value)
+                            if (c) setCategoriaParaExcluir(c)
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nome da categoria"
+                        value={novaCategoriaNome}
+                        onChange={(e) => setNovaCategoriaNome(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdicionarCategoria() } }}
+                        autoFocus
+                        className="flex-1"
+                      />
+                      <Button type="button" size="icon" onClick={handleAdicionarCategoria} disabled={salvandoCategoria}>
+                        {salvandoCategoria ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      </Button>
+                      <Button type="button" variant="outline" size="icon" onClick={() => { setShowNovaCategoria(false); setNovaCategoriaNome('') }}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                   <FormMessage />
                 </FormItem>
               )} />
+
             </div>
 
             {/* Cultura & Quantidade (venda_producao) */}
@@ -749,6 +830,22 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
           </form>
         </Form>
       </DialogContent>
+
+      <AlertDialog open={!!categoriaParaExcluir} onOpenChange={(o) => { if (!o) setCategoriaParaExcluir(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir categoria?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A categoria "{categoriaParaExcluir?.nome_exibicao}" deixará de aparecer na lista. Transações que já usam ela continuam normalmente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirCategoria}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }
+
