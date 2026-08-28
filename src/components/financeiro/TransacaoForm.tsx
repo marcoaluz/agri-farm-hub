@@ -846,6 +846,22 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
           </form>
         </Form>
       </DialogContent>
+
+      <AlertDialog open={!!categoriaParaExcluir} onOpenChange={(o) => { if (!o) setCategoriaParaExcluir(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir categoria?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A categoria "{categoriaParaExcluir?.nome_exibicao}" deixará de aparecer na lista. Transações que já usam ela continuam normalmente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirCategoria}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }
+
