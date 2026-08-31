@@ -36,6 +36,8 @@ export function VenderProdutoModal({ produto, onClose }: VenderProdutoModalProps
   const [formaPagamento, setFormaPagamento] = useState<'avista' | 'parcelado'>('avista');
   const [numParcelas, setNumParcelas] = useState(2);
   const [dataPrimeiraParcela, setDataPrimeiraParcela] = useState(hoje());
+  const [periodicidade, setPeriodicidade] = useState<'mensal' | 'trimestral' | 'semestral' | 'anual'>('mensal');
+
   const [observacoes, setObservacoes] = useState('');
 
   const valorTotal = (quantidade || 0) * (precoUnitario || 0);
