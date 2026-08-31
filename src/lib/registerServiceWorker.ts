@@ -5,6 +5,9 @@
  */
 const SW_URL = "/sw.js";
 
+let registrationRef: ServiceWorkerRegistration | null = null;
+let pendingUpdateCallback: (() => void) | null = null;
+
 function isBlockedContext(): boolean {
   if (!import.meta.env.PROD) return true;
   if (typeof window === "undefined") return true;
@@ -33,6 +36,23 @@ async function unregisterAppServiceWorkers() {
   );
 }
 
+function notifyUpdateAvailable() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("sw-update-available"));
+}
+
+export function aplicarAtualizacaoPendente() {
+  if (typeof window === "undefined") return;
+
+  if (pendingUpdateCallback) {
+    pendingUpdateCallback();
+    return;
+  }
+
+  // Fallback: força recarga com cache limpo se o callback não foi armado.
+  window.location.reload();
+}
+
 export function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
 
@@ -52,20 +72,27 @@ export function registerServiceWorker() {
     navigator.serviceWorker
       .register(SW_URL, { scope: "/" })
       .then((registration) => {
+        registrationRef = registration;
+
         setInterval(() => {
           void registration.update().catch(() => {});
         }, 5 * 60 * 1000);
 
         if (registration.waiting) {
-          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+          // Nova versão já está esperando — notifica e arma callback.
+          pendingUpdateCallback = () => registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+          notifyUpdateAvailable();
         }
 
         registration.addEventListener("updatefound", () => {
           const novoWorker = registration.installing;
           if (!novoWorker) return;
+
           novoWorker.addEventListener("statechange", () => {
             if (novoWorker.state === "installed" && navigator.serviceWorker.controller) {
-              novoWorker.postMessage({ type: "SKIP_WAITING" });
+              // Atualização baixada e pronta para assumir — notifica e arma callback.
+              pendingUpdateCallback = () => novoWorker.postMessage({ type: "SKIP_WAITING" });
+              notifyUpdateAvailable();
             }
           });
         });
@@ -75,3 +102,4 @@ export function registerServiceWorker() {
       });
   });
 }
+
