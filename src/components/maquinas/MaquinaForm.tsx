@@ -20,7 +20,7 @@ interface Maquina {
   horimetro_inicial: number;
   horimetro_atual: number;
   custo_hora?: number;
-  unidade_calculo?: 'h' | 'km';
+  unidade_calculo?: 'hora' | 'km';
   km_atual?: number;
   custo_km?: number;
   ativo: boolean;
