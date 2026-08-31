@@ -209,6 +209,8 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
 
   const [salvandoParcelado, setSalvandoParcelado] = useState(false)
   const [unidadeLabel, setUnidadeLabel] = useState('')
+  const [periodicidade, setPeriodicidade] = useState<'mensal' | 'trimestral' | 'semestral' | 'anual'>('mensal')
+
 
 
   const showCulturaFields = watchTipo === 'receita' && watchCategoria === 'venda_producao'
