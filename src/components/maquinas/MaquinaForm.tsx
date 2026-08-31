@@ -63,10 +63,10 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
         km_atual: maquina.km_atual?.toString() || '',
         custo_km: maquina.custo_km?.toString() || '',
       });
-      setUnidadeCalculo(maquina.unidade_calculo === 'km' ? 'km' : 'h');
+      setUnidadeCalculo(maquina.unidade_calculo === 'km' ? 'km' : 'hora');
       setCompartilhado(!!maquina.compartilhado);
     } else {
-      setUnidadeCalculo('h');
+      setUnidadeCalculo('hora');
       setCompartilhado(false);
     }
   }, [maquina]);
