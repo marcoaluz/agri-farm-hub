@@ -212,7 +212,15 @@ export function VenderProdutoModal({ produto, onClose }: VenderProdutoModalProps
                 onChange={(e) => setDataPrimeiraParcela(e.target.value)}
               />
             </div>
-            <div className="space-y-2 sm:col-span-2">
+            <div className="space-y-2">
+              <Label>Valor de entrada (opcional)</Label>
+              <Input
+                type="number" step="0.01" min={0} placeholder="0,00"
+                value={valorEntrada}
+                onChange={(e) => setValorEntrada(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
               <Label>Periodicidade</Label>
               <Select value={periodicidade} onValueChange={(v) => setPeriodicidade(v as any)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
