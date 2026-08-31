@@ -307,6 +307,22 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
             </div>
           )}
 
+          {statusPagamento === 'parcelado' && (
+            <div className="space-y-2 rounded-lg border p-3">
+              <Label>Periodicidade</Label>
+              <Select value={periodicidade} onValueChange={(v) => setPeriodicidade(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mensal">Mensal</SelectItem>
+                  <SelectItem value="trimestral">Trimestral</SelectItem>
+                  <SelectItem value="semestral">Semestral</SelectItem>
+                  <SelectItem value="anual">Anual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+
 
           <AnexoManager
             entidadeTipo="rebanho_movimentacao"
