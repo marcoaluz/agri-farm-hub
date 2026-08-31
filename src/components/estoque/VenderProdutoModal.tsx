@@ -65,6 +65,8 @@ export function VenderProdutoModal({ produto, onClose }: VenderProdutoModalProps
       p_parcelado: formaPagamento === 'parcelado',
       p_num_parcelas: formaPagamento === 'parcelado' ? numParcelas : 1,
       p_data_primeira_parcela: formaPagamento === 'parcelado' ? dataPrimeiraParcela : null,
+      p_periodicidade: periodicidade,
+
     } as any);
     setLoading(false);
 
