@@ -781,6 +781,19 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                         </FormItem>
                       )} />
                     </div>
+                    <div>
+                      <Label>Periodicidade</Label>
+                      <Select value={periodicidade} onValueChange={(v) => setPeriodicidade(v as any)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent className="bg-popover border border-border">
+                          <SelectItem value="mensal">Mensal</SelectItem>
+                          <SelectItem value="trimestral">Trimestral</SelectItem>
+                          <SelectItem value="semestral">Semestral</SelectItem>
+                          <SelectItem value="anual">Anual (ex: compra de terra em 4 anos)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
 
                     {parcelasPreview.length > 0 && (
                       <div className="mt-3">
