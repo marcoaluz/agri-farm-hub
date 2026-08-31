@@ -48,7 +48,7 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
     km_atual: '',
     custo_km: '',
   });
-  const [unidadeCalculo, setUnidadeCalculo] = useState<'h' | 'km'>('h');
+  const [unidadeCalculo, setUnidadeCalculo] = useState<'hora' | 'km'>('hora');
   const [compartilhado, setCompartilhado] = useState(false);
 
   useEffect(() => {
