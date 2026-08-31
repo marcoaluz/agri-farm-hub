@@ -3,6 +3,8 @@
  * Nunca registra em dev, dentro de iframe ou nos previews da Lovable:
  * nesses contextos remove registros antigos para evitar cache velho.
  */
+import { limparServiceWorkerConflitante } from "./pushNotifications";
+
 const SW_URL = "/sw.js";
 
 function isBlockedContext(): boolean {
