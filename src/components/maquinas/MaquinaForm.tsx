@@ -199,7 +199,7 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => setUnidadeCalculo('h')}
+              onClick={() => setUnidadeCalculo('hora')}
               className={cn(
                 'flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium transition-colors',
                 !isKm
