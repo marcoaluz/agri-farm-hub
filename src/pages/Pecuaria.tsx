@@ -188,6 +188,36 @@ export default function Pecuaria() {
   // === DERIVED DATA ===
   const totalAnimais = (rebanhos || []).reduce((s: number, r: any) => s + (r.quantidade_atual || 0), 0)
 
+  const { data: valoresLotes } = useQuery({
+    queryKey: ['valores-lotes-pecuaria', propId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_valor_lotes_pecuaria' as any, { p_propriedade_id: propId })
+      if (error) throw error
+      const mapa: Record<string, { valor_total: number; custo_medio: number }> = {}
+      ;(data || []).forEach((r: any) => {
+        mapa[r.rebanho_id] = { valor_total: Number(r.valor_total), custo_medio: Number(r.custo_medio) }
+      })
+      return mapa
+    },
+    enabled: !!propId,
+  })
+
+  const { data: statsAno } = useQuery({
+    queryKey: ['stats-pecuaria-ano', propId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_stats_pecuaria_ano' as any, { p_propriedade_id: propId })
+      if (error) throw error
+      const r = (data || [])[0] || {}
+      return {
+        nascimentosAno: Number(r.nascimentos_ano) || 0,
+        mortesAno: Number(r.mortes_ano) || 0,
+        vendasQtdAno: Number(r.vendas_qtd_ano) || 0,
+        vendasValorAno: Number(r.vendas_valor_ano) || 0,
+      }
+    },
+    enabled: !!propId,
+  })
+
   const { data: alertasIdentificacao } = useQuery({
     queryKey: ['alertas-identificacao-pecuaria', propId],
     queryFn: async () => {
@@ -202,15 +232,9 @@ export default function Pecuaria() {
   const totalLotes = (rebanhos || []).length
 
   const valorRebanho = useMemo(() => {
-    if (!movimentacoes) return 0
-    return movimentacoes.reduce((s: number, m: any) => {
-      const entradas = ['compra', 'transferencia_entrada', 'ajuste_entrada', 'nascimento']
-      const saidas   = ['venda', 'transferencia_saida', 'ajuste_saida', 'morte']
-      if (entradas.includes(m.tipo)) return s + (m.valor_total || 0)
-      if (saidas.includes(m.tipo))   return s - (m.valor_total || 0)
-      return s
-    }, 0)
-  }, [movimentacoes])
+    if (!valoresLotes) return 0
+    return Object.values(valoresLotes).reduce((s, v) => s + v.valor_total, 0)
+  }, [valoresLotes])
 
   const eventosProximos = useMemo(() => {
     if (!eventosSanitarios) return 0
@@ -381,6 +405,9 @@ export default function Pecuaria() {
                 <Card><CardContent className="p-3 sm:p-4"><p className="text-xs sm:text-sm text-muted-foreground leading-tight">Lotes Ativos</p><p className="text-lg sm:text-xl lg:text-2xl font-bold break-words">{totalLotes}</p></CardContent></Card>
                 <Card><CardContent className="p-3 sm:p-4"><p className="text-xs sm:text-sm text-muted-foreground leading-tight">Valor do Rebanho</p><p className="text-lg sm:text-xl lg:text-2xl font-bold break-words">R$ {valorRebanho.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p><p className="text-xs text-muted-foreground mt-1 hidden sm:block">baseado em compras e vendas registradas</p></CardContent></Card>
                 <Card><CardContent className="p-3 sm:p-4"><p className="text-xs sm:text-sm text-muted-foreground leading-tight">Eventos Sanitários</p><p className="text-lg sm:text-xl lg:text-2xl font-bold break-words">{eventosProximos}<span className="text-xs sm:text-sm font-normal text-muted-foreground ml-1">próx. 30d</span></p></CardContent></Card>
+                <Card><CardContent className="p-3 sm:p-4"><p className="text-xs sm:text-sm text-muted-foreground leading-tight">Vendido em {new Date().getFullYear()}</p><p className="text-lg sm:text-xl lg:text-2xl font-bold break-words">R$ {(statsAno?.vendasValorAno || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p><p className="text-xs text-muted-foreground mt-1 hidden sm:block">{statsAno?.vendasQtdAno || 0} animal(is)</p></CardContent></Card>
+                <Card><CardContent className="p-3 sm:p-4"><p className="text-xs sm:text-sm text-muted-foreground leading-tight">Nascimentos {new Date().getFullYear()}</p><p className="text-lg sm:text-xl lg:text-2xl font-bold break-words">{statsAno?.nascimentosAno || 0}</p></CardContent></Card>
+                <Card><CardContent className="p-3 sm:p-4"><p className="text-xs sm:text-sm text-muted-foreground leading-tight">Mortes {new Date().getFullYear()}</p><p className="text-lg sm:text-xl lg:text-2xl font-bold break-words">{statsAno?.mortesAno || 0}</p></CardContent></Card>
               </>
             )}
           </div>
@@ -429,6 +456,12 @@ export default function Pecuaria() {
                       {r.raca && <div><span className="text-muted-foreground">Raça:</span> {r.raca}</div>}
                       {r.finalidade && <div><span className="text-muted-foreground">Finalidade:</span> {r.finalidade}</div>}
                       {r.localizacao && <div className="flex items-center gap-1"><MapPin className="h-3 w-3 text-muted-foreground" />{r.localizacao}</div>}
+                      {valoresLotes?.[r.id] && valoresLotes[r.id].valor_total > 0 && (
+                        <>
+                          <div><span className="text-muted-foreground">Valor do lote:</span> <strong>R$ {valoresLotes[r.id].valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></div>
+                          <div><span className="text-muted-foreground">Custo médio:</span> R$ {valoresLotes[r.id].custo_medio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                        </>
+                      )}
                     </div>
                     <div className="flex gap-2 pt-2 flex-wrap">
                       <Button size="sm" variant="outline" onClick={() => setAnimaisRebanho(r)}>
