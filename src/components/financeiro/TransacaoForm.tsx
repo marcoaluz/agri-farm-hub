@@ -216,9 +216,6 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   }, [watchNumParcelas, watchValor, watchDataPrimeira, periodicidade])
 
 
-  const [salvandoParcelado, setSalvandoParcelado] = useState(false)
-  const [unidadeLabel, setUnidadeLabel] = useState('')
-  const [periodicidade, setPeriodicidade] = useState<'mensal' | 'trimestral' | 'semestral' | 'anual'>('mensal')
 
 
 
