@@ -191,21 +191,25 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const watchDataPrimeira = form.watch('data_primeira_parcela')
   const isEditing = !!transacao
 
+  const MESES_POR_PERIODICIDADE: Record<string, number> = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 }
+
   const parcelasPreview = useMemo(() => {
     const n = Number(watchNumParcelas) || 0
     const total = Number(watchValor) || 0
     if (n < 2 || total <= 0 || !watchDataPrimeira) return []
     const base = Math.floor((total / n) * 100) / 100
+    const passoMeses = MESES_POR_PERIODICIDADE[periodicidade] || 1
     return Array.from({ length: n }, (_, i) => {
       const d = new Date(watchDataPrimeira + 'T12:00:00')
-      d.setMonth(d.getMonth() + i)
+      d.setMonth(d.getMonth() + i * passoMeses)
       return {
         numero: i + 1,
         data: d,
         valor: i === n - 1 ? Math.round((total - base * (n - 1)) * 100) / 100 : base,
       }
     })
-  }, [watchNumParcelas, watchValor, watchDataPrimeira])
+  }, [watchNumParcelas, watchValor, watchDataPrimeira, periodicidade])
+
 
   const [salvandoParcelado, setSalvandoParcelado] = useState(false)
   const [unidadeLabel, setUnidadeLabel] = useState('')
