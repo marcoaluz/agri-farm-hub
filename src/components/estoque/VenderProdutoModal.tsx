@@ -37,6 +37,7 @@ export function VenderProdutoModal({ produto, onClose }: VenderProdutoModalProps
   const [numParcelas, setNumParcelas] = useState(2);
   const [dataPrimeiraParcela, setDataPrimeiraParcela] = useState(hoje());
   const [periodicidade, setPeriodicidade] = useState<'mensal' | 'trimestral' | 'semestral' | 'anual'>('mensal');
+  const [valorEntrada, setValorEntrada] = useState('');
 
   const [observacoes, setObservacoes] = useState('');
 
