@@ -3,7 +3,8 @@
  * Nunca registra em dev, dentro de iframe ou nos previews da Lovable:
  * nesses contextos remove registros antigos para evitar cache velho.
  */
-const SW_URL = "/sw.js";
+const SW_URL = "/sw-src.js";
+const LEGACY_SW_URLS = ["/sw.js", "/push-sw.js"];
 
 let registrationRef: ServiceWorkerRegistration | null = null;
 let pendingUpdateCallback: (() => void) | null = null;
@@ -30,7 +31,7 @@ async function unregisterAppServiceWorkers() {
     regs
       .filter((r) => {
         const url = r.active?.scriptURL || r.waiting?.scriptURL || r.installing?.scriptURL || "";
-        return url.endsWith(SW_URL);
+        return url.endsWith(SW_URL) || LEGACY_SW_URLS.some((legacy) => url.endsWith(legacy));
       })
       .map((r) => r.unregister()),
   );
