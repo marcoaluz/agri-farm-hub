@@ -31,7 +31,13 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       injectRegister: null,
       devOptions: { enabled: false },
-      filename: "sw.js",
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw-src.ts",
+      injectManifest: {
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
+      },
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "logo-icon.png"],
       manifest: {
         name: "Agro GFI — Gestão de Fazenda Inteligente",
@@ -48,43 +54,6 @@ export default defineConfig(({ mode }) => ({
           { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
           { src: "/pwa-maskable-192x192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
           { src: "/pwa-maskable-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-        ],
-      },
-      workbox: {
-        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-        navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/~oauth/],
-        runtimeCaching: [
-          {
-            // HTML navigations: sempre rede primeiro (nunca cache-first)
-            urlPattern: ({ request }) => request.mode === "navigate",
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "html-navigations",
-              networkTimeoutSeconds: 3,
-            },
-          },
-          {
-            urlPattern: /^https:\/\/kivnjwkomrkvdpvklakw\.supabase\.co\/rest\/v1\/.*/,
-            handler: "NetworkOnly",
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "google-fonts-stylesheets",
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "google-fonts-webfonts",
-              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
-            },
-          },
         ],
       },
     }),
