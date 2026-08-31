@@ -216,7 +216,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         valor: i === n - 1 ? Math.round((total - base * (n - 1)) * 100) / 100 : base,
       }
     })
-  }, [watchNumParcelas, watchValor, watchDataPrimeira, periodicidade])
+  }, [watchNumParcelas, watchValor, watchDataPrimeira, periodicidade, valorEntrada])
 
 
 
