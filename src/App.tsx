@@ -8,6 +8,7 @@ import { queryClient } from "@/lib/queryClient";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GlobalProvider } from "@/contexts/GlobalContext";
 import { AppRoutes } from "@/routes";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { UpdateAvailableBanner } from "@/components/UpdateAvailableBanner";
 import { limparServiceWorkerConflitante } from '@/lib/pushNotifications'
 import { registerServiceWorker } from '@/lib/registerServiceWorker'
