@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,8 +9,13 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { GlobalProvider } from "@/contexts/GlobalContext";
 import { AppRoutes } from "@/routes";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { limparServiceWorkerConflitante } from '@/lib/pushNotifications'
 
 function App() {
+  useEffect(() => {
+    limparServiceWorkerConflitante()
+  }, [])
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
