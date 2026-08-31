@@ -150,7 +150,7 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
   const isValid = formData.nome.trim().length > 0;
 
   const labelMedidor = isKm ? 'Quilometragem' : 'Horímetro';
-  const unidadeMedidor = isKm ? 'km' : 'h';
+  const unidadeMedidor = isKm ? 'km' : 'hora';
 
   return (
     <div className="space-y-6">
