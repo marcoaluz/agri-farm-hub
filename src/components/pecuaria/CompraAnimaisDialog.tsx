@@ -40,6 +40,7 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
   const [dataVencimento, setDataVencimento] = useState('')
   const [numParcelas, setNumParcelas] = useState(2)
   const [periodicidade, setPeriodicidade] = useState<'mensal' | 'trimestral' | 'semestral' | 'anual'>('mensal')
+  const [valorEntrada, setValorEntrada] = useState('')
 
 
   const [arquivoNF, setArquivoNF] = useState<File | null>(null)
@@ -172,8 +173,9 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
           p_transacao_id: (transacao as any).id,
           p_num_parcelas: numParcelas,
           p_data_primeira: dataVencimento,
-          p_periodicidade: periodicidade,
-        })
+        p_periodicidade: periodicidade,
+        p_valor_entrada: Number(valorEntrada) || 0,
+      })
 
         if (parcError) {
           toast({ title: 'Compra registrada, mas erro ao gerar parcelas', description: parcError.message, variant: 'destructive' })
@@ -308,17 +310,27 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
           )}
 
           {statusPagamento === 'parcelado' && (
-            <div className="space-y-2 rounded-lg border p-3">
-              <Label>Periodicidade</Label>
-              <Select value={periodicidade} onValueChange={(v) => setPeriodicidade(v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mensal">Mensal</SelectItem>
-                  <SelectItem value="trimestral">Trimestral</SelectItem>
-                  <SelectItem value="semestral">Semestral</SelectItem>
-                  <SelectItem value="anual">Anual</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Valor de entrada (opcional)</Label>
+                <Input
+                  type="number" step="0.01" min={0} placeholder="0,00"
+                  value={valorEntrada}
+                  onChange={(e) => setValorEntrada(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Periodicidade</Label>
+                <Select value={periodicidade} onValueChange={(v: any) => setPeriodicidade(v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mensal">Mensal</SelectItem>
+                    <SelectItem value="trimestral">Trimestral</SelectItem>
+                    <SelectItem value="semestral">Semestral</SelectItem>
+                    <SelectItem value="anual">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
 

@@ -37,6 +37,7 @@ export function VenderProdutoModal({ produto, onClose }: VenderProdutoModalProps
   const [numParcelas, setNumParcelas] = useState(2);
   const [dataPrimeiraParcela, setDataPrimeiraParcela] = useState(hoje());
   const [periodicidade, setPeriodicidade] = useState<'mensal' | 'trimestral' | 'semestral' | 'anual'>('mensal');
+  const [valorEntrada, setValorEntrada] = useState('');
 
   const [observacoes, setObservacoes] = useState('');
 
@@ -66,7 +67,7 @@ export function VenderProdutoModal({ produto, onClose }: VenderProdutoModalProps
       p_num_parcelas: formaPagamento === 'parcelado' ? numParcelas : 1,
       p_data_primeira_parcela: formaPagamento === 'parcelado' ? dataPrimeiraParcela : null,
       p_periodicidade: periodicidade,
-
+      p_valor_entrada: Number(valorEntrada) || 0,
     } as any);
     setLoading(false);
 
@@ -211,7 +212,15 @@ export function VenderProdutoModal({ produto, onClose }: VenderProdutoModalProps
                 onChange={(e) => setDataPrimeiraParcela(e.target.value)}
               />
             </div>
-            <div className="space-y-2 sm:col-span-2">
+            <div className="space-y-2">
+              <Label>Valor de entrada (opcional)</Label>
+              <Input
+                type="number" step="0.01" min={0} placeholder="0,00"
+                value={valorEntrada}
+                onChange={(e) => setValorEntrada(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
               <Label>Periodicidade</Label>
               <Select value={periodicidade} onValueChange={(v) => setPeriodicidade(v as any)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

@@ -194,13 +194,16 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const [salvandoParcelado, setSalvandoParcelado] = useState(false)
   const [unidadeLabel, setUnidadeLabel] = useState('')
   const [periodicidade, setPeriodicidade] = useState<'mensal' | 'trimestral' | 'semestral' | 'anual'>('mensal')
+  const [valorEntrada, setValorEntrada] = useState('')
   const MESES_POR_PERIODICIDADE: Record<string, number> = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 }
 
 
 
   const parcelasPreview = useMemo(() => {
     const n = Number(watchNumParcelas) || 0
-    const total = Number(watchValor) || 0
+    const totalBruto = Number(watchValor) || 0
+    const entrada = Number(valorEntrada) || 0
+    const total = totalBruto - entrada
     if (n < 2 || total <= 0 || !watchDataPrimeira) return []
     const base = Math.floor((total / n) * 100) / 100
     const passoMeses = MESES_POR_PERIODICIDADE[periodicidade] || 1
@@ -213,7 +216,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         valor: i === n - 1 ? Math.round((total - base * (n - 1)) * 100) / 100 : base,
       }
     })
-  }, [watchNumParcelas, watchValor, watchDataPrimeira, periodicidade])
+  }, [watchNumParcelas, watchValor, watchDataPrimeira, periodicidade, valorEntrada])
 
 
 
@@ -385,6 +388,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
           p_num_parcelas: data.num_parcelas,
           p_data_primeira: data.data_primeira_parcela,
           p_periodicidade: periodicidade,
+          p_valor_entrada: Number(valorEntrada) || 0,
         })
 
 
@@ -783,17 +787,30 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                         </FormItem>
                       )} />
                     </div>
-                    <div>
-                      <Label>Periodicidade</Label>
-                      <Select value={periodicidade} onValueChange={(v) => setPeriodicidade(v as any)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent className="bg-popover border border-border">
-                          <SelectItem value="mensal">Mensal</SelectItem>
-                          <SelectItem value="trimestral">Trimestral</SelectItem>
-                          <SelectItem value="semestral">Semestral</SelectItem>
-                          <SelectItem value="anual">Anual (ex: compra de terra em 4 anos)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label>Valor de entrada (opcional)</Label>
+                        <Input
+                          type="number" step="0.01" min="0" placeholder="0,00"
+                          value={valorEntrada}
+                          onChange={(e) => setValorEntrada(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Já entra como paga hoje. As parcelas abaixo dividem só o restante.
+                        </p>
+                      </div>
+                      <div>
+                        <Label>Periodicidade</Label>
+                        <Select value={periodicidade} onValueChange={(v) => setPeriodicidade(v as any)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-popover border border-border">
+                            <SelectItem value="mensal">Mensal</SelectItem>
+                            <SelectItem value="trimestral">Trimestral</SelectItem>
+                            <SelectItem value="semestral">Semestral</SelectItem>
+                            <SelectItem value="anual">Anual (ex: compra de terra em 4 anos)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
 
