@@ -3,8 +3,6 @@
  * Nunca registra em dev, dentro de iframe ou nos previews da Lovable:
  * nesses contextos remove registros antigos para evitar cache velho.
  */
-import { limparServiceWorkerConflitante } from "./pushNotifications";
-
 const SW_URL = "/sw.js";
 
 function isBlockedContext(): boolean {
@@ -37,9 +35,6 @@ async function unregisterAppServiceWorkers() {
 
 export function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-
-  // Limpa inscrição antiga do push-sw.js (mesmo escopo "/") que causava tela branca.
-  void limparServiceWorkerConflitante();
 
   if (isBlockedContext()) {
     void unregisterAppServiceWorkers();
