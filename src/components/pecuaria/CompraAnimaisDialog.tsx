@@ -17,7 +17,7 @@ interface CompraAnimaisDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   propriedadeId: string
-  rebanho: { id: string; nome: string; especie?: string; raca?: string } | null
+  rebanho: { id: string; nome: string; especie?: string; raca?: string; controle_individual?: boolean } | null
   /** Quando informado, o diálogo entra em modo edição. */
   movimentacao?: any | null
 }
@@ -119,7 +119,8 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
     }
 
     // Cria os animais "placeholder" do lote, aguardando identificação individual depois
-    if (!editando && rebanho) {
+    // — só para lotes com controle Individual. Lote Fechado só soma a quantidade agregada.
+    if (!editando && rebanho && rebanho.controle_individual !== false) {
       const { data: userData } = await supabase.auth.getUser()
       const { count: quantidadeExistente } = await supabase
         .from('animais' as any)
@@ -204,7 +205,9 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
     toast({
       title: editando
         ? 'Movimentação atualizada. Financeiro sincronizado automaticamente.'
-        : `Compra registrada. ${quantidade} ${Number(quantidade) === 1 ? 'animal aguardando identificação' : 'animais aguardando identificação'}.`
+        : (rebanho && rebanho.controle_individual === false)
+          ? 'Compra registrada no lote.'
+          : `Compra registrada. ${quantidade} ${Number(quantidade) === 1 ? 'animal aguardando identificação' : 'animais aguardando identificação'}.`
     })
     onOpenChange(false)
   }
