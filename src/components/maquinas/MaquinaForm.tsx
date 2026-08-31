@@ -20,7 +20,7 @@ interface Maquina {
   horimetro_inicial: number;
   horimetro_atual: number;
   custo_hora?: number;
-  unidade_calculo?: 'h' | 'km';
+  unidade_calculo?: 'hora' | 'km';
   km_atual?: number;
   custo_km?: number;
   ativo: boolean;
@@ -48,7 +48,7 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
     km_atual: '',
     custo_km: '',
   });
-  const [unidadeCalculo, setUnidadeCalculo] = useState<'h' | 'km'>('h');
+  const [unidadeCalculo, setUnidadeCalculo] = useState<'hora' | 'km'>('hora');
   const [compartilhado, setCompartilhado] = useState(false);
 
   useEffect(() => {
@@ -63,10 +63,10 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
         km_atual: maquina.km_atual?.toString() || '',
         custo_km: maquina.custo_km?.toString() || '',
       });
-      setUnidadeCalculo(maquina.unidade_calculo === 'km' ? 'km' : 'h');
+      setUnidadeCalculo(maquina.unidade_calculo === 'km' ? 'km' : 'hora');
       setCompartilhado(!!maquina.compartilhado);
     } else {
-      setUnidadeCalculo('h');
+      setUnidadeCalculo('hora');
       setCompartilhado(false);
     }
   }, [maquina]);
@@ -150,7 +150,7 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
   const isValid = formData.nome.trim().length > 0;
 
   const labelMedidor = isKm ? 'Quilometragem' : 'Horímetro';
-  const unidadeMedidor = isKm ? 'km' : 'h';
+  const unidadeMedidor = isKm ? 'km' : 'hora';
 
   return (
     <div className="space-y-6">
@@ -199,7 +199,7 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => setUnidadeCalculo('h')}
+              onClick={() => setUnidadeCalculo('hora')}
               className={cn(
                 'flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium transition-colors',
                 !isKm
