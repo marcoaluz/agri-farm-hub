@@ -9,19 +9,12 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)))
 }
 
-// Desativado temporariamente: registrar um Service Worker separado pra push
-// conflitava com o Service Worker principal do app (mesmo escopo "/"), causando
-// tela branca em navegações depois de deploy. Precisa ser reintegrado no MESMO
-// service worker do PWA (estratégia injectManifest) antes de reativar.
-const PUSH_DESATIVADO = true
-
 export function pushEhSuportado() {
-  if (PUSH_DESATIVADO) return false
   return 'serviceWorker' in navigator && 'PushManager' in window
 }
 
-// Remove qualquer inscrição antiga de push-sw.js que ficou registrada em sessões
-// anteriores — isso é o que estava causando a tela branca. Roda uma vez, silenciosamente.
+// Remove qualquer inscrição antiga de push-sw.js (o service worker separado que
+// causava a tela branca) — limpeza de segurança, roda sempre, não faz nada se não achar.
 export async function limparServiceWorkerConflitante() {
   if (!('serviceWorker' in navigator)) return
   try {
@@ -32,15 +25,15 @@ export async function limparServiceWorkerConflitante() {
         await reg.unregister()
       }
     }
-  } catch (e) {
-    // silencioso — isso é só limpeza best-effort
+  } catch {
+    /* limpeza best-effort */
   }
 }
 
 export async function statusInscricaoPush(): Promise<'ativo' | 'inativo' | 'negado' | 'nao_suportado'> {
   if (!pushEhSuportado()) return 'nao_suportado'
   if (Notification.permission === 'denied') return 'negado'
-  const registration = await navigator.serviceWorker.getRegistration('/push-sw.js')
+  const registration = await navigator.serviceWorker.getRegistration('/')
   if (!registration) return 'inativo'
   const sub = await registration.pushManager.getSubscription()
   return sub ? 'ativo' : 'inativo'
@@ -56,8 +49,9 @@ export async function ativarPushNotifications(usuarioId: string) {
     throw new Error('Permissão de notificação negada.')
   }
 
-  const registration = await navigator.serviceWorker.register('/push-sw.js')
-  await navigator.serviceWorker.ready
+  // Usa o Service Worker principal do app (já registrado por registerServiceWorker.ts) —
+  // não registra um separado, pra não repetir o conflito de antes.
+  const registration = await navigator.serviceWorker.ready
 
   let sub = await registration.pushManager.getSubscription()
   if (!sub) {
@@ -76,7 +70,7 @@ export async function ativarPushNotifications(usuarioId: string) {
       auth: json.keys?.auth,
       user_agent: navigator.userAgent,
     },
-    { onConflict: 'usuario_id,endpoint' }
+    { onConflict: 'usuario_id,endpoint' },
   )
   if (error) throw error
 
@@ -84,7 +78,7 @@ export async function ativarPushNotifications(usuarioId: string) {
 }
 
 export async function desativarPushNotifications(usuarioId: string) {
-  const registration = await navigator.serviceWorker.getRegistration('/push-sw.js')
+  const registration = await navigator.serviceWorker.getRegistration('/')
   const sub = await registration?.pushManager.getSubscription()
   if (sub) {
     await supabase.from('push_subscriptions' as any).delete().eq('usuario_id', usuarioId).eq('endpoint', sub.endpoint)
