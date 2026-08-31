@@ -173,8 +173,9 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
           p_transacao_id: (transacao as any).id,
           p_num_parcelas: numParcelas,
           p_data_primeira: dataVencimento,
-          p_periodicidade: periodicidade,
-        })
+        p_periodicidade: periodicidade,
+        p_valor_entrada: Number(valorEntrada) || 0,
+      })
 
         if (parcError) {
           toast({ title: 'Compra registrada, mas erro ao gerar parcelas', description: parcError.message, variant: 'destructive' })
