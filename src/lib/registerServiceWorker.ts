@@ -70,6 +70,9 @@ export function registerServiceWorker() {
   });
 
   window.addEventListener("load", () => {
+    // Limpa registros legados (/sw.js antigo, push-sw.js) antes de registrar o novo.
+    void unregisterAppServiceWorkers();
+
     navigator.serviceWorker
       .register(SW_URL, { scope: "/" })
       .then((registration) => {
