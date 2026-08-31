@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Info, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -37,6 +39,8 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
   const [statusPagamento, setStatusPagamento] = useState('pago')
   const [dataVencimento, setDataVencimento] = useState('')
   const [numParcelas, setNumParcelas] = useState(2)
+  const [periodicidade, setPeriodicidade] = useState<'mensal' | 'trimestral' | 'semestral' | 'anual'>('mensal')
+
 
   const [arquivoNF, setArquivoNF] = useState<File | null>(null)
   const [observacoes, setObservacoes] = useState('')
@@ -168,7 +172,9 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
           p_transacao_id: (transacao as any).id,
           p_num_parcelas: numParcelas,
           p_data_primeira: dataVencimento,
+          p_periodicidade: periodicidade,
         })
+
         if (parcError) {
           toast({ title: 'Compra registrada, mas erro ao gerar parcelas', description: parcError.message, variant: 'destructive' })
         }
@@ -300,6 +306,22 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
               )}
             </div>
           )}
+
+          {statusPagamento === 'parcelado' && (
+            <div className="space-y-2 rounded-lg border p-3">
+              <Label>Periodicidade</Label>
+              <Select value={periodicidade} onValueChange={(v) => setPeriodicidade(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mensal">Mensal</SelectItem>
+                  <SelectItem value="trimestral">Trimestral</SelectItem>
+                  <SelectItem value="semestral">Semestral</SelectItem>
+                  <SelectItem value="anual">Anual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
 
 
           <AnexoManager
