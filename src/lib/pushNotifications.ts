@@ -9,8 +9,32 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)))
 }
 
+// Desativado temporariamente: registrar um Service Worker separado pra push
+// conflitava com o Service Worker principal do app (mesmo escopo "/"), causando
+// tela branca em navegações depois de deploy. Precisa ser reintegrado no MESMO
+// service worker do PWA (estratégia injectManifest) antes de reativar.
+const PUSH_DESATIVADO = true
+
 export function pushEhSuportado() {
+  if (PUSH_DESATIVADO) return false
   return 'serviceWorker' in navigator && 'PushManager' in window
+}
+
+// Remove qualquer inscrição antiga de push-sw.js que ficou registrada em sessões
+// anteriores — isso é o que estava causando a tela branca. Roda uma vez, silenciosamente.
+export async function limparServiceWorkerConflitante() {
+  if (!('serviceWorker' in navigator)) return
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations()
+    for (const reg of registrations) {
+      const url = reg.active?.scriptURL || reg.waiting?.scriptURL || reg.installing?.scriptURL || ''
+      if (url.includes('push-sw.js')) {
+        await reg.unregister()
+      }
+    }
+  } catch (e) {
+    // silencioso — isso é só limpeza best-effort
+  }
 }
 
 export async function statusInscricaoPush(): Promise<'ativo' | 'inativo' | 'negado' | 'nao_suportado'> {
