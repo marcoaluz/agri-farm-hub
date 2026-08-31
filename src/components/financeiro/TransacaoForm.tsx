@@ -191,24 +191,32 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const watchDataPrimeira = form.watch('data_primeira_parcela')
   const isEditing = !!transacao
 
+  const [salvandoParcelado, setSalvandoParcelado] = useState(false)
+  const [unidadeLabel, setUnidadeLabel] = useState('')
+  const [periodicidade, setPeriodicidade] = useState<'mensal' | 'trimestral' | 'semestral' | 'anual'>('mensal')
+  const MESES_POR_PERIODICIDADE: Record<string, number> = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 }
+
+
+
   const parcelasPreview = useMemo(() => {
     const n = Number(watchNumParcelas) || 0
     const total = Number(watchValor) || 0
     if (n < 2 || total <= 0 || !watchDataPrimeira) return []
     const base = Math.floor((total / n) * 100) / 100
+    const passoMeses = MESES_POR_PERIODICIDADE[periodicidade] || 1
     return Array.from({ length: n }, (_, i) => {
       const d = new Date(watchDataPrimeira + 'T12:00:00')
-      d.setMonth(d.getMonth() + i)
+      d.setMonth(d.getMonth() + i * passoMeses)
       return {
         numero: i + 1,
         data: d,
         valor: i === n - 1 ? Math.round((total - base * (n - 1)) * 100) / 100 : base,
       }
     })
-  }, [watchNumParcelas, watchValor, watchDataPrimeira])
+  }, [watchNumParcelas, watchValor, watchDataPrimeira, periodicidade])
 
-  const [salvandoParcelado, setSalvandoParcelado] = useState(false)
-  const [unidadeLabel, setUnidadeLabel] = useState('')
+
+
 
 
   const showCulturaFields = watchTipo === 'receita' && watchCategoria === 'venda_producao'
@@ -376,7 +384,9 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
           p_transacao_id: (novaTransacao as any).id,
           p_num_parcelas: data.num_parcelas,
           p_data_primeira: data.data_primeira_parcela,
+          p_periodicidade: periodicidade,
         })
+
 
         if (parcError) {
           toast.error('Transação criada, mas erro ao gerar parcelas: ' + parcError.message)
@@ -773,6 +783,19 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                         </FormItem>
                       )} />
                     </div>
+                    <div>
+                      <Label>Periodicidade</Label>
+                      <Select value={periodicidade} onValueChange={(v) => setPeriodicidade(v as any)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent className="bg-popover border border-border">
+                          <SelectItem value="mensal">Mensal</SelectItem>
+                          <SelectItem value="trimestral">Trimestral</SelectItem>
+                          <SelectItem value="semestral">Semestral</SelectItem>
+                          <SelectItem value="anual">Anual (ex: compra de terra em 4 anos)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
 
                     {parcelasPreview.length > 0 && (
                       <div className="mt-3">
