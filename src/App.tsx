@@ -9,11 +9,13 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { GlobalProvider } from "@/contexts/GlobalContext";
 import { AppRoutes } from "@/routes";
 import { InstallPrompt } from "@/components/InstallPrompt";
-import { limparServiceWorkerConflitante } from '@/lib/pushNotifications'
+import { UpdateAvailableBanner } from "@/components/UpdateAvailableBanner";
+import { limparServiceWorkerConflitante, registerServiceWorker } from '@/lib/pushNotifications'
 
 function App() {
   useEffect(() => {
     limparServiceWorkerConflitante()
+    registerServiceWorker()
   }, [])
 
   return (
@@ -26,6 +28,7 @@ function App() {
               <Toaster />
               <Sonner />
               <InstallPrompt />
+              <UpdateAvailableBanner />
             </GlobalProvider>
           </AuthProvider>
         </TooltipProvider>
@@ -35,3 +38,4 @@ function App() {
 }
 
 export default App;
+
