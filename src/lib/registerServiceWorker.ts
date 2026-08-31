@@ -38,6 +38,9 @@ async function unregisterAppServiceWorkers() {
 export function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
 
+  // Limpa inscrição antiga do push-sw.js (mesmo escopo "/") que causava tela branca.
+  void limparServiceWorkerConflitante();
+
   if (isBlockedContext()) {
     void unregisterAppServiceWorkers();
     return;
