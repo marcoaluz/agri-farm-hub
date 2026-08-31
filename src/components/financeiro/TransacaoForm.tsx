@@ -382,7 +382,9 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
           p_transacao_id: (novaTransacao as any).id,
           p_num_parcelas: data.num_parcelas,
           p_data_primeira: data.data_primeira_parcela,
+          p_periodicidade: periodicidade,
         })
+
 
         if (parcError) {
           toast.error('Transação criada, mas erro ao gerar parcelas: ' + parcError.message)
