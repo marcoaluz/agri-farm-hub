@@ -99,6 +99,7 @@ export function MovimentacaoDialog({
   }, [open, rebanhoIdInicial, tipoInicial, animalIdInicial, quantidadeInicial])
 
   const rebanhoAtual = (rebanhos || []).find((r: any) => r.id === rebanhoId)
+  const individual = rebanhoAtual?.controle_individual !== false
 
   const { data: animaisRebanho } = useQuery({
     queryKey: ['animais-rebanho-select', rebanhoId],
@@ -617,11 +618,16 @@ export function MovimentacaoDialog({
                 <Select value={rebanhoDestinoId} onValueChange={setRebanhoDestinoId}>
                   <SelectTrigger><SelectValue placeholder="Selecione o rebanho destino" /></SelectTrigger>
                   <SelectContent>
-                    {(rebanhos || []).filter((r: any) => r.id !== rebanhoId).map((r: any) => (
-                      <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
-                    ))}
+                    {(rebanhos || [])
+                      .filter((r: any) => r.id !== rebanhoId && (r.controle_individual !== false) === individual)
+                      .map((r: any) => (
+                        <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Só mostra lotes do mesmo tipo ({individual ? 'Individual' : 'Fechado'}) — não dá pra misturar.
+                </p>
               </div>
               {renderSelecaoAnimais(true)}
               {(!animaisRebanho || animaisRebanho.length === 0) && (
