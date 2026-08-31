@@ -246,7 +246,9 @@ export function Configuracoes() {
             </CardHeader>
             <CardContent className="space-y-3">
               {pushStatus === 'nao_suportado' && (
-                <p className="text-sm text-muted-foreground">Este navegador não suporta notificações push.</p>
+                <p className="text-sm text-muted-foreground">
+                  Notificações no celular estão pausadas temporariamente (ajuste técnico em andamento). Volta em breve.
+                </p>
               )}
               {pushStatus === 'negado' && (
                 <p className="text-sm text-muted-foreground">
