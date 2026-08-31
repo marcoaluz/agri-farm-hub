@@ -37,6 +37,8 @@ export function CompraAnimaisDialog({ open, onOpenChange, propriedadeId, rebanho
   const [statusPagamento, setStatusPagamento] = useState('pago')
   const [dataVencimento, setDataVencimento] = useState('')
   const [numParcelas, setNumParcelas] = useState(2)
+  const [periodicidade, setPeriodicidade] = useState<'mensal' | 'trimestral' | 'semestral' | 'anual'>('mensal')
+
 
   const [arquivoNF, setArquivoNF] = useState<File | null>(null)
   const [observacoes, setObservacoes] = useState('')
