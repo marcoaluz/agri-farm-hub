@@ -201,7 +201,9 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
 
   const parcelasPreview = useMemo(() => {
     const n = Number(watchNumParcelas) || 0
-    const total = Number(watchValor) || 0
+    const totalBruto = Number(watchValor) || 0
+    const entrada = Number(valorEntrada) || 0
+    const total = totalBruto - entrada
     if (n < 2 || total <= 0 || !watchDataPrimeira) return []
     const base = Math.floor((total / n) * 100) / 100
     const passoMeses = MESES_POR_PERIODICIDADE[periodicidade] || 1
