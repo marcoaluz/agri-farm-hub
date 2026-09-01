@@ -25,7 +25,6 @@ interface Servico {
   descricao?: string;
   categoria: string;
   requer_talhao: boolean;
-  tipo_servico?: 'simples' | 'composto';
   custo_padrao?: number;
   unidade_medida?: string;
   compartilhado?: boolean;
@@ -86,7 +85,9 @@ export function Servicos() {
     const matchBusca = s.nome.toLowerCase().includes(busca.toLowerCase()) ||
       s.descricao?.toLowerCase().includes(busca.toLowerCase());
     const matchCat  = filtroCategoria === 'todos' || s.categoria === filtroCategoria;
-    const matchTipo = filtroTipo === 'todos' || (s.tipo_servico || 'composto') === filtroTipo;
+    const matchTipo = filtroTipo === 'todos'
+      || (filtroTipo === 'com_custo' && s.tem_valor_proprio === true)
+      || (filtroTipo === 'sem_custo' && s.tem_valor_proprio !== true);
     return matchBusca && matchCat && matchTipo;
   });
 
@@ -194,8 +195,8 @@ export function Servicos() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos os tipos</SelectItem>
-            <SelectItem value="simples">Simples</SelectItem>
-            <SelectItem value="composto">Composto</SelectItem>
+            <SelectItem value="com_custo">Com custo</SelectItem>
+            <SelectItem value="sem_custo">Sem custo</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
