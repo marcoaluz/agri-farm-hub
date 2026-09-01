@@ -239,6 +239,7 @@ export default function Dashboard() {
         .limit(8)
       if (error) throw error
       return (data || []).map((l: any) => ({
+        id: l.id,
         servico_nome: l.servicos?.nome || 'Serviço',
         talhao_nome: l.talhoes?.nome || 'Talhão',
         propriedade_nome: l.propriedades?.nome || '',
@@ -352,7 +353,10 @@ export default function Dashboard() {
   }, [producaoSafra])
 
   const ultimosLanc = lancData
-    ? [...lancData].sort((a: any, b: any) => (b.data_execucao || '').localeCompare(a.data_execucao || '')).slice(0, 5)
+    ? [...lancData]
+        .sort((a: any, b: any) => (b.data_execucao || '').localeCompare(a.data_execucao || ''))
+        .slice(0, 5)
+        .map((l: any) => ({ ...l, id: l.id, servico_nome: l.servico_nome, talhao_nome: l.talhao_nome }))
     : []
 
   // ── Render data (mode-aware) ──
@@ -619,7 +623,7 @@ export default function Dashboard() {
               ) : (
                 <PizzaCategoria
                   dados={dadosCatRender || []}
-                  nameKey="categoria"
+                  nameKey={isConsolidado ? 'categoria' : 'out_categoria'}
                   valueKey="custo_total"
                   donut
                   emptyLabel="Sem custos no período"
@@ -646,7 +650,13 @@ export default function Dashboard() {
               ) : (
                 <div className="space-y-3">
                   {ultimosLanc.map((l: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted">
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => l.id && navigate(`/lancamentos/${l.id}`)}
+                      disabled={!l.id}
+                      className="w-full flex items-center justify-between rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted text-left disabled:cursor-default disabled:hover:bg-muted/50"
+                    >
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground truncate">{l.servico_nome || 'Serviço'}</p>
                         <p className="text-xs text-muted-foreground">
@@ -654,7 +664,7 @@ export default function Dashboard() {
                         </p>
                       </div>
                       <span className="text-sm font-semibold text-foreground ml-3 shrink-0">{fmt(Number(l.custo_total || 0))}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
