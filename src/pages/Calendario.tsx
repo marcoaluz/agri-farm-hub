@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
@@ -18,12 +19,14 @@ interface CalEvent {
   titulo: string
   detalhe?: string
   pago?: boolean
+  link?: string
 }
 
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 export default function Calendario() {
+  const navigate = useNavigate()
   const { propriedadeAtual } = useGlobal()
   const { safraSelecionada } = useSafraContext()
   const propId = propriedadeAtual?.id
@@ -43,7 +46,7 @@ export default function Calendario() {
     queryKey: ['cal-lancamentos', propId, safraId, rangeStart, rangeEnd],
     queryFn: async () => {
       let q = (supabase as any).from('lancamentos')
-        .select('data_execucao, servico:servicos(nome), talhao:talhoes(nome), custo_total')
+        .select('id, data_execucao, servico:servicos(nome), talhao:talhoes(nome), custo_total')
         .eq('propriedade_id', propId)
         .gte('data_execucao', rangeStart)
         .lte('data_execucao', rangeEnd)
@@ -86,7 +89,7 @@ export default function Calendario() {
     queryKey: ['cal-transacoes', propId, rangeStart, rangeEnd],
     queryFn: async () => {
       const { data } = await (supabase as any).from('transacoes')
-        .select('data_vencimento, descricao, valor, tipo, status, categoria')
+        .select('id, data_vencimento, descricao, valor, tipo, status, categoria')
         .eq('propriedade_id', propId)
         .eq('status', 'pendente')
         .not('data_vencimento', 'is', null)
@@ -126,6 +129,7 @@ export default function Calendario() {
       data: l.data_execucao,
       titulo: l.servico?.nome || 'Lançamento',
       detalhe: `${l.talhao?.nome ? l.talhao.nome + ' — ' : ''}R$ ${Number(l.custo_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      link: l.id ? `/lancamentos/${l.id}` : undefined,
     }))
 
     sanitarios?.forEach((s: any) => push(s.data_proxima, {
@@ -133,6 +137,7 @@ export default function Calendario() {
       data: s.data_proxima,
       titulo: `💉 ${s.descricao}`,
       detalhe: `${s.tipo} — ${s.rebanho?.nome || ''}`,
+      link: '/pecuaria',
     }))
 
     manutencoes?.forEach((m: any) => push(m.data_prevista, {
@@ -140,6 +145,7 @@ export default function Calendario() {
       data: m.data_prevista,
       titulo: `🔧 ${m.descricao}`,
       detalhe: `${m.maquina?.nome || ''} — ${m.status}`,
+      link: '/maquinas',
     }))
 
     transacoes?.forEach((t: any) => push(t.data_vencimento, {
@@ -147,6 +153,7 @@ export default function Calendario() {
       data: t.data_vencimento,
       titulo: `💰 ${t.descricao}`,
       detalhe: `${t.tipo === 'receita' ? 'Receita' : 'Despesa'} — R$ ${Number(t.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      link: t.id ? `/financeiro?transacao=${t.id}` : undefined,
     }))
 
     parcelas?.forEach((p: any) => push(p.data_vencimento, {
@@ -155,6 +162,7 @@ export default function Calendario() {
       titulo: `P${p.numero_parcela}: R$ ${Number(p.valor || 0).toFixed(2)}`,
       detalhe: `${p.transacao?.descricao || 'Parcela'} — ${p.status === 'pago' ? 'Pago' : 'Pendente'}`,
       pago: p.status === 'pago',
+      link: p.transacao?.id ? `/financeiro?transacao=${p.transacao.id}` : undefined,
     }))
 
     return map
@@ -341,7 +349,11 @@ export default function Calendario() {
               <p className="text-sm text-muted-foreground">Nenhum evento neste dia.</p>
             ) : (
               selectedEvents.map((ev, i) => (
-                <Card key={i} className="border">
+                <Card
+                  key={i}
+                  className={cn('border', ev.link && 'cursor-pointer hover:bg-accent transition-colors')}
+                  onClick={() => { if (ev.link) { setSheetOpen(false); navigate(ev.link) } }}
+                >
                   <CardContent className="p-3 space-y-1">
                     <div className="flex items-center gap-2">
                       <span className={cn('h-2.5 w-2.5 rounded-full', ev.pago ? 'bg-green-500' : dotColor[ev.tipo])} />
