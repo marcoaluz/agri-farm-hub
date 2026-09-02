@@ -12,3 +12,5 @@
 - [x] `src/pages/Pecuaria.tsx` — Editar/Excluir na tabela de Leite
 - [x] `src/pages/Relatorios.tsx` — formatar quantidade de manutenção como número
 - [x] `src/components/financeiro/CustosOperacionais.tsx` — mostrar nome da propriedade nos custos gerais
+- [ ] `src/pages/Dashboard.tsx` — contador de não lidas via RPC (sincronizado com sino)
+- [ ] `src/components/dashboard/PainelAlertas.tsx` — reescrito para marcar notificações como lidas e navegar
