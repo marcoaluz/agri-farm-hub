@@ -244,7 +244,7 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
       })
       if (servicoError) throw servicoError
 
-      const { error: lancError } = await supabase.from('lancamentos' as any).insert({
+      const { data: novoLancamento, error: lancError } = await supabase.from('lancamentos' as any).insert({
         propriedade_id: propriedadeId,
         safra_id: safraId,
         servico_id: servicoId,
@@ -252,8 +252,29 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
         data_execucao: data,
         custo_total: custoTotal,
         observacoes: `${produtoNome}: ${qtd} ${produtoSelecionado?.unidade_medida || ''} consumidos (FIFO) — ${rebanhoNome}. ${observacoes || ''}`.trim(),
-      } as any)
+      } as any).select('id').single()
       if (lancError) throw lancError
+
+      // Guarda o detalhamento por lote — é isso que permite devolver o estoque
+      // corretamente se esse lançamento for excluído depois.
+      const detalhamentoLotes = updates.map(u => {
+        const loteOriginal = (lotes as any[]).find(l => l.id === u.id)
+        return {
+          lote_id: u.id,
+          quantidade_consumida: (loteOriginal?.quantidade_disponivel || 0) - u.novaQtd,
+        }
+      })
+
+      const { error: itemError } = await supabase.from('lancamentos_itens' as any).insert({
+        lancamento_id: (novoLancamento as any).id,
+        tipo_ref: 'produto',
+        produto_id: produtoId,
+        quantidade: qtd,
+        custo_unitario: qtd > 0 ? custoTotal / qtd : 0,
+        custo_total: custoTotal,
+        detalhamento_lotes: detalhamentoLotes,
+      } as any)
+      if (itemError) throw itemError
 
       toast({
         title: 'Baixa no estoque realizada!',
