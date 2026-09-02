@@ -327,6 +327,44 @@ export default function Pecuaria() {
     setDeleteMovId(null)
   }
 
+  async function handleExcluirOrdenha() {
+    if (!deleteOrdenhaId) return
+    const ordenha = (ordenhas || []).find((o: any) => o.id === deleteOrdenhaId)
+
+    if (ordenha?.lote_id) {
+      const { data: lote } = await supabase
+        .from('lotes' as any)
+        .select('quantidade_original, quantidade_disponivel')
+        .eq('id', ordenha.lote_id)
+        .maybeSingle()
+      if (lote) {
+        const consumido = Math.max(Number((lote as any).quantidade_original) - Number((lote as any).quantidade_disponivel), 0)
+        if (consumido <= 0) {
+          await supabase.from('lotes' as any).delete().eq('id', ordenha.lote_id)
+        } else {
+          await supabase.from('lotes' as any).update({ quantidade_original: consumido, quantidade_disponivel: 0 } as any).eq('id', ordenha.lote_id)
+        }
+      }
+    }
+
+    const { data: removidas, error } = await supabase.from('ordenhas' as any).delete().eq('id', deleteOrdenhaId).select('id')
+    if (error) {
+      toast({ title: 'Erro ao excluir ordenha', description: error.message, variant: 'destructive' })
+      return
+    }
+    if (!removidas || (removidas as any[]).length === 0) {
+      toast({ title: 'Nada foi excluído', variant: 'destructive' })
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: ['ordenhas'] })
+    queryClient.invalidateQueries({ queryKey: ['ranking-leite'] })
+    queryClient.invalidateQueries({ queryKey: ['produtos'] })
+    queryClient.invalidateQueries({ queryKey: ['produtos-leite'] })
+    queryClient.invalidateQueries({ queryKey: ['lotes'] })
+    toast({ title: 'Ordenha excluída. Estoque ajustado.' })
+    setDeleteOrdenhaId(null)
+  }
+
   async function handleExcluirSanitario() {
     if (!deleteSanId) return
     const { data: removidos, error } = await supabase
