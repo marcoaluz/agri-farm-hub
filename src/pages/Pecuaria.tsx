@@ -77,6 +77,8 @@ export default function Pecuaria() {
   const [movRebanhoId, setMovRebanhoId] = useState<string | undefined>()
   const [sanitarioDialog, setSanitarioDialog] = useState(false)
   const [ordenhaDialog, setOrdenhaDialog] = useState(false)
+  const [ordenhaEditando, setOrdenhaEditando] = useState<any>(null)
+  const [deleteOrdenhaId, setDeleteOrdenhaId] = useState<string | null>(null)
   const [racaoDialog, setRacaoDialog] = useState(false)
   const [pesagemDialog, setPesagemDialog] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -323,6 +325,44 @@ export default function Pecuaria() {
     queryClient.invalidateQueries({ queryKey: ['rebanhos'] })
     toast({ title: 'Movimentação excluída. Despesa correspondente removida do Financeiro.' })
     setDeleteMovId(null)
+  }
+
+  async function handleExcluirOrdenha() {
+    if (!deleteOrdenhaId) return
+    const ordenha = (ordenhas || []).find((o: any) => o.id === deleteOrdenhaId)
+
+    if (ordenha?.lote_id) {
+      const { data: lote } = await supabase
+        .from('lotes' as any)
+        .select('quantidade_original, quantidade_disponivel')
+        .eq('id', ordenha.lote_id)
+        .maybeSingle()
+      if (lote) {
+        const consumido = Math.max(Number((lote as any).quantidade_original) - Number((lote as any).quantidade_disponivel), 0)
+        if (consumido <= 0) {
+          await supabase.from('lotes' as any).delete().eq('id', ordenha.lote_id)
+        } else {
+          await supabase.from('lotes' as any).update({ quantidade_original: consumido, quantidade_disponivel: 0 } as any).eq('id', ordenha.lote_id)
+        }
+      }
+    }
+
+    const { data: removidas, error } = await supabase.from('ordenhas' as any).delete().eq('id', deleteOrdenhaId).select('id')
+    if (error) {
+      toast({ title: 'Erro ao excluir ordenha', description: error.message, variant: 'destructive' })
+      return
+    }
+    if (!removidas || (removidas as any[]).length === 0) {
+      toast({ title: 'Nada foi excluído', variant: 'destructive' })
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: ['ordenhas'] })
+    queryClient.invalidateQueries({ queryKey: ['ranking-leite'] })
+    queryClient.invalidateQueries({ queryKey: ['produtos'] })
+    queryClient.invalidateQueries({ queryKey: ['produtos-leite'] })
+    queryClient.invalidateQueries({ queryKey: ['lotes'] })
+    toast({ title: 'Ordenha excluída. Estoque ajustado.' })
+    setDeleteOrdenhaId(null)
   }
 
   async function handleExcluirSanitario() {
@@ -642,6 +682,7 @@ export default function Pecuaria() {
                         <TableHead>Vacas</TableHead>
                         <TableHead>Destino</TableHead>
                         <TableHead className="text-right">Valor</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -654,6 +695,16 @@ export default function Pecuaria() {
                           <TableCell>{o.vacas_ordenhadas || '-'}</TableCell>
                           <TableCell className="capitalize">{o.destino?.replace('_', ' ') || '-'}</TableCell>
                           <TableCell className="text-right">{o.valor_total ? `R$ ${Number(o.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-1 justify-end">
+                              <Button variant="ghost" size="icon" title="Editar" onClick={() => { setOrdenhaEditando(o); setOrdenhaDialog(true) }}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" title="Excluir" className="text-destructive" onClick={() => setDeleteOrdenhaId(o.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -791,7 +842,13 @@ export default function Pecuaria() {
       />
       <CompraAnimaisDialog open={compraDialog} onOpenChange={setCompraDialog} propriedadeId={propId} rebanho={compraRebanho} />
       <EventoSanitarioDialog open={sanitarioDialog} onOpenChange={setSanitarioDialog} propriedadeId={propId} rebanhos={rebanhos || []} />
-      <OrdenhaDialog open={ordenhaDialog} onOpenChange={setOrdenhaDialog} propriedadeId={propId} rebanhosLeite={rebanhosLeite} />
+      <OrdenhaDialog
+        open={ordenhaDialog}
+        onOpenChange={o => { setOrdenhaDialog(o); if (!o) setOrdenhaEditando(null) }}
+        propriedadeId={propId}
+        rebanhosLeite={rebanhosLeite}
+        ordenhaEditando={ordenhaEditando}
+      />
       <RacaoDialog open={racaoDialog} onOpenChange={setRacaoDialog} propriedadeId={propId || ''} safraId={safraSelecionada?.id || ''} rebanhos={rebanhos || []} />
       <PesagemDialog open={pesagemDialog} onOpenChange={setPesagemDialog} propriedadeId={propId || ''} rebanhos={rebanhos || []} />
       {animaisRebanho && (
@@ -828,6 +885,21 @@ export default function Pecuaria() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteOrdenhaId} onOpenChange={() => setDeleteOrdenhaId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir ordenha?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O leite que entrou no estoque a partir dessa ordenha será removido. Se parte já foi vendida, só o que ainda estiver disponível é ajustado. Esta ação é irreversível.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirOrdenha} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
