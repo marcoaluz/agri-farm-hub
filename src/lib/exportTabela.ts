@@ -164,7 +164,7 @@ export async function exportarCustosDetalhadosPDF(opts: {
       case 'abastecimento':
         return qtd != null ? `(${qtd} ${un})` : '-'
       case 'manutencao':
-        return item.descricao || '-'
+        return qtd != null ? qtd : '-'
       default:
         return qtd != null ? `${qtd}${un ? ` (${un})` : ''}` : '-'
     }
@@ -520,6 +520,107 @@ export async function exportarInsumosPDF(opts: {
       y += 5.5
     })
     y += 5
+  })
+
+  doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+}
+
+export async function exportarObservacoesPDF(opts: {
+  nomeArquivo: string
+  propriedadeNome: string
+  safraNome?: string
+  termoBuscado: string
+  totalGeral: number
+  grupos: {
+    descricao: string
+    subtotal: number
+    itens: { rotulo: string; vezes: number; valor: number }[]
+  }[]
+}) {
+  const { nomeArquivo, propriedadeNome, safraNome, termoBuscado, totalGeral, grupos } = opts
+  const doc = new jsPDF()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 14
+  let y = 14
+
+  const fmt2 = (v: number) =>
+    Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const COR_TEXTO = 55 as const
+
+  const logo = await getLogoBase64()
+  const desenharMarcaDagua = () => {
+    if (!logo) return
+    try {
+      const tamanho = 90
+      doc.saveGraphicsState()
+      // @ts-ignore
+      doc.setGState(new (doc as any).GState({ opacity: 0.06 }))
+      doc.addImage(logo, 'PNG', (pageWidth - tamanho) / 2, (pageHeight - tamanho) / 2, tamanho, tamanho)
+      doc.restoreGraphicsState()
+    } catch {}
+  }
+
+  const novaPaginaSeNecessario = (alturaNecessaria: number) => {
+    if (y + alturaNecessaria > pageHeight - 20) {
+      doc.addPage()
+      desenharMarcaDagua()
+      y = 14
+    }
+  }
+
+  desenharMarcaDagua()
+  let textX = margin
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', margin, 8, 12, 12); textX = margin + 16 } catch {}
+  }
+  doc.setFontSize(14); doc.setFont('helvetica', 'bold')
+  doc.text('Agro GFI', textX, 14)
+  doc.setFontSize(11); doc.setFont('helvetica', 'normal')
+  doc.text(`Relatório: Observações — "${termoBuscado}"`, textX, 20)
+  doc.setFontSize(10)
+  doc.text(`Propriedade: ${propriedadeNome}`, margin, 30)
+  if (safraNome) doc.text(`Safra: ${safraNome}`, margin, 36)
+  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, safraNome ? 42 : 36)
+  y = safraNome ? 50 : 44
+
+  doc.setFontSize(12); doc.setFont('helvetica', 'bold')
+  doc.text('Total', margin, y)
+  doc.text(`R$ ${fmt2(totalGeral)}`, pageWidth - margin, y, { align: 'right' })
+  y += 6
+
+  const COL_QTDE_X = pageWidth - margin - 30
+
+  doc.setFontSize(8); doc.setFont('helvetica', 'bold')
+  doc.setTextColor(140)
+  doc.text('Qtde.', COL_QTDE_X, y, { align: 'right' })
+  doc.text('Valor', pageWidth - margin, y, { align: 'right' })
+  doc.setTextColor(0)
+  y += 4
+
+  grupos.forEach((grupo) => {
+    novaPaginaSeNecessario(10 + grupo.itens.length * 6)
+
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold')
+    doc.text(grupo.descricao, margin, y)
+    doc.text(`R$ ${fmt2(grupo.subtotal)}`, pageWidth - margin, y, { align: 'right' })
+    y += 1
+    doc.setDrawColor(200)
+    doc.line(margin, y, pageWidth - margin, y)
+    y += 5
+
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal')
+    grupo.itens.forEach((item) => {
+      doc.setTextColor(COR_TEXTO)
+      doc.text(item.rotulo, margin + 4, y)
+      doc.setTextColor(140)
+      doc.text(`${item.vezes}x`, COL_QTDE_X, y, { align: 'right' })
+      doc.setTextColor(COR_TEXTO)
+      doc.text(`R$ ${fmt2(item.valor)}`, pageWidth - margin, y, { align: 'right' })
+      doc.setTextColor(0)
+      y += 5.5
+    })
+    y += 3
   })
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
