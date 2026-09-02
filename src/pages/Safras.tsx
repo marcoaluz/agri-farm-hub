@@ -150,6 +150,7 @@ export default function SafrasPage() {
 function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { refetchSafras } = useGlobal();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
@@ -160,9 +161,10 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
       if (error) throw error;
       if (!data?.length) throw new Error("A safra não foi encontrada ou você não tem permissão para excluí-la.");
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({ title: "Safra excluída com sucesso" });
       queryClient.invalidateQueries({ queryKey: ["safras"] });
+      await refetchSafras();
     },
     onError: (error: Error) => {
       toast({
@@ -183,9 +185,10 @@ function SafraCard({ safra, onEdit }: { safra: Safra; onEdit: () => void }) {
 
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({ title: "Safra ativada com sucesso" });
       queryClient.invalidateQueries({ queryKey: ["safras"] });
+      await refetchSafras();
     },
     onError: () => {
       toast({
