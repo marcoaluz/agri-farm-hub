@@ -8,3 +8,5 @@
 - [x] `src/components/pecuaria/EventoSanitarioDialog.tsx` — filtrar produtos pecuários por categoria sanitária
 - [x] `src/pages/Pecuaria.tsx` — adicionar exclusão de eventos sanitários com diálogo de confirmação
 - [x] `src/components/pecuaria/RacaoDialog.tsx` — adicionar rastro de lotes no lançamento (detalhamento_lotes)
+- [x] `src/components/pecuaria/OrdenhaDialog.tsx` — reescrito com suporte a edição
+- [x] `src/pages/Pecuaria.tsx` — Editar/Excluir na tabela de Leite
