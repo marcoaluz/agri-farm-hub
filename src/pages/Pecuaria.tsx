@@ -80,6 +80,7 @@ export default function Pecuaria() {
   const [racaoDialog, setRacaoDialog] = useState(false)
   const [pesagemDialog, setPesagemDialog] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleteSanId, setDeleteSanId] = useState<string | null>(null)
   const [animaisRebanho, setAnimaisRebanho] = useState<any>(null)
 
   // Filters
@@ -324,6 +325,33 @@ export default function Pecuaria() {
     setDeleteMovId(null)
   }
 
+  async function handleExcluirSanitario() {
+    if (!deleteSanId) return
+    const { data: removidos, error } = await supabase
+      .from('sanitario_eventos' as any)
+      .delete()
+      .eq('id', deleteSanId)
+      .select('id')
+    if (error) {
+      toast({ title: 'Erro ao excluir evento', description: error.message, variant: 'destructive' })
+      return
+    }
+    if (!removidos || (removidos as any[]).length === 0) {
+      toast({ title: 'Nada foi excluído', description: 'O evento não foi encontrado ou você não tem permissão.', variant: 'destructive' })
+      return
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['sanitario-eventos'] })
+    queryClient.invalidateQueries({ queryKey: ['sanitario-contagem'] })
+    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
+    queryClient.invalidateQueries({ queryKey: ['produtos'] })
+    queryClient.invalidateQueries({ queryKey: ['produtos-pecuarios'] })
+    queryClient.invalidateQueries({ queryKey: ['lotes'] })
+    toast({ title: 'Evento excluído. Lançamento removido e estoque devolvido (se veio do estoque).' })
+    setDeleteSanId(null)
+  }
+
   async function handleDelete() {
     if (!deleteId) return
 
@@ -539,8 +567,14 @@ export default function Pecuaria() {
                             {e.rebanho && <span>Rebanho: {(e.rebanho as any).nome}</span>}
                           </div>
                         </div>
+                        <Button
+                          variant="ghost" size="icon" className="text-destructive shrink-0"
+                          title="Excluir evento"
+                          onClick={() => setDeleteSanId(e.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-
                     </CardContent>
                   </Card>
                 )
@@ -794,6 +828,21 @@ export default function Pecuaria() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteSanId} onOpenChange={() => setDeleteSanId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir evento sanitário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O lançamento correspondente no Financeiro/Lançamentos será removido, e se o produto veio do estoque, a quantidade usada será devolvida. Esta ação é irreversível.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirSanitario} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
