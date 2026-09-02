@@ -889,6 +889,21 @@ export default function Pecuaria() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={!!deleteOrdenhaId} onOpenChange={() => setDeleteOrdenhaId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir ordenha?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O leite que entrou no estoque a partir dessa ordenha será removido. Se parte já foi vendida, só o que ainda estiver disponível é ajustado. Esta ação é irreversível.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirOrdenha} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={!!deleteSanId} onOpenChange={() => setDeleteSanId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
