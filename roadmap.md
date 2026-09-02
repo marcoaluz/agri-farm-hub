@@ -27,3 +27,4 @@
 - [x] `src/pages/MinhaEquipe.tsx` — melhorar responsividade da tela de convidados
 - [x] `src/components/PushAutoReconnect.tsx` — auto-reconectar push notifications
 - [x] `src/App.tsx` — integrar PushAutoReconnect
+- [x] Duplicidade da cultura café — deduplicar nomes nos seletores/listagens de culturas
