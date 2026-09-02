@@ -204,7 +204,7 @@ export function OrdenhaDialog({ open, onOpenChange, propriedadeId, rebanhosLeite
         destino: form.destino,
         preco_litro: form.preco_litro ? Number(form.preco_litro) : null,
         observacoes: form.observacoes || null,
-        criado_por: user?.id,
+        usuario_id: user?.id,
       })
       .select('id')
       .single()
