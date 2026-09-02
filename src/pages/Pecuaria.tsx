@@ -695,6 +695,16 @@ export default function Pecuaria() {
                           <TableCell>{o.vacas_ordenhadas || '-'}</TableCell>
                           <TableCell className="capitalize">{o.destino?.replace('_', ' ') || '-'}</TableCell>
                           <TableCell className="text-right">{o.valor_total ? `R$ ${Number(o.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-1 justify-end">
+                              <Button variant="ghost" size="icon" title="Editar" onClick={() => { setOrdenhaEditando(o); setOrdenhaDialog(true) }}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" title="Excluir" className="text-destructive" onClick={() => setDeleteOrdenhaId(o.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
