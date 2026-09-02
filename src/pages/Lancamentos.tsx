@@ -229,15 +229,15 @@ export function Lancamentos() {
       <Card>
         <CardContent className="py-3">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={handlePrevDay} className="h-8 w-8">
+            <div className="flex items-center gap-2 min-w-0">
+              <Button variant="outline" size="icon" onClick={handlePrevDay} className="h-8 w-8 shrink-0">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2 px-2 h-auto py-1">
-                    <CalendarIcon className="h-4 w-4 text-primary" />
-                    <span className="font-semibold text-sm sm:text-base capitalize">
+                  <Button variant="ghost" className="flex items-center gap-2 px-2 h-auto py-1 min-w-0">
+                    <CalendarIcon className="h-4 w-4 text-primary shrink-0" />
+                    <span className="font-semibold text-sm sm:text-base capitalize truncate">
                       {showAllDates 
                         ? 'Todos os dias'
                         : format(selectedDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })
@@ -267,7 +267,7 @@ export function Lancamentos() {
                   />
                 </PopoverContent>
               </Popover>
-              <Button variant="outline" size="icon" onClick={handleNextDay} className="h-8 w-8">
+              <Button variant="outline" size="icon" onClick={handleNextDay} className="h-8 w-8 shrink-0">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>

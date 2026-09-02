@@ -10,6 +10,7 @@ import { GlobalProvider } from "@/contexts/GlobalContext";
 import { AppRoutes } from "@/routes";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { UpdateAvailableBanner } from "@/components/UpdateAvailableBanner";
+import { PushAutoReconnect } from "@/components/PushAutoReconnect";
 import { limparServiceWorkerConflitante } from '@/lib/pushNotifications'
 import { registerServiceWorker } from '@/lib/registerServiceWorker'
 
@@ -30,6 +31,7 @@ function App() {
               <Sonner />
               <InstallPrompt />
               <UpdateAvailableBanner />
+              <PushAutoReconnect />
             </GlobalProvider>
           </AuthProvider>
         </TooltipProvider>
