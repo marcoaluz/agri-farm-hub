@@ -77,6 +77,8 @@ export default function Pecuaria() {
   const [movRebanhoId, setMovRebanhoId] = useState<string | undefined>()
   const [sanitarioDialog, setSanitarioDialog] = useState(false)
   const [ordenhaDialog, setOrdenhaDialog] = useState(false)
+  const [ordenhaEditando, setOrdenhaEditando] = useState<any>(null)
+  const [deleteOrdenhaId, setDeleteOrdenhaId] = useState<string | null>(null)
   const [racaoDialog, setRacaoDialog] = useState(false)
   const [pesagemDialog, setPesagemDialog] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
