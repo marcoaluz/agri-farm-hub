@@ -369,29 +369,25 @@ export default function Dashboard() {
     return (dadosCatRender || []).reduce((s: number, c: any) => s + Number(c.custo_total || 0), 0)
   }, [dadosCatRender])
 
-  // Total alerts for sidebar badge (exposed via window for Sidebar)
-  const totalAlertasGlobal = isConsolidado
-    ? (consolidadoKpis?.alertas?.total_alertas ?? 0)
-    : (kpisV2?.alertas?.total_alertas ?? 0)
+  // Contador de não lidas — mesma fonte do sino (notificacoes.lida), pra tudo
+  // ficar sincronizado: sino, badge do menu lateral e os cards de Alertas aqui embaixo.
+  const { data: totalAlertasGlobal } = useQuery({
+    queryKey: ['contar-notificacoes-dashboard', propId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc('contar_notificacoes_nao_lidas', {
+        p_propriedade_id: isConsolidado ? null : propId,
+      })
+      if (error) throw error
+      return Number(data) || 0
+    },
+  })
 
-  // Expose alert count globally for sidebar
+  // Expõe pro badge do menu lateral
   useEffect(() => {
     if (totalAlertasGlobal === undefined || totalAlertasGlobal === null) return
-
-    const storageKey = `agrogfi_alertas_vistos_${propriedadeAtual?.id || 'consolidado'}`
-    const ultimoVisto = Number(localStorage.getItem(storageKey) || 0)
-
-    // Badge mostra só o que é NOVO desde a última vez que o usuário
-    // visitou o Dashboard (não o total, para não incomodar com algo
-    // que ele já sabe que existe e vai resolver quando puder)
-    const naoVisto = Math.max(0, totalAlertasGlobal - ultimoVisto)
-
-    ;(window as any).__sga_total_alertas = naoVisto
-    window.dispatchEvent(new CustomEvent('sga-alertas-update', { detail: naoVisto }))
-
-    // Marca como "visto" o total atual, para a próxima visita
-    localStorage.setItem(storageKey, String(totalAlertasGlobal))
-  }, [totalAlertasGlobal, propriedadeAtual?.id])
+    ;(window as any).__sga_total_alertas = totalAlertasGlobal
+    window.dispatchEvent(new CustomEvent('sga-alertas-update', { detail: totalAlertasGlobal }))
+  }, [totalAlertasGlobal])
 
   const handleSelectPropriedade = (propIdSelected: string) => {
     const prop = propriedadesLista.find((p) => p.id === propIdSelected)
@@ -470,7 +466,7 @@ export default function Dashboard() {
       {propId && (
         <PainelAlertas
           propriedadeId={propId}
-          totalAlertas={kpisV2?.alertas?.total_alertas ?? 0}
+          totalAlertas={totalAlertasGlobal ?? 0}
           forceOpen={alertsOpen}
         />
       )}
@@ -672,7 +668,7 @@ export default function Dashboard() {
 
             <CardAlertas
               propriedadeId={propId || null}
-              totalAlertas={kpisV2?.alertas?.total_alertas ?? 0}
+              totalAlertas={totalAlertasGlobal ?? 0}
             />
 
           </div>
