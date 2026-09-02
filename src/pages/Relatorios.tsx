@@ -506,6 +506,35 @@ function AbaObservacoes({ propId, safraId, propriedadeNome }: { propId: string; 
 
   const buscar = () => setTermoBuscado(termo.trim())
 
+  // Agrupa por descrição igual (a que realmente bateu com a busca), igual ao
+  // padrão de "Custos Detalhados": cabeçalho com o texto + subtotal, itens embaixo.
+
+  const grupos = useMemo(() => {
+
+    const mapa = new Map<string, { descricao: string; subtotal: number; itens: any[] }>()
+
+    resultados.forEach((r: any) => {
+
+      const textoOriginal = (r.observacoes_manutencao || r.observacoes_abastecimento || r.observacoes || 'Sem descrição').trim()
+
+      const chave = textoOriginal.toLowerCase()
+
+      if (!mapa.has(chave)) mapa.set(chave, { descricao: textoOriginal, subtotal: 0, itens: [] })
+
+      const g = mapa.get(chave)!
+
+      g.subtotal += Number(r.custo_total || 0)
+
+      g.itens.push(r)
+
+    })
+
+    return Array.from(mapa.values()).sort((a, b) => b.subtotal - a.subtotal)
+
+  }, [resultados])
+
+  const totalGeral = grupos.reduce((s, g) => s + g.subtotal, 0)
+
   return (
 
     <div className="space-y-4">
@@ -566,6 +595,8 @@ function AbaObservacoes({ propId, safraId, propriedadeNome }: { propId: string; 
 
             colunas={[
 
+              { header: 'Descrição', key: 'descricao', width: 26 },
+
               { header: 'Data', key: 'data', width: 12 },
 
               { header: 'Origem', key: 'origem', width: 14 },
@@ -576,83 +607,105 @@ function AbaObservacoes({ propId, safraId, propriedadeNome }: { propId: string; 
 
               { header: 'Custo', key: 'custo', width: 14 },
 
-              { header: 'Observação', key: 'obs', width: 40 },
-
             ]}
 
-            linhas={resultados.map((r: any) => ({
+            linhas={grupos.flatMap((g) =>
 
-              data: fmtData(r.data_execucao),
+              g.itens.map((r: any) => ({
 
-              origem: r.origem,
+                descricao: g.descricao,
 
-              servico: r.servico_nome || '',
+                data: fmtData(r.data_execucao),
 
-              talhao: r.talhao_nome || '',
+                origem: r.origem,
 
-              custo: fmt(Number(r.custo_total || 0)),
+                servico: r.servico_nome || '',
 
-              obs: [r.observacoes, r.observacoes_abastecimento, r.observacoes_manutencao].filter(Boolean).join(' | '),
+                talhao: r.talhao_nome || '',
 
-            }))}
+                custo: fmt(Number(r.custo_total || 0)),
+
+              }))
+
+            )}
 
           />
 
           <Card>
 
-            <CardContent className="pt-4">
+            <CardHeader>
 
-              <Table>
+              <CardTitle className="text-base flex items-center gap-2">
 
-                <TableHeader>
+                <ClipboardList className="h-4 w-4" />
 
-                  <TableRow>
+                Observações — "{termoBuscado}"
 
-                    <TableHead>Data</TableHead>
+                <span className="ml-auto text-sm font-normal text-muted-foreground">
 
-                    <TableHead>Origem</TableHead>
+                  Total: <span className="font-bold text-foreground">{fmt(totalGeral)}</span>
 
-                    <TableHead>Serviço</TableHead>
+                </span>
 
-                    <TableHead>Talhão</TableHead>
+              </CardTitle>
 
-                    <TableHead className="text-right">Custo</TableHead>
+            </CardHeader>
 
-                    <TableHead>Observação</TableHead>
+            <CardContent className="space-y-4">
 
-                  </TableRow>
+              <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
 
-                </TableHeader>
+                <span className="flex-1">Item</span>
 
-                <TableBody>
+                <span className="w-28 text-right">Data</span>
 
-                  {resultados.map((r: any) => (
+                <span className="w-28 text-right">Valor</span>
 
-                    <TableRow key={r.id}>
+              </div>
 
-                      <TableCell>{fmtData(r.data_execucao)}</TableCell>
+              {grupos.map((g, gi) => (
 
-                      <TableCell><Badge variant="outline">{r.origem}</Badge></TableCell>
+                <div key={gi}>
 
-                      <TableCell className="font-medium">{r.servico_nome || '-'}</TableCell>
+                  <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
 
-                      <TableCell>{r.talhao_nome || '-'}</TableCell>
+                    <span className="flex items-center gap-2">
 
-                      <TableCell className="text-right font-medium">{fmt(Number(r.custo_total || 0))}</TableCell>
+                      {g.descricao}
 
-                      <TableCell className="max-w-[280px] text-sm">
+                      <Badge variant="outline" className="text-[10px] font-normal">{g.itens.length}x</Badge>
 
-                        {[r.observacoes, r.observacoes_abastecimento, r.observacoes_manutencao].filter(Boolean).join(' | ')}
+                    </span>
 
-                      </TableCell>
+                    <span>{fmt(g.subtotal)}</span>
 
-                    </TableRow>
+                  </div>
+
+                  {g.itens.map((item: any, idx: number) => (
+
+                    <div key={idx} className="flex items-center text-sm pl-4 py-1 text-foreground/80">
+
+                      <span className="flex-1 truncate">
+
+                        {item.servico_nome || '-'}
+
+                        {item.talhao_nome ? ` · ${item.talhao_nome}` : ''}
+
+                        <Badge variant="outline" className="ml-2 text-[10px]">{item.origem}</Badge>
+
+                      </span>
+
+                      <span className="w-28 text-right text-xs text-muted-foreground">{fmtData(item.data_execucao)}</span>
+
+                      <span className="w-28 text-right font-medium">{fmt(Number(item.custo_total || 0))}</span>
+
+                    </div>
 
                   ))}
 
-                </TableBody>
+                </div>
 
-              </Table>
+              ))}
 
             </CardContent>
 
