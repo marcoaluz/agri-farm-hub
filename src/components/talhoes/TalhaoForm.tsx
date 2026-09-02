@@ -172,11 +172,20 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
                 <SelectValue placeholder="Selecione a cultura" />
               </SelectTrigger>
               <SelectContent>
-                {culturas?.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.nome_exibicao}
-                  </SelectItem>
-                ))}
+                {culturas
+                  ?.filter(
+                    (c, idx, arr) =>
+                      arr.findIndex(
+                        (x) =>
+                          (x.nome_exibicao || "").toLowerCase() ===
+                          (c.nome_exibicao || "").toLowerCase()
+                      ) === idx
+                  )
+                  ?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nome_exibicao}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

@@ -84,11 +84,25 @@ export default function Culturas() {
 
 
 
-  const culturasFiltradas = culturas?.filter((c) =>
+  const culturasFiltradas = culturas
 
-    (c.nome_exibicao || "").toLowerCase().includes(busca.toLowerCase())
+    ?.filter((c) => (c.nome_exibicao || "").toLowerCase().includes(busca.toLowerCase()))
 
-  );
+    ?.filter(
+
+      (c, idx, arr) =>
+
+        arr.findIndex(
+
+          (x) =>
+
+            (x.nome_exibicao || "").toLowerCase() ===
+
+            (c.nome_exibicao || "").toLowerCase()
+
+        ) === idx
+
+    );
 
 
 
