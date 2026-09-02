@@ -83,6 +83,7 @@ export default function Pecuaria() {
   const [pesagemDialog, setPesagemDialog] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteSanId, setDeleteSanId] = useState<string | null>(null)
+  const [deletePesagemId, setDeletePesagemId] = useState<string | null>(null)
   const [animaisRebanho, setAnimaisRebanho] = useState<any>(null)
 
   // Filters
@@ -390,6 +391,23 @@ export default function Pecuaria() {
     queryClient.invalidateQueries({ queryKey: ['lotes'] })
     toast({ title: 'Evento excluído. Lançamento removido e estoque devolvido (se veio do estoque).' })
     setDeleteSanId(null)
+  }
+
+  async function handleExcluirPesagem() {
+    if (!deletePesagemId) return
+    const { data: removidas, error } = await supabase.from('pesagens' as any).delete().eq('id', deletePesagemId).select('id')
+    if (error) {
+      toast({ title: 'Erro ao excluir pesagem', description: error.message, variant: 'destructive' })
+      return
+    }
+    if (!removidas || (removidas as any[]).length === 0) {
+      toast({ title: 'Nada foi excluído', description: 'A pesagem não foi encontrada ou você não tem permissão.', variant: 'destructive' })
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: ['pesagens'] })
+    queryClient.invalidateQueries({ queryKey: ['ranking-peso'] })
+    toast({ title: 'Pesagem excluída.' })
+    setDeletePesagemId(null)
   }
 
   async function handleDelete() {
@@ -797,6 +815,7 @@ export default function Pecuaria() {
                     <TableHead>GMD (kg/dia)</TableHead>
                     <TableHead className="hidden md:table-cell">Responsável</TableHead>
                     <TableHead>Obs</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -821,6 +840,11 @@ export default function Pecuaria() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{p.responsavel || '—'}</TableCell>
                       <TableCell className="max-w-[150px] truncate">{p.observacoes || '—'}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" title="Excluir" className="text-destructive" onClick={() => setDeletePesagemId(p.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -900,6 +924,21 @@ export default function Pecuaria() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleExcluirOrdenha} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deletePesagemId} onOpenChange={() => setDeletePesagemId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir pesagem?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é irreversível. Se outra pesagem mais recente usou esta como "peso anterior" pro cálculo de GMD, esse valor não será recalculado automaticamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirPesagem} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
