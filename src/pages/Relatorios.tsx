@@ -506,34 +506,77 @@ function AbaObservacoes({ propId, safraId, propriedadeNome }: { propId: string; 
 
   const buscar = () => setTermoBuscado(termo.trim())
 
-  // Agrupa por descrição igual (a que realmente bateu com a busca), igual ao
-  // padrão de "Custos Detalhados": cabeçalho com o texto + subtotal, itens embaixo.
+  // Agrupa por descrição igual, e dentro de cada descrição, sub-agrupa por
+
+  // serviço+talhão igual (ex: 3x "Manutenção - John Jeer" viram 1 linha "3x").
 
   const grupos = useMemo(() => {
 
-    const mapa = new Map<string, { descricao: string; subtotal: number; itens: any[] }>()
+    const mapaDescricao = new Map<string, { descricao: string; subtotal: number; subgrupos: Map<string, { rotulo: string; vezes: number; valor: number }> }>()
 
     resultados.forEach((r: any) => {
 
       const textoOriginal = (r.observacoes_manutencao || r.observacoes_abastecimento || r.observacoes || 'Sem descrição').trim()
 
-      const chave = textoOriginal.toLowerCase()
+      const chaveDescricao = textoOriginal.toLowerCase()
 
-      if (!mapa.has(chave)) mapa.set(chave, { descricao: textoOriginal, subtotal: 0, itens: [] })
+      if (!mapaDescricao.has(chaveDescricao)) {
 
-      const g = mapa.get(chave)!
+        mapaDescricao.set(chaveDescricao, { descricao: textoOriginal, subtotal: 0, subgrupos: new Map() })
+
+      }
+
+      const g = mapaDescricao.get(chaveDescricao)!
 
       g.subtotal += Number(r.custo_total || 0)
 
-      g.itens.push(r)
+      const rotulo = `${r.servico_nome || '-'}${r.talhao_nome ? ` · ${r.talhao_nome}` : ''}`
+
+      const chaveSub = rotulo.toLowerCase()
+
+      if (!g.subgrupos.has(chaveSub)) {
+
+        g.subgrupos.set(chaveSub, { rotulo, vezes: 0, valor: 0 })
+
+      }
+
+      const sg = g.subgrupos.get(chaveSub)!
+
+      sg.vezes += 1
+
+      sg.valor += Number(r.custo_total || 0)
 
     })
 
-    return Array.from(mapa.values()).sort((a, b) => b.subtotal - a.subtotal)
+    return Array.from(mapaDescricao.values())
+
+      .map((g) => ({ descricao: g.descricao, subtotal: g.subtotal, itens: Array.from(g.subgrupos.values()) }))
+
+      .sort((a, b) => b.subtotal - a.subtotal)
 
   }, [resultados])
 
   const totalGeral = grupos.reduce((s, g) => s + g.subtotal, 0)
+
+  const handleExportPDF = () => {
+
+    exportarObservacoesPDF({
+
+      nomeArquivo: 'relatorio-observacoes',
+
+      propriedadeNome,
+
+      safraNome: safraAtual?.nome,
+
+      termoBuscado,
+
+      totalGeral,
+
+      grupos,
+
+    })
+
+  }
 
   return (
 
@@ -583,53 +626,65 @@ function AbaObservacoes({ propId, safraId, propriedadeNome }: { propId: string; 
 
         <>
 
-          <ExportButtons
+          <div className="flex flex-wrap justify-end gap-2 mb-2">
 
-            propriedadeNome={propriedadeNome}
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]" onClick={handleExportPDF}>
 
-            safraNome={safraAtual?.nome}
+              <FileText className="h-4 w-4 mr-1" /> Exportar PDF
 
-            nomeAba="Observações"
+            </Button>
 
-            nomeArquivo="relatorio-observacoes"
+            <Button
 
-            colunas={[
+              variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]"
 
-              { header: 'Descrição', key: 'descricao', width: 26 },
+              onClick={() => exportarExcel({
 
-              { header: 'Data', key: 'data', width: 12 },
+                nomeArquivo: 'relatorio-observacoes',
 
-              { header: 'Origem', key: 'origem', width: 14 },
+                nomeAba: 'Observações',
 
-              { header: 'Serviço', key: 'servico', width: 22 },
+                propriedadeNome,
 
-              { header: 'Talhão', key: 'talhao', width: 18 },
+                safraNome: safraAtual?.nome,
 
-              { header: 'Custo', key: 'custo', width: 14 },
+                colunas: [
 
-            ]}
+                  { header: 'Descrição', key: 'descricao', width: 26 },
 
-            linhas={grupos.flatMap((g) =>
+                  { header: 'Serviço/Talhão', key: 'rotulo', width: 26 },
 
-              g.itens.map((r: any) => ({
+                  { header: 'Vezes', key: 'vezes', width: 10 },
 
-                descricao: g.descricao,
+                  { header: 'Valor', key: 'valor', width: 14 },
 
-                data: fmtData(r.data_execucao),
+                ],
 
-                origem: r.origem,
+                linhas: grupos.flatMap((g) =>
 
-                servico: r.servico_nome || '',
+                  g.itens.map((it) => ({
 
-                talhao: r.talhao_nome || '',
+                    descricao: g.descricao,
 
-                custo: fmt(Number(r.custo_total || 0)),
+                    rotulo: it.rotulo,
 
-              }))
+                    vezes: it.vezes,
 
-            )}
+                    valor: fmt(it.valor),
 
-          />
+                  }))
+
+                )
+
+              })}
+
+            >
+
+              <FileSpreadsheet className="h-4 w-4 mr-1" /> Exportar Excel
+
+            </Button>
+
+          </div>
 
           <Card>
 
@@ -657,7 +712,7 @@ function AbaObservacoes({ propId, safraId, propriedadeNome }: { propId: string; 
 
                 <span className="flex-1">Item</span>
 
-                <span className="w-28 text-right">Data</span>
+                <span className="w-20 text-right">Qtd</span>
 
                 <span className="w-28 text-right">Valor</span>
 
@@ -669,35 +724,21 @@ function AbaObservacoes({ propId, safraId, propriedadeNome }: { propId: string; 
 
                   <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
 
-                    <span className="flex items-center gap-2">
-
-                      {g.descricao}
-
-                      <Badge variant="outline" className="text-[10px] font-normal">{g.itens.length}x</Badge>
-
-                    </span>
+                    <span>{g.descricao}</span>
 
                     <span>{fmt(g.subtotal)}</span>
 
                   </div>
 
-                  {g.itens.map((item: any, idx: number) => (
+                  {g.itens.map((item, idx) => (
 
                     <div key={idx} className="flex items-center text-sm pl-4 py-1 text-foreground/80">
 
-                      <span className="flex-1 truncate">
+                      <span className="flex-1 truncate">{item.rotulo}</span>
 
-                        {item.servico_nome || '-'}
+                      <span className="w-20 text-right text-xs text-muted-foreground">{item.vezes}x</span>
 
-                        {item.talhao_nome ? ` · ${item.talhao_nome}` : ''}
-
-                        <Badge variant="outline" className="ml-2 text-[10px]">{item.origem}</Badge>
-
-                      </span>
-
-                      <span className="w-28 text-right text-xs text-muted-foreground">{fmtData(item.data_execucao)}</span>
-
-                      <span className="w-28 text-right font-medium">{fmt(Number(item.custo_total || 0))}</span>
+                      <span className="w-28 text-right font-medium">{fmt(item.valor)}</span>
 
                     </div>
 
