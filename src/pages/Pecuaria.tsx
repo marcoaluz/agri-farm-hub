@@ -682,6 +682,7 @@ export default function Pecuaria() {
                         <TableHead>Vacas</TableHead>
                         <TableHead>Destino</TableHead>
                         <TableHead className="text-right">Valor</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
