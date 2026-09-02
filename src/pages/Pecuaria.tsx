@@ -325,6 +325,33 @@ export default function Pecuaria() {
     setDeleteMovId(null)
   }
 
+  async function handleExcluirSanitario() {
+    if (!deleteSanId) return
+    const { data: removidos, error } = await supabase
+      .from('sanitario_eventos' as any)
+      .delete()
+      .eq('id', deleteSanId)
+      .select('id')
+    if (error) {
+      toast({ title: 'Erro ao excluir evento', description: error.message, variant: 'destructive' })
+      return
+    }
+    if (!removidos || (removidos as any[]).length === 0) {
+      toast({ title: 'Nada foi excluído', description: 'O evento não foi encontrado ou você não tem permissão.', variant: 'destructive' })
+      return
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['sanitario-eventos'] })
+    queryClient.invalidateQueries({ queryKey: ['sanitario-contagem'] })
+    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
+    queryClient.invalidateQueries({ queryKey: ['produtos'] })
+    queryClient.invalidateQueries({ queryKey: ['produtos-pecuarios'] })
+    queryClient.invalidateQueries({ queryKey: ['lotes'] })
+    toast({ title: 'Evento excluído. Lançamento removido e estoque devolvido (se veio do estoque).' })
+    setDeleteSanId(null)
+  }
+
   async function handleDelete() {
     if (!deleteId) return
 
