@@ -61,7 +61,9 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
       const { data } = await (supabase as any).rpc('listar_produtos_usuario', {
         p_propriedade_id: propriedadeId,
       })
-      return ((data || []) as any[]).filter((p: any) => p.tipo_estoque === 'pecuario')
+      return ((data || []) as any[]).filter((p: any) =>
+        p.tipo_estoque === 'pecuario' && /vacina|remedio|remédio|medic|sanit|vermif|antibiot/i.test(p.categoria || '')
+      )
     },
     enabled: open && !!propriedadeId,
   })
