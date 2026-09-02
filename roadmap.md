@@ -22,4 +22,8 @@
 - [x] `src/pages/Pecuaria.tsx` — permitir excluir pesagem com confirmação
 - [x] `src/components/pecuaria/OrdenhaDialog.tsx` — gravar `criado_por` na ordenha
 - [ ] `src/components/pecuaria/EventoSanitarioDialog.tsx` — gravar `criado_por` no evento sanitário
-- [ ] `src/components/maquinas/HistoricoManutencoes.tsx` — reescrever histórico de manutenções
+- [x] `src/components/maquinas/HistoricoManutencoes.tsx` — reescrever histórico de manutenções
+- [x] `src/pages/Lancamentos.tsx` — ajustar botões de passar dias no mobile
+- [x] `src/pages/MinhaEquipe.tsx` — melhorar responsividade da tela de convidados
+- [x] `src/components/PushAutoReconnect.tsx` — auto-reconectar push notifications
+- [x] `src/App.tsx` — integrar PushAutoReconnect

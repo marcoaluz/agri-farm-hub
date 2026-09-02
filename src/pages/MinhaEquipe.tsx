@@ -195,7 +195,7 @@ export default function MinhaEquipe() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6 max-w-full overflow-x-hidden">
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
           <Users className="h-5 w-5 text-primary" />
@@ -215,9 +215,9 @@ export default function MinhaEquipe() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3 min-w-0">
           {/* Formulário de convite */}
-          <Card className="lg:col-span-1">
+          <Card className="lg:col-span-1 min-w-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <UserPlus className="h-5 w-5" />
@@ -288,7 +288,7 @@ export default function MinhaEquipe() {
           </Card>
 
           {/* Lista de membros */}
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 min-w-0 overflow-hidden">
             <CardHeader>
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -319,6 +319,7 @@ export default function MinhaEquipe() {
                   <p className="text-sm text-muted-foreground">Convide sua equipe usando o formulário ao lado.</p>
                 </div>
               ) : (
+                <div className="overflow-x-auto -mx-2 px-2">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -399,6 +400,7 @@ export default function MinhaEquipe() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>
