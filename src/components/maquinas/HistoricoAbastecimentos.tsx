@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Fuel, Trash2, Droplets, DollarSign, Gauge } from 'lucide-react';
+import { restaurarFIFO } from '@/lib/fifoConsumo';
 
 interface HistoricoAbastecimentosProps {
   maquina: {
@@ -18,6 +19,7 @@ interface HistoricoAbastecimentosProps {
 
 interface Abastecimento {
   id: string;
+  maquina_id: string;
   data: string;
   horimetro: number;
   combustivel_tipo: string;
@@ -25,6 +27,7 @@ interface Abastecimento {
   custo_total: number;
   posto?: string;
   observacoes?: string;
+  detalhamento_lotes?: any;
 }
 
 export function HistoricoAbastecimentos({ maquina }: HistoricoAbastecimentosProps) {

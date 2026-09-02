@@ -220,7 +220,7 @@ export function useExcluirLancamento() {
       // senão o histórico de manutenção fica com status "realizada" órfão, sem lançamento.
       const { data: lancamentoCheck, error: checkError } = await supabase
         .from('lancamentos')
-        .select('manutencao_id, sanitario_evento_id')
+        .select('manutencao_id, sanitario_evento_id, abastecimento_id')
         .eq('id', lancamentoId)
         .single()
 
@@ -232,6 +232,10 @@ export function useExcluirLancamento() {
 
       if (lancamentoCheck?.sanitario_evento_id) {
         throw new Error('Este lançamento veio de um evento sanitário (vacinação/vermifugação). Para removê-lo, vá em Pecuária → Sanidade e exclua o evento por lá — assim o estoque é devolvido corretamente.')
+      }
+
+      if (lancamentoCheck?.abastecimento_id) {
+        throw new Error('Este lançamento veio de um abastecimento. Para removê-lo, vá em Máquinas → Histórico de Abastecimentos e exclua por lá — assim o estoque e o horímetro são ajustados corretamente.')
       }
 
       // ETAPA 1: BUSCAR ITENS DO LANÇAMENTO
