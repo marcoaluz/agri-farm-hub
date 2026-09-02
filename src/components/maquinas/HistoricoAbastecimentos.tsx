@@ -48,22 +48,58 @@ export function HistoricoAbastecimentos({ maquina }: HistoricoAbastecimentosProp
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      // Excluir lançamento vinculado primeiro (abastecimento_id = SET NULL, então deletar manualmente)
-      const { error: lancError } = await supabase
-        .from('lancamentos')
-        .delete()
-        .eq('abastecimento_id', id as any);
-      if (lancError) console.error('Erro ao excluir lançamento vinculado:', lancError);
+    mutationFn: async (abastecimento: Abastecimento) => {
+      // 1. Devolve ao estoque, se esse abastecimento tinha vindo "Do Estoque" (FIFO)
+      await restaurarFIFO(abastecimento.detalhamento_lotes);
 
-      const { error } = await supabase.from('abastecimentos' as any).delete().eq('id', id);
+      // 2. Recalcula o medidor da máquina sem esse registro (pega o maior valor
+      // entre o inicial, os outros abastecimentos e as manutenções restantes —
+      // funciona não importa a ordem de exclusão)
+      const { data: maquinaAtual } = await supabase
+        .from('maquinas' as any)
+        .select('horimetro_inicial, km_inicial, unidade_calculo')
+        .eq('id', abastecimento.maquina_id)
+        .single();
+      const ehKm = (maquinaAtual as any)?.unidade_calculo === 'km';
+
+      const { data: outrosAbast } = await supabase
+        .from('abastecimentos' as any)
+        .select('horimetro')
+        .eq('maquina_id', abastecimento.maquina_id)
+        .neq('id', abastecimento.id);
+      const { data: outrasManut } = await supabase
+        .from('maquina_manutencoes' as any)
+        .select('horimetro_na_manutencao')
+        .eq('maquina_id', abastecimento.maquina_id)
+        .not('horimetro_na_manutencao', 'is', null);
+
+      const valores = [
+        Number((maquinaAtual as any)?.[ehKm ? 'km_inicial' : 'horimetro_inicial'] || 0),
+        ...((outrosAbast as any[]) || []).map((a) => Number(a.horimetro)),
+        ...((outrasManut as any[]) || []).map((m) => Number(m.horimetro_na_manutencao)),
+      ];
+      const novoMedidor = Math.max(...valores);
+
+      await supabase
+        .from('maquinas' as any)
+        .update(ehKm ? { km_atual: novoMedidor } : { horimetro_atual: novoMedidor } as any)
+        .eq('id', abastecimento.maquina_id);
+
+      // 3. Exclui o lançamento vinculado e o abastecimento (a trigger do banco
+      // também tentaria isso, mas fazer aqui garante mesmo se algo mudar lá)
+      await supabase.from('lancamentos').delete().eq('abastecimento_id', abastecimento.id as any);
+      const { error } = await supabase.from('abastecimentos' as any).delete().eq('id', abastecimento.id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'Abastecimento excluído' });
+      toast({ title: 'Abastecimento excluído. Estoque e horímetro ajustados.' });
       queryClient.invalidateQueries({ queryKey: ['abastecimentos'] });
       queryClient.invalidateQueries({ queryKey: ['abastecimentos-stats'] });
       queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['maquinas'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos-combustivel'] });
+      queryClient.invalidateQueries({ queryKey: ['lotes'] });
     },
     onError: () => {
       toast({ title: 'Erro ao excluir', variant: 'destructive' });
@@ -163,7 +199,7 @@ export function HistoricoAbastecimentos({ maquina }: HistoricoAbastecimentosProp
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={() => deleteMutation.mutate(a.id)}
+                          onClick={() => deleteMutation.mutate(a)}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                           Excluir
