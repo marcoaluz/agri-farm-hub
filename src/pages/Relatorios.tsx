@@ -70,7 +70,7 @@ const formatarQtdeOperacional = (item: any): string => {
     case 'abastecimento':
       return qtd != null ? `(${qtd} ${un})` : '-'
     case 'manutencao':
-      return item.descricao || '-'
+      return qtd != null ? qtd : '-'
     default:
       return qtd != null ? `${qtd}${un ? ` (${un})` : ''}` : '-'
   }

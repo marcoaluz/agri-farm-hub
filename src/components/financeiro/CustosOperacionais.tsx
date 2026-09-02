@@ -155,7 +155,7 @@ export function CustosOperacionais() {
             ))}
             {(custos.custo_sem_talhao || 0) > 0 && (
               <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
-                <p className="text-muted-foreground">Custos gerais da propriedade (não vinculados a um talhão)</p>
+                <p className="text-muted-foreground">{propriedadeAtual?.nome || 'Custos gerais'} (não vinculados a um talhão)</p>
                 <p className="font-bold">{fmt(custos.custo_sem_talhao || 0)}</p>
               </div>
             )}
