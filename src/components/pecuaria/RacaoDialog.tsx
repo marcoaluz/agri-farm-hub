@@ -10,15 +10,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-
-const TIPOS_RACAO = [
-  { value: 'racao_concentrada', label: 'Ração Concentrada' },
-  { value: 'silagem', label: 'Silagem' },
-  { value: 'feno', label: 'Feno' },
-  { value: 'sal_mineral', label: 'Sal Mineral' },
-  { value: 'suplemento', label: 'Suplemento' },
-  { value: 'outro', label: 'Outro' },
-]
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Plus, Check, X, Trash2, Loader2 } from 'lucide-react'
 
 const UNIDADES = [
   { value: 'kg', label: 'kg' },
@@ -57,19 +53,64 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
   const [produtoId, setProdutoId] = useState('')
   const [quantidadeConsumo, setQuantidadeConsumo] = useState('')
 
+  // Tipos de ração — editável
+  const { data: tiposRacao, refetch: refetchTiposRacao } = useQuery({
+    queryKey: ['tipos-racao'],
+    queryFn: async () => {
+      const { data } = await supabase.from('tipos_racao' as any).select('*').eq('ativo', true).order('nome')
+      return (data as any[]) || []
+    },
+  })
+  const [showNovoTipo, setShowNovoTipo] = useState(false)
+  const [novoTipoNome, setNovoTipoNome] = useState('')
+  const [salvandoTipo, setSalvandoTipo] = useState(false)
+  const [tipoParaExcluir, setTipoParaExcluir] = useState<{ id: string; nome: string } | null>(null)
+
+  const handleAdicionarTipo = async () => {
+    const nome = novoTipoNome.trim()
+    if (!nome) return
+    setSalvandoTipo(true)
+    const { data: userData } = await supabase.auth.getUser()
+    const { error } = await supabase.from('tipos_racao' as any).insert({ usuario_id: userData?.user?.id, nome, ativo: true } as any)
+    setSalvandoTipo(false)
+    if (error) {
+      toast({ title: (error as any).code === '23505' ? 'Tipo já existe' : 'Erro ao criar tipo', variant: 'destructive' })
+      return
+    }
+    setTipoRacao(nome)
+    setNovoTipoNome('')
+    setShowNovoTipo(false)
+    refetchTiposRacao()
+  }
+
+  const handleExcluirTipo = async () => {
+    if (!tipoParaExcluir) return
+    const { error } = await supabase.from('tipos_racao' as any).update({ ativo: false } as any).eq('id', tipoParaExcluir.id)
+    setTipoParaExcluir(null)
+    if (error) {
+      toast({ title: 'Erro ao remover tipo', variant: 'destructive' })
+      return
+    }
+    if (tipoRacao === tipoParaExcluir.nome) setTipoRacao('')
+    refetchTiposRacao()
+  }
+
+  // Produtos do estoque — só categoria de alimentação/ração (não mostra Diesel, Vacina, etc)
   const { data: produtos } = useQuery({
     queryKey: ['produtos-racao', propriedadeId],
     queryFn: async () => {
       const { data } = await supabase
         .from('produtos' as any)
-        .select('id, nome, unidade_medida, saldo_atual')
+        .select('id, nome, categoria, unidade_medida, saldo_atual')
         .eq('propriedade_id', propriedadeId)
         .gt('saldo_atual', 0)
         .eq('ativo', true)
         .order('nome')
-      return (data as any[]) || []
+      return ((data as any[]) || []).filter((p: any) =>
+        /racao|alimenta|feno|silagem|sal.?mineral|suplemento/i.test(p.categoria || '')
+      )
     },
-    enabled: !!propriedadeId && modo === 'estoque',
+    enabled: !!propriedadeId && open && modo === 'estoque',
   })
 
   const produtoSelecionado = produtos?.find((p: any) => p.id === produtoId)
@@ -94,7 +135,6 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
     }
 
     const rebanhoNome = rebanhos.find((r: any) => r.id === rebanhoId)?.nome || ''
-    const tipoLabel = TIPOS_RACAO.find(t => t.value === tipoRacao)?.label || tipoRacao
 
     const obsCompleta = [
       quantidade ? `${quantidade} ${unidade}` : '',
@@ -108,7 +148,7 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
         safra_id: safraId,
         tipo: 'despesa',
         categoria: 'alimentacao_animal',
-        descricao: `${tipoLabel} - ${rebanhoNome}`,
+        descricao: `${tipoRacao} - ${rebanhoNome}`,
         valor: parseFloat(custo),
         data_vencimento: data,
         data_pagamento: data,
@@ -193,32 +233,38 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
       const novoSaldo = (produtoSelecionado?.saldo_atual || 0) - qtd
       await supabase.from('produtos' as any).update({ saldo_atual: novoSaldo } as any).eq('id', produtoId)
 
-      // 5. Registrar despesa financeira
+      // 5. Registrar em Lançamentos (NÃO em Financeiro — o custo já foi pago na entrada do
+      //    insumo no estoque; gerar despesa nova aqui duplicaria o custo).
       const rebanhoNome = rebanhos.find((r: any) => r.id === rebanhoId)?.nome || ''
       const produtoNome = produtoSelecionado?.nome || 'Produto'
 
-      await supabase.from('transacoes' as any).insert({
+      const { data: servicoId, error: servicoError } = await supabase.rpc('get_or_create_servico_racao' as any, {
+        p_propriedade_id: propriedadeId,
+        p_rebanho_nome: rebanhoNome,
+      })
+      if (servicoError) throw servicoError
+
+      const { error: lancError } = await supabase.from('lancamentos' as any).insert({
         propriedade_id: propriedadeId,
         safra_id: safraId,
-        tipo: 'despesa',
-        categoria: 'alimentacao_animal',
-        descricao: `${produtoNome} - ${rebanhoNome}`,
-        valor: custoTotal > 0 ? custoTotal : 0.01,
-        data_vencimento: data,
-        data_pagamento: data,
-        status: 'pago',
-        origem: 'pecuaria_racao_estoque',
-        observacoes: `${qtd} ${produtoSelecionado?.unidade_medida || ''} consumidos (FIFO). ${observacoes || ''}`.trim(),
+        servico_id: servicoId,
+        talhao_id: null,
+        data_execucao: data,
+        custo_total: custoTotal,
+        observacoes: `${produtoNome}: ${qtd} ${produtoSelecionado?.unidade_medida || ''} consumidos (FIFO) — ${rebanhoNome}. ${observacoes || ''}`.trim(),
       } as any)
+      if (lancError) throw lancError
 
       toast({
         title: 'Baixa no estoque realizada!',
-        description: `${qtd} unidades consumidas. Custo: R$ ${custoTotal.toFixed(2)}`,
+        description: `${qtd} unidades consumidas. Custo: R$ ${custoTotal.toFixed(2)} (já registrado em Lançamentos)`,
       })
-      queryClient.invalidateQueries({ queryKey: ['transacoes'] })
       queryClient.invalidateQueries({ queryKey: ['produtos'] })
+      queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
       queryClient.invalidateQueries({ queryKey: ['lotes'] })
       queryClient.invalidateQueries({ queryKey: ['produtos-racao'] })
+      queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
+      queryClient.invalidateQueries({ queryKey: ['rel-custos-detalhado'] })
       resetForm()
       onOpenChange(false)
     } catch (err: any) {
@@ -294,14 +340,55 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
             <>
               <div className="space-y-2">
                 <Label>Tipo de Ração *</Label>
-                <Select value={tipoRacao} onValueChange={setTipoRacao}>
-                  <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
-                  <SelectContent>
-                    {TIPOS_RACAO.map(t => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!showNovoTipo ? (
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Select value={tipoRacao} onValueChange={setTipoRacao}>
+                        <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
+                        <SelectContent>
+                          {tiposRacao?.length === 0 && (
+                            <div className="px-2 py-3 text-xs text-muted-foreground">Nenhum tipo. Use + pra criar.</div>
+                          )}
+                          {tiposRacao?.map((t: any) => (
+                            <SelectItem key={t.id} value={t.nome}>{t.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button type="button" size="icon" variant="outline" onClick={() => setShowNovoTipo(true)} title="Novo tipo">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    {tipoRacao && (
+                      <Button
+                        type="button" size="icon" variant="ghost" className="text-destructive hover:text-destructive"
+                        title="Excluir tipo"
+                        onClick={() => {
+                          const t = tiposRacao?.find((x: any) => x.nome === tipoRacao)
+                          if (t) setTipoParaExcluir(t)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Nome do novo tipo"
+                      value={novoTipoNome}
+                      onChange={(e) => setNovoTipoNome(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdicionarTipo() } }}
+                      autoFocus
+                      className="flex-1"
+                    />
+                    <Button type="button" size="icon" onClick={handleAdicionarTipo} disabled={salvandoTipo || !novoTipoNome.trim()}>
+                      {salvandoTipo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    </Button>
+                    <Button type="button" size="icon" variant="ghost" onClick={() => { setShowNovoTipo(false); setNovoTipoNome('') }}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -338,10 +425,10 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
           {modo === 'estoque' && (
             <>
               <div className="space-y-2">
-                <Label>Produto do Estoque *</Label>
+                <Label>Produto do Estoque (Alimentação/Ração) *</Label>
                 {!produtos?.length ? (
                   <p className="text-sm text-muted-foreground rounded-md border border-dashed p-3">
-                    Nenhum produto com saldo disponível. Faça uma entrada no módulo de Estoque primeiro.
+                    Nenhum produto de categoria Ração/Alimentação com saldo disponível. Cadastre em Estoque/Insumos primeiro.
                   </p>
                 ) : (
                   <Select value={produtoId} onValueChange={setProdutoId}>
@@ -373,6 +460,9 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
                   </p>
                 )}
               </div>
+              <p className="text-xs text-muted-foreground">
+                O custo desse produto vai aparecer em Lançamentos (já foi pago na compra do insumo), não gera nova despesa no Financeiro.
+              </p>
             </>
           )}
 
@@ -389,6 +479,21 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={!!tipoParaExcluir} onOpenChange={(o) => { if (!o) setTipoParaExcluir(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir tipo de ração?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{tipoParaExcluir?.nome}" deixará de aparecer na lista.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirTipo}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }
