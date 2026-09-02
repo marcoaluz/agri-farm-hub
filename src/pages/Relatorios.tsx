@@ -2030,3 +2030,268 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
     </div>
   )
 }
+
+/* ════════════════════════════════════════════════
+   ABA — MÁQUINAS
+   ════════════════════════════════════════════════ */
+function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
+
+  const { safraAtual } = useGlobal()
+
+  const maqQ = useQuery({
+
+    queryKey: ['rel-maquinas', propId, safraId],
+
+    queryFn: async () => {
+
+      const { data, error } = await db.rpc('get_relatorio_por_maquina', {
+
+        p_propriedade_id: propId, p_safra_id: safraId,
+
+      })
+
+      if (error) throw error
+
+      return (data || []) as any[]
+
+    },
+
+  })
+
+  const maquinasRaw = maqQ.data || []
+
+  const totalGeral = maquinasRaw.reduce((s: number, m: any) => s + Number(m.custo_total || 0), 0)
+
+  // Mesmo formato em seções do Custos Detalhados: cada máquina é um grupo,
+
+  // Combustível/Manutenção/itens usados são as linhas dentro do grupo.
+
+  const grupos = useMemo(() => {
+
+    return maquinasRaw.map((m: any) => {
+
+      const itens: { nome: string; qtdLabel: string; valor: number | null }[] = []
+
+      if (m.qtd_abastecimentos > 0) {
+
+        itens.push({
+
+          nome: `Combustível (${fmtN(Number(m.litros_total || 0))} L)`,
+
+          qtdLabel: `${m.qtd_abastecimentos}x`,
+
+          valor: Number(m.custo_abastecimento || 0),
+
+        })
+
+      }
+
+      if (m.qtd_manutencoes > 0) {
+
+        itens.push({
+
+          nome: 'Manutenção',
+
+          qtdLabel: `${m.qtd_manutencoes}x`,
+
+          valor: Number(m.custo_manutencao || 0),
+
+        })
+
+      }
+
+      ;(m.itens_usados || []).forEach((it: any) => {
+
+        itens.push({
+
+          nome: `↳ ${it.nome} (item do estoque)`,
+
+          qtdLabel: `${fmtN(Number(it.quantidade))} ${unidadeCurta(it.unidade)}`,
+
+          valor: null,
+
+        })
+
+      })
+
+      return {
+
+        maquina_id: m.maquina_id,
+
+        nome: `${m.maquina_nome}${m.modelo ? ` (${m.modelo})` : ''}`,
+
+        subtotal: Number(m.custo_total || 0),
+
+        horimetro: `${fmtN(Number(m.horimetro_atual || 0), 1)} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
+
+        itens,
+
+      }
+
+    })
+
+  }, [maquinasRaw])
+
+  const handleExportPDF = () => {
+
+    exportarMaquinasPDF({
+
+      nomeArquivo: 'relatorio-maquinas',
+
+      propriedadeNome,
+
+      safraNome: safraAtual?.nome,
+
+      totalGeral,
+
+      grupos,
+
+    })
+
+  }
+
+  if (maqQ.isLoading) return <SkeletonAba />
+
+  if (grupos.length === 0) return <Card><CardContent className="pt-6"><EmptyState message="Nenhuma máquina com abastecimento ou manutenção nesta safra" /></CardContent></Card>
+
+  return (
+
+    <div className="space-y-4">
+
+      <div className="flex flex-wrap justify-end gap-2 mb-2">
+
+        <Button variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]" onClick={handleExportPDF}>
+
+          <FileText className="h-4 w-4 mr-1" /> Exportar PDF
+
+        </Button>
+
+        <Button
+
+          variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]"
+
+          onClick={() => exportarExcel({
+
+            nomeArquivo: 'relatorio-maquinas',
+
+            nomeAba: 'Máquinas',
+
+            propriedadeNome,
+
+            safraNome: safraAtual?.nome,
+
+            colunas: [
+
+              { header: 'Máquina', key: 'maquina', width: 22 },
+
+              { header: 'Item', key: 'item', width: 26 },
+
+              { header: 'Qtd', key: 'qtd', width: 12 },
+
+              { header: 'Valor', key: 'valor', width: 14 },
+
+            ],
+
+            linhas: grupos.flatMap((g) =>
+
+              g.itens.map((it) => ({
+
+                maquina: g.nome,
+
+                item: it.nome,
+
+                qtd: it.qtdLabel,
+
+                valor: it.valor != null ? fmt(it.valor) : '-',
+
+              }))
+
+            ),
+
+          })}
+
+        >
+
+          <FileSpreadsheet className="h-4 w-4 mr-1" /> Exportar Excel
+
+        </Button>
+
+      </div>
+
+      <Card>
+
+        <CardHeader>
+
+          <CardTitle className="text-base flex items-center gap-2">
+
+            <Tractor className="h-4 w-4" />
+
+            Custo por Máquina
+
+            <span className="ml-auto text-sm font-normal text-muted-foreground">
+
+              Total: <span className="font-bold text-foreground">{fmt(totalGeral)}</span>
+
+            </span>
+
+          </CardTitle>
+
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+
+          <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
+
+            <span className="flex-1">Item</span>
+
+            <span className="w-24 text-right">Qtd</span>
+
+            <span className="w-28 text-right">Valor</span>
+
+          </div>
+
+          {grupos.map((g) => (
+
+            <div key={g.maquina_id}>
+
+              <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
+
+                <span className="flex items-center gap-2">
+
+                  {g.nome}
+
+                  <Badge variant="outline" className="text-[10px] font-normal">{g.horimetro}</Badge>
+
+                </span>
+
+                <span>{fmt(g.subtotal)}</span>
+
+              </div>
+
+              {g.itens.map((item, idx) => (
+
+                <div key={idx} className="flex items-center text-sm pl-4 py-1 text-foreground/80">
+
+                  <span className="flex-1 truncate">{item.nome}</span>
+
+                  <span className="w-24 text-right text-xs text-muted-foreground">{item.qtdLabel}</span>
+
+                  <span className="w-28 text-right font-medium">{item.valor != null ? fmt(item.valor) : '-'}</span>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          ))}
+
+        </CardContent>
+
+      </Card>
+
+    </div>
+
+  )
+
+}
