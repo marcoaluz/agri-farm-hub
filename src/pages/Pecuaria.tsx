@@ -831,6 +831,21 @@ export default function Pecuaria() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!deleteSanId} onOpenChange={() => setDeleteSanId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir evento sanitário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O lançamento correspondente no Financeiro/Lançamentos será removido, e se o produto veio do estoque, a quantidade usada será devolvida. Esta ação é irreversível.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExcluirSanitario} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
