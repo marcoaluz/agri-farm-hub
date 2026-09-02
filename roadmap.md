@@ -21,3 +21,4 @@
 - [x] `src/components/pecuaria/PesagemDialog.tsx` — gravar `criado_por` na pesagem
 - [x] `src/pages/Pecuaria.tsx` — permitir excluir pesagem com confirmação
 - [x] `src/components/pecuaria/OrdenhaDialog.tsx` — gravar `criado_por` na ordenha
+- [ ] `src/components/pecuaria/EventoSanitarioDialog.tsx` — gravar `criado_por` no evento sanitário
