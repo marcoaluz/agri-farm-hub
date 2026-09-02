@@ -181,11 +181,20 @@ export function AdicionarCulturaForm({ talhao, culturaExistente, culturasJaCadas
               <SelectValue placeholder="Selecione a cultura" />
             </SelectTrigger>
             <SelectContent>
-              {culturasConfig?.map((c: any) => (
-                <SelectItem key={c.id} value={c.id} disabled={culturasJaCadastradas.has(c.id)}>
-                  {c.nome_exibicao}{culturasJaCadastradas.has(c.id) ? " (já cadastrada)" : ""}
-                </SelectItem>
-              ))}
+              {culturasConfig
+                ?.filter(
+                  (c, idx, arr) =>
+                    arr.findIndex(
+                      (x) =>
+                        (x.nome_exibicao || "").toLowerCase() ===
+                        (c.nome_exibicao || "").toLowerCase()
+                    ) === idx
+                )
+                ?.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id} disabled={culturasJaCadastradas.has(c.id)}>
+                    {c.nome_exibicao}{culturasJaCadastradas.has(c.id) ? " (já cadastrada)" : ""}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         )}
