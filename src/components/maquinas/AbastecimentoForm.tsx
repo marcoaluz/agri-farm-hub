@@ -170,6 +170,7 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
           observacoes: observacoes || null,
           produto_id: origemEstoque ? produtoId : null,
           detalhamento_lotes: detalhamentoLotes,
+          criado_por: user?.id,
         })
         .select('id')
         .single();
