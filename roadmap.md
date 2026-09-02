@@ -20,3 +20,4 @@
 - [ ] `src/hooks/useLancamentos.ts` — bloquear exclusão direta de lançamentos vinculados a abastecimento
 - [ ] `src/components/pecuaria/PesagemDialog.tsx` — gravar `criado_por` na pesagem
 - [ ] `src/pages/Pecuaria.tsx` — permitir excluir pesagem com confirmação
+- [ ] `src/components/pecuaria/OrdenhaDialog.tsx` — gravar `criado_por` na ordenha
