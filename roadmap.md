@@ -15,9 +15,9 @@
 - [x] `src/pages/Dashboard.tsx` — contador de não lidas via RPC (sincronizado com sino)
 - [x] `src/components/dashboard/PainelAlertas.tsx` — reescrito para marcar notificações como lidas e navegar
 - [x] `src/components/dashboard/CardAlertas.tsx` — reescrito para fonte de notificações e navegação
-- [ ] `src/components/maquinas/AbastecimentoForm.tsx` — gravar `criado_por` no abastecimento
-- [ ] `src/components/maquinas/HistoricoAbastecimentos.tsx` — ao excluir, restaurar FIFO e recalcular horímetro/km
-- [ ] `src/hooks/useLancamentos.ts` — bloquear exclusão direta de lançamentos vinculados a abastecimento
-- [ ] `src/components/pecuaria/PesagemDialog.tsx` — gravar `criado_por` na pesagem
-- [ ] `src/pages/Pecuaria.tsx` — permitir excluir pesagem com confirmação
-- [ ] `src/components/pecuaria/OrdenhaDialog.tsx` — gravar `criado_por` na ordenha
+- [x] `src/components/maquinas/AbastecimentoForm.tsx` — gravar `criado_por` no abastecimento
+- [x] `src/components/maquinas/HistoricoAbastecimentos.tsx` — ao excluir, restaurar FIFO e recalcular horímetro/km
+- [x] `src/hooks/useLancamentos.ts` — bloquear exclusão direta de lançamentos vinculados a abastecimento
+- [x] `src/components/pecuaria/PesagemDialog.tsx` — gravar `criado_por` na pesagem
+- [x] `src/pages/Pecuaria.tsx` — permitir excluir pesagem com confirmação
+- [x] `src/components/pecuaria/OrdenhaDialog.tsx` — gravar `criado_por` na ordenha
