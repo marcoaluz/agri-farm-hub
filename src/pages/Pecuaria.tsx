@@ -567,8 +567,14 @@ export default function Pecuaria() {
                             {e.rebanho && <span>Rebanho: {(e.rebanho as any).nome}</span>}
                           </div>
                         </div>
+                        <Button
+                          variant="ghost" size="icon" className="text-destructive shrink-0"
+                          title="Excluir evento"
+                          onClick={() => setDeleteSanId(e.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-
                     </CardContent>
                   </Card>
                 )
