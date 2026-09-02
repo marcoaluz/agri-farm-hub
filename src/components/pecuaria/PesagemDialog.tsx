@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface PesagemDialogProps {
   open: boolean
@@ -25,6 +26,7 @@ interface PesagemDialogProps {
 export function PesagemDialog({ open, onOpenChange, propriedadeId, rebanhos }: PesagemDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [saving, setSaving] = useState(false)
 
   const [rebanhoId, setRebanhoId] = useState('')
@@ -95,6 +97,7 @@ export function PesagemDialog({ open, onOpenChange, propriedadeId, rebanhos }: P
       gmd_kg: gmdKg ? Number(gmdKg) : null,
       responsavel: responsavel || null,
       observacoes: observacoes || null,
+      criado_por: user?.id,
     } as any)
 
     setSaving(false)

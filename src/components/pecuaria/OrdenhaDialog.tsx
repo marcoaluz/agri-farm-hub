@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { useAuth } from '@/contexts/AuthContext'
 
 const TURNOS = [
   { value: 'manha', label: 'Manhã' },
@@ -81,6 +82,7 @@ export function OrdenhaDialog({ open, onOpenChange, propriedadeId, rebanhosLeite
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { safraAtual } = useGlobal()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const editando = !!ordenhaEditando
 
@@ -202,6 +204,7 @@ export function OrdenhaDialog({ open, onOpenChange, propriedadeId, rebanhosLeite
         destino: form.destino,
         preco_litro: form.preco_litro ? Number(form.preco_litro) : null,
         observacoes: form.observacoes || null,
+        usuario_id: user?.id,
       })
       .select('id')
       .single()
