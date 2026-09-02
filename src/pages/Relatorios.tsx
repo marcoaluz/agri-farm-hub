@@ -186,6 +186,8 @@ export function Relatorios() {
             <TabsTrigger value="custos" className="whitespace-nowrap"><ListTree className="h-4 w-4 mr-1" />Custos Detalhados</TabsTrigger>
             <TabsTrigger value="estoque" className="whitespace-nowrap"><PrateleiraIcon className="h-4 w-4 mr-1" />Estoque/Insumos</TabsTrigger>
 
+            <TabsTrigger value="observacoes" className="whitespace-nowrap"><ClipboardList className="h-4 w-4 mr-1" />Observações</TabsTrigger>
+
           </TabsList>
         </div>
 
@@ -463,6 +465,205 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
       </Card>
     </div>
   )
+}
+
+/* ════════════════════════════════════════════════
+   ABA — OBSERVAÇÕES (busca por palavra-chave)
+   ════════════════════════════════════════════════ */
+function AbaObservacoes({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
+
+  const { safraAtual } = useGlobal()
+
+  const [termo, setTermo] = useState('')
+
+  const [termoBuscado, setTermoBuscado] = useState('')
+
+  const resQ = useQuery({
+
+    queryKey: ['rel-observacoes', propId, safraId, termoBuscado],
+
+    queryFn: async () => {
+
+      const { data, error } = await db.rpc('get_relatorio_por_observacao', {
+
+        p_propriedade_id: propId, p_safra_id: safraId, p_termo: termoBuscado,
+
+      })
+
+      if (error) throw error
+
+      return (data || []) as any[]
+
+    },
+
+    enabled: !!termoBuscado,
+
+  })
+
+  const resultados = resQ.data || []
+
+  const buscar = () => setTermoBuscado(termo.trim())
+
+  return (
+
+    <div className="space-y-4">
+
+      <Card>
+
+        <CardContent className="pt-4 flex flex-wrap items-end gap-3">
+
+          <div className="flex-1 min-w-[240px]">
+
+            <label className="text-xs text-muted-foreground">Buscar palavra na Observação</label>
+
+            <Input
+
+              placeholder="Ex: adubação, chuva, quebrou..."
+
+              value={termo}
+
+              onChange={(e) => setTermo(e.target.value)}
+
+              onKeyDown={(e) => { if (e.key === 'Enter') buscar() }}
+
+            />
+
+          </div>
+
+          <Button onClick={buscar} disabled={!termo.trim()}>Buscar</Button>
+
+        </CardContent>
+
+      </Card>
+
+      {!termoBuscado ? (
+
+        <Card><CardContent className="pt-6"><EmptyState message="Digite uma palavra e clique em Buscar" /></CardContent></Card>
+
+      ) : resQ.isLoading ? (
+
+        <SkeletonAba />
+
+      ) : resultados.length === 0 ? (
+
+        <Card><CardContent className="pt-6"><EmptyState message={`Nenhuma observação encontrada com "${termoBuscado}"`} /></CardContent></Card>
+
+      ) : (
+
+        <>
+
+          <ExportButtons
+
+            propriedadeNome={propriedadeNome}
+
+            safraNome={safraAtual?.nome}
+
+            nomeAba="Observações"
+
+            nomeArquivo="relatorio-observacoes"
+
+            colunas={[
+
+              { header: 'Data', key: 'data', width: 12 },
+
+              { header: 'Origem', key: 'origem', width: 14 },
+
+              { header: 'Serviço', key: 'servico', width: 22 },
+
+              { header: 'Talhão', key: 'talhao', width: 18 },
+
+              { header: 'Custo', key: 'custo', width: 14 },
+
+              { header: 'Observação', key: 'obs', width: 40 },
+
+            ]}
+
+            linhas={resultados.map((r: any) => ({
+
+              data: fmtData(r.data_execucao),
+
+              origem: r.origem,
+
+              servico: r.servico_nome || '',
+
+              talhao: r.talhao_nome || '',
+
+              custo: fmt(Number(r.custo_total || 0)),
+
+              obs: [r.observacoes, r.observacoes_abastecimento, r.observacoes_manutencao].filter(Boolean).join(' | '),
+
+            }))}
+
+          />
+
+          <Card>
+
+            <CardContent className="pt-4">
+
+              <Table>
+
+                <TableHeader>
+
+                  <TableRow>
+
+                    <TableHead>Data</TableHead>
+
+                    <TableHead>Origem</TableHead>
+
+                    <TableHead>Serviço</TableHead>
+
+                    <TableHead>Talhão</TableHead>
+
+                    <TableHead className="text-right">Custo</TableHead>
+
+                    <TableHead>Observação</TableHead>
+
+                  </TableRow>
+
+                </TableHeader>
+
+                <TableBody>
+
+                  {resultados.map((r: any) => (
+
+                    <TableRow key={r.id}>
+
+                      <TableCell>{fmtData(r.data_execucao)}</TableCell>
+
+                      <TableCell><Badge variant="outline">{r.origem}</Badge></TableCell>
+
+                      <TableCell className="font-medium">{r.servico_nome || '-'}</TableCell>
+
+                      <TableCell>{r.talhao_nome || '-'}</TableCell>
+
+                      <TableCell className="text-right font-medium">{fmt(Number(r.custo_total || 0))}</TableCell>
+
+                      <TableCell className="max-w-[280px] text-sm">
+
+                        {[r.observacoes, r.observacoes_abastecimento, r.observacoes_manutencao].filter(Boolean).join(' | ')}
+
+                      </TableCell>
+
+                    </TableRow>
+
+                  ))}
+
+                </TableBody>
+
+              </Table>
+
+            </CardContent>
+
+          </Card>
+
+        </>
+
+      )}
+
+    </div>
+
+  )
+
 }
 
 /* ════════════════════════════════════════════════
