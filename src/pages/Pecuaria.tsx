@@ -80,6 +80,7 @@ export default function Pecuaria() {
   const [racaoDialog, setRacaoDialog] = useState(false)
   const [pesagemDialog, setPesagemDialog] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleteSanId, setDeleteSanId] = useState<string | null>(null)
   const [animaisRebanho, setAnimaisRebanho] = useState<any>(null)
 
   // Filters
