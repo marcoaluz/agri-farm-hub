@@ -6,7 +6,7 @@ import { ptBR } from 'date-fns/locale'
 import {
   BarChart3, ClipboardList, DollarSign, Sprout, TrendingUp, Package,
   ArrowUpDown, ChevronUp, ChevronDown, Download, FileX, Lock, Circle, Leaf,
-  FileSpreadsheet, FileText, ListTree, AlertTriangle,
+  FileSpreadsheet, FileText, ListTree, AlertTriangle, Tractor,
 
 
 
@@ -30,7 +30,7 @@ import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useGlobal } from '@/contexts/GlobalContext'
 
-import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, exportarEstoquePDF, exportarInsumosPDF, exportarObservacoesPDF, type Coluna } from '@/lib/exportTabela'
+import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, exportarEstoquePDF, exportarInsumosPDF, exportarObservacoesPDF, exportarMaquinasPDF, type Coluna } from '@/lib/exportTabela'
 import { TRANSACAO_CATEGORIA_LABELS } from '@/lib/enumLabels'
 
 function labelGrupo(valor: any): string {
@@ -187,6 +187,7 @@ export function Relatorios() {
             <TabsTrigger value="estoque" className="whitespace-nowrap"><PrateleiraIcon className="h-4 w-4 mr-1" />Estoque/Insumos</TabsTrigger>
 
             <TabsTrigger value="observacoes" className="whitespace-nowrap"><ClipboardList className="h-4 w-4 mr-1" />Observações</TabsTrigger>
+            <TabsTrigger value="maquinas" className="whitespace-nowrap"><Tractor className="h-4 w-4 mr-1" />Máquinas</TabsTrigger>
 
           </TabsList>
         </div>
@@ -201,6 +202,7 @@ export function Relatorios() {
         <TabsContent value="estoque"><AbaEstoque propId={propId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
 
         <TabsContent value="observacoes"><AbaObservacoes propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="maquinas"><AbaMaquinas propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
 
 
       </Tabs>
