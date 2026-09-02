@@ -10,3 +10,5 @@
 - [x] `src/components/pecuaria/RacaoDialog.tsx` — adicionar rastro de lotes no lançamento (detalhamento_lotes)
 - [x] `src/components/pecuaria/OrdenhaDialog.tsx` — reescrito com suporte a edição
 - [x] `src/pages/Pecuaria.tsx` — Editar/Excluir na tabela de Leite
+- [x] `src/pages/Relatorios.tsx` — formatar quantidade de manutenção como número
+- [x] `src/components/financeiro/CustosOperacionais.tsx` — mostrar nome da propriedade nos custos gerais
