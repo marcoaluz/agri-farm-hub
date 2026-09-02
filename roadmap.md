@@ -21,7 +21,7 @@
 - [x] `src/components/pecuaria/PesagemDialog.tsx` — gravar `criado_por` na pesagem
 - [x] `src/pages/Pecuaria.tsx` — permitir excluir pesagem com confirmação
 - [x] `src/components/pecuaria/OrdenhaDialog.tsx` — gravar `criado_por` na ordenha
-- [ ] `src/components/pecuaria/EventoSanitarioDialog.tsx` — gravar `criado_por` no evento sanitário
+- [x] `src/components/pecuaria/EventoSanitarioDialog.tsx` — mantido como está (a RPC `registrar_vacinacao_animais` já grava `usuario_id` via `auth.uid()`)
 - [x] `src/components/maquinas/HistoricoManutencoes.tsx` — reescrever histórico de manutenções
 - [x] `src/pages/Lancamentos.tsx` — ajustar botões de passar dias no mobile
 - [x] `src/pages/MinhaEquipe.tsx` — melhorar responsividade da tela de convidados
