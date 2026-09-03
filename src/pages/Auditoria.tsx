@@ -309,7 +309,7 @@ export default function Auditoria() {
               ))
             ) : !historicoFiltrado.length ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                   {temFiltrosAtivos
                     ? 'Nenhum registro encontrado com os filtros aplicados'
                     : 'Nenhuma alteração registrada'
@@ -321,6 +321,9 @@ export default function Auditoria() {
                 <TableRow key={item.id}>
                   <TableCell className="whitespace-nowrap text-sm">
                     {format(new Date(item.alterado_em), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs">{item.modulo}</Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant={getBadgeVariant(item.tipo_alteracao)} className={getBadgeClass(item.tipo_alteracao)}>
