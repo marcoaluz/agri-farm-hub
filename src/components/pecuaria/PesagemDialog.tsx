@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { format } from 'date-fns'
@@ -30,16 +30,30 @@ export function PesagemDialog({ open, onOpenChange, propriedadeId, rebanhos }: P
   const [saving, setSaving] = useState(false)
 
   const [rebanhoId, setRebanhoId] = useState('')
-  const [dataPesagem, setDataPesagem] = useState<Date>(new Date())
+  const [animalId, setAnimalId] = useState('')
+  const [dataPesagem, setDataPesagem] = useState(new Date())
   const [pesoKg, setPesoKg] = useState('')
   const [pesoAnteriorKg, setPesoAnteriorKg] = useState('')
   const [gmdKg, setGmdKg] = useState('')
   const [responsavel, setResponsavel] = useState('')
   const [observacoes, setObservacoes] = useState('')
 
+  const rebanhoSel = rebanhos.find((r: any) => r.id === rebanhoId)
+  const individual = rebanhoSel ? rebanhoSel.controle_individual !== false : false
+
+  const { data: animaisRebanho } = useQuery({
+    queryKey: ['animais-rebanho-pesagem', rebanhoId],
+    queryFn: async () => {
+      const { data } = await supabase.rpc('get_animais_rebanho' as any, { p_rebanho_id: rebanhoId })
+      return (data || []) as any[]
+    },
+    enabled: open && !!rebanhoId && individual,
+  })
+
   useEffect(() => {
     if (open) {
       setRebanhoId('')
+      setAnimalId('')
       setDataPesagem(new Date())
       setPesoKg('')
       setPesoAnteriorKg('')
@@ -49,22 +63,30 @@ export function PesagemDialog({ open, onOpenChange, propriedadeId, rebanhos }: P
     }
   }, [open])
 
-  // Auto-calculate GMD when rebanho and peso change
   useEffect(() => {
-    if (!rebanhoId || !pesoKg) {
+    setAnimalId('')
+  }, [rebanhoId])
+
+  // Auto-calcula GMD com base na última pesagem — do ANIMAL específico se for
+  // lote Individual, ou do rebanho inteiro se for Fechado.
+  useEffect(() => {
+    if (!rebanhoId || !pesoKg || (individual && !animalId)) {
       setGmdKg('')
       setPesoAnteriorKg('')
       return
     }
 
     const fetchUltimaPesagem = async () => {
-      const { data: ultima } = await supabase
+      let query = supabase
         .from('pesagens' as any)
         .select('data_pesagem, peso_kg')
         .eq('rebanho_id', rebanhoId)
         .order('data_pesagem', { ascending: false })
         .limit(1)
-        .single()
+
+      query = individual ? query.eq('animal_id', animalId) : query.is('animal_id', null)
+
+      const { data: ultima } = await query.maybeSingle()
 
       if (ultima) {
         const pesoAnt = Number((ultima as any).peso_kg)
@@ -79,11 +101,15 @@ export function PesagemDialog({ open, onOpenChange, propriedadeId, rebanhos }: P
     }
 
     fetchUltimaPesagem()
-  }, [rebanhoId, pesoKg, dataPesagem])
+  }, [rebanhoId, animalId, individual, pesoKg, dataPesagem])
 
   async function handleSave() {
     if (!rebanhoId || !pesoKg) {
       toast({ title: 'Preencha os campos obrigatórios', variant: 'destructive' })
+      return
+    }
+    if (individual && !animalId) {
+      toast({ title: 'Selecione o animal', description: 'Esse é um lote com controle Individual — escolha qual animal foi pesado.', variant: 'destructive' })
       return
     }
 
@@ -91,6 +117,7 @@ export function PesagemDialog({ open, onOpenChange, propriedadeId, rebanhos }: P
     const { error } = await supabase.from('pesagens' as any).insert({
       propriedade_id: propriedadeId,
       rebanho_id: rebanhoId,
+      animal_id: individual ? animalId : null,
       data_pesagem: format(dataPesagem, 'yyyy-MM-dd'),
       peso_kg: Number(pesoKg),
       peso_anterior_kg: pesoAnteriorKg ? Number(pesoAnteriorKg) : null,
@@ -107,6 +134,7 @@ export function PesagemDialog({ open, onOpenChange, propriedadeId, rebanhos }: P
     } else {
       toast({ title: 'Pesagem registrada com sucesso!' })
       queryClient.invalidateQueries({ queryKey: ['pesagens'] })
+      queryClient.invalidateQueries({ queryKey: ['ranking-peso'] })
       onOpenChange(false)
     }
   }
@@ -131,6 +159,29 @@ export function PesagemDialog({ open, onOpenChange, propriedadeId, rebanhos }: P
             </Select>
           </div>
 
+          {individual && rebanhoId && (
+            <div>
+              <Label>Animal *</Label>
+              {!animaisRebanho?.length ? (
+                <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+                  Esse rebanho não tem animais identificados.
+                </div>
+              ) : (
+                <Select value={animalId} onValueChange={setAnimalId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o animal" /></SelectTrigger>
+                  <SelectContent>
+                    {animaisRebanho.map((a: any) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.nome || a.identificador || a.numero_brinco || 'Sem nome'}
+                        {a.sexo ? (a.sexo === 'macho' ? ' ♂' : ' ♀') : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
           <div>
             <Label>Data da pesagem *</Label>
             <Popover>
@@ -154,7 +205,9 @@ export function PesagemDialog({ open, onOpenChange, propriedadeId, rebanhos }: P
           <div>
             <Label>Peso anterior (kg)</Label>
             <Input type="number" step="0.1" value={pesoAnteriorKg} onChange={e => setPesoAnteriorKg(e.target.value)} placeholder="Calculado automaticamente" />
-            <p className="text-xs text-muted-foreground mt-1">Preenchido automaticamente pela última pesagem do rebanho</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {individual ? 'Preenchido automaticamente pela última pesagem deste animal' : 'Preenchido automaticamente pela última pesagem do rebanho'}
+            </p>
           </div>
 
           <div>
