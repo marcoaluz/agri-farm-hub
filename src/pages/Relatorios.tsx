@@ -2072,11 +2072,13 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
       const itens: { nome: string; qtdLabel: string; valor: number | null }[] = []
 
+
+
       if (m.horas_uso_direto > 0) {
 
         itens.push({
 
-          nome: `Uso da máquina (lançamentos)`,
+          nome: 'Uso da máquina (lançamentos)',
 
           qtdLabel: `${fmtN(Number(m.horas_uso_direto))} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
 
@@ -2086,13 +2088,17 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
       }
 
+
+
+      // Combustível: quantidade mostrada é litros de verdade, não contagem de eventos
+
       if (m.qtd_abastecimentos > 0) {
 
         itens.push({
 
-          nome: `Combustível (${fmtN(Number(m.litros_total || 0))} L)`,
+          nome: `Combustível (${m.qtd_abastecimentos}x abastecido)`,
 
-          qtdLabel: `${m.qtd_abastecimentos}x`,
+          qtdLabel: `${fmtN(Number(m.litros_total || 0))} L`,
 
           valor: Number(m.custo_abastecimento || 0),
 
@@ -2100,33 +2106,39 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
       }
 
-      if (m.qtd_manutencoes > 0) {
+
+
+      // Manutenção: uma linha por descrição distinta, com o produto usado embaixo (se veio do estoque)
+
+      ;(m.manutencoes_detalhadas || []).forEach((mnt: any) => {
 
         itens.push({
 
-          nome: 'Manutenção',
+          nome: `${mnt.descricao}${mnt.vezes > 1 ? ` (${mnt.vezes}x)` : ''}`,
 
-          qtdLabel: `${m.qtd_manutencoes}x`,
+          qtdLabel: mnt.vezes > 1 ? `${mnt.vezes}x` : '—',
 
-          valor: Number(m.custo_manutencao || 0),
-
-        })
-
-      }
-
-      ;(m.itens_usados || []).forEach((it: any) => {
-
-        itens.push({
-
-          nome: `↳ ${it.nome} (item do estoque)`,
-
-          qtdLabel: `${fmtN(Number(it.quantidade))} ${unidadeCurta(it.unidade)}`,
-
-          valor: null,
+          valor: Number(mnt.valor || 0),
 
         })
+
+        if (mnt.produto_nome) {
+
+          itens.push({
+
+            nome: `↳ ${mnt.produto_nome} (item do estoque)`,
+
+            qtdLabel: `${fmtN(Number(mnt.produto_qtd || 0))} ${unidadeCurta(mnt.produto_unidade)}`,
+
+            valor: null,
+
+          })
+
+        }
 
       })
+
+
 
       return {
 
