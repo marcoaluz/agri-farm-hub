@@ -9,13 +9,14 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Scale, LineChart, Syringe, ArrowRightLeft, DollarSign, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Scale, LineChart, Syringe, ArrowRightLeft, DollarSign, MoreVertical, Pencil, Trash2, ShieldCheck } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { NovoAnimalModal } from './NovoAnimalModal'
 import { PesagemAnimalModal } from './PesagemAnimalModal'
 import { HistoricoPesoModal } from './HistoricoPesoModal'
 import { VacinacaoModal } from './VacinacaoModal'
 import { MovimentacaoDialog } from './MovimentacaoDialog'
+import { HistoricoSanitarioAnimalModal } from './HistoricoSanitarioAnimalModal'
 
 interface AnimaisRebanhoDialogProps {
   open: boolean
@@ -33,6 +34,7 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
   const [animalPesagem, setAnimalPesagem] = useState<any>(null)
   const [animalHistorico, setAnimalHistorico] = useState<any>(null)
   const [animalVacina, setAnimalVacina] = useState<any>(null)
+  const [animalHistoricoSanitario, setAnimalHistoricoSanitario] = useState<any>(null)
   const [movAnimal, setMovAnimal] = useState<{ animal: any; tipo: string } | null>(null)
 
   const { data: animais, isLoading } = useQuery({
@@ -158,6 +160,9 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                       <Button size="icon" variant="ghost" onClick={() => setAnimalVacina(animal)} title="Vacinar">
                         <Syringe className="h-4 w-4" />
                       </Button>
+                      <Button size="icon" variant="ghost" onClick={() => setAnimalHistoricoSanitario(animal)} title="Histórico sanitário">
+                        <ShieldCheck className="h-4 w-4" />
+                      </Button>
                       <Button size="icon" variant="ghost" onClick={() => setMovAnimal({ animal, tipo: 'transferencia' })} title="Transferir">
                         <ArrowRightLeft className="h-4 w-4" />
                       </Button>
@@ -188,6 +193,9 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setAnimalVacina(animal)}>
                           <Syringe className="mr-2 h-4 w-4" /> Vacinar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setAnimalHistoricoSanitario(animal)}>
+                          <ShieldCheck className="mr-2 h-4 w-4" /> Histórico sanitário
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setMovAnimal({ animal, tipo: 'transferencia' })}>
                           <ArrowRightLeft className="mr-2 h-4 w-4" /> Transferir
@@ -248,6 +256,13 @@ export function AnimaisRebanhoDialog({ open, onOpenChange, propriedadeId, rebanh
           propriedadeId={propriedadeId}
           rebanho={rebanho}
           animalIdInicial={animalVacina.id}
+        />
+      )}
+      {animalHistoricoSanitario && (
+        <HistoricoSanitarioAnimalModal
+          open={!!animalHistoricoSanitario}
+          onOpenChange={o => { if (!o) setAnimalHistoricoSanitario(null) }}
+          animal={animalHistoricoSanitario}
         />
       )}
       {movAnimal && (
