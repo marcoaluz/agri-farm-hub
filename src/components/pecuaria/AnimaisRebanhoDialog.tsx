@@ -9,13 +9,14 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Scale, LineChart, Syringe, ArrowRightLeft, DollarSign, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Scale, LineChart, Syringe, ArrowRightLeft, DollarSign, MoreVertical, Pencil, Trash2, ShieldCheck } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { NovoAnimalModal } from './NovoAnimalModal'
 import { PesagemAnimalModal } from './PesagemAnimalModal'
 import { HistoricoPesoModal } from './HistoricoPesoModal'
 import { VacinacaoModal } from './VacinacaoModal'
 import { MovimentacaoDialog } from './MovimentacaoDialog'
+import { HistoricoSanitarioAnimalModal } from './HistoricoSanitarioAnimalModal'
 
 interface AnimaisRebanhoDialogProps {
   open: boolean
