@@ -36,3 +36,4 @@
 - [x] `src/components/pecuaria/EventoSanitarioDialog.tsx` — obrigar seleção de animal em lotes Individuais + ícone de sexo
 - [x] `src/components/pecuaria/MovimentacaoDialog.tsx` — ícone de sexo na listagem de animais
 - [x] `src/components/pecuaria/OrdenhaDialog.tsx` — ícone de sexo na listagem de animais
+- [x] `src/components/pecuaria/StatusVacinacaoModal.tsx` — modal de status de vacinação por rebanho
