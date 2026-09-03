@@ -91,7 +91,23 @@ export function Maquinas() {
   const safraId = safraAtual?.id;
   const safraLabel = safraAtual?.nome ?? 'safra';
 
+  const { data: relatorioMaquinasSafra } = useQuery({
+    queryKey: ['relatorio-maquinas-card', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_relatorio_por_maquina' as any, {
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
+      });
+      if (error) throw error;
+      const map = new Map<string, any>();
+      ((data as any[]) || []).forEach((m: any) => map.set(m.maquina_id, m));
+      return map;
+    },
+    enabled: !!propId && !!safraId,
+  });
+
   const { data: statsSafra } = useQuery({
+
     queryKey: ['maquinas-stats-safra', propId, safraId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_maquinas_stats_safra' as any, {
@@ -564,7 +580,10 @@ export function Maquinas() {
         <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {maquinasFiltradas?.map((maquina) => {
             const analise = analiseMap.get(maquina.id);
+            const dadosSafra = relatorioMaquinasSafra?.get(maquina.id);
+            const horasNaSafra = (Number(dadosSafra?.horas_trabalhadas || 0) + Number(dadosSafra?.horas_uso_direto || 0));
             return (
+
               <Card key={maquina.id} className="hover:shadow-lg transition-all">
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex items-start justify-between mb-4">
@@ -605,6 +624,17 @@ export function Maquinas() {
                           : fmtHorimetro(maquina.horimetro_atual)}
                       </span>
                     </div>
+                    {horasNaSafra > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> Trabalhado ({safraLabel})
+                        </span>
+                        <span className="font-medium text-primary">
+                          {horasNaSafra.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}{maquina.unidade_calculo === 'km' ? ' km' : ' h'}
+                        </span>
+                      </div>
+                    )}
+
                     {analise && analise.consumo_medio_lh > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground flex items-center gap-1">
