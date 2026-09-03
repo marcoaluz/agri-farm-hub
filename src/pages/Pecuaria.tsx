@@ -159,7 +159,7 @@ export default function Pecuaria() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from('sanitario_animais')
-        .select('evento_id, animal_id, aplicado')
+        .select('evento_id, animal_id, aplicado, animal:animais(nome, identificador, numero_brinco, sexo)')
       return (data || []) as any[]
     },
     enabled: !!propId,
@@ -625,7 +625,15 @@ export default function Pecuaria() {
               {eventosFiltrados.map((e: any) => {
                 const isProximo = e.data_proxima && new Date(e.data_proxima) <= addDays(new Date(), 30)
                 const tipoIcon = e.tipo === 'vacina' ? '💉' : e.tipo === 'exame' ? '🔬' : '💊'
-                const vacinados = (contagemAnimais || []).filter((c: any) => c.evento_id === e.id && c.aplicado).length
+                const animaisDoEvento = (contagemAnimais || []).filter((c: any) => c.evento_id === e.id && c.aplicado)
+                const vacinados = animaisDoEvento.length
+                const nomesAnimais = animaisDoEvento.map((c: any) => {
+                  const a = c.animal
+                  if (!a) return null
+                  const nome = a.nome || a.identificador || a.numero_brinco || '?'
+                  const simbolo = a.sexo === 'macho' ? ' ♂' : a.sexo === 'femea' ? ' ♀' : ''
+                  return `${nome}${simbolo}`
+                }).filter(Boolean)
                 return (
                   <Card key={e.id} className={isProximo ? 'border-destructive/50' : ''}>
                     <CardContent className="pt-4">
@@ -639,7 +647,17 @@ export default function Pecuaria() {
                           <p className="text-sm">{e.descricao}</p>
                           <div className="text-xs text-muted-foreground flex gap-3 flex-wrap items-center">
                             <span>Aplicação: {format(new Date(e.data_aplicacao), 'dd/MM/yyyy')}</span>
-                            {vacinados > 0 && <Badge variant="outline" className="text-xs">{vacinados} animal(is)</Badge>}
+                            {vacinados > 0 && (
+                              nomesAnimais.length > 0 && nomesAnimais.length <= 4 ? (
+                                nomesAnimais.map((n: string, i: number) => (
+                                  <Badge key={i} variant="outline" className="text-xs">{n}</Badge>
+                                ))
+                              ) : (
+                                <Badge variant="outline" className="text-xs" title={nomesAnimais.join(', ')}>
+                                  {vacinados} animal(is)
+                                </Badge>
+                              )
+                            )}
                             {e.data_proxima && <span>Próxima: {format(new Date(e.data_proxima), 'dd/MM/yyyy')}</span>}
                             {e.rebanho && <span>Rebanho: {(e.rebanho as any).nome}</span>}
                           </div>
