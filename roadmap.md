@@ -37,3 +37,4 @@
 - [x] `src/components/pecuaria/MovimentacaoDialog.tsx` — ícone de sexo na listagem de animais
 - [x] `src/components/pecuaria/OrdenhaDialog.tsx` — ícone de sexo na listagem de animais
 - [x] `src/components/pecuaria/StatusVacinacaoModal.tsx` — modal de status de vacinação por rebanho
+- [x] `src/pages/Pecuaria.tsx` — botão na aba Sanidade para abrir modal de status de vacinação
