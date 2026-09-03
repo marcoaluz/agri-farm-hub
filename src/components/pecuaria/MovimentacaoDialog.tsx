@@ -332,34 +332,64 @@ export function MovimentacaoDialog({
       }
     }
 
-    if (tipo === 'nascimento' && (nomeAnimal || brincoAnimal)) {
-      const { data: novoAnimal, error: erroAnimal } = await supabase
+    // Cria os animais placeholder pra identificar depois — sempre que o lote for
+    // Individual, tanto em Nascimento quanto em Compra (igual já acontecia na
+    // tela de "Registrar compra" separada, mas faltava aqui).
+    if (individual && (tipo === 'nascimento' || tipo === 'compra') && qtdNum > 0) {
+      const { data: existentes } = await supabase
         .from('animais' as any)
-        .insert({
+        .select('identificador')
+        .eq('rebanho_id', rebanhoId)
+
+      const maiorNumero = ((existentes as any[]) || []).reduce((max, a) => {
+        const n = parseInt(a.identificador, 10)
+        return Number.isFinite(n) && n > max ? n : max
+      }, 0)
+
+      const valorUnitCompra = tipo === 'compra'
+        ? (tipoPreco === 'unitario'
+            ? (parseFloat(valorUnitario) || 0)
+            : (qtdNum > 0 ? (parseFloat(valorTotal) || 0) / qtdNum : 0))
+        : 0
+
+      const usarIdentificacaoManual = tipo === 'nascimento' && qtdNum === 1 && (nomeAnimal || brincoAnimal)
+
+      const novosAnimais = Array.from({ length: qtdNum }, (_, i) => {
+        const numero = String(maiorNumero + i + 1)
+        return {
           rebanho_id: rebanhoId,
           propriedade_id: propriedadeId,
-          nome: nomeAnimal || null,
-          numero_brinco: brincoAnimal || null,
-          identificador: brincoAnimal || nomeAnimal || null,
-          sexo: sexoAnimal || 'nao_definido',
+          nome: usarIdentificacaoManual ? (nomeAnimal || null) : null,
+          numero_brinco: usarIdentificacaoManual ? (brincoAnimal || numero) : numero,
+          identificador: usarIdentificacaoManual ? (brincoAnimal || nomeAnimal || numero) : numero,
+          sexo: usarIdentificacaoManual ? (sexoAnimal || 'nao_definido') : 'nao_definido',
           raca: rebanhoAtual?.raca || null,
           especie: rebanhoAtual?.especie,
-          data_nascimento: dataEvento,
+          data_nascimento: tipo === 'nascimento' ? dataEvento : null,
           data_entrada: dataEvento,
-          peso_inicial_kg: pesoNascimento ? parseFloat(pesoNascimento) : null,
+          peso_inicial_kg: tipo === 'nascimento'
+            ? (pesoNascimento ? parseFloat(pesoNascimento) : null)
+            : (pesoMedio ? parseFloat(pesoMedio) : null),
+          valor_compra: tipo === 'compra' ? valorUnitCompra : null,
           situacao: 'ativo',
           criado_por: userData?.user?.id || null,
-        } as any)
-        .select('id')
-        .single()
+        }
+      })
 
-      if (!erroAnimal && pesoNascimento && novoAnimal) {
-        await supabase.rpc('registrar_pesagem' as any, {
-          p_animal_id: (novoAnimal as any).id,
-          p_peso_kg: parseFloat(pesoNascimento),
-          p_data_pesagem: dataEvento,
-          p_observacoes: 'Peso ao nascer',
-        })
+      const { data: animaisCriados, error: erroAnimais } = await supabase
+        .from('animais' as any)
+        .insert(novosAnimais as any)
+        .select('id')
+
+      if (!erroAnimais && tipo === 'nascimento' && pesoNascimento && animaisCriados) {
+        for (const a of (animaisCriados as any[])) {
+          await supabase.rpc('registrar_pesagem' as any, {
+            p_animal_id: a.id,
+            p_peso_kg: parseFloat(pesoNascimento),
+            p_data_pesagem: dataEvento,
+            p_observacoes: 'Peso ao nascer',
+          })
+        }
       }
     }
 
@@ -370,6 +400,10 @@ export function MovimentacaoDialog({
     queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
     queryClient.invalidateQueries({ queryKey: ['animais-rebanho-select'] })
     queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+    queryClient.invalidateQueries({ queryKey: ['valores-lotes-pecuaria'] })
+    queryClient.invalidateQueries({ queryKey: ['stats-pecuaria-ano'] })
+    queryClient.invalidateQueries({ queryKey: ['alertas-identificacao-pecuaria'] })
+    queryClient.invalidateQueries({ queryKey: ['ranking-peso'] })
     onOpenChange(false)
   }
 
@@ -558,7 +592,9 @@ export function MovimentacaoDialog({
                 <Input type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
               </div>
               <div className="border-t pt-3 mt-3">
-                <p className="text-sm font-medium mb-2">Identificar o animal (opcional)</p>
+                <p className="text-sm font-medium mb-2">
+                  Identificar o animal {parseInt(quantidade || '0') > 1 ? '(só se aplica quando quantidade = 1)' : '(opcional — se deixar em branco, gera número automático)'}
+                </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Nome</Label>
