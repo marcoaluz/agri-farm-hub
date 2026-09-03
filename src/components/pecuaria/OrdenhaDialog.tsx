@@ -372,7 +372,11 @@ export function OrdenhaDialog({ open, onOpenChange, propriedadeId, rebanhosLeite
                 <div className="max-h-48 overflow-y-auto border rounded-lg p-2 space-y-1">
                   {animaisRebanho.map((a: any) => (
                     <div key={a.id} className="flex items-center gap-2 p-1">
-                      <span className="text-sm flex-1 truncate">{a.nome || a.identificador || a.numero_brinco || 'Sem nome'}</span>
+                      <span className="text-sm flex-1 truncate">
+                        {a.nome || a.identificador || a.numero_brinco || 'Sem nome'}
+                        {a.sexo === 'macho' && <span className="text-blue-600 ml-1">♂</span>}
+                        {a.sexo === 'femea' && <span className="text-pink-600 ml-1">♀</span>}
+                      </span>
                       <Input
                         type="number" step="0.01" placeholder="0,00" className="w-24 h-8"
                         value={litrosPorVaca[a.id] || ''}

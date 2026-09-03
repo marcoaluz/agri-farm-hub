@@ -128,6 +128,12 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
       toast.error('Descrição / Protocolo é obrigatório')
       return
     }
+    const rebanhoSel = rebanhosVacinaveis.find((r: any) => r.id === form.rebanho_id)
+    const ehIndividual = rebanhoSel ? rebanhoSel.controle_individual !== false : false
+    if (ehIndividual && animaisSelecionados.length === 0) {
+      toast.error('Selecione ao menos um animal — esse é um lote com controle Individual.')
+      return
+    }
     setLoading(true)
     const { data: resultadoRaw, error } = await (supabase as any).rpc('registrar_vacinacao_animais', {
       p_propriedade_id: propriedadeId,
@@ -384,6 +390,8 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">
                           {animal.nome || animal.identificador || animal.numero_brinco || 'Sem nome'}
+                          {animal.sexo === 'macho' && <span className="text-blue-600 ml-1">♂</span>}
+                          {animal.sexo === 'femea' && <span className="text-pink-600 ml-1">♀</span>}
                         </p>
                         {bloqueado ? (
                           <p className="text-xs text-destructive">{status?.mensagem}</p>

@@ -28,3 +28,12 @@
 - [x] `src/components/PushAutoReconnect.tsx` — auto-reconectar push notifications
 - [x] `src/App.tsx` — integrar PushAutoReconnect
 - [x] Duplicidade da cultura café — deduplicar nomes nos seletores/listagens de culturas
+- [x] `src/pages/Safras.tsx` — sincronizar contexto global ao excluir/ativar safra
+- [x] `src/pages/Relatorios.tsx` — aba Máquinas com uso direto, combustível e manutenção
+- [x] `src/pages/LancamentoForm.tsx` — vincular manutenções ao lançamento com `lancamento_id`
+- [x] `src/pages/Relatorios.tsx` — mostrar quantidade de manutenção mesmo sem produto do estoque
+- [x] `src/components/pecuaria/PesagemDialog.tsx` — reescrito com suporte a lote Individual (seleção de animal, GMD por animal)
+- [x] `src/components/pecuaria/EventoSanitarioDialog.tsx` — obrigar seleção de animal em lotes Individuais + ícone de sexo
+- [x] `src/components/pecuaria/MovimentacaoDialog.tsx` — ícone de sexo na listagem de animais
+- [x] `src/components/pecuaria/OrdenhaDialog.tsx` — ícone de sexo na listagem de animais
+- [x] `src/components/pecuaria/StatusVacinacaoModal.tsx` — modal de status de vacinação por rebanho
