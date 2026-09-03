@@ -218,6 +218,8 @@ export function MovimentacaoDialog({
               />
               <span className="text-sm font-medium">
                 {animal.nome || animal.identificador || animal.numero_brinco || 'Sem nome'}
+                {animal.sexo === 'macho' && <span className="text-blue-600 ml-1">♂</span>}
+                {animal.sexo === 'femea' && <span className="text-pink-600 ml-1">♀</span>}
               </span>
               {animal.peso_atual && <span className="text-xs text-muted-foreground">{animal.peso_atual}kg</span>}
             </label>
