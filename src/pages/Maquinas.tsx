@@ -605,6 +605,17 @@ export function Maquinas() {
                           : fmtHorimetro(maquina.horimetro_atual)}
                       </span>
                     </div>
+                    {horasNaSafra > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> Trabalhado ({safraLabel})
+                        </span>
+                        <span className="font-medium text-primary">
+                          {horasNaSafra.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}{maquina.unidade_calculo === 'km' ? ' km' : ' h'}
+                        </span>
+                      </div>
+                    )}
+
                     {analise && analise.consumo_medio_lh > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground flex items-center gap-1">
