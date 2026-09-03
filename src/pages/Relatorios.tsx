@@ -205,6 +205,8 @@ export function Relatorios() {
 
         <TabsContent value="observacoes"><AbaObservacoes propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="maquinas"><AbaMaquinas propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        <TabsContent value="sanidade"><AbaSanidade propId={propId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+
 
 
       </Tabs>
