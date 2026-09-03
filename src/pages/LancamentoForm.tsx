@@ -1025,6 +1025,9 @@ export function LancamentoForm() {
       observacoes: item.observacao || null,
       usuario_id: userId || null,
       lancamento_id: lancamentoIdSalvo,
+      // Quantidade usada (peças, ex: 2 pneus) — grava sempre, veio do estoque ou não
+      produto_id: item.origem_estoque ? (item.produto_id || null) : null,
+      quantidade_produto: item.quantidade || null,
     })))
   }
 
