@@ -769,6 +769,124 @@ function AbaObservacoes({ propId, safraId, propriedadeNome }: { propId: string; 
 }
 
 /* ════════════════════════════════════════════════
+   ABA — SANIDADE (cobertura vacinal + histórico)
+   ════════════════════════════════════════════════ */
+function AbaSanidade({ propId, propriedadeNome }: { propId: string; propriedadeNome: string }) {
+  const sanQ = useQuery({
+    queryKey: ['rel-sanidade', propId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc('get_relatorio_sanidade', { p_propriedade_id: propId })
+      if (error) throw error
+      return data as any
+    },
+    enabled: !!propId,
+  })
+
+  const dados = sanQ.data
+  const fmtData = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : '—')
+
+  if (sanQ.isLoading) return <SkeletonAba />
+  if (!dados || (!dados.eventos?.length && !dados.cobertura_por_rebanho?.length)) {
+    return <Card><CardContent className="pt-6"><EmptyState message="Nenhum evento sanitário registrado ainda" /></CardContent></Card>
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <KpiCard title="Total gasto (Sanidade)" value={fmt(Number(dados.total_gasto || 0))} accent="negative" />
+        <KpiCard title="Eventos registrados" value={String(dados.eventos?.length || 0)} />
+        <KpiCard
+          title="Animais sem nenhuma aplicação"
+          value={String((dados.animais_pendentes || []).length)}
+          accent={(dados.animais_pendentes || []).length > 0 ? 'negative' : undefined}
+        />
+      </div>
+
+      {dados.cobertura_por_rebanho?.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Cobertura por Rebanho</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {dados.cobertura_por_rebanho.map((cb: any) => {
+              const pct = cb.total_animais > 0 ? Math.round((cb.animais_com_alguma_vacina / cb.total_animais) * 100) : 0
+              return (
+                <div key={cb.rebanho_id}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium">{cb.rebanho_nome}</span>
+                    <span className="text-muted-foreground">{cb.animais_com_alguma_vacina}/{cb.total_animais} com alguma aplicação</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={cn('h-full rounded-full', pct === 100 ? 'bg-green-600' : pct > 0 ? 'bg-amber-500' : 'bg-destructive')}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {dados.animais_pendentes?.length > 0 && (
+        <Card className="border-amber-300">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2 text-amber-700">
+              <ShieldAlert className="h-4 w-4" />
+              Animais sem nenhuma aplicação registrada
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {dados.animais_pendentes.map((a: any) => (
+                <Badge key={a.animal_id} variant="outline" className="border-amber-300">
+                  {a.animal_nome}
+                  {a.sexo === 'macho' && <span className="text-blue-600 ml-1">♂</span>}
+                  {a.sexo === 'femea' && <span className="text-pink-600 ml-1">♀</span>}
+                  <span className="text-muted-foreground ml-1">· {a.rebanho_nome}</span>
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><ShieldCheck className="h-4 w-4" />Histórico de Eventos</CardTitle></CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Rebanho</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Animais</TableHead>
+                <TableHead>Próxima dose</TableHead>
+                <TableHead className="text-right">Custo</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(dados.eventos || []).map((ev: any) => (
+                <TableRow key={ev.id}>
+                  <TableCell>{fmtData(ev.data_aplicacao)}</TableCell>
+                  <TableCell className="font-medium">{ev.rebanho_nome}</TableCell>
+                  <TableCell className="capitalize">{ev.tipo}</TableCell>
+                  <TableCell>{ev.descricao}</TableCell>
+                  <TableCell>{ev.controle_individual ? `${ev.qtd_animais_aplicados} animal(is)` : 'Lote inteiro'}</TableCell>
+                  <TableCell>{fmtData(ev.data_proxima)}</TableCell>
+                  <TableCell className="text-right">{ev.custo ? fmt(Number(ev.custo)) : '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════
+
    ABA 2 — FINANCEIRO
    ════════════════════════════════════════════════ */
 function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
