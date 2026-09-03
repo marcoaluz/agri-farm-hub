@@ -23,6 +23,7 @@ import { LoteDialog } from '@/components/pecuaria/LoteDialog'
 import { MovimentacaoDialog } from '@/components/pecuaria/MovimentacaoDialog'
 import { CompraAnimaisDialog } from '@/components/pecuaria/CompraAnimaisDialog'
 import { EventoSanitarioDialog } from '@/components/pecuaria/EventoSanitarioDialog'
+import { StatusVacinacaoModal } from '@/components/pecuaria/StatusVacinacaoModal'
 import { OrdenhaDialog } from '@/components/pecuaria/OrdenhaDialog'
 import { RacaoDialog } from '@/components/pecuaria/RacaoDialog'
 import { PesagemDialog } from '@/components/pecuaria/PesagemDialog'
@@ -84,6 +85,8 @@ export default function Pecuaria() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteSanId, setDeleteSanId] = useState<string | null>(null)
   const [deletePesagemId, setDeletePesagemId] = useState<string | null>(null)
+
+  const [statusVacinacaoRebanho, setStatusVacinacaoRebanho] = useState<{ id: string; nome: string } | null>(null)
   const [animaisRebanho, setAnimaisRebanho] = useState<any>(null)
 
   // Filters
@@ -575,6 +578,21 @@ export default function Pecuaria() {
 
         {/* ========= ABA SANIDADE ========= */}
         <TabsContent value="sanidade" className="space-y-4">
+          <div className="flex justify-end">
+            <Select onValueChange={(id) => {
+              const r = rebanhos?.find((r: any) => r.id === id)
+              if (r) setStatusVacinacaoRebanho({ id: r.id, nome: r.nome })
+            }}>
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Ver status por rebanho..." />
+              </SelectTrigger>
+              <SelectContent>
+                {(rebanhos || []).filter((r: any) => r.controle_individual !== false).map((r: any) => (
+                  <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex flex-wrap gap-2 items-center justify-between">
             <div className="flex gap-2">
               <Select value={filtroSanTipo} onValueChange={setFiltroSanTipo}>
@@ -865,6 +883,12 @@ export default function Pecuaria() {
         movimentacao={editMov}
       />
       <CompraAnimaisDialog open={compraDialog} onOpenChange={setCompraDialog} propriedadeId={propId} rebanho={compraRebanho} />
+      <StatusVacinacaoModal
+        open={!!statusVacinacaoRebanho}
+        onOpenChange={(o) => { if (!o) setStatusVacinacaoRebanho(null) }}
+        rebanho={statusVacinacaoRebanho}
+      />
+
       <EventoSanitarioDialog open={sanitarioDialog} onOpenChange={setSanitarioDialog} propriedadeId={propId} rebanhos={rebanhos || []} />
       <OrdenhaDialog
         open={ordenhaDialog}
