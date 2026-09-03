@@ -91,7 +91,23 @@ export function Maquinas() {
   const safraId = safraAtual?.id;
   const safraLabel = safraAtual?.nome ?? 'safra';
 
+  const { data: relatorioMaquinasSafra } = useQuery({
+    queryKey: ['relatorio-maquinas-card', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_relatorio_por_maquina' as any, {
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
+      });
+      if (error) throw error;
+      const map = new Map<string, any>();
+      ((data as any[]) || []).forEach((m: any) => map.set(m.maquina_id, m));
+      return map;
+    },
+    enabled: !!propId && !!safraId,
+  });
+
   const { data: statsSafra } = useQuery({
+
     queryKey: ['maquinas-stats-safra', propId, safraId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_maquinas_stats_safra' as any, {
