@@ -2108,7 +2108,9 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
 
 
-      // Manutenção: uma linha por descrição distinta, com o produto usado embaixo (se veio do estoque)
+      // Manutenção: uma linha por descrição distinta, com a quantidade usada embaixo
+
+      // (produto do estoque com nome, ou peça comprada avulsa no modo Livre)
 
       ;(m.manutencoes_detalhadas || []).forEach((mnt: any) => {
 
@@ -2122,13 +2124,13 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
         })
 
-        if (mnt.produto_nome) {
+        if (mnt.produto_qtd) {
 
           itens.push({
 
-            nome: `↳ ${mnt.produto_nome} (item do estoque)`,
+            nome: mnt.produto_nome ? `↳ ${mnt.produto_nome} (item do estoque)` : '↳ Quantidade usada',
 
-            qtdLabel: `${fmtN(Number(mnt.produto_qtd || 0))} ${unidadeCurta(mnt.produto_unidade)}`,
+            qtdLabel: `${fmtN(Number(mnt.produto_qtd || 0))} ${mnt.produto_nome ? unidadeCurta(mnt.produto_unidade) : 'un'}`,
 
             valor: null,
 
