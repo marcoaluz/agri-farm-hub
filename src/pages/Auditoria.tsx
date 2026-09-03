@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useHistoricoGeral, useEstatisticasAuditoria } from '@/hooks/useHistorico'
+import { useHistoricoGeral, useEstatisticasAuditoria, MODULOS_AUDITORIA } from '@/hooks/useHistorico'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { DetalhesAlteracao } from '@/components/auditoria/DetalhesAlteracao'
 import { DialogDetalhesCompletos } from '@/components/auditoria/DialogDetalhesCompletos'
@@ -63,6 +63,7 @@ export default function Auditoria() {
 
   // Filtros
   const [filtroTipo, setFiltroTipo] = useState<string>('todos')
+  const [filtroModulo, setFiltroModulo] = useState<string>('todos')
   const [dataFiltro, setDataFiltro] = useState<Date | undefined>(undefined)
   const [calendarOpen, setCalendarOpen] = useState(false)
 
@@ -85,15 +86,17 @@ export default function Auditoria() {
     if (!historico) return []
     return historico.filter(item => {
       if (filtroTipo !== 'todos' && item.tipo_alteracao !== filtroTipo) return false
+      if (filtroModulo !== 'todos' && item.modulo !== filtroModulo) return false
       if (dataFiltro && !isSameDay(new Date(item.alterado_em), dataFiltro)) return false
       return true
     })
-  }, [historico, filtroTipo, dataFiltro])
+  }, [historico, filtroTipo, filtroModulo, dataFiltro])
 
-  const temFiltrosAtivos = filtroTipo !== 'todos' || dataFiltro !== undefined
+  const temFiltrosAtivos = filtroTipo !== 'todos' || filtroModulo !== 'todos' || dataFiltro !== undefined
 
   const limparFiltros = () => {
     setFiltroTipo('todos')
+    setFiltroModulo('todos')
     setDataFiltro(undefined)
   }
 
@@ -197,6 +200,19 @@ export default function Auditoria() {
               </SelectContent>
             </Select>
 
+            {/* Filtro por Tela/Módulo */}
+            <Select value={filtroModulo} onValueChange={setFiltroModulo}>
+              <SelectTrigger className="w-[160px] h-9">
+                <SelectValue placeholder="Tela" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas as telas</SelectItem>
+                {MODULOS_AUDITORIA.map(m => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             {/* Filtro por Data - Calendário */}
             <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
@@ -272,6 +288,7 @@ export default function Auditoria() {
           <TableHeader>
             <TableRow>
               <TableHead>Data/Hora</TableHead>
+              <TableHead>Tela</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Usuário</TableHead>
               <TableHead>Detalhes</TableHead>
@@ -283,6 +300,7 @@ export default function Auditoria() {
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-40" /></TableCell>
