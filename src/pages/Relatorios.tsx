@@ -188,6 +188,8 @@ export function Relatorios() {
 
             <TabsTrigger value="observacoes" className="whitespace-nowrap"><ClipboardList className="h-4 w-4 mr-1" />Observações</TabsTrigger>
             <TabsTrigger value="maquinas" className="whitespace-nowrap"><Tractor className="h-4 w-4 mr-1" />Máquinas</TabsTrigger>
+            <TabsTrigger value="sanidade" className="whitespace-nowrap"><ShieldCheck className="h-4 w-4 mr-1" />Sanidade</TabsTrigger>
+
 
           </TabsList>
         </div>
