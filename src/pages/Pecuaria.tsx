@@ -85,6 +85,7 @@ export default function Pecuaria() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteSanId, setDeleteSanId] = useState<string | null>(null)
   const [deletePesagemId, setDeletePesagemId] = useState<string | null>(null)
+  const [pesagemEditando, setPesagemEditando] = useState<any>(null)
 
   const [statusVacinacaoRebanho, setStatusVacinacaoRebanho] = useState<{ id: string; nome: string } | null>(null)
   const [animaisRebanho, setAnimaisRebanho] = useState<any>(null)
@@ -859,9 +860,14 @@ export default function Pecuaria() {
                       <TableCell className="hidden md:table-cell">{p.responsavel || '—'}</TableCell>
                       <TableCell className="max-w-[150px] truncate">{p.observacoes || '—'}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" title="Excluir" className="text-destructive" onClick={() => setDeletePesagemId(p.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1 justify-end">
+                          <Button variant="ghost" size="icon" title="Editar" onClick={() => { setPesagemEditando(p); setPesagemDialog(true) }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" title="Excluir" className="text-destructive" onClick={() => setDeletePesagemId(p.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -898,7 +904,13 @@ export default function Pecuaria() {
         ordenhaEditando={ordenhaEditando}
       />
       <RacaoDialog open={racaoDialog} onOpenChange={setRacaoDialog} propriedadeId={propId || ''} safraId={safraSelecionada?.id || ''} rebanhos={rebanhos || []} />
-      <PesagemDialog open={pesagemDialog} onOpenChange={setPesagemDialog} propriedadeId={propId || ''} rebanhos={rebanhos || []} />
+      <PesagemDialog
+        open={pesagemDialog}
+        onOpenChange={o => { setPesagemDialog(o); if (!o) setPesagemEditando(null) }}
+        propriedadeId={propId || ''}
+        rebanhos={rebanhos || []}
+        pesagemEditando={pesagemEditando}
+      />
       {animaisRebanho && (
         <AnimaisRebanhoDialog
           open={!!animaisRebanho}
