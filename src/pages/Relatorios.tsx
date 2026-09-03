@@ -2072,6 +2072,20 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
       const itens: { nome: string; qtdLabel: string; valor: number | null }[] = []
 
+      if (m.horas_uso_direto > 0) {
+
+        itens.push({
+
+          nome: `Uso da máquina (lançamentos)`,
+
+          qtdLabel: `${fmtN(Number(m.horas_uso_direto))} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
+
+          valor: Number(m.custo_uso_direto || 0),
+
+        })
+
+      }
+
       if (m.qtd_abastecimentos > 0) {
 
         itens.push({
