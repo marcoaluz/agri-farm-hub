@@ -564,7 +564,10 @@ export function Maquinas() {
         <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {maquinasFiltradas?.map((maquina) => {
             const analise = analiseMap.get(maquina.id);
+            const dadosSafra = relatorioMaquinasSafra?.get(maquina.id);
+            const horasNaSafra = (Number(dadosSafra?.horas_trabalhadas || 0) + Number(dadosSafra?.horas_uso_direto || 0));
             return (
+
               <Card key={maquina.id} className="hover:shadow-lg transition-all">
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex items-start justify-between mb-4">
