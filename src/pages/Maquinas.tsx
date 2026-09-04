@@ -57,8 +57,8 @@ interface AnaliseConsumo {
 const fmtCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v ?? 0);
 
-const fmtHorimetro = (v: number) =>
-  `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`;
+const fmtHorimetro = (v: number | null | undefined) =>
+  `${(Number(v) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`;
 
 export function Maquinas() {
   const { propriedadeAtual, safraAtual } = useGlobal();
@@ -285,12 +285,13 @@ export function Maquinas() {
       if (!manuts.length) return;
 
       const maxProximo = Math.max(...manuts.map((m: any) => Number(m.proximo_horimetro)));
-      const faltam = maxProximo - maq.horimetro_atual;
+      const horimetroAtual = Number(maq.horimetro_atual) || 0;
+      const faltam = maxProximo - horimetroAtual;
 
-      if (maq.horimetro_atual >= maxProximo) {
-        alerts.push({ maquina: maq, tipo: 'vencida', horimetroAtual: maq.horimetro_atual, proximoHorimetro: maxProximo, faltam });
+      if (horimetroAtual >= maxProximo) {
+        alerts.push({ maquina: maq, tipo: 'vencida', horimetroAtual, proximoHorimetro: maxProximo, faltam });
       } else if (faltam <= 50) {
-        alerts.push({ maquina: maq, tipo: 'proxima', horimetroAtual: maq.horimetro_atual, proximoHorimetro: maxProximo, faltam });
+        alerts.push({ maquina: maq, tipo: 'proxima', horimetroAtual, proximoHorimetro: maxProximo, faltam });
       }
     });
 
