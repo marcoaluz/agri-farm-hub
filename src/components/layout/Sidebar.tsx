@@ -35,6 +35,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useModulos } from '@/hooks/useModulos'
 import { useModulosAcesso } from '@/hooks/useModulosAcesso'
+import { usePapelUsuario } from '@/hooks/usePapelUsuario'
 import { UpgradeRequiredModal } from '@/components/modulos/UpgradeRequiredModal'
 import { Lock } from 'lucide-react'
 import { PrateleiraIcon } from '@/components/icons/PrateleiraIcon'
@@ -73,6 +74,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const { propriedadeAtual } = useGlobal()
   const { modulos } = useModulos()
   const { data: modulosAcesso } = useModulosAcesso()
+  const { podeVerFinanceiro, podeVerAuditoria, podeVerEquipe, isLoading: carregandoPapel } = usePapelUsuario()
   const [isAdmin, setIsAdmin] = useState(false)
   const [pendentesCount, setPendentesCount] = useState(0)
   const [alertasCount, setAlertasCount] = useState(0)
@@ -121,6 +123,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
   const routesVisiveis = routes.filter(route => {
     if ((route as any).hideForAdmin && isAdmin) return false
+    // Enquanto o papel ainda está carregando, não esconde nada (evita "piscar" o menu)
+    if (!carregandoPapel) {
+      if (route.href === '/financeiro' && !podeVerFinanceiro) return false
+      if (route.href === '/auditoria' && !podeVerAuditoria) return false
+      if (route.href === '/equipe' && !podeVerEquipe) return false
+    }
     if (route.sempre) return true
     if (!propriedadeAtual) return false
     if (route.modulo) return modulos[route.modulo]
