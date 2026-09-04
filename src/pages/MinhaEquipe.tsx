@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -68,7 +69,7 @@ export default function MinhaEquipe() {
 
   // Convidar pessoa nova (sem conta ainda)
   const [email, setEmail] = useState('')
-  const [propriedadeConvite, setPropriedadeConvite] = useState('')
+  const [propriedadesConvite, setPropriedadesConvite] = useState<string[]>([])
   const [papel, setPapel] = useState('')
   const [horas, setHoras] = useState('72')
   const [gerando, setGerando] = useState(false)
@@ -119,18 +120,22 @@ export default function MinhaEquipe() {
   // Pré-seleciona a propriedade atual do topo, se ela estiver entre as gerenciáveis
   useEffect(() => {
     if (propriedadeAtual?.id && propriedadesGerenciaveis.some(p => p.propriedade_id === propriedadeAtual.id)) {
-      if (!propriedadeConvite) setPropriedadeConvite(propriedadeAtual.id)
+      setPropriedadesConvite(prev => prev.length === 0 ? [propriedadeAtual.id!] : prev)
       if (!propriedadeAcesso) setPropriedadeAcesso(propriedadeAtual.id)
     }
   }, [propriedadeAtual?.id, propriedadesGerenciaveis])
 
+  const toggleUmaPropriedade = (id: string) => {
+    setPropriedadesConvite(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id])
+  }
+
   const handleConvidar = async () => {
-    if (!email.trim() || !papel || !propriedadeConvite) return
+    if (!email.trim() || !papel || propriedadesConvite.length === 0) return
     setGerando(true)
     try {
       const { data, error } = await supabase.rpc('gerar_convite_equipe' as any, {
         p_email: email.trim().toLowerCase(),
-        p_propriedade_id: propriedadeConvite,
+        p_propriedade_ids: propriedadesConvite,
         p_papel: papel,
         p_horas_validade: parseInt(horas),
       })
@@ -153,7 +158,7 @@ export default function MinhaEquipe() {
             },
             body: JSON.stringify({
               email: email.trim().toLowerCase(), nome: '', role: papel,
-              propriedade_id: propriedadeConvite, token: result.token, link,
+              propriedade_id: propriedadesConvite[0], token: result.token, link,
             }),
           },
         )
@@ -305,16 +310,20 @@ export default function MinhaEquipe() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Propriedade</Label>
-                    <Select value={propriedadeConvite} onValueChange={setPropriedadeConvite} disabled={gerando || loading}>
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        {propriedadesGerenciaveis.map(p => (
-                          <SelectItem key={p.propriedade_id} value={p.propriedade_id}>{p.propriedade_nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-3">
+                    <Label>Propriedades (marque uma ou mais — o convidado ganha acesso a todas de uma vez, com um clique só)</Label>
+                    <div className="grid gap-2">
+                      {propriedadesGerenciaveis.map(p => (
+                        <label key={p.propriedade_id} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={propriedadesConvite.includes(p.propriedade_id)}
+                            onCheckedChange={() => toggleUmaPropriedade(p.propriedade_id)}
+                            disabled={gerando}
+                          />
+                          {p.propriedade_nome}
+                        </label>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -349,7 +358,7 @@ export default function MinhaEquipe() {
                   <Button
                     className="w-full"
                     onClick={handleConvidar}
-                    disabled={gerando || !email.trim() || !papel || !propriedadeConvite}
+                    disabled={gerando || !email.trim() || !papel || propriedadesConvite.length === 0}
                   >
                     {gerando
                       ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando...</>
