@@ -4,6 +4,8 @@ import { Sidebar } from './Sidebar'
 import { Outlet } from 'react-router-dom'
 import { AssistenteIA } from '@/components/assistente/AssistenteIA'
 import { SafraFechadaBanner } from '@/components/safras/SafraFechadaBanner'
+import { OfflineBanner } from '@/components/OfflineBanner'
+import { useIsOffline } from '@/hooks/useIsOffline'
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
