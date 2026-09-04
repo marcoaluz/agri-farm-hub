@@ -11,6 +11,7 @@ import { AppRoutes } from "@/routes";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { UpdateAvailableBanner } from "@/components/UpdateAvailableBanner";
 import { PushAutoReconnect } from "@/components/PushAutoReconnect";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { limparServiceWorkerConflitante } from '@/lib/pushNotifications'
 import { registerServiceWorker } from '@/lib/registerServiceWorker'
 
@@ -40,12 +41,14 @@ function App() {
         <TooltipProvider>
           <AuthProvider>
             <GlobalProvider>
-              <AppRoutes />
-              <Toaster />
-              <Sonner />
-              <InstallPrompt />
-              <UpdateAvailableBanner />
-              <PushAutoReconnect />
+              <AppErrorBoundary>
+                <AppRoutes />
+                <Toaster />
+                <Sonner />
+                <InstallPrompt />
+                <UpdateAvailableBanner />
+                <PushAutoReconnect />
+              </AppErrorBoundary>
             </GlobalProvider>
           </AuthProvider>
         </TooltipProvider>

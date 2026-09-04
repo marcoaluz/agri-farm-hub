@@ -39,3 +39,4 @@
 - [x] `src/components/pecuaria/StatusVacinacaoModal.tsx` — modal de status de vacinação por rebanho
 - [x] `src/pages/Pecuaria.tsx` — botão na aba Sanidade para abrir modal de status de vacinação
 - Aba Sanidade em Relatorios + card horas por safra em Maquinas
+- [x] `src/pages/Maquinas.tsx` — corrigir tela branca após restauração do cache offline e exibir opção de tentar novamente
