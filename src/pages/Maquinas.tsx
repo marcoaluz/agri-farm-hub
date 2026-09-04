@@ -99,9 +99,12 @@ export function Maquinas() {
         p_safra_id: safraId,
       });
       if (error) throw error;
-      const map = new Map<string, any>();
-      ((data as any[]) || []).forEach((m: any) => map.set(m.maquina_id, m));
-      return map;
+      // O cache offline é serializado como JSON. Map vira um objeto vazio ao
+      // recarregar a página e fazia a tela cair ao chamar `.get()`.
+      return ((data as any[]) || []).reduce<Record<string, any>>((porMaquina, item) => {
+        if (item?.maquina_id) porMaquina[item.maquina_id] = item;
+        return porMaquina;
+      }, {});
     },
     enabled: !!propId && !!safraId,
   });
@@ -124,7 +127,13 @@ export function Maquinas() {
     enabled: !!propId && !!safraId,
   });
 
-  const { data: maquinas, isLoading } = useQuery({
+  const {
+    data: maquinas,
+    isLoading,
+    isError: maquinasComErro,
+    error: erroMaquinas,
+    refetch: recarregarMaquinas,
+  } = useQuery({
     queryKey: ['maquinas', propId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('listar_maquinas_usuario' as any, {
@@ -290,7 +299,7 @@ export function Maquinas() {
 
   const maquinasFiltradas = maquinas?.filter(
     (m) =>
-      m.nome.toLowerCase().includes(busca.toLowerCase()) ||
+      (m.nome || '').toLowerCase().includes(busca.toLowerCase()) ||
       m.modelo?.toLowerCase().includes(busca.toLowerCase())
   );
 
@@ -558,6 +567,19 @@ export function Maquinas() {
             <Skeleton key={i} className="h-60 sm:h-72 w-full" />
           ))}
         </div>
+      ) : maquinasComErro ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
+            <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Não foi possível carregar as máquinas</h3>
+            <p className="text-sm text-muted-foreground mb-4 max-w-md">
+              {erroMaquinas instanceof Error ? erroMaquinas.message : 'Verifique sua conexão e tente novamente.'}
+            </p>
+            <Button variant="outline" onClick={() => recarregarMaquinas()}>
+              Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
       ) : maquinasFiltradas?.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
@@ -580,7 +602,7 @@ export function Maquinas() {
         <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {maquinasFiltradas?.map((maquina) => {
             const analise = analiseMap.get(maquina.id);
-            const dadosSafra = relatorioMaquinasSafra?.get(maquina.id);
+            const dadosSafra = relatorioMaquinasSafra?.[maquina.id];
             const horasNaSafra = (Number(dadosSafra?.horas_trabalhadas || 0) + Number(dadosSafra?.horas_uso_direto || 0));
             return (
 
