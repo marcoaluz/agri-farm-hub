@@ -11,6 +11,7 @@ import { AppRoutes } from "@/routes";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { UpdateAvailableBanner } from "@/components/UpdateAvailableBanner";
 import { PushAutoReconnect } from "@/components/PushAutoReconnect";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { limparServiceWorkerConflitante } from '@/lib/pushNotifications'
 import { registerServiceWorker } from '@/lib/registerServiceWorker'
 
@@ -26,6 +27,7 @@ function App() {
         <TooltipProvider>
           <AuthProvider>
             <GlobalProvider>
+              <OfflineBanner />
               <AppRoutes />
               <Toaster />
               <Sonner />
@@ -41,4 +43,3 @@ function App() {
 }
 
 export default App;
-
