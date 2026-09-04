@@ -40,7 +40,6 @@ function App() {
         <TooltipProvider>
           <AuthProvider>
             <GlobalProvider>
-              <OfflineBanner />
               <AppRoutes />
               <Toaster />
               <Sonner />

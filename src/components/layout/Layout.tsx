@@ -9,12 +9,14 @@ import { useIsOffline } from '@/hooks/useIsOffline'
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const isOffline = useIsOffline()
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       <div className="flex-1 flex flex-col min-h-0 min-w-0">
+        {isOffline && <OfflineBanner />}
         <HeaderGlobal onMenuClick={() => setSidebarOpen(true)} />
         <SafraFechadaBanner />
         
@@ -25,7 +27,7 @@ export function Layout() {
         </main>
       </div>
 
-      <AssistenteIA />
+      {!isOffline && <AssistenteIA />}
     </div>
   )
 }
