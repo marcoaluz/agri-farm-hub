@@ -21,7 +21,7 @@ function App() {
   }, [])
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
       <BrowserRouter>
         <TooltipProvider>
           <AuthProvider>
@@ -36,7 +36,7 @@ function App() {
           </AuthProvider>
         </TooltipProvider>
       </BrowserRouter>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
 
