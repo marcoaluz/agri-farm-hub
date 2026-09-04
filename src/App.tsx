@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,7 +22,21 @@ function App() {
   }, [])
 
   return (
-    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister,
+        maxAge: 1000 * 60 * 60 * 24, // não usa cache com mais de 24h como se fosse atual
+        // Nunca guarda dado sensível de sessão/autenticação no cache persistido —
+        // só resultados de consulta (relatórios, listas, etc)
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) => {
+            const key = String(query.queryKey?.[0] ?? '')
+            return !key.toLowerCase().includes('auth') && !key.toLowerCase().includes('session')
+          },
+        },
+      }}
+    >
       <BrowserRouter>
         <TooltipProvider>
           <AuthProvider>
