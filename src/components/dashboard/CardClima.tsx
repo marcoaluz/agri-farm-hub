@@ -2,12 +2,11 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { CloudSun, History } from 'lucide-react'
+import { CloudSun } from 'lucide-react'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 
 function weatherDescription(code: number) {
@@ -70,14 +69,11 @@ export function CardClima() {
   return (
     <>
       <Card className="lg:col-span-3">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+        <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <CloudSun className="h-5 w-5" />
             Clima {propriedadeAtual?.nome ? `· ${propriedadeAtual.nome}` : ''}
           </CardTitle>
-          <Button variant="outline" size="sm" onClick={() => setHistOpen(true)} disabled={!propId}>
-            <History className="h-4 w-4 mr-1" /> Ver histórico
-          </Button>
         </CardHeader>
         <CardContent>
           {isLoading ? (
