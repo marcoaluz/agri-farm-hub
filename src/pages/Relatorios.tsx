@@ -2206,17 +2206,28 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
       ;(m.manutencoes_detalhadas || []).forEach((mnt: any) => {
         itens.push({
-          nome: `${mnt.descricao}${mnt.vezes > 1 ? ` (${mnt.vezes}x)` : ''}`,
-          qtdLabel: mnt.vezes > 1 ? `${mnt.vezes}x` : '—',
-          valor: Number(mnt.valor || 0),
+          nome: mnt.descricao,
+          qtdLabel: `${Number(mnt.vezes_total || 0)}x`,
+          valor: Number(mnt.valor_total || 0),
         })
-        if (mnt.produto_qtd) {
-          itens.push({
-            nome: mnt.produto_nome ? `↳ ${mnt.produto_nome} (item do estoque)` : '↳ Quantidade usada',
-            qtdLabel: `${fmtN(Number(mnt.produto_qtd || 0))} ${mnt.produto_nome ? unidadeCurta(mnt.produto_unidade) : 'un'}`,
-            valor: null,
-          })
-        }
+
+        ;(mnt.itens || []).forEach((it: any) => {
+          if (it.do_estoque) {
+            itens.push({
+              nome: `└ ${it.produto_nome || 'Item do estoque'} (item do estoque)`,
+              qtdLabel: `${fmtN(Number(it.produto_qtd || 0))} ${unidadeCurta(it.produto_unidade)}`,
+              valor: Number(it.valor || 0),
+              isChild: true,
+            })
+          } else {
+            itens.push({
+              nome: `└ ${(mnt.descricao || '').toLowerCase()} sem estoque`,
+              qtdLabel: `${Number(it.vezes || 0)}x`,
+              valor: Number(it.valor || 0),
+              isChild: true,
+            })
+          }
+        })
       })
 
       return {
