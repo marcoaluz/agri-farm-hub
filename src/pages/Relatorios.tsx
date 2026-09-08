@@ -2356,10 +2356,16 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
                   </div>
 
                   {g.itens.map((item: any, idx: number) => (
-                    <div key={idx} className="flex items-center text-sm pl-4 py-1 text-foreground/80">
+                    <div
+                      key={idx}
+                      className={cn(
+                        "flex items-center text-sm py-1",
+                        item.isChild ? "pl-8 text-foreground/75 text-xs" : "pl-4 text-foreground/80"
+                      )}
+                    >
                       <span className="flex-1 truncate">{item.nome}</span>
                       <span className="w-24 text-right text-xs text-muted-foreground">{item.qtdLabel}</span>
-                      <span className="w-28 text-right font-medium">{item.valor != null ? fmt(item.valor) : '-'}</span>
+                      <span className="w-28 text-right font-medium">{fmt(item.valor ?? 0)}</span>
                     </div>
                   ))}
                 </div>
