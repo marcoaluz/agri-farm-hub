@@ -210,12 +210,12 @@ export default function Dashboard() {
 
   // ── LEGACY QUERIES (charts, recent entries, etc.) ──
   const { data: custosCategConsolidado, isLoading: loadCatConsolidado } = useQuery({
-    queryKey: ['dash-categ-consolidado'],
+    queryKey: ['dash-categ-consolidado', consolidadoV2],
     queryFn: async () => {
-      const { data: props } = await (supabase as any).from('propriedades').select('id').eq('ativo', true)
-      if (!props?.length) return []
+      const props = (consolidadoV2 || []).filter((p: any) => p.safra_ativa_id)
+      if (!props.length) return []
       const results = await Promise.all(
-        props.map((p: any) => (supabase as any).rpc('get_relatorio_por_categoria', { p_propriedade_id: p.id, p_safra_id: null }))
+        props.map((p: any) => (supabase as any).rpc('get_relatorio_por_categoria', { p_propriedade_id: p.propriedade_id, p_safra_id: p.safra_ativa_id }))
       )
       const catMap = new Map<string, number>()
       results.forEach((r: any) => {
@@ -226,7 +226,7 @@ export default function Dashboard() {
       })
       return Array.from(catMap.entries()).map(([categoria, custo_total]) => ({ categoria, custo_total }))
     },
-    enabled: isConsolidado,
+    enabled: isConsolidado && !!consolidadoV2,
   })
 
   const { data: lancConsolidado, isLoading: loadLancConsolidado } = useQuery({
