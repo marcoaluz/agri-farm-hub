@@ -77,6 +77,11 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   // Produto selecionado
   const produtoSelecionado = produtos.find(p => p.id === formData.produto_id);
 
+  // Produtos filtrados por tipo
+  const produtosFiltrados = produtos.filter(
+    p => tipoFiltro === 'todos' || (p.tipo_estoque || 'agricola') === tipoFiltro
+  );
+
   // Calcular valor total do lote
   const valorTotal = formData.quantidade * formData.custo_unitario;
 
