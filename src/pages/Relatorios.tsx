@@ -2159,291 +2159,204 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
    ABA — MÁQUINAS
    ════════════════════════════════════════════════ */
 function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
-
   const { safraAtual } = useGlobal()
 
   const maqQ = useQuery({
-
     queryKey: ['rel-maquinas', propId, safraId],
-
     queryFn: async () => {
-
       const { data, error } = await db.rpc('get_relatorio_por_maquina', {
-
-        p_propriedade_id: propId, p_safra_id: safraId,
-
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
       })
-
       if (error) throw error
-
       return (data || []) as any[]
-
     },
-
   })
 
   const maquinasRaw = maqQ.data || []
+  const [filtroMaquina, setFiltroMaquina] = useState<string>('_all')
 
-  const totalGeral = maquinasRaw.reduce((s: number, m: any) => s + Number(m.custo_total || 0), 0)
-
-  // Mesmo formato em seções do Custos Detalhados: cada máquina é um grupo,
-
-  // Combustível/Manutenção/itens usados são as linhas dentro do grupo.
-
-  const grupos = useMemo(() => {
-
-    return maquinasRaw.map((m: any) => {
-
-      const itens: { nome: string; qtdLabel: string; valor: number | null }[] = []
-
-
-
-      if (m.horas_uso_direto > 0) {
-
-        itens.push({
-
-          nome: 'Uso da máquina (lançamentos)',
-
-          qtdLabel: `${fmtN(Number(m.horas_uso_direto))} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
-
-          valor: Number(m.custo_uso_direto || 0),
-
-        })
-
-      }
-
-
-
-      // Combustível: quantidade mostrada é litros de verdade, não contagem de eventos
-
-      if (m.qtd_abastecimentos > 0) {
-
-        itens.push({
-
-          nome: `Combustível (${m.qtd_abastecimentos}x abastecido)`,
-
-          qtdLabel: `${fmtN(Number(m.litros_total || 0))} L`,
-
-          valor: Number(m.custo_abastecimento || 0),
-
-        })
-
-      }
-
-
-
-      // Manutenção: uma linha por descrição distinta, com a quantidade usada embaixo
-
-      // (produto do estoque com nome, ou peça comprada avulsa no modo Livre)
-
-      ;(m.manutencoes_detalhadas || []).forEach((mnt: any) => {
-
-        itens.push({
-
-          nome: `${mnt.descricao}${mnt.vezes > 1 ? ` (${mnt.vezes}x)` : ''}`,
-
-          qtdLabel: mnt.vezes > 1 ? `${mnt.vezes}x` : '—',
-
-          valor: Number(mnt.valor || 0),
-
-        })
-
-        if (mnt.produto_qtd) {
-
-          itens.push({
-
-            nome: mnt.produto_nome ? `↳ ${mnt.produto_nome} (item do estoque)` : '↳ Quantidade usada',
-
-            qtdLabel: `${fmtN(Number(mnt.produto_qtd || 0))} ${mnt.produto_nome ? unidadeCurta(mnt.produto_unidade) : 'un'}`,
-
-            valor: null,
-
-          })
-
-        }
-
-      })
-
-
-
-      return {
-
-        maquina_id: m.maquina_id,
-
-        nome: `${m.maquina_nome}${m.modelo ? ` (${m.modelo})` : ''}`,
-
-        subtotal: Number(m.custo_total || 0),
-
-        horimetro: `${fmtN(Number(m.horimetro_atual || 0), 1)} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
-
-        itens,
-
-      }
-
+  const maquinasUnicas = useMemo(() => {
+    const map = new Map<string, string>()
+    maquinasRaw.forEach((m: any) => {
+      if (m.maquina_id) map.set(m.maquina_id, String(m.maquina_nome || 'Máquina'))
     })
-
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
   }, [maquinasRaw])
 
-  const handleExportPDF = () => {
+  const grupos = useMemo(() => {
+    return maquinasRaw.map((m: any) => {
+      const itens: { nome: string; qtdLabel: string; valor: number | null }[] = []
 
-    exportarMaquinasPDF({
+      if (m.horas_uso_direto > 0) {
+        itens.push({
+          nome: 'Uso da máquina (lançamentos)',
+          qtdLabel: `${fmtN(Number(m.horas_uso_direto))} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
+          valor: Number(m.custo_uso_direto || 0),
+        })
+      }
 
-      nomeArquivo: 'relatorio-maquinas',
+      if (m.qtd_abastecimentos > 0) {
+        itens.push({
+          nome: `Combustível (${m.qtd_abastecimentos}x abastecido)`,
+          qtdLabel: `${fmtN(Number(m.litros_total || 0))} L`,
+          valor: Number(m.custo_abastecimento || 0),
+        })
+      }
 
-      propriedadeNome,
+      ;(m.manutencoes_detalhadas || []).forEach((mnt: any) => {
+        itens.push({
+          nome: `${mnt.descricao}${mnt.vezes > 1 ? ` (${mnt.vezes}x)` : ''}`,
+          qtdLabel: mnt.vezes > 1 ? `${mnt.vezes}x` : '—',
+          valor: Number(mnt.valor || 0),
+        })
+        if (mnt.produto_qtd) {
+          itens.push({
+            nome: mnt.produto_nome ? `↳ ${mnt.produto_nome} (item do estoque)` : '↳ Quantidade usada',
+            qtdLabel: `${fmtN(Number(mnt.produto_qtd || 0))} ${mnt.produto_nome ? unidadeCurta(mnt.produto_unidade) : 'un'}`,
+            valor: null,
+          })
+        }
+      })
 
-      safraNome: safraAtual?.nome,
-
-      totalGeral,
-
-      grupos,
-
+      return {
+        maquina_id: m.maquina_id,
+        nome: `${m.maquina_nome}${m.modelo ? ` (${m.modelo})` : ''}`,
+        subtotal: Number(m.custo_total || 0),
+        horimetro: `${fmtN(Number(m.horimetro_atual || 0), 1)} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
+        itens,
+      }
     })
+  }, [maquinasRaw])
 
+  const gruposFiltrados = useMemo(() => {
+    if (filtroMaquina === '_all') return grupos
+    return grupos.filter((g: any) => g.maquina_id === filtroMaquina)
+  }, [grupos, filtroMaquina])
+
+  const totalGeral = gruposFiltrados.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
+
+  const handleExportPDF = () => {
+    exportarMaquinasPDF({
+      nomeArquivo: 'relatorio-maquinas',
+      propriedadeNome,
+      safraNome: safraAtual?.nome,
+      totalGeral,
+      grupos: gruposFiltrados,
+    })
   }
 
   if (maqQ.isLoading) return <SkeletonAba />
 
-  if (grupos.length === 0) return <Card><CardContent className="pt-6"><EmptyState message="Nenhuma máquina com abastecimento ou manutenção nesta safra" /></CardContent></Card>
+  if (grupos.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <EmptyState message="Nenhuma máquina com abastecimento ou manutenção nesta safra" />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
-
     <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <Select value={filtroMaquina} onValueChange={setFiltroMaquina}>
+          <SelectTrigger className="w-full sm:w-[260px]">
+            {filtroMaquina === '_all' ? (
+              <span>Todas as máquinas</span>
+            ) : (
+              <span className="truncate">
+                {maquinasUnicas.find(([id]) => id === filtroMaquina)?.[1] ?? 'Máquina'}
+              </span>
+            )}
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_all">Todas as máquinas</SelectItem>
+            {maquinasUnicas.map(([id, nome]) => (
+              <SelectItem key={id} value={id}>{nome}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      <div className="flex flex-wrap justify-end gap-2 mb-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]" onClick={handleExportPDF}>
+            <FileText className="h-4 w-4 mr-1" /> Exportar PDF
+          </Button>
 
-        <Button variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]" onClick={handleExportPDF}>
-
-          <FileText className="h-4 w-4 mr-1" /> Exportar PDF
-
-        </Button>
-
-        <Button
-
-          variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]"
-
-          onClick={() => exportarExcel({
-
-            nomeArquivo: 'relatorio-maquinas',
-
-            nomeAba: 'Máquinas',
-
-            propriedadeNome,
-
-            safraNome: safraAtual?.nome,
-
-            colunas: [
-
-              { header: 'Máquina', key: 'maquina', width: 22 },
-
-              { header: 'Item', key: 'item', width: 26 },
-
-              { header: 'Qtd', key: 'qtd', width: 12 },
-
-              { header: 'Valor', key: 'valor', width: 14 },
-
-            ],
-
-            linhas: grupos.flatMap((g) =>
-
-              g.itens.map((it) => ({
-
-                maquina: g.nome,
-
-                item: it.nome,
-
-                qtd: it.qtdLabel,
-
-                valor: it.valor != null ? fmt(it.valor) : '-',
-
-              }))
-
-            ),
-
-          })}
-
-        >
-
-          <FileSpreadsheet className="h-4 w-4 mr-1" /> Exportar Excel
-
-        </Button>
-
+          <Button
+            variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]"
+            onClick={() => exportarExcel({
+              nomeArquivo: 'relatorio-maquinas',
+              nomeAba: 'Máquinas',
+              propriedadeNome,
+              safraNome: safraAtual?.nome,
+              colunas: [
+                { header: 'Máquina', key: 'maquina', width: 22 },
+                { header: 'Item', key: 'item', width: 26 },
+                { header: 'Qtd', key: 'qtd', width: 12 },
+                { header: 'Valor', key: 'valor', width: 14 },
+              ],
+              linhas: gruposFiltrados.flatMap((g: any) =>
+                g.itens.map((it: any) => ({
+                  maquina: g.nome,
+                  item: it.nome,
+                  qtd: it.qtdLabel,
+                  valor: it.valor != null ? fmt(it.valor) : '-',
+                }))
+              ),
+            })}
+          >
+            <FileSpreadsheet className="h-4 w-4 mr-1" /> Exportar Excel
+          </Button>
+        </div>
       </div>
 
       <Card>
-
         <CardHeader>
-
           <CardTitle className="text-base flex items-center gap-2">
-
             <Tractor className="h-4 w-4" />
-
             Custo por Máquina
-
             <span className="ml-auto text-sm font-normal text-muted-foreground">
-
               Total: <span className="font-bold text-foreground">{fmt(totalGeral)}</span>
-
             </span>
-
           </CardTitle>
-
         </CardHeader>
 
         <CardContent className="space-y-4">
-
-          <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
-
-            <span className="flex-1">Item</span>
-
-            <span className="w-24 text-right">Qtd</span>
-
-            <span className="w-28 text-right">Valor</span>
-
-          </div>
-
-          {grupos.map((g) => (
-
-            <div key={g.maquina_id}>
-
-              <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
-
-                <span className="flex items-center gap-2">
-
-                  {g.nome}
-
-                  <Badge variant="outline" className="text-[10px] font-normal">{g.horimetro}</Badge>
-
-                </span>
-
-                <span>{fmt(g.subtotal)}</span>
-
+          {gruposFiltrados.length === 0 ? (
+            <EmptyState message="Nenhum resultado para o filtro selecionado" />
+          ) : (
+            <>
+              <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
+                <span className="flex-1">Item</span>
+                <span className="w-24 text-right">Qtd</span>
+                <span className="w-28 text-right">Valor</span>
               </div>
 
-              {g.itens.map((item, idx) => (
+              {gruposFiltrados.map((g: any) => (
+                <div key={g.maquina_id}>
+                  <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
+                    <span className="flex items-center gap-2">
+                      {g.nome}
+                      <Badge variant="outline" className="text-[10px] font-normal">{g.horimetro}</Badge>
+                    </span>
+                    <span>{fmt(g.subtotal)}</span>
+                  </div>
 
-                <div key={idx} className="flex items-center text-sm pl-4 py-1 text-foreground/80">
-
-                  <span className="flex-1 truncate">{item.nome}</span>
-
-                  <span className="w-24 text-right text-xs text-muted-foreground">{item.qtdLabel}</span>
-
-                  <span className="w-28 text-right font-medium">{item.valor != null ? fmt(item.valor) : '-'}</span>
-
+                  {g.itens.map((item: any, idx: number) => (
+                    <div key={idx} className="flex items-center text-sm pl-4 py-1 text-foreground/80">
+                      <span className="flex-1 truncate">{item.nome}</span>
+                      <span className="w-24 text-right text-xs text-muted-foreground">{item.qtdLabel}</span>
+                      <span className="w-28 text-right font-medium">{item.valor != null ? fmt(item.valor) : '-'}</span>
+                    </div>
+                  ))}
                 </div>
-
               ))}
-
-            </div>
-
-          ))}
-
+            </>
+          )}
         </CardContent>
-
       </Card>
-
     </div>
-
   )
-
 }
