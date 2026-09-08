@@ -2186,7 +2186,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
   const grupos = useMemo(() => {
     return maquinasRaw.map((m: any) => {
-      const itens: { nome: string; qtdLabel: string; valor: number | null }[] = []
+      const itens: { nome: string; qtdLabel: string; valor: number; isChild?: boolean }[] = []
 
       if (m.horas_uso_direto > 0) {
         itens.push({
@@ -2206,17 +2206,28 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
       ;(m.manutencoes_detalhadas || []).forEach((mnt: any) => {
         itens.push({
-          nome: `${mnt.descricao}${mnt.vezes > 1 ? ` (${mnt.vezes}x)` : ''}`,
-          qtdLabel: mnt.vezes > 1 ? `${mnt.vezes}x` : '—',
-          valor: Number(mnt.valor || 0),
+          nome: mnt.descricao,
+          qtdLabel: `${Number(mnt.vezes_total || 0)}x`,
+          valor: Number(mnt.valor_total || 0),
         })
-        if (mnt.produto_qtd) {
-          itens.push({
-            nome: mnt.produto_nome ? `↳ ${mnt.produto_nome} (item do estoque)` : '↳ Quantidade usada',
-            qtdLabel: `${fmtN(Number(mnt.produto_qtd || 0))} ${mnt.produto_nome ? unidadeCurta(mnt.produto_unidade) : 'un'}`,
-            valor: null,
-          })
-        }
+
+        ;(mnt.itens || []).forEach((it: any) => {
+          if (it.do_estoque) {
+            itens.push({
+              nome: `└ ${it.produto_nome || 'Item do estoque'} (item do estoque)`,
+              qtdLabel: `${fmtN(Number(it.produto_qtd || 0))} ${unidadeCurta(it.produto_unidade)}`,
+              valor: Number(it.valor || 0),
+              isChild: true,
+            })
+          } else {
+            itens.push({
+              nome: `└ ${(mnt.descricao || '').toLowerCase()} sem estoque`,
+              qtdLabel: `${Number(it.vezes || 0)}x`,
+              valor: Number(it.valor || 0),
+              isChild: true,
+            })
+          }
+        })
       })
 
       return {
@@ -2345,10 +2356,16 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
                   </div>
 
                   {g.itens.map((item: any, idx: number) => (
-                    <div key={idx} className="flex items-center text-sm pl-4 py-1 text-foreground/80">
+                    <div
+                      key={idx}
+                      className={cn(
+                        "flex items-center text-sm py-1",
+                        item.isChild ? "pl-8 text-foreground/75 text-xs" : "pl-4 text-foreground/80"
+                      )}
+                    >
                       <span className="flex-1 truncate">{item.nome}</span>
                       <span className="w-24 text-right text-xs text-muted-foreground">{item.qtdLabel}</span>
-                      <span className="w-28 text-right font-medium">{item.valor != null ? fmt(item.valor) : '-'}</span>
+                      <span className="w-28 text-right font-medium">{fmt(item.valor ?? 0)}</span>
                     </div>
                   ))}
                 </div>
