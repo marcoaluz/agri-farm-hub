@@ -2186,7 +2186,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
   const grupos = useMemo(() => {
     return maquinasRaw.map((m: any) => {
-      const itens: { nome: string; qtdLabel: string; valor: number | null }[] = []
+      const itens: { nome: string; qtdLabel: string; valor: number; isChild?: boolean }[] = []
 
       if (m.horas_uso_direto > 0) {
         itens.push({
