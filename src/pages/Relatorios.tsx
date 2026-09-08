@@ -2207,9 +2207,10 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
       ;(m.manutencoes_detalhadas || []).forEach((mnt: any) => {
         itens.push({
           nome: mnt.descricao,
-          qtdLabel: `${Number(mnt.vezes_total || 0)}x`,
+          qtdLabel: '',
           valor: Number(mnt.valor_total || 0),
         })
+
 
         ;(mnt.itens || []).forEach((it: any) => {
           if (it.do_estoque) {
