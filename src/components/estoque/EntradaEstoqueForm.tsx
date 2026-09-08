@@ -49,6 +49,7 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   const [dataVencimento, setDataVencimento] = useState('');
   const [numParcelas, setNumParcelas] = useState(2);
   const [arquivoNF, setArquivoNF] = useState<File | null>(null);
+  const [tipoFiltro, setTipoFiltro] = useState<string>('todos');
 
 
   // Buscar produtos
