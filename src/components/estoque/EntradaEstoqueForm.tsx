@@ -19,7 +19,9 @@ interface Produto {
   nome: string;
   categoria: string;
   unidade_medida: string;
+  tipo_estoque: string;
 }
+
 
 interface EntradaEstoqueFormProps {
   onSuccess: () => void;
