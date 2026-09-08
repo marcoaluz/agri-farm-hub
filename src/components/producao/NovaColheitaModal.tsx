@@ -116,6 +116,10 @@ export function NovaColheitaModal({
       toast.error('Selecione uma safra')
       return
     }
+    if (areaColhida && parseFloat(areaColhida) > areaDisponivel + 0.001) {
+      toast.error(`Área colhida não pode ultrapassar a área disponível do talhão (${areaDisponivel.toLocaleString('pt-BR')} ha)`)
+      return
+    }
 
     setLoading(true)
     const { data, error } = await supabase.rpc('registrar_colheita' as any, {
