@@ -257,6 +257,22 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
       )}
 
       <div className="space-y-3">
+        {/* Tipo */}
+        <div>
+          <Label>Tipo *</Label>
+          <Select value={tipoFiltro} onValueChange={(value) => { setTipoFiltro(value); setFormData(prev => ({ ...prev, produto_id: '' })); }}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="agricola">🌱 Agrícola</SelectItem>
+              <SelectItem value="pecuario">🐄 Pecuário</SelectItem>
+              <SelectItem value="geral">📦 Geral</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Produto */}
         <div>
           <Label>Produto *</Label>
@@ -279,12 +295,12 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
                 <SelectItem value="__error" disabled>
                   Erro ao carregar produtos
                 </SelectItem>
-              ) : produtos.length === 0 ? (
+              ) : produtosFiltrados.length === 0 ? (
                 <SelectItem value="__empty" disabled>
-                  Nenhum produto cadastrado
+                  Nenhum produto cadastrado para este tipo
                 </SelectItem>
               ) : (
-                produtos.map(produto => (
+                produtosFiltrados.map(produto => (
                   <SelectItem key={produto.id} value={produto.id}>
                     {produto.nome} ({produto.categoria})
                   </SelectItem>
@@ -293,6 +309,7 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
             </SelectContent>
           </Select>
         </div>
+
 
         {/* Unidade de Medida (readonly) */}
         {produtoSelecionado && (
