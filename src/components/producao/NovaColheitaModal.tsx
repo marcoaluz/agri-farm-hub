@@ -66,7 +66,7 @@ export function NovaColheitaModal({
     queryFn: async () => {
       const { data } = await supabase
         .from('talhoes' as any)
-        .select('id, nome')
+        .select('id, nome, area_ha')
         .eq('propriedade_id', propriedadeId)
         .or('ativo.is.null,ativo.eq.true')
         .order('nome')
@@ -74,6 +74,25 @@ export function NovaColheitaModal({
     },
     enabled: !!propriedadeId,
   })
+
+  const { data: areaJaColhidaData } = useQuery({
+    queryKey: ['area-colhida-talhao', talhaoId, safraId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('colheitas' as any)
+        .select('area_colhida')
+        .eq('talhao_id', talhaoId)
+        .eq('safra_id', safraId)
+      if (error) throw error
+      return (data || []).reduce((sum: number, c: any) => sum + Number(c.area_colhida || 0), 0)
+    },
+    enabled: !!talhaoId && !!safraId,
+  })
+
+  const talhaoSel = talhoes?.find((t) => t.id === talhaoId)
+  const areaTotalTalhao = Number(talhaoSel?.area_ha || 0)
+  const areaJaColhida = Number(areaJaColhidaData || 0)
+  const areaDisponivel = Math.max(areaTotalTalhao - areaJaColhida, 0)
 
   const prePreenchido = !!(talhaoIdInicial && culturaIdInicial)
 
