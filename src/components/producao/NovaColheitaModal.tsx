@@ -66,7 +66,7 @@ export function NovaColheitaModal({
     queryFn: async () => {
       const { data } = await supabase
         .from('talhoes' as any)
-        .select('id, nome')
+        .select('id, nome, area_ha')
         .eq('propriedade_id', propriedadeId)
         .or('ativo.is.null,ativo.eq.true')
         .order('nome')
@@ -74,6 +74,25 @@ export function NovaColheitaModal({
     },
     enabled: !!propriedadeId,
   })
+
+  const { data: areaJaColhidaData } = useQuery({
+    queryKey: ['area-colhida-talhao', talhaoId, safraId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('colheitas' as any)
+        .select('area_colhida')
+        .eq('talhao_id', talhaoId)
+        .eq('safra_id', safraId)
+      if (error) throw error
+      return (data || []).reduce((sum: number, c: any) => sum + Number(c.area_colhida || 0), 0)
+    },
+    enabled: !!talhaoId && !!safraId,
+  })
+
+  const talhaoSel = talhoes?.find((t) => t.id === talhaoId)
+  const areaTotalTalhao = Number(talhaoSel?.area_ha || 0)
+  const areaJaColhida = Number(areaJaColhidaData || 0)
+  const areaDisponivel = Math.max(areaTotalTalhao - areaJaColhida, 0)
 
   const prePreenchido = !!(talhaoIdInicial && culturaIdInicial)
 
@@ -95,6 +114,10 @@ export function NovaColheitaModal({
     }
     if (!safraId) {
       toast.error('Selecione uma safra')
+      return
+    }
+    if (areaColhida && parseFloat(areaColhida) > areaDisponivel + 0.001) {
+      toast.error(`Área colhida não pode ultrapassar a área disponível do talhão (${areaDisponivel.toLocaleString('pt-BR')} ha)`)
       return
     }
 
@@ -192,6 +215,13 @@ export function NovaColheitaModal({
                 onChange={(e) => setAreaColhida(e.target.value)}
                 placeholder="Opcional"
               />
+              {talhaoSel && areaTotalTalhao > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Área do talhão: {areaTotalTalhao.toLocaleString('pt-BR')} ha
+                  {areaJaColhida > 0 && ` · já colhida: ${areaJaColhida.toLocaleString('pt-BR')} ha`}
+                  {' · disponível: '}{areaDisponivel.toLocaleString('pt-BR')} ha
+                </p>
+              )}
             </div>
           </div>
 
