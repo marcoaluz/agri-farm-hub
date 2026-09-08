@@ -215,6 +215,13 @@ export function NovaColheitaModal({
                 onChange={(e) => setAreaColhida(e.target.value)}
                 placeholder="Opcional"
               />
+              {talhaoSel && areaTotalTalhao > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Área do talhão: {areaTotalTalhao.toLocaleString('pt-BR')} ha
+                  {areaJaColhida > 0 && ` · já colhida: ${areaJaColhida.toLocaleString('pt-BR')} ha`}
+                  {' · disponível: '}{areaDisponivel.toLocaleString('pt-BR')} ha
+                </p>
+              )}
             </div>
           </div>
 
