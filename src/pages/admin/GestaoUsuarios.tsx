@@ -80,7 +80,7 @@ export default function GestaoUsuarios() {
   const [usuarios, setUsuarios] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
-  const [filtroPerfil, setFiltroPerfil] = useState('todos')
+  const [filtroPerfil, setFiltroPerfil] = useState('proprietario')
   const [filtroStatus, setFiltroStatus] = useState('todos')
   const [usuarioEditando, setUsuarioEditando] = useState<UserProfile | null>(null)
   const [novoPerfilSelecionado, setNovoPerfilSelecionado] = useState('')
