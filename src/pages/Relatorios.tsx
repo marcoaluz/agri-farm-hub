@@ -1674,6 +1674,62 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
     enabled: !!propId && !!safraId,
   })
 
+  const combinacoesQ = useQuery({
+    queryKey: ['rel-combinacoes-filtro-custos', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await (db as any).rpc('get_combinacoes_filtro_custos', { p_propriedade_id: propId, p_safra_id: safraId })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+    enabled: !!propId && !!safraId,
+  })
+
+  const combos = combinacoesQ.data || []
+
+  const categoriasDisponiveis = useMemo(() => {
+    const filtradas = combos.filter((c: any) =>
+      (!itemFiltro || (c.item_tipo === itemFiltro.tipo && c.item_id === itemFiltro.id)) &&
+      (!talhaoFiltro || c.talhao_id === talhaoFiltro)
+    )
+    return [...new Set(filtradas.map((c: any) => c.categoria).filter(Boolean))].sort() as string[]
+  }, [combos, itemFiltro, talhaoFiltro])
+
+  const itensDisponiveis = useMemo(() => {
+    const filtradas = combos.filter((c: any) =>
+      (!categoriaFiltro || c.categoria === categoriaFiltro) &&
+      (!talhaoFiltro || c.talhao_id === talhaoFiltro)
+    )
+    const vistos = new Set<string>()
+    return filtradas.filter((c: any) => {
+      if (!c.item_id) return false
+      const chave = `${c.item_tipo}:${c.item_id}`
+      if (vistos.has(chave)) return false
+      vistos.add(chave)
+      return true
+    })
+  }, [combos, categoriaFiltro, talhaoFiltro])
+
+  const talhoesDisponiveis = useMemo(() => {
+    const filtradas = combos.filter((c: any) =>
+      (!categoriaFiltro || c.categoria === categoriaFiltro) &&
+      (!itemFiltro || (c.item_tipo === itemFiltro.tipo && c.item_id === itemFiltro.id))
+    )
+    const vistos = new Set<string>()
+    return filtradas.filter((c: any) => {
+      if (!c.talhao_id || vistos.has(c.talhao_id)) return false
+      vistos.add(c.talhao_id)
+      return true
+    })
+  }, [combos, categoriaFiltro, itemFiltro])
+
+  // Reseta filtros que ficaram sem combinação válida
+  useEffect(() => {
+    if (!combos.length) return
+    if (categoriaFiltro && !categoriasDisponiveis.includes(categoriaFiltro)) setCategoriaFiltro('')
+    if (itemFiltro && !itensDisponiveis.some((c: any) => c.item_tipo === itemFiltro.tipo && c.item_id === itemFiltro.id)) setItemFiltro(null)
+    if (talhaoFiltro && !talhoesDisponiveis.some((c: any) => c.talhao_id === talhaoFiltro)) setTalhaoFiltro('')
+  }, [categoriasDisponiveis, itensDisponiveis, talhoesDisponiveis])
+
   const relatorioQ = useQuery({
     queryKey: ['rel-custos-detalhado', propId, safraId, dataInicio, dataFim, categoriaFiltro, itemFiltro, talhaoFiltro, ordenarPor],
     queryFn: async () => {
