@@ -51,6 +51,26 @@ interface UserProfile {
   vencimento?: string | null
 }
 
+interface PropriedadeDetalhe {
+  id: string
+  nome: string
+  area_total: number | null
+  area_talhoes: number | null
+}
+
+interface EquipeDetalhe {
+  usuario_id: string
+  nome: string | null
+  email: string
+  papel: string
+  propriedade_nome: string
+}
+
+interface DetalheProprietario {
+  propriedades: PropriedadeDetalhe[]
+  equipe: EquipeDetalhe[]
+}
+
 const PERFIL_CONFIG: Record<string, { label: string; className: string; variant?: 'destructive' | 'secondary' | 'default' }> = {
   admin: { label: 'Admin', className: 'bg-destructive/10 text-destructive border-destructive/20', variant: 'destructive' },
   proprietario: { label: 'Proprietário', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
@@ -80,7 +100,7 @@ export default function GestaoUsuarios() {
   const [usuarios, setUsuarios] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
-  const [filtroPerfil, setFiltroPerfil] = useState('todos')
+  const [filtroPerfil, setFiltroPerfil] = useState('proprietario')
   const [filtroStatus, setFiltroStatus] = useState('todos')
   const [usuarioEditando, setUsuarioEditando] = useState<UserProfile | null>(null)
   const [novoPerfilSelecionado, setNovoPerfilSelecionado] = useState('')
@@ -101,7 +121,13 @@ export default function GestaoUsuarios() {
   const [usuarioRejeitando, setUsuarioRejeitando] = useState<UserProfile | null>(null)
   const [rejeitando, setRejeitando] = useState(false)
 
+  // Proprietario detail dialog
+  const [usuarioDetalhando, setUsuarioDetalhando] = useState<UserProfile | null>(null)
+  const [detalhesProprietario, setDetalhesProprietario] = useState<DetalheProprietario | null>(null)
+  const [carregandoDetalhes, setCarregandoDetalhes] = useState(false)
+
   const [activeTab, setActiveTab] = useState('pendentes')
+
 
   // Admin check
   useEffect(() => {
@@ -301,6 +327,25 @@ export default function GestaoUsuarios() {
     setNovoPerfilSelecionado(u.perfil)
   }
 
+  async function abrirDetalheProprietario(u: UserProfile) {
+    if (u.perfil !== 'proprietario') return
+    setUsuarioDetalhando(u)
+    setCarregandoDetalhes(true)
+    setDetalhesProprietario(null)
+    try {
+      const { data, error } = await supabase.rpc('admin_get_detalhe_proprietario' as any, {
+        p_usuario_id: u.id,
+      })
+      if (error) throw error
+      setDetalhesProprietario(data as DetalheProprietario)
+    } catch (err: any) {
+      toast({ title: 'Erro ao carregar detalhes', description: err.message, variant: 'destructive' })
+      setUsuarioDetalhando(null)
+    } finally {
+      setCarregandoDetalhes(false)
+    }
+  }
+
   function renderPerfilBadge(perfil: string, isSuperAdmin?: boolean) {
     const config = PERFIL_CONFIG[perfil] || PERFIL_CONFIG.consultor
     return (
@@ -485,9 +530,14 @@ export default function GestaoUsuarios() {
                   </TableHeader>
                   <TableBody>
                     {usuariosFiltrados.map(u => (
-                      <TableRow key={u.id}>
+                      <TableRow
+                        key={u.id}
+                        className={u.perfil === 'proprietario' ? 'cursor-pointer hover:bg-muted/50' : ''}
+                        onClick={() => u.perfil === 'proprietario' && abrirDetalheProprietario(u)}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-3">
+
                             <Avatar className="h-9 w-9">
                               <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                                 {getInitials(u.nome)}
@@ -537,10 +587,16 @@ export default function GestaoUsuarios() {
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
+
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => openEditModal(u)}>
                                 <Edit className="mr-2 h-4 w-4" />
@@ -823,6 +879,115 @@ export default function GestaoUsuarios() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Proprietário detail dialog */}
+      <Dialog open={!!usuarioDetalhando} onOpenChange={open => !open && setUsuarioDetalhando(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Proprietário</DialogTitle>
+          </DialogHeader>
+
+          {usuarioDetalhando && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                    {getInitials(usuarioDetalhando.nome)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-foreground">{usuarioDetalhando.nome || 'Sem nome'}</p>
+                  <p className="text-sm text-muted-foreground">{usuarioDetalhando.email || '—'}</p>
+                </div>
+              </div>
+
+              {carregandoDetalhes ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : detalhesProprietario ? (
+                <>
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-foreground">Propriedades</h3>
+                      <p className="text-sm font-medium text-primary">
+                        Área total em operação:{' '}
+                        {detalhesProprietario.propriedades
+                          .reduce((sum, p) => sum + Number(p.area_talhoes || 0), 0)
+                          .toLocaleString('pt-BR')} ha
+                      </p>
+                    </div>
+                    {detalhesProprietario.propriedades.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nenhuma propriedade cadastrada</p>
+                    ) : (
+                      <div className="rounded-md border overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-left">Nome</TableHead>
+                              <TableHead className="text-right">Área cadastrada</TableHead>
+                              <TableHead className="text-right">Área em talhões</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {detalhesProprietario.propriedades.map(p => (
+                              <TableRow key={p.id}>
+                                <TableCell className="font-medium">{p.nome}</TableCell>
+                                <TableCell className="text-right">
+                                  {Number(p.area_total || 0).toLocaleString('pt-BR')} ha
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {Number(p.area_talhoes || 0).toLocaleString('pt-BR')} ha
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">Equipe</h3>
+                    {detalhesProprietario.equipe.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nenhum membro de equipe ainda</p>
+                    ) : (
+                      <div className="rounded-md border overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-left">Nome / E-mail</TableHead>
+                              <TableHead className="text-left">Papel</TableHead>
+                              <TableHead className="text-left">Propriedade</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {detalhesProprietario.equipe.map((m, idx) => (
+                              <TableRow key={`${m.usuario_id}-${idx}`}>
+                                <TableCell>
+                                  <p className="font-medium text-foreground">{m.nome || 'Sem nome'}</p>
+                                  <p className="text-xs text-muted-foreground">{m.email}</p>
+                                </TableCell>
+                                <TableCell>{renderPerfilBadge(m.papel)}</TableCell>
+                                <TableCell className="text-sm">{m.propriedade_nome}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
+
