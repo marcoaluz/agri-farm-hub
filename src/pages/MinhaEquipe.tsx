@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { toast } from 'sonner'
@@ -57,7 +57,9 @@ function getInitials(name: string | null, email: string | null) {
 interface Acesso { propriedade_id: string; propriedade_nome: string; papel: string }
 interface PessoaEquipe { usuario_id: string; nome: string | null; email: string; avatar_url: string | null; acessos: Acesso[] }
 interface PropriedadeGerenciavel { propriedade_id: string; propriedade_nome: string; meu_papel: string }
-interface Convite { membro_id: string; tipo: string; email: string; nome: string | null; papel: string; status: string; adicionado_em: string; expira_em: string | null; expirado: boolean; token: string | null; propriedade_id?: string; propriedade_nome?: string }
+interface Convite { id?: string; membro_id: string; tipo: string; email: string; email_convite?: string; nome: string | null; papel: string; status: string; adicionado_em: string; criado_em?: string; expira_em: string | null; token_expira_em?: string; expirado: boolean; token: string | null; token_primeiro_acesso?: string; propriedade_id?: string; propriedade_nome?: string }
+interface GrupoConvite { token: string; email: string; papel: string; criado_em: string; expira_em: string; expirado: boolean; ids: string[]; propriedades: string[] }
+
 
 export default function MinhaEquipe() {
   const { propriedadeAtual } = useGlobal()
@@ -84,7 +86,8 @@ export default function MinhaEquipe() {
   const [salvandoAcesso, setSalvandoAcesso] = useState(false)
 
   const [confirmarRemoverAcesso, setConfirmarRemoverAcesso] = useState<{ pessoa: PessoaEquipe; acesso: Acesso } | null>(null)
-  const [confirmarRemoverConvite, setConfirmarRemoverConvite] = useState<Convite | null>(null)
+  const [confirmarRemoverConvite, setConfirmarRemoverConvite] = useState<GrupoConvite | null>(null)
+
   const [removendo, setRemovendo] = useState(false)
 
   const fetchTudo = useCallback(async () => {
@@ -236,8 +239,11 @@ export default function MinhaEquipe() {
     if (!confirmarRemoverConvite) return
     setRemovendo(true)
     try {
-      const { error } = await supabase.rpc('remover_membro_equipe' as any, { p_membro_id: confirmarRemoverConvite.membro_id })
-      if (error) throw error
+      await Promise.all(
+        confirmarRemoverConvite.ids.map(id =>
+          supabase.rpc('remover_membro_equipe' as any, { p_membro_id: id })
+        )
+      )
       toast.success('Convite revogado.')
       fetchTudo()
     } catch (err: any) {
@@ -247,6 +253,7 @@ export default function MinhaEquipe() {
       setConfirmarRemoverConvite(null)
     }
   }
+
 
   const handleCopiar = async () => {
     await navigator.clipboard.writeText(linkGerado)
@@ -259,6 +266,34 @@ export default function MinhaEquipe() {
     navigator.clipboard.writeText(`${window.location.origin}/convite?token=${token}&tipo=existente`)
     toast.success('Link copiado!')
   }
+
+  const convitesAgrupados = useMemo(() => {
+    const grupos = new Map<string, GrupoConvite>()
+    for (const c of convitesPendentes || []) {
+      const chave = c.token_primeiro_acesso || c.token || ''
+      if (!chave) continue
+      if (!grupos.has(chave)) {
+        grupos.set(chave, {
+          token: chave,
+          email: c.email_convite || c.email || '',
+          papel: c.papel,
+          criado_em: c.criado_em || c.adicionado_em || '',
+          expira_em: c.token_expira_em || c.expira_em || '',
+          expirado: c.expirado,
+          ids: [],
+          propriedades: [],
+        })
+      }
+      const grupo = grupos.get(chave)!
+      const id = c.id || c.membro_id
+      if (id && !grupo.ids.includes(id)) grupo.ids.push(id)
+      if (c.propriedade_nome && !grupo.propriedades.includes(c.propriedade_nome)) {
+        grupo.propriedades.push(c.propriedade_nome)
+      }
+    }
+    return Array.from(grupos.values())
+  }, [convitesPendentes])
+
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-full overflow-x-hidden">
@@ -517,7 +552,7 @@ export default function MinhaEquipe() {
           </Card>
 
           {/* Convites pendentes (pessoas ainda sem conta) */}
-          {convitesPendentes.length > 0 && (
+          {convitesAgrupados.length > 0 && (
             <Card className="overflow-hidden">
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -525,7 +560,7 @@ export default function MinhaEquipe() {
                   <CardTitle>Convites Pendentes</CardTitle>
                 </div>
                 <CardDescription>
-                  {convitesPendentes.filter(c => !c.expirado).length} aguardando aceite
+                  {convitesAgrupados.filter(g => !g.expirado).length} aguardando aceite
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -541,17 +576,25 @@ export default function MinhaEquipe() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {convitesPendentes.map(c => (
-                        <TableRow key={c.membro_id}>
-                          <TableCell>{c.email}</TableCell>
-                          <TableCell>{c.propriedade_nome}</TableCell>
+                      {convitesAgrupados.map(grupo => (
+                        <TableRow key={grupo.token}>
+                          <TableCell>{grupo.email}</TableCell>
                           <TableCell>
-                            <Badge className={papelVariant[c.papel] || ''} variant="outline">
-                              {papelLabel[c.papel] || c.papel}
+                            <div className="flex flex-wrap gap-1">
+                              {grupo.propriedades.map(nome => (
+                                <Badge key={nome} variant="outline" className="text-xs">
+                                  {nome}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={papelVariant[grupo.papel] || ''} variant="outline">
+                              {papelLabel[grupo.papel] || grupo.papel}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {c.expirado ? (
+                            {grupo.expirado ? (
                               <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
                                 <AlertTriangle className="h-3 w-3 mr-1" /> Expirado
                               </Badge>
@@ -563,11 +606,11 @@ export default function MinhaEquipe() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
-                              {c.token && !c.expirado && (
+                              {grupo.token && !grupo.expirado && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => copiarLink(c.token!)}
+                                  onClick={() => copiarLink(grupo.token)}
                                   title="Copiar link"
                                 >
                                   <LinkIcon className="h-4 w-4" />
@@ -576,7 +619,7 @@ export default function MinhaEquipe() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setConfirmarRemoverConvite(c)}
+                                onClick={() => setConfirmarRemoverConvite(grupo)}
                                 className="text-destructive hover:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -591,6 +634,7 @@ export default function MinhaEquipe() {
               </CardContent>
             </Card>
           )}
+
         </>
       )}
 
@@ -655,8 +699,12 @@ export default function MinhaEquipe() {
           <AlertDialogHeader>
             <AlertDialogTitle>Revogar convite?</AlertDialogTitle>
             <AlertDialogDescription>
-              O link enviado para {confirmarRemoverConvite?.email} será invalidado.
+              O link enviado para {confirmarRemoverConvite?.email} será invalidado para{' '}
+              {confirmarRemoverConvite?.propriedades.length === 1
+                ? confirmarRemoverConvite.propriedades[0]
+                : `${confirmarRemoverConvite?.propriedades.length || 0} propriedades`}.
             </AlertDialogDescription>
+
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
