@@ -1,46 +1,26 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { pergunta, contexto } = await req.json();
+    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY is not configured");
+      return new Response(
+        JSON.stringify({ resposta: 'Erro: ANTHROPIC_API_KEY nao configurada.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const systemPrompt = `Você é o assistente inteligente do Agro GFI (Gestão de Fazenda Inteligente).
+    const system = `Você é o assistente inteligente do Agro GFI (Gestão de Fazenda Inteligente).
 Responda perguntas sobre os dados da propriedade de forma clara, objetiva e em português.
 Use linguagem simples, adequada para produtores rurais.
 Quando listar produtos ou animais, use formatação clara com bullet points.
@@ -67,7 +47,7 @@ MANUAL DOS MÓDULOS:
 - Calendário e Agenda: tudo (lançamentos, eventos de sanidade, manutenções, parcelas financeiras) aparece no mesmo calendário; clicar num evento leva direto pra tela de origem. Tarefas da agenda avisam automaticamente (hoje, 3 e 7 dias antes).
 - Contatos: cadastro de fornecedores e clientes.
 - Máquinas: abastecimento desconta litros do estoque via FIFO. Manutenção fica organizada em Agendadas/Concluídas/Canceladas; peças usadas ficam rastreadas com quantidade real.
-- Pecuária: rebanho pode ser Individual (cada animal com brinco/nome) ou Fechado (só quantidade agregada, sem identificar cada bicho). Pesagem calcula o GMD (ganho médio diário) sozinho. Ordenha lança o leite direto no estoque. Sanidade (vacina/vermífugo) desconta do estoque e exige selecionar o animal quando o lote é Individual.
+- Pecuária: rebanho pode ser Individual (cada animal com brinco/nome) ou Fechado (só quantidade agregada, sem identificar cada bicho). Pesagem calcula o GMD (ganho médio diário) sozinho. Ordenha lança o leite direto no estoque. Sanidade (vacina/vermífugo) desconta do estoque e exige selecionar o animal quando o lote é Individual; também respeita intervalo mínimo entre doses por protocolo.
 - Financeiro: parcelamento com periodicidade flexível (mensal, trimestral, semestral, anual). Venda à vista só marca como paga quando a data realmente chega — nunca antecipa. Bloqueado por completo para os papéis Operador e Visualizador.
 - Relatórios: Operacional, Financeiro, Por Talhão, Comparativo de Safras, Custos Detalhados, Máquinas, Sanidade — todos exportam em PDF ou Excel.
 - Papéis de acesso: Proprietário (acesso total, inclusive gerenciar equipe) · Gerente (acesso total no dia a dia, não gerencia quem é Proprietário) · Operador (cria e edita, só desfaz o que ele mesmo criou, sem acesso a Financeiro nem Auditoria) · Visualizador (só consulta, não edita nada).
@@ -75,49 +55,45 @@ MANUAL DOS MÓDULOS:
 Se o produtor descrever uma mensagem de erro, explique o que ela provavelmente significa em linguagem simples (ex: "estoque insuficiente" = tentou lançar mais do que tem disponível no lote; "safra inativa" = a safra selecionada não é mais a ativa) — mas nunca invente uma causa se não tiver certeza; nesse caso, oriente a procurar o suporte.
 
 DADOS ATUAIS DA PROPRIEDADE:
-${contexto || "Nenhuma propriedade selecionada."}`;
+${contexto || 'Nenhuma propriedade selecionada.'}`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
-        system: systemPrompt,
-        messages: [{ role: "user", content: pergunta }],
+        system,
+        messages: [{ role: 'user', content: pergunta || 'Ola' }],
       }),
     });
 
-    if (!response.ok) {
-      const t = await response.text();
-      console.error("Anthropic API error:", response.status, t);
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+    if (!resp.ok) {
+      const txt = await resp.text();
+      let msg = 'Erro ao consultar a IA. Tente novamente.';
+      try { const e = JSON.parse(txt); if (e?.error?.message) msg = e.error.message; } catch(_){}
       return new Response(
-        JSON.stringify({ error: "Erro ao consultar IA. Verifique o saldo de créditos na Claude Platform." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ resposta: msg }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const data = await response.json();
-    const resposta = data.content?.[0]?.text || "Não consegui processar sua pergunta.";
+    const json = await resp.json();
+    const resposta = json.content?.[0]?.text ?? 'Nao consegui gerar uma resposta.';
 
-    return new Response(JSON.stringify({ resposta }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    console.error("assistente-chat error:", e);
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ resposta }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ resposta: `Erro interno: ${String(err)}` }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
