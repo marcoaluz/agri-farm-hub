@@ -207,6 +207,7 @@ export default function Convites() {
     setGerando(true);
     try {
       let link = "";
+      let enviarEmail = false;
 
       if (tipoConvite === "novo_proprietario") {
         const { data, error } = await supabase.rpc("gerar_convite_novo_usuario" as any, {
@@ -226,8 +227,40 @@ export default function Convites() {
         if (error) throw error;
         const result = data as any;
         link = `${window.location.origin}/convite?token=${result.token}&tipo=existente`;
+        enviarEmail = true;
       }
 
+      let emailEnviado = false;
+      if (enviarEmail) {
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          const nomePropriedade = propriedades.find((p) => p.id === propriedadeId)?.nome;
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enviar-convite-email`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session?.access_token}`,
+                apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              },
+              body: JSON.stringify({
+                email: email.trim().toLowerCase(),
+                link,
+                papel,
+                propriedades_nomes: nomePropriedade ? [nomePropriedade] : [],
+              }),
+            }
+          );
+          emailEnviado = response.ok;
+        } catch (e) {
+          console.warn("Falha ao enviar e-mail de convite", e);
+        }
+      }
+
+      // Diálogo com o link sempre aparece (backup caso o e-mail caia em spam)
       setLinkGerado(link);
       setShowLinkDialog(true);
       setCopiado(false);
@@ -237,7 +270,12 @@ export default function Convites() {
       setPropriedadeId("");
       setHoras("72");
 
-      toast.success("Convite gerado com sucesso!");
+      if (enviarEmail) {
+        if (emailEnviado) toast.success("Convite gerado e enviado por e-mail!");
+        else toast.warning("Convite criado, mas o e-mail não pôde ser enviado. Compartilhe o link manualmente.");
+      } else {
+        toast.success("Convite gerado com sucesso!");
+      }
       fetchConvites();
     } catch (err: any) {
       toast.error(err.message || "Erro ao gerar convite");

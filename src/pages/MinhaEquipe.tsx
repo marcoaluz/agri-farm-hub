@@ -145,10 +145,13 @@ export default function MinhaEquipe() {
 
       const { data: sessionData } = await supabase.auth.getSession()
       const session = sessionData?.session
+      const nomesPropriedades = propriedadesConvite
+        .map(id => propriedadesGerenciaveis.find(p => p.propriedade_id === id)?.propriedade_nome)
+        .filter(Boolean)
       let emailEnviado = false
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/convidar-usuario`,
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enviar-convite-email`,
           {
             method: 'POST',
             headers: {
@@ -157,8 +160,10 @@ export default function MinhaEquipe() {
               apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             },
             body: JSON.stringify({
-              email: email.trim().toLowerCase(), nome: '', role: papel,
-              propriedade_id: propriedadesConvite[0], token: result.token, link,
+              email: email.trim().toLowerCase(),
+              link,
+              papel,
+              propriedades_nomes: nomesPropriedades,
             }),
           },
         )
@@ -167,12 +172,14 @@ export default function MinhaEquipe() {
         console.warn('Falha ao enviar e-mail de convite', e)
       }
 
+      // Diálogo com o link sempre aparece (backup caso o e-mail caia em spam)
       setLinkGerado(link)
       setCopiado(false)
+      setShowLinkDialog(true)
       setEmail('')
       setPapel('')
       if (emailEnviado) toast.success(`Convite enviado por e-mail para ${email.trim()}!`)
-      else { setShowLinkDialog(true); toast.warning('Convite criado, mas o e-mail não pôde ser enviado. Compartilhe o link manualmente.') }
+      else toast.warning('Convite criado, mas o e-mail não pôde ser enviado. Compartilhe o link manualmente.')
       fetchTudo()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao gerar convite')
