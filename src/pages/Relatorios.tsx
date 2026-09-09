@@ -2175,6 +2175,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
   const maquinasRaw = maqQ.data || []
   const [filtroMaquina, setFiltroMaquina] = useState<string>('_all')
+  const [filtroTipoCusto, setFiltroTipoCusto] = useState<string>('_all')
 
   const maquinasUnicas = useMemo(() => {
     const map = new Map<string, string>()
@@ -2186,13 +2187,14 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
   const grupos = useMemo(() => {
     return maquinasRaw.map((m: any) => {
-      const itens: { nome: string; qtdLabel: string; valor: number; isChild?: boolean }[] = []
+      const itens: { nome: string; qtdLabel: string; valor: number; isChild?: boolean; kind: 'uso' | 'abastecimento' | 'manutencao' }[] = []
 
       if (m.horas_uso_direto > 0) {
         itens.push({
           nome: 'Uso da máquina (lançamentos)',
           qtdLabel: `${fmtN(Number(m.horas_uso_direto))} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
           valor: Number(m.custo_uso_direto || 0),
+          kind: 'uso',
         })
       }
 
@@ -2201,6 +2203,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
           nome: `Combustível (${m.qtd_abastecimentos}x abastecido)`,
           qtdLabel: `${fmtN(Number(m.litros_total || 0))} L`,
           valor: Number(m.custo_abastecimento || 0),
+          kind: 'abastecimento',
         })
       }
 
@@ -2209,6 +2212,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
           nome: mnt.descricao,
           qtdLabel: '',
           valor: Number(mnt.valor_total || 0),
+          kind: 'manutencao',
         })
 
 
@@ -2219,6 +2223,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
               qtdLabel: `${fmtN(Number(it.produto_qtd || 0))} ${unidadeCurta(it.produto_unidade)}`,
               valor: Number(it.valor || 0),
               isChild: true,
+              kind: 'manutencao',
             })
           } else {
             itens.push({
@@ -2226,6 +2231,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
               qtdLabel: `${Number(it.vezes || 0)}x`,
               valor: Number(it.valor || 0),
               isChild: true,
+              kind: 'manutencao',
             })
           }
         })
@@ -2242,9 +2248,16 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
   }, [maquinasRaw])
 
   const gruposFiltrados = useMemo(() => {
-    if (filtroMaquina === '_all') return grupos
-    return grupos.filter((g: any) => g.maquina_id === filtroMaquina)
-  }, [grupos, filtroMaquina])
+    const porMaquina = filtroMaquina === '_all' ? grupos : grupos.filter((g: any) => g.maquina_id === filtroMaquina)
+    if (filtroTipoCusto === '_all') return porMaquina
+    return porMaquina
+      .map((g: any) => {
+        const itens = g.itens.filter((it: any) => it.kind === filtroTipoCusto)
+        const subtotal = itens.reduce((s: number, it: any) => s + (it.isChild ? 0 : Number(it.valor || 0)), 0)
+        return { ...g, itens, subtotal }
+      })
+      .filter((g: any) => g.itens.length > 0)
+  }, [grupos, filtroMaquina, filtroTipoCusto])
 
   const totalGeral = gruposFiltrados.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
 
