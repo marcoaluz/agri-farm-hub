@@ -51,6 +51,26 @@ interface UserProfile {
   vencimento?: string | null
 }
 
+interface PropriedadeDetalhe {
+  id: string
+  nome: string
+  area_total: number | null
+  area_talhoes: number | null
+}
+
+interface EquipeDetalhe {
+  usuario_id: string
+  nome: string | null
+  email: string
+  papel: string
+  propriedade_nome: string
+}
+
+interface DetalheProprietario {
+  propriedades: PropriedadeDetalhe[]
+  equipe: EquipeDetalhe[]
+}
+
 const PERFIL_CONFIG: Record<string, { label: string; className: string; variant?: 'destructive' | 'secondary' | 'default' }> = {
   admin: { label: 'Admin', className: 'bg-destructive/10 text-destructive border-destructive/20', variant: 'destructive' },
   proprietario: { label: 'Proprietário', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
