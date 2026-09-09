@@ -14,12 +14,11 @@ serve(async (req) => {
   try {
     const { pergunta, contexto } = await req.json();
 
-    // Verify JWT auth
     const authHeader = req.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -32,14 +31,13 @@ serve(async (req) => {
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const systemPrompt = `Você é o assistente inteligente do Agro GFI (Gestão de Fazenda Inteligente).
@@ -56,53 +54,43 @@ IMPORTANTE — dois estoques diferentes, não confunda:
 Se a pergunta do produtor for ambígua sobre qual estoque ele quer dizer, pergunte antes de responder, em vez de adivinhar.
 
 AJUDA COM O SISTEMA:
-Você também pode orientar o produtor sobre como usar o Agro GFI. Módulos disponíveis: Propriedades, Safras, Talhões, Estoque/Insumos, Produção, Serviços, Lançamentos, Calendário, Agenda, Contatos, Máquinas, Pecuária, Financeiro, Relatórios, Auditoria. Para cadastrar algo novo, oriente o produtor a procurar o botão "+" ou "Novo" no canto superior direito da tela do módulo correspondente. Se o produtor descrever uma mensagem de erro, explique o que ela provavelmente significa em linguagem simples (ex: "estoque insuficiente" = tentou lançar mais do que tem disponível no lote; "safra inativa" = a safra selecionada não é mais a ativa) e sugira o que verificar — mas nunca invente uma causa se não tiver certeza; nesse caso, oriente a procurar o suporte.
+Você também pode orientar o produtor sobre como usar o Agro GFI. Módulos disponíveis: Propriedades, Safras, Talhões, Estoque/Insumos, Produção, Serviços, Lançamentos, Calendário, Agenda, Contatos, Máquinas, Pecuária, Financeiro, Relatórios, Auditoria. Para cadastrar um novo registro, oriente o produtor a procurar o botão "+" ou "Novo" no canto superior direito da tela do módulo correspondente. Se o produtor descrever uma mensagem de erro, explique o que ela provavelmente significa em linguagem simples (ex: "estoque insuficiente" = tentou lançar mais do que tem disponível no lote; "safra inativa" = a safra selecionada não é mais a ativa) e sugira o que verificar — mas nunca invente uma causa se não tiver certeza; nesse caso, oriente a procurar o suporte.
 
 DADOS ATUAIS DA PROPRIEDADE:
 ${contexto || "Nenhuma propriedade selecionada."}`;
 
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: pergunta },
-          ],
-        }),
-      }
-    );
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: "user", content: pergunta }],
+      }),
+    });
 
     if (!response.ok) {
+      const t = await response.text();
+      console.error("Anthropic API error:", response.status, t);
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos de IA esgotados. Entre em contato com o administrador." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
       return new Response(
-        JSON.stringify({ error: "Erro ao consultar IA." }),
+        JSON.stringify({ error: "Erro ao consultar IA. Verifique o saldo de créditos na Claude Platform." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const data = await response.json();
-    const resposta =
-      data.choices?.[0]?.message?.content || "Não consegui processar sua pergunta.";
+    const resposta = data.content?.[0]?.text || "Não consegui processar sua pergunta.";
 
     return new Response(JSON.stringify({ resposta }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -110,9 +98,7 @@ ${contexto || "Nenhuma propriedade selecionada."}`;
   } catch (e) {
     console.error("assistente-chat error:", e);
     return new Response(
-      JSON.stringify({
-        error: e instanceof Error ? e.message : "Erro desconhecido",
-      }),
+      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
