@@ -85,6 +85,7 @@ export function AssistenteIA() {
       { data: lancamentos },
       { data: transacoes },
       { data: talhoes },
+      { data: producaoEstoque },
       { data: maquinas },
       { data: sanitario },
     ] = await Promise.all([
@@ -107,6 +108,9 @@ export function AssistenteIA() {
       supabase.from('talhoes')
         .select('nome, area_ha, cultura_atual')
         .eq('propriedade_id', propId).eq('ativo', true),
+      supabase.rpc('get_estoque_producao' as any, {
+        p_propriedade_id: propriedadeAtual.id,
+      }),
       supabase.rpc('listar_maquinas_usuario' as any, { p_propriedade_id: propId }),
       supabase.from('sanitario_eventos')
         .select('tipo, descricao, data_aplicacao, data_proxima, rebanho:rebanhos(nome)')
@@ -119,7 +123,7 @@ export function AssistenteIA() {
 PROPRIEDADE ATUAL: ${propriedadeAtual.nome}
 SAFRA ATUAL: ${safraSelecionada?.nome || 'Nenhuma selecionada'}
 
-ESTOQUE DE PRODUTOS:
+ESTOQUE DE INSUMOS (usados nas operações — adubo, ração, combustível, etc; NÃO é produção colhida):
 ${(produtos || []).map((p: any) =>
   `- ${p.nome} (${p.categoria}): ${p.saldo_atual} ${p.unidade_medida}` +
   (p.nivel_minimo > 0 && p.saldo_atual <= p.nivel_minimo ? ' ⚠️ ABAIXO DO MÍNIMO' : '')
@@ -134,6 +138,11 @@ TALHÕES:
 ${(talhoes || []).map((t: any) =>
   `- ${t.nome}: ${t.area_ha} ha — Cultura: ${t.cultura_atual || 'não informada'}`
 ).join('\n') || 'Nenhum talhão'}
+
+ESTOQUE DE PRODUÇÃO (colhido/produzido, pronto pra vender ou já vendido — NÃO confundir com insumo):
+${(producaoEstoque || []).map((p: any) =>
+  `- ${p.cultura_nome}: ${Number(p.saldo_disponivel).toLocaleString('pt-BR')} ${p.unidade_label} disponível (entrada total: ${Number(p.total_entradas).toLocaleString('pt-BR')} ${p.unidade_label})`
+).join('\n') || 'Nenhuma produção registrada'}
 
 MÁQUINAS:
 ${(maquinas || []).map((m: any) =>
