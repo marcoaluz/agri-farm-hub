@@ -279,7 +279,8 @@ export function PesagemDialog({ open, onOpenChange, propriedadeId, rebanhos, pes
               type="number"
               step="0.1"
               value={pesoAnteriorKg}
-              onChange={(e) => setPesoAnteriorKg(e.target.value)}
+              disabled
+              className="bg-muted"
               placeholder="Calculado automaticamente"
             />
             <p className="text-xs text-muted-foreground mt-1">
@@ -295,7 +296,8 @@ export function PesagemDialog({ open, onOpenChange, propriedadeId, rebanhos, pes
               type="number"
               step="0.001"
               value={gmdKg}
-              onChange={(e) => setGmdKg(e.target.value)}
+              disabled
+              className="bg-muted"
               placeholder="Calculado automaticamente"
             />
             <p className="text-xs text-muted-foreground mt-1">Ganho Médio Diário — calculado com base na pesagem anterior</p>
