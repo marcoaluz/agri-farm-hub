@@ -530,9 +530,14 @@ export default function GestaoUsuarios() {
                   </TableHeader>
                   <TableBody>
                     {usuariosFiltrados.map(u => (
-                      <TableRow key={u.id}>
+                      <TableRow
+                        key={u.id}
+                        className={u.perfil === 'proprietario' ? 'cursor-pointer hover:bg-muted/50' : ''}
+                        onClick={() => u.perfil === 'proprietario' && abrirDetalheProprietario(u)}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-3">
+
                             <Avatar className="h-9 w-9">
                               <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                                 {getInitials(u.nome)}
