@@ -263,6 +263,34 @@ export default function MinhaEquipe() {
     toast.success('Link copiado!')
   }
 
+  const convitesAgrupados = useMemo(() => {
+    const grupos = new Map<string, GrupoConvite>()
+    for (const c of convitesPendentes || []) {
+      const chave = c.token_primeiro_acesso || c.token || ''
+      if (!chave) continue
+      if (!grupos.has(chave)) {
+        grupos.set(chave, {
+          token: chave,
+          email: c.email_convite || c.email || '',
+          papel: c.papel,
+          criado_em: c.criado_em || c.adicionado_em || '',
+          expira_em: c.token_expira_em || c.expira_em || '',
+          expirado: c.expirado,
+          ids: [],
+          propriedades: [],
+        })
+      }
+      const grupo = grupos.get(chave)!
+      const id = c.id || c.membro_id
+      if (id && !grupo.ids.includes(id)) grupo.ids.push(id)
+      if (c.propriedade_nome && !grupo.propriedades.includes(c.propriedade_nome)) {
+        grupo.propriedades.push(c.propriedade_nome)
+      }
+    }
+    return Array.from(grupos.values())
+  }, [convitesPendentes])
+
+
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-full overflow-x-hidden">
       <div className="flex items-center gap-3">
