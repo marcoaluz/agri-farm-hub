@@ -43,6 +43,8 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
   const [usarEstoque, setUsarEstoque] = useState(false)
   const [produtoId, setProdutoId] = useState('')
   const [quantidadeUsada, setQuantidadeUsada] = useState('')
+  const [unidadeDose, setUnidadeDose] = useState('ml')
+  const [unidadeCustom, setUnidadeCustom] = useState(false)
   const [form, setForm] = useState({
     rebanho_id: '',
     tipo: 'vacina',
@@ -55,6 +57,53 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
     responsavel: '',
     observacoes: '',
   })
+
+  // Preenche formulário no modo edição
+  useEffect(() => {
+    if (open && eventoEditando) {
+      setForm({
+        rebanho_id: eventoEditando.rebanho_id || '',
+        tipo: eventoEditando.tipo || 'vacina',
+        descricao: eventoEditando.descricao || '',
+        data_aplicacao: eventoEditando.data_aplicacao ? new Date(eventoEditando.data_aplicacao + 'T12:00:00') : new Date(),
+        data_proxima: eventoEditando.data_proxima ? new Date(eventoEditando.data_proxima + 'T12:00:00') : undefined,
+        quantidade_dose: eventoEditando.quantidade_dose != null ? String(eventoEditando.quantidade_dose) : '',
+        custo: eventoEditando.custo != null ? String(eventoEditando.custo) : '',
+        lote_produto: eventoEditando.lote_produto || '',
+        responsavel: eventoEditando.responsavel || '',
+        observacoes: eventoEditando.observacoes || '',
+      })
+      const unidade = eventoEditando.unidade_dose || 'ml'
+      const predefinidas = ['ml','l','g','kg','unidade','dose','ampola','comprimido']
+      setUnidadeCustom(!predefinidas.includes(unidade))
+      setUnidadeDose(unidade)
+      setUsarEstoque(false)
+      setProdutoId('')
+      setQuantidadeUsada('')
+      setAnimaisSelecionados([])
+      setStatusAnimais({})
+    } else if (open && !eventoEditando) {
+      setForm({
+        rebanho_id: '',
+        tipo: 'vacina',
+        descricao: '',
+        data_aplicacao: new Date(),
+        data_proxima: undefined,
+        quantidade_dose: '',
+        custo: '',
+        lote_produto: '',
+        responsavel: '',
+        observacoes: '',
+      })
+      setUnidadeDose('ml')
+      setUnidadeCustom(false)
+      setUsarEstoque(false)
+      setProdutoId('')
+      setQuantidadeUsada('')
+      setAnimaisSelecionados([])
+      setStatusAnimais({})
+    }
+  }, [open, eventoEditando])
 
   const { data: produtosPecuarios } = useQuery({
     queryKey: ['produtos-pecuarios', propriedadeId],
