@@ -699,8 +699,12 @@ export default function MinhaEquipe() {
           <AlertDialogHeader>
             <AlertDialogTitle>Revogar convite?</AlertDialogTitle>
             <AlertDialogDescription>
-              O link enviado para {confirmarRemoverConvite?.email} será invalidado.
+              O link enviado para {confirmarRemoverConvite?.email} será invalidado para{' '}
+              {confirmarRemoverConvite?.propriedades.length === 1
+                ? confirmarRemoverConvite.propriedades[0]
+                : `${confirmarRemoverConvite?.propriedades.length || 0} propriedades`}.
             </AlertDialogDescription>
+
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
