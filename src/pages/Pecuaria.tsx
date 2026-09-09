@@ -372,30 +372,19 @@ export default function Pecuaria() {
   }
 
   async function handleExcluirSanitario() {
-    if (!deleteSanId) return
-    const { data: removidos, error } = await supabase
-      .from('sanitario_eventos' as any)
-      .delete()
-      .eq('id', deleteSanId)
-      .select('id')
+    if (!deleteEventoSanitarioId) return
+    const { error } = await supabase.from('sanitario_eventos' as any).delete().eq('id', deleteEventoSanitarioId)
     if (error) {
       toast({ title: 'Erro ao excluir evento', description: error.message, variant: 'destructive' })
-      return
-    }
-    if (!removidos || (removidos as any[]).length === 0) {
-      toast({ title: 'Nada foi excluído', description: 'O evento não foi encontrado ou você não tem permissão.', variant: 'destructive' })
       return
     }
 
     queryClient.invalidateQueries({ queryKey: ['sanitario-eventos'] })
     queryClient.invalidateQueries({ queryKey: ['sanitario-contagem'] })
-    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
-    queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
     queryClient.invalidateQueries({ queryKey: ['produtos'] })
-    queryClient.invalidateQueries({ queryKey: ['produtos-pecuarios'] })
-    queryClient.invalidateQueries({ queryKey: ['lotes'] })
-    toast({ title: 'Evento excluído. Lançamento removido e estoque devolvido (se veio do estoque).' })
-    setDeleteSanId(null)
+    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+    toast({ title: 'Evento excluído. Estoque e financeiro ajustados automaticamente.' })
+    setDeleteEventoSanitarioId(null)
   }
 
   async function handleExcluirPesagem() {
