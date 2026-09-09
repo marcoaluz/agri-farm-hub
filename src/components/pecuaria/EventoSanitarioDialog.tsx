@@ -32,9 +32,10 @@ interface EventoSanitarioDialogProps {
   onOpenChange: (open: boolean) => void
   propriedadeId: string
   rebanhos: any[]
+  eventoEditando?: any
 }
 
-export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, rebanhos }: EventoSanitarioDialogProps) {
+export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, rebanhos, eventoEditando }: EventoSanitarioDialogProps) {
   const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
   const [animaisSelecionados, setAnimaisSelecionados] = useState<string[]>([])
