@@ -239,8 +239,11 @@ export default function MinhaEquipe() {
     if (!confirmarRemoverConvite) return
     setRemovendo(true)
     try {
-      const { error } = await supabase.rpc('remover_membro_equipe' as any, { p_membro_id: confirmarRemoverConvite.membro_id })
-      if (error) throw error
+      await Promise.all(
+        confirmarRemoverConvite.ids.map(id =>
+          supabase.rpc('remover_membro_equipe' as any, { p_membro_id: id })
+        )
+      )
       toast.success('Convite revogado.')
       fetchTudo()
     } catch (err: any) {
@@ -250,6 +253,7 @@ export default function MinhaEquipe() {
       setConfirmarRemoverConvite(null)
     }
   }
+
 
   const handleCopiar = async () => {
     await navigator.clipboard.writeText(linkGerado)
