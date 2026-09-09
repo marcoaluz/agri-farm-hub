@@ -327,6 +327,25 @@ export default function GestaoUsuarios() {
     setNovoPerfilSelecionado(u.perfil)
   }
 
+  async function abrirDetalheProprietario(u: UserProfile) {
+    if (u.perfil !== 'proprietario') return
+    setUsuarioDetalhando(u)
+    setCarregandoDetalhes(true)
+    setDetalhesProprietario(null)
+    try {
+      const { data, error } = await supabase.rpc('admin_get_detalhe_proprietario' as any, {
+        p_usuario_id: u.id,
+      })
+      if (error) throw error
+      setDetalhesProprietario(data as DetalheProprietario)
+    } catch (err: any) {
+      toast({ title: 'Erro ao carregar detalhes', description: err.message, variant: 'destructive' })
+      setUsuarioDetalhando(null)
+    } finally {
+      setCarregandoDetalhes(false)
+    }
+  }
+
   function renderPerfilBadge(perfil: string, isSuperAdmin?: boolean) {
     const config = PERFIL_CONFIG[perfil] || PERFIL_CONFIG.consultor
     return (
