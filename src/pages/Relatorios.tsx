@@ -2286,8 +2286,9 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="flex flex-col sm:flex-row gap-2">
         <Select value={filtroMaquina} onValueChange={setFiltroMaquina}>
-          <SelectTrigger className="w-full sm:w-[260px]">
+          <SelectTrigger className="w-full sm:w-[240px]">
             {filtroMaquina === '_all' ? (
               <span>Todas as máquinas</span>
             ) : (
@@ -2303,6 +2304,20 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
             ))}
           </SelectContent>
         </Select>
+
+        <Select value={filtroTipoCusto} onValueChange={setFiltroTipoCusto}>
+          <SelectTrigger className="w-full sm:w-[220px]">
+            <SelectValue placeholder="Tipo de custo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_all">Todos</SelectItem>
+            <SelectItem value="uso">Uso da máquina (horas)</SelectItem>
+            <SelectItem value="abastecimento">Abastecimento</SelectItem>
+            <SelectItem value="manutencao">Manutenção</SelectItem>
+          </SelectContent>
+        </Select>
+        </div>
+
 
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]" onClick={handleExportPDF}>
