@@ -650,14 +650,17 @@ export default function Pecuaria() {
                             )}
                             {e.data_proxima && <span>Próxima: {format(new Date(e.data_proxima), 'dd/MM/yyyy')}</span>}
                             {e.rebanho && <span>Rebanho: {(e.rebanho as any).nome}</span>}
+                            {e.quantidade_dose != null && e.unidade_dose && <span>Dose: {e.quantidade_dose} {e.unidade_dose}</span>}
+                            {e.custo != null && e.custo > 0 && <span>Custo: R$ {Number(e.custo).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
                           </div>
                         </div>
-                        <Button
-                          variant="ghost" size="icon" className="text-destructive shrink-0"
-                          title="Excluir evento"
-                          onClick={() => setDeleteSanId(e.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <Button size="sm" variant="outline" onClick={() => { setEventoEditando(e); setSanitarioDialog(true) }}>
+                          <Pencil className="h-3 w-3 mr-1" /> Editar
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-destructive" onClick={() => setDeleteEventoSanitarioId(e.id)}>
+                          <Trash2 className="h-3 w-3 mr-1" /> Excluir
                         </Button>
                       </div>
                     </CardContent>
