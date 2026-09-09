@@ -996,7 +996,7 @@ export default function Pecuaria() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!deleteSanId} onOpenChange={() => setDeleteSanId(null)}>
+      <AlertDialog open={!!deleteEventoSanitarioId} onOpenChange={() => setDeleteEventoSanitarioId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir evento sanitário?</AlertDialogTitle>
