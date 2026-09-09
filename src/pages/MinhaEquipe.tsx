@@ -57,7 +57,9 @@ function getInitials(name: string | null, email: string | null) {
 interface Acesso { propriedade_id: string; propriedade_nome: string; papel: string }
 interface PessoaEquipe { usuario_id: string; nome: string | null; email: string; avatar_url: string | null; acessos: Acesso[] }
 interface PropriedadeGerenciavel { propriedade_id: string; propriedade_nome: string; meu_papel: string }
-interface Convite { membro_id: string; tipo: string; email: string; nome: string | null; papel: string; status: string; adicionado_em: string; expira_em: string | null; expirado: boolean; token: string | null; propriedade_id?: string; propriedade_nome?: string }
+interface Convite { id?: string; membro_id: string; tipo: string; email: string; email_convite?: string; nome: string | null; papel: string; status: string; adicionado_em: string; criado_em?: string; expira_em: string | null; token_expira_em?: string; expirado: boolean; token: string | null; token_primeiro_acesso?: string; propriedade_id?: string; propriedade_nome?: string }
+interface GrupoConvite { token: string; email: string; papel: string; criado_em: string; expira_em: string; expirado: boolean; ids: string[]; propriedades: string[] }
+
 
 export default function MinhaEquipe() {
   const { propriedadeAtual } = useGlobal()
