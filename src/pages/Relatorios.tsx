@@ -1863,7 +1863,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_todos">Todas</SelectItem>
-                  {(categoriasServicoQ.data || []).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {(combos.length ? categoriasDisponiveis : (categoriasServicoQ.data || [])).map((c: string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -1880,7 +1880,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_todos">Todos</SelectItem>
-                  {(itensFiltraveisQ.data || []).map((it: any) => (
+                  {(combos.length ? itensDisponiveis : (itensFiltraveisQ.data || [])).map((it: any) => (
                     <SelectItem key={`${it.item_tipo}:${it.item_id}`} value={`${it.item_tipo}:${it.item_id}`}>
                       {it.item_nome} {it.item_tipo === 'maquina' ? '(máquina)' : it.item_tipo === 'servico' ? '(serviço)' : ''}
                     </SelectItem>
@@ -1894,7 +1894,9 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_todos">Todos</SelectItem>
-                  {(talhoesQ.data || []).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
+                  {combos.length
+                    ? talhoesDisponiveis.map((t: any) => <SelectItem key={t.talhao_id} value={t.talhao_id}>{t.talhao_nome}</SelectItem>)
+                    : (talhoesQ.data || []).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
