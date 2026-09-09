@@ -879,6 +879,115 @@ export default function GestaoUsuarios() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Proprietário detail dialog */}
+      <Dialog open={!!usuarioDetalhando} onOpenChange={open => !open && setUsuarioDetalhando(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Proprietário</DialogTitle>
+          </DialogHeader>
+
+          {usuarioDetalhando && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                    {getInitials(usuarioDetalhando.nome)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-foreground">{usuarioDetalhando.nome || 'Sem nome'}</p>
+                  <p className="text-sm text-muted-foreground">{usuarioDetalhando.email || '—'}</p>
+                </div>
+              </div>
+
+              {carregandoDetalhes ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : detalhesProprietario ? (
+                <>
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-foreground">Propriedades</h3>
+                      <p className="text-sm font-medium text-primary">
+                        Área total em operação:{' '}
+                        {detalhesProprietario.propriedades
+                          .reduce((sum, p) => sum + Number(p.area_talhoes || 0), 0)
+                          .toLocaleString('pt-BR')} ha
+                      </p>
+                    </div>
+                    {detalhesProprietario.propriedades.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nenhuma propriedade cadastrada</p>
+                    ) : (
+                      <div className="rounded-md border overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-left">Nome</TableHead>
+                              <TableHead className="text-right">Área cadastrada</TableHead>
+                              <TableHead className="text-right">Área em talhões</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {detalhesProprietario.propriedades.map(p => (
+                              <TableRow key={p.id}>
+                                <TableCell className="font-medium">{p.nome}</TableCell>
+                                <TableCell className="text-right">
+                                  {Number(p.area_total || 0).toLocaleString('pt-BR')} ha
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {Number(p.area_talhoes || 0).toLocaleString('pt-BR')} ha
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">Equipe</h3>
+                    {detalhesProprietario.equipe.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nenhum membro de equipe ainda</p>
+                    ) : (
+                      <div className="rounded-md border overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-left">Nome / E-mail</TableHead>
+                              <TableHead className="text-left">Papel</TableHead>
+                              <TableHead className="text-left">Propriedade</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {detalhesProprietario.equipe.map((m, idx) => (
+                              <TableRow key={`${m.usuario_id}-${idx}`}>
+                                <TableCell>
+                                  <p className="font-medium text-foreground">{m.nome || 'Sem nome'}</p>
+                                  <p className="text-xs text-muted-foreground">{m.email}</p>
+                                </TableCell>
+                                <TableCell>{renderPerfilBadge(m.papel)}</TableCell>
+                                <TableCell className="text-sm">{m.propriedade_nome}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
+
