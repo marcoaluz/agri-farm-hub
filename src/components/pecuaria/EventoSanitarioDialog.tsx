@@ -178,43 +178,88 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
       toast.error('Descrição / Protocolo é obrigatório')
       return
     }
+    if (!usarEstoque) {
+      if (!form.quantidade_dose || Number(form.quantidade_dose) <= 0) {
+        toast.error('Informe a dose aplicada (obrigatório quando não usa o estoque)')
+        return
+      }
+      if (!form.custo || Number(form.custo) <= 0) {
+        toast.error('Informe o custo (obrigatório quando não usa o estoque)')
+        return
+      }
+    }
     const rebanhoSel = rebanhosVacinaveis.find((r: any) => r.id === form.rebanho_id)
     const ehIndividual = rebanhoSel ? rebanhoSel.controle_individual !== false : false
-    if (ehIndividual && animaisSelecionados.length === 0) {
+    if (!eventoEditando && ehIndividual && animaisSelecionados.length === 0) {
       toast.error('Selecione ao menos um animal — esse é um lote com controle Individual.')
       return
     }
     setLoading(true)
-    const { data: resultadoRaw, error } = await (supabase as any).rpc('registrar_vacinacao_animais', {
-      p_propriedade_id: propriedadeId,
-      p_rebanho_id: form.rebanho_id || null,
-      p_tipo: form.tipo,
-      p_descricao: form.descricao,
-      p_data_aplicacao: format(form.data_aplicacao, 'yyyy-MM-dd'),
-      p_data_proxima: form.data_proxima ? format(form.data_proxima, 'yyyy-MM-dd') : null,
-      p_custo: usarEstoque ? 0 : form.custo ? Number(form.custo) : null,
-      p_responsavel: form.responsavel || null,
-      p_lote_produto: form.lote_produto || null,
-      p_observacoes: form.observacoes || null,
-      p_animal_ids: animaisSelecionados.length > 0 ? animaisSelecionados : null,
-    })
-    setLoading(false)
-    if (error) {
-      toast.error('Erro: ' + error.message)
-      return
-    }
-    const resultado = (Array.isArray(resultadoRaw) ? resultadoRaw[0] : resultadoRaw) || {}
 
-    if (usarEstoque && produtoId && quantidadeUsada && resultado.evento_id) {
-      await (supabase as any)
-        .from('sanitario_eventos')
-        .update({ produto_id: produtoId, quantidade_usada: parseFloat(quantidadeUsada) })
-        .eq('id', resultado.evento_id)
-      queryClient.invalidateQueries({ queryKey: ['produtos'] })
-      queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
-      queryClient.invalidateQueries({ queryKey: ['produtos-pecuarios'] })
-      queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
-      queryClient.invalidateQueries({ queryKey: ['rel-custos-detalhado'] })
+    if (eventoEditando) {
+      const { error } = await (supabase as any).from('sanitario_eventos').update({
+        tipo: form.tipo,
+        descricao: form.descricao,
+        data_aplicacao: format(form.data_aplicacao, 'yyyy-MM-dd'),
+        data_proxima: form.data_proxima ? format(form.data_proxima, 'yyyy-MM-dd') : null,
+        quantidade_dose: form.quantidade_dose ? Number(form.quantidade_dose) : null,
+        unidade_dose: usarEstoque ? null : unidadeDose,
+        custo: usarEstoque ? 0 : Number(form.custo),
+        responsavel: form.responsavel || null,
+        lote_produto: form.lote_produto || null,
+        observacoes: form.observacoes || null,
+      }).eq('id', eventoEditando.id)
+      setLoading(false)
+      if (error) {
+        toast.error('Erro: ' + error.message)
+        return
+      }
+      toast.success('Evento sanitário atualizado')
+    } else {
+      const { data: resultadoRaw, error } = await (supabase as any).rpc('registrar_vacinacao_animais', {
+        p_propriedade_id: propriedadeId,
+        p_rebanho_id: form.rebanho_id || null,
+        p_tipo: form.tipo,
+        p_descricao: form.descricao,
+        p_data_aplicacao: format(form.data_aplicacao, 'yyyy-MM-dd'),
+        p_data_proxima: form.data_proxima ? format(form.data_proxima, 'yyyy-MM-dd') : null,
+        p_quantidade_dose: form.quantidade_dose ? Number(form.quantidade_dose) : null,
+        p_unidade_dose: usarEstoque ? null : unidadeDose,
+        p_custo: usarEstoque ? 0 : form.custo ? Number(form.custo) : null,
+        p_responsavel: form.responsavel || null,
+        p_lote_produto: form.lote_produto || null,
+        p_observacoes: form.observacoes || null,
+        p_animal_ids: animaisSelecionados.length > 0 ? animaisSelecionados : null,
+      })
+      setLoading(false)
+      if (error) {
+        toast.error('Erro: ' + error.message)
+        return
+      }
+      const resultado = (Array.isArray(resultadoRaw) ? resultadoRaw[0] : resultadoRaw) || {}
+
+      if (usarEstoque && produtoId && quantidadeUsada && resultado.evento_id) {
+        await (supabase as any)
+          .from('sanitario_eventos')
+          .update({ produto_id: produtoId, quantidade_usada: parseFloat(quantidadeUsada) })
+          .eq('id', resultado.evento_id)
+        queryClient.invalidateQueries({ queryKey: ['produtos'] })
+        queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
+        queryClient.invalidateQueries({ queryKey: ['produtos-pecuarios'] })
+        queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
+        queryClient.invalidateQueries({ queryKey: ['rel-custos-detalhado'] })
+      }
+
+      if (resultado.animais_bloqueados > 0) {
+        toast.warning(
+          `${resultado.animais_vacinados || 0} vacinado(s), ${resultado.animais_bloqueados} bloqueado(s) por intervalo mínimo`
+        )
+      } else {
+        toast.success(
+          `Evento registrado: ${resultado.animais_vacinados ?? animaisSelecionados.length} animais`
+          + (resultado.proxima_data ? ` • Próxima: ${new Date(resultado.proxima_data).toLocaleDateString('pt-BR')}` : '')
+        )
+      }
     }
 
     queryClient.invalidateQueries({ queryKey: ['sanitario'] })
@@ -222,22 +267,13 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
     queryClient.invalidateQueries({ queryKey: ['sanitario-contagem'] })
     queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
 
-
-    if (resultado.animais_bloqueados > 0) {
-      toast.warning(
-        `${resultado.animais_vacinados || 0} vacinado(s), ${resultado.animais_bloqueados} bloqueado(s) por intervalo mínimo`
-      )
-    } else {
-      toast.success(
-        `Evento registrado: ${resultado.animais_vacinados ?? animaisSelecionados.length} animais`
-        + (resultado.proxima_data ? ` • Próxima: ${new Date(resultado.proxima_data).toLocaleDateString('pt-BR')}` : '')
-      )
-    }
     setAnimaisSelecionados([])
     setStatusAnimais({})
     setUsarEstoque(false)
     setProdutoId('')
     setQuantidadeUsada('')
+    setUnidadeDose('ml')
+    setUnidadeCustom(false)
     onOpenChange(false)
   }
 
