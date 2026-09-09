@@ -906,7 +906,13 @@ export default function Pecuaria() {
         rebanho={statusVacinacaoRebanho}
       />
 
-      <EventoSanitarioDialog open={sanitarioDialog} onOpenChange={setSanitarioDialog} propriedadeId={propId} rebanhos={rebanhos || []} />
+      <EventoSanitarioDialog
+        open={sanitarioDialog}
+        onOpenChange={o => { setSanitarioDialog(o); if (!o) setEventoEditando(null) }}
+        propriedadeId={propId}
+        rebanhos={rebanhos || []}
+        eventoEditando={eventoEditando}
+      />
       <OrdenhaDialog
         open={ordenhaDialog}
         onOpenChange={o => { setOrdenhaDialog(o); if (!o) setOrdenhaEditando(null) }}
