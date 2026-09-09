@@ -552,7 +552,7 @@ export default function MinhaEquipe() {
           </Card>
 
           {/* Convites pendentes (pessoas ainda sem conta) */}
-          {convitesPendentes.length > 0 && (
+          {convitesAgrupados.length > 0 && (
             <Card className="overflow-hidden">
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -560,7 +560,7 @@ export default function MinhaEquipe() {
                   <CardTitle>Convites Pendentes</CardTitle>
                 </div>
                 <CardDescription>
-                  {convitesPendentes.filter(c => !c.expirado).length} aguardando aceite
+                  {convitesAgrupados.filter(g => !g.expirado).length} aguardando aceite
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -576,17 +576,25 @@ export default function MinhaEquipe() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {convitesPendentes.map(c => (
-                        <TableRow key={c.membro_id}>
-                          <TableCell>{c.email}</TableCell>
-                          <TableCell>{c.propriedade_nome}</TableCell>
+                      {convitesAgrupados.map(grupo => (
+                        <TableRow key={grupo.token}>
+                          <TableCell>{grupo.email}</TableCell>
                           <TableCell>
-                            <Badge className={papelVariant[c.papel] || ''} variant="outline">
-                              {papelLabel[c.papel] || c.papel}
+                            <div className="flex flex-wrap gap-1">
+                              {grupo.propriedades.map(nome => (
+                                <Badge key={nome} variant="outline" className="text-xs">
+                                  {nome}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={papelVariant[grupo.papel] || ''} variant="outline">
+                              {papelLabel[grupo.papel] || grupo.papel}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {c.expirado ? (
+                            {grupo.expirado ? (
                               <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
                                 <AlertTriangle className="h-3 w-3 mr-1" /> Expirado
                               </Badge>
@@ -598,11 +606,11 @@ export default function MinhaEquipe() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
-                              {c.token && !c.expirado && (
+                              {grupo.token && !grupo.expirado && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => copiarLink(c.token!)}
+                                  onClick={() => copiarLink(grupo.token)}
                                   title="Copiar link"
                                 >
                                   <LinkIcon className="h-4 w-4" />
@@ -611,7 +619,7 @@ export default function MinhaEquipe() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setConfirmarRemoverConvite(c)}
+                                onClick={() => setConfirmarRemoverConvite(grupo)}
                                 className="text-destructive hover:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -626,6 +634,7 @@ export default function MinhaEquipe() {
               </CardContent>
             </Card>
           )}
+
         </>
       )}
 
