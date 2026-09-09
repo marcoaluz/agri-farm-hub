@@ -86,7 +86,8 @@ export default function MinhaEquipe() {
   const [salvandoAcesso, setSalvandoAcesso] = useState(false)
 
   const [confirmarRemoverAcesso, setConfirmarRemoverAcesso] = useState<{ pessoa: PessoaEquipe; acesso: Acesso } | null>(null)
-  const [confirmarRemoverConvite, setConfirmarRemoverConvite] = useState<Convite | null>(null)
+  const [confirmarRemoverConvite, setConfirmarRemoverConvite] = useState<GrupoConvite | null>(null)
+
   const [removendo, setRemovendo] = useState(false)
 
   const fetchTudo = useCallback(async () => {
