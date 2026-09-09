@@ -32,9 +32,10 @@ interface EventoSanitarioDialogProps {
   onOpenChange: (open: boolean) => void
   propriedadeId: string
   rebanhos: any[]
+  eventoEditando?: any
 }
 
-export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, rebanhos }: EventoSanitarioDialogProps) {
+export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, rebanhos, eventoEditando }: EventoSanitarioDialogProps) {
   const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
   const [animaisSelecionados, setAnimaisSelecionados] = useState<string[]>([])
@@ -42,6 +43,8 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
   const [usarEstoque, setUsarEstoque] = useState(false)
   const [produtoId, setProdutoId] = useState('')
   const [quantidadeUsada, setQuantidadeUsada] = useState('')
+  const [unidadeDose, setUnidadeDose] = useState('ml')
+  const [unidadeCustom, setUnidadeCustom] = useState(false)
   const [form, setForm] = useState({
     rebanho_id: '',
     tipo: 'vacina',
@@ -54,6 +57,53 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
     responsavel: '',
     observacoes: '',
   })
+
+  // Preenche formulário no modo edição
+  useEffect(() => {
+    if (open && eventoEditando) {
+      setForm({
+        rebanho_id: eventoEditando.rebanho_id || '',
+        tipo: eventoEditando.tipo || 'vacina',
+        descricao: eventoEditando.descricao || '',
+        data_aplicacao: eventoEditando.data_aplicacao ? new Date(eventoEditando.data_aplicacao + 'T12:00:00') : new Date(),
+        data_proxima: eventoEditando.data_proxima ? new Date(eventoEditando.data_proxima + 'T12:00:00') : undefined,
+        quantidade_dose: eventoEditando.quantidade_dose != null ? String(eventoEditando.quantidade_dose) : '',
+        custo: eventoEditando.custo != null ? String(eventoEditando.custo) : '',
+        lote_produto: eventoEditando.lote_produto || '',
+        responsavel: eventoEditando.responsavel || '',
+        observacoes: eventoEditando.observacoes || '',
+      })
+      const unidade = eventoEditando.unidade_dose || 'ml'
+      const predefinidas = ['ml','l','g','kg','unidade','dose','ampola','comprimido']
+      setUnidadeCustom(!predefinidas.includes(unidade))
+      setUnidadeDose(unidade)
+      setUsarEstoque(false)
+      setProdutoId('')
+      setQuantidadeUsada('')
+      setAnimaisSelecionados([])
+      setStatusAnimais({})
+    } else if (open && !eventoEditando) {
+      setForm({
+        rebanho_id: '',
+        tipo: 'vacina',
+        descricao: '',
+        data_aplicacao: new Date(),
+        data_proxima: undefined,
+        quantidade_dose: '',
+        custo: '',
+        lote_produto: '',
+        responsavel: '',
+        observacoes: '',
+      })
+      setUnidadeDose('ml')
+      setUnidadeCustom(false)
+      setUsarEstoque(false)
+      setProdutoId('')
+      setQuantidadeUsada('')
+      setAnimaisSelecionados([])
+      setStatusAnimais({})
+    }
+  }, [open, eventoEditando])
 
   const { data: produtosPecuarios } = useQuery({
     queryKey: ['produtos-pecuarios', propriedadeId],
@@ -128,43 +178,88 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
       toast.error('Descrição / Protocolo é obrigatório')
       return
     }
+    if (!usarEstoque) {
+      if (!form.quantidade_dose || Number(form.quantidade_dose) <= 0) {
+        toast.error('Informe a dose aplicada (obrigatório quando não usa o estoque)')
+        return
+      }
+      if (!form.custo || Number(form.custo) <= 0) {
+        toast.error('Informe o custo (obrigatório quando não usa o estoque)')
+        return
+      }
+    }
     const rebanhoSel = rebanhosVacinaveis.find((r: any) => r.id === form.rebanho_id)
     const ehIndividual = rebanhoSel ? rebanhoSel.controle_individual !== false : false
-    if (ehIndividual && animaisSelecionados.length === 0) {
+    if (!eventoEditando && ehIndividual && animaisSelecionados.length === 0) {
       toast.error('Selecione ao menos um animal — esse é um lote com controle Individual.')
       return
     }
     setLoading(true)
-    const { data: resultadoRaw, error } = await (supabase as any).rpc('registrar_vacinacao_animais', {
-      p_propriedade_id: propriedadeId,
-      p_rebanho_id: form.rebanho_id || null,
-      p_tipo: form.tipo,
-      p_descricao: form.descricao,
-      p_data_aplicacao: format(form.data_aplicacao, 'yyyy-MM-dd'),
-      p_data_proxima: form.data_proxima ? format(form.data_proxima, 'yyyy-MM-dd') : null,
-      p_custo: usarEstoque ? 0 : form.custo ? Number(form.custo) : null,
-      p_responsavel: form.responsavel || null,
-      p_lote_produto: form.lote_produto || null,
-      p_observacoes: form.observacoes || null,
-      p_animal_ids: animaisSelecionados.length > 0 ? animaisSelecionados : null,
-    })
-    setLoading(false)
-    if (error) {
-      toast.error('Erro: ' + error.message)
-      return
-    }
-    const resultado = (Array.isArray(resultadoRaw) ? resultadoRaw[0] : resultadoRaw) || {}
 
-    if (usarEstoque && produtoId && quantidadeUsada && resultado.evento_id) {
-      await (supabase as any)
-        .from('sanitario_eventos')
-        .update({ produto_id: produtoId, quantidade_usada: parseFloat(quantidadeUsada) })
-        .eq('id', resultado.evento_id)
-      queryClient.invalidateQueries({ queryKey: ['produtos'] })
-      queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
-      queryClient.invalidateQueries({ queryKey: ['produtos-pecuarios'] })
-      queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
-      queryClient.invalidateQueries({ queryKey: ['rel-custos-detalhado'] })
+    if (eventoEditando) {
+      const { error } = await (supabase as any).from('sanitario_eventos').update({
+        tipo: form.tipo,
+        descricao: form.descricao,
+        data_aplicacao: format(form.data_aplicacao, 'yyyy-MM-dd'),
+        data_proxima: form.data_proxima ? format(form.data_proxima, 'yyyy-MM-dd') : null,
+        quantidade_dose: form.quantidade_dose ? Number(form.quantidade_dose) : null,
+        unidade_dose: usarEstoque ? null : unidadeDose,
+        custo: usarEstoque ? 0 : Number(form.custo),
+        responsavel: form.responsavel || null,
+        lote_produto: form.lote_produto || null,
+        observacoes: form.observacoes || null,
+      }).eq('id', eventoEditando.id)
+      setLoading(false)
+      if (error) {
+        toast.error('Erro: ' + error.message)
+        return
+      }
+      toast.success('Evento sanitário atualizado')
+    } else {
+      const { data: resultadoRaw, error } = await (supabase as any).rpc('registrar_vacinacao_animais', {
+        p_propriedade_id: propriedadeId,
+        p_rebanho_id: form.rebanho_id || null,
+        p_tipo: form.tipo,
+        p_descricao: form.descricao,
+        p_data_aplicacao: format(form.data_aplicacao, 'yyyy-MM-dd'),
+        p_data_proxima: form.data_proxima ? format(form.data_proxima, 'yyyy-MM-dd') : null,
+        p_quantidade_dose: form.quantidade_dose ? Number(form.quantidade_dose) : null,
+        p_unidade_dose: usarEstoque ? null : unidadeDose,
+        p_custo: usarEstoque ? 0 : form.custo ? Number(form.custo) : null,
+        p_responsavel: form.responsavel || null,
+        p_lote_produto: form.lote_produto || null,
+        p_observacoes: form.observacoes || null,
+        p_animal_ids: animaisSelecionados.length > 0 ? animaisSelecionados : null,
+      })
+      setLoading(false)
+      if (error) {
+        toast.error('Erro: ' + error.message)
+        return
+      }
+      const resultado = (Array.isArray(resultadoRaw) ? resultadoRaw[0] : resultadoRaw) || {}
+
+      if (usarEstoque && produtoId && quantidadeUsada && resultado.evento_id) {
+        await (supabase as any)
+          .from('sanitario_eventos')
+          .update({ produto_id: produtoId, quantidade_usada: parseFloat(quantidadeUsada) })
+          .eq('id', resultado.evento_id)
+        queryClient.invalidateQueries({ queryKey: ['produtos'] })
+        queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
+        queryClient.invalidateQueries({ queryKey: ['produtos-pecuarios'] })
+        queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
+        queryClient.invalidateQueries({ queryKey: ['rel-custos-detalhado'] })
+      }
+
+      if (resultado.animais_bloqueados > 0) {
+        toast.warning(
+          `${resultado.animais_vacinados || 0} vacinado(s), ${resultado.animais_bloqueados} bloqueado(s) por intervalo mínimo`
+        )
+      } else {
+        toast.success(
+          `Evento registrado: ${resultado.animais_vacinados ?? animaisSelecionados.length} animais`
+          + (resultado.proxima_data ? ` • Próxima: ${new Date(resultado.proxima_data).toLocaleDateString('pt-BR')}` : '')
+        )
+      }
     }
 
     queryClient.invalidateQueries({ queryKey: ['sanitario'] })
@@ -172,22 +267,13 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
     queryClient.invalidateQueries({ queryKey: ['sanitario-contagem'] })
     queryClient.invalidateQueries({ queryKey: ['animais-rebanho'] })
 
-
-    if (resultado.animais_bloqueados > 0) {
-      toast.warning(
-        `${resultado.animais_vacinados || 0} vacinado(s), ${resultado.animais_bloqueados} bloqueado(s) por intervalo mínimo`
-      )
-    } else {
-      toast.success(
-        `Evento registrado: ${resultado.animais_vacinados ?? animaisSelecionados.length} animais`
-        + (resultado.proxima_data ? ` • Próxima: ${new Date(resultado.proxima_data).toLocaleDateString('pt-BR')}` : '')
-      )
-    }
     setAnimaisSelecionados([])
     setStatusAnimais({})
     setUsarEstoque(false)
     setProdutoId('')
     setQuantidadeUsada('')
+    setUnidadeDose('ml')
+    setUnidadeCustom(false)
     onOpenChange(false)
   }
 
@@ -329,8 +415,47 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label>Dose (ml)</Label>
-              <Input type="number" step="0.01" value={form.quantidade_dose} onChange={e => setForm(f => ({ ...f, quantidade_dose: e.target.value }))} disabled={usarEstoque} />
+              <Label>Dose</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.quantidade_dose}
+                  onChange={e => setForm(f => ({ ...f, quantidade_dose: e.target.value }))}
+                  className="flex-1"
+                  disabled={usarEstoque}
+                />
+                {!usarEstoque && (
+                  unidadeCustom ? (
+                    <Input
+                      value={unidadeDose}
+                      onChange={e => setUnidadeDose(e.target.value)}
+                      placeholder="Ex: comprimido"
+                      className="w-28"
+                    />
+                  ) : (
+                    <Select value={unidadeDose} onValueChange={(v) => v === 'outra' ? setUnidadeCustom(true) : setUnidadeDose(v)}>
+                      <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ml">ml</SelectItem>
+                        <SelectItem value="l">L</SelectItem>
+                        <SelectItem value="g">g</SelectItem>
+                        <SelectItem value="kg">kg</SelectItem>
+                        <SelectItem value="unidade">unidade</SelectItem>
+                        <SelectItem value="dose">dose</SelectItem>
+                        <SelectItem value="ampola">ampola</SelectItem>
+                        <SelectItem value="comprimido">comprimido</SelectItem>
+                        <SelectItem value="outra">Outra...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )
+                )}
+                {usarEstoque && (
+                  <span className="text-sm text-muted-foreground self-center w-28">
+                    {(produtosPecuarios || []).find((p: any) => (p.id || p.produto_id) === produtoId)?.unidade_medida || ''}
+                  </span>
+                )}
+              </div>
               {usarEstoque && <p className="text-xs text-muted-foreground mt-1">Preenchida junto com "Quantidade / Dose usada" acima.</p>}
             </div>
             <div>

@@ -77,13 +77,14 @@ export default function Pecuaria() {
   const [deleteMovId, setDeleteMovId] = useState<string | null>(null)
   const [movRebanhoId, setMovRebanhoId] = useState<string | undefined>()
   const [sanitarioDialog, setSanitarioDialog] = useState(false)
+  const [eventoEditando, setEventoEditando] = useState<any>(null)
+  const [deleteEventoSanitarioId, setDeleteEventoSanitarioId] = useState<string | null>(null)
   const [ordenhaDialog, setOrdenhaDialog] = useState(false)
   const [ordenhaEditando, setOrdenhaEditando] = useState<any>(null)
   const [deleteOrdenhaId, setDeleteOrdenhaId] = useState<string | null>(null)
   const [racaoDialog, setRacaoDialog] = useState(false)
   const [pesagemDialog, setPesagemDialog] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [deleteSanId, setDeleteSanId] = useState<string | null>(null)
   const [deletePesagemId, setDeletePesagemId] = useState<string | null>(null)
   const [pesagemEditando, setPesagemEditando] = useState<any>(null)
 
@@ -371,30 +372,19 @@ export default function Pecuaria() {
   }
 
   async function handleExcluirSanitario() {
-    if (!deleteSanId) return
-    const { data: removidos, error } = await supabase
-      .from('sanitario_eventos' as any)
-      .delete()
-      .eq('id', deleteSanId)
-      .select('id')
+    if (!deleteEventoSanitarioId) return
+    const { error } = await supabase.from('sanitario_eventos' as any).delete().eq('id', deleteEventoSanitarioId)
     if (error) {
       toast({ title: 'Erro ao excluir evento', description: error.message, variant: 'destructive' })
-      return
-    }
-    if (!removidos || (removidos as any[]).length === 0) {
-      toast({ title: 'Nada foi excluído', description: 'O evento não foi encontrado ou você não tem permissão.', variant: 'destructive' })
       return
     }
 
     queryClient.invalidateQueries({ queryKey: ['sanitario-eventos'] })
     queryClient.invalidateQueries({ queryKey: ['sanitario-contagem'] })
-    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
-    queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
     queryClient.invalidateQueries({ queryKey: ['produtos'] })
-    queryClient.invalidateQueries({ queryKey: ['produtos-pecuarios'] })
-    queryClient.invalidateQueries({ queryKey: ['lotes'] })
-    toast({ title: 'Evento excluído. Lançamento removido e estoque devolvido (se veio do estoque).' })
-    setDeleteSanId(null)
+    queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+    toast({ title: 'Evento excluído. Estoque e financeiro ajustados automaticamente.' })
+    setDeleteEventoSanitarioId(null)
   }
 
   async function handleExcluirPesagem() {
@@ -660,14 +650,17 @@ export default function Pecuaria() {
                             )}
                             {e.data_proxima && <span>Próxima: {format(new Date(e.data_proxima), 'dd/MM/yyyy')}</span>}
                             {e.rebanho && <span>Rebanho: {(e.rebanho as any).nome}</span>}
+                            {e.quantidade_dose != null && e.unidade_dose && <span>Dose: {e.quantidade_dose} {e.unidade_dose}</span>}
+                            {e.custo != null && e.custo > 0 && <span>Custo: R$ {Number(e.custo).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
                           </div>
                         </div>
-                        <Button
-                          variant="ghost" size="icon" className="text-destructive shrink-0"
-                          title="Excluir evento"
-                          onClick={() => setDeleteSanId(e.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <Button size="sm" variant="outline" onClick={() => { setEventoEditando(e); setSanitarioDialog(true) }}>
+                          <Pencil className="h-3 w-3 mr-1" /> Editar
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-destructive" onClick={() => setDeleteEventoSanitarioId(e.id)}>
+                          <Trash2 className="h-3 w-3 mr-1" /> Excluir
                         </Button>
                       </div>
                     </CardContent>
@@ -913,7 +906,13 @@ export default function Pecuaria() {
         rebanho={statusVacinacaoRebanho}
       />
 
-      <EventoSanitarioDialog open={sanitarioDialog} onOpenChange={setSanitarioDialog} propriedadeId={propId} rebanhos={rebanhos || []} />
+      <EventoSanitarioDialog
+        open={sanitarioDialog}
+        onOpenChange={o => { setSanitarioDialog(o); if (!o) setEventoEditando(null) }}
+        propriedadeId={propId}
+        rebanhos={rebanhos || []}
+        eventoEditando={eventoEditando}
+      />
       <OrdenhaDialog
         open={ordenhaDialog}
         onOpenChange={o => { setOrdenhaDialog(o); if (!o) setOrdenhaEditando(null) }}
@@ -997,7 +996,7 @@ export default function Pecuaria() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!deleteSanId} onOpenChange={() => setDeleteSanId(null)}>
+      <AlertDialog open={!!deleteEventoSanitarioId} onOpenChange={() => setDeleteEventoSanitarioId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir evento sanitário?</AlertDialogTitle>
