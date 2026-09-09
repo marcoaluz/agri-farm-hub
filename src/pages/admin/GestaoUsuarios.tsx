@@ -121,7 +121,13 @@ export default function GestaoUsuarios() {
   const [usuarioRejeitando, setUsuarioRejeitando] = useState<UserProfile | null>(null)
   const [rejeitando, setRejeitando] = useState(false)
 
+  // Proprietario detail dialog
+  const [usuarioDetalhando, setUsuarioDetalhando] = useState<UserProfile | null>(null)
+  const [detalhesProprietario, setDetalhesProprietario] = useState<DetalheProprietario | null>(null)
+  const [carregandoDetalhes, setCarregandoDetalhes] = useState(false)
+
   const [activeTab, setActiveTab] = useState('pendentes')
+
 
   // Admin check
   useEffect(() => {
