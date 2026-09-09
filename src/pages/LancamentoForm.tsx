@@ -1383,17 +1383,17 @@ export function LancamentoForm() {
                   <div>
                     <p className="text-sm font-medium mb-3">Adicionar ao Lançamento</p>
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'produto' ? null : 'produto')}>
-                        <PrateleiraIcon className="h-4 w-4 mr-1" />
-                        + Produto do Estoque
+                      <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'servico_simples' ? null : 'servico_simples')}>
+                        <Wrench className="h-4 w-4 mr-1" />
+                        + Custo Diária
                       </Button>
                       <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'maquina' ? null : 'maquina')}>
                         <Tractor className="h-4 w-4 mr-1" />
                         + Máquina
                       </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'servico_simples' ? null : 'servico_simples')}>
-                        <Wrench className="h-4 w-4 mr-1" />
-                        + Custo Diária
+                      <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'produto' ? null : 'produto')}>
+                        <PrateleiraIcon className="h-4 w-4 mr-1" />
+                        + Produto do Estoque
                       </Button>
                       <Button type="button" variant="outline" size="sm" onClick={() => setAdicionandoTipo(adicionandoTipo === 'abastecimento' ? null : 'abastecimento')}>
                         <Fuel className="h-4 w-4 mr-1" />

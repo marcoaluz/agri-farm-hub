@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
@@ -1674,6 +1674,62 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
     enabled: !!propId && !!safraId,
   })
 
+  const combinacoesQ = useQuery({
+    queryKey: ['rel-combinacoes-filtro-custos', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await (db as any).rpc('get_combinacoes_filtro_custos', { p_propriedade_id: propId, p_safra_id: safraId })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+    enabled: !!propId && !!safraId,
+  })
+
+  const combos = combinacoesQ.data || []
+
+  const categoriasDisponiveis = useMemo(() => {
+    const filtradas = combos.filter((c: any) =>
+      (!itemFiltro || (c.item_tipo === itemFiltro.tipo && c.item_id === itemFiltro.id)) &&
+      (!talhaoFiltro || c.talhao_id === talhaoFiltro)
+    )
+    return [...new Set(filtradas.map((c: any) => c.categoria).filter(Boolean))].sort() as string[]
+  }, [combos, itemFiltro, talhaoFiltro])
+
+  const itensDisponiveis = useMemo(() => {
+    const filtradas = combos.filter((c: any) =>
+      (!categoriaFiltro || c.categoria === categoriaFiltro) &&
+      (!talhaoFiltro || c.talhao_id === talhaoFiltro)
+    )
+    const vistos = new Set<string>()
+    return filtradas.filter((c: any) => {
+      if (!c.item_id) return false
+      const chave = `${c.item_tipo}:${c.item_id}`
+      if (vistos.has(chave)) return false
+      vistos.add(chave)
+      return true
+    })
+  }, [combos, categoriaFiltro, talhaoFiltro])
+
+  const talhoesDisponiveis = useMemo(() => {
+    const filtradas = combos.filter((c: any) =>
+      (!categoriaFiltro || c.categoria === categoriaFiltro) &&
+      (!itemFiltro || (c.item_tipo === itemFiltro.tipo && c.item_id === itemFiltro.id))
+    )
+    const vistos = new Set<string>()
+    return filtradas.filter((c: any) => {
+      if (!c.talhao_id || vistos.has(c.talhao_id)) return false
+      vistos.add(c.talhao_id)
+      return true
+    })
+  }, [combos, categoriaFiltro, itemFiltro])
+
+  // Reseta filtros que ficaram sem combinação válida
+  useEffect(() => {
+    if (!combos.length) return
+    if (categoriaFiltro && !categoriasDisponiveis.includes(categoriaFiltro)) setCategoriaFiltro('')
+    if (itemFiltro && !itensDisponiveis.some((c: any) => c.item_tipo === itemFiltro.tipo && c.item_id === itemFiltro.id)) setItemFiltro(null)
+    if (talhaoFiltro && !talhoesDisponiveis.some((c: any) => c.talhao_id === talhaoFiltro)) setTalhaoFiltro('')
+  }, [categoriasDisponiveis, itensDisponiveis, talhoesDisponiveis])
+
   const relatorioQ = useQuery({
     queryKey: ['rel-custos-detalhado', propId, safraId, dataInicio, dataFim, categoriaFiltro, itemFiltro, talhaoFiltro, ordenarPor],
     queryFn: async () => {
@@ -1807,7 +1863,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_todos">Todas</SelectItem>
-                  {(categoriasServicoQ.data || []).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {(combos.length ? categoriasDisponiveis : (categoriasServicoQ.data || [])).map((c: string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -1824,7 +1880,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_todos">Todos</SelectItem>
-                  {(itensFiltraveisQ.data || []).map((it: any) => (
+                  {(combos.length ? itensDisponiveis : (itensFiltraveisQ.data || [])).map((it: any) => (
                     <SelectItem key={`${it.item_tipo}:${it.item_id}`} value={`${it.item_tipo}:${it.item_id}`}>
                       {it.item_nome} {it.item_tipo === 'maquina' ? '(máquina)' : it.item_tipo === 'servico' ? '(serviço)' : ''}
                     </SelectItem>
@@ -1838,7 +1894,9 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_todos">Todos</SelectItem>
-                  {(talhoesQ.data || []).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
+                  {combos.length
+                    ? talhoesDisponiveis.map((t: any) => <SelectItem key={t.talhao_id} value={t.talhao_id}>{t.talhao_nome}</SelectItem>)
+                    : (talhoesQ.data || []).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -2175,6 +2233,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
   const maquinasRaw = maqQ.data || []
   const [filtroMaquina, setFiltroMaquina] = useState<string>('_all')
+  const [filtroTipoCusto, setFiltroTipoCusto] = useState<string>('_all')
 
   const maquinasUnicas = useMemo(() => {
     const map = new Map<string, string>()
@@ -2186,13 +2245,14 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
   const grupos = useMemo(() => {
     return maquinasRaw.map((m: any) => {
-      const itens: { nome: string; qtdLabel: string; valor: number; isChild?: boolean }[] = []
+      const itens: { nome: string; qtdLabel: string; valor: number; isChild?: boolean; kind: 'uso' | 'abastecimento' | 'manutencao' }[] = []
 
       if (m.horas_uso_direto > 0) {
         itens.push({
           nome: 'Uso da máquina (lançamentos)',
           qtdLabel: `${fmtN(Number(m.horas_uso_direto))} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
           valor: Number(m.custo_uso_direto || 0),
+          kind: 'uso',
         })
       }
 
@@ -2201,6 +2261,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
           nome: `Combustível (${m.qtd_abastecimentos}x abastecido)`,
           qtdLabel: `${fmtN(Number(m.litros_total || 0))} L`,
           valor: Number(m.custo_abastecimento || 0),
+          kind: 'abastecimento',
         })
       }
 
@@ -2209,6 +2270,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
           nome: mnt.descricao,
           qtdLabel: '',
           valor: Number(mnt.valor_total || 0),
+          kind: 'manutencao',
         })
 
 
@@ -2219,6 +2281,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
               qtdLabel: `${fmtN(Number(it.produto_qtd || 0))} ${unidadeCurta(it.produto_unidade)}`,
               valor: Number(it.valor || 0),
               isChild: true,
+              kind: 'manutencao',
             })
           } else {
             itens.push({
@@ -2226,6 +2289,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
               qtdLabel: `${Number(it.vezes || 0)}x`,
               valor: Number(it.valor || 0),
               isChild: true,
+              kind: 'manutencao',
             })
           }
         })
@@ -2242,9 +2306,16 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
   }, [maquinasRaw])
 
   const gruposFiltrados = useMemo(() => {
-    if (filtroMaquina === '_all') return grupos
-    return grupos.filter((g: any) => g.maquina_id === filtroMaquina)
-  }, [grupos, filtroMaquina])
+    const porMaquina = filtroMaquina === '_all' ? grupos : grupos.filter((g: any) => g.maquina_id === filtroMaquina)
+    if (filtroTipoCusto === '_all') return porMaquina
+    return porMaquina
+      .map((g: any) => {
+        const itens = g.itens.filter((it: any) => it.kind === filtroTipoCusto)
+        const subtotal = itens.reduce((s: number, it: any) => s + (it.isChild ? 0 : Number(it.valor || 0)), 0)
+        return { ...g, itens, subtotal }
+      })
+      .filter((g: any) => g.itens.length > 0)
+  }, [grupos, filtroMaquina, filtroTipoCusto])
 
   const totalGeral = gruposFiltrados.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
 
@@ -2273,8 +2344,9 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="flex flex-col sm:flex-row gap-2">
         <Select value={filtroMaquina} onValueChange={setFiltroMaquina}>
-          <SelectTrigger className="w-full sm:w-[260px]">
+          <SelectTrigger className="w-full sm:w-[240px]">
             {filtroMaquina === '_all' ? (
               <span>Todas as máquinas</span>
             ) : (
@@ -2290,6 +2362,20 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
             ))}
           </SelectContent>
         </Select>
+
+        <Select value={filtroTipoCusto} onValueChange={setFiltroTipoCusto}>
+          <SelectTrigger className="w-full sm:w-[220px]">
+            <SelectValue placeholder="Tipo de custo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_all">Todos</SelectItem>
+            <SelectItem value="uso">Uso da máquina (horas)</SelectItem>
+            <SelectItem value="abastecimento">Abastecimento</SelectItem>
+            <SelectItem value="manutencao">Manutenção</SelectItem>
+          </SelectContent>
+        </Select>
+        </div>
+
 
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]" onClick={handleExportPDF}>
