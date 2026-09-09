@@ -415,8 +415,47 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label>Dose (ml)</Label>
-              <Input type="number" step="0.01" value={form.quantidade_dose} onChange={e => setForm(f => ({ ...f, quantidade_dose: e.target.value }))} disabled={usarEstoque} />
+              <Label>Dose</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.quantidade_dose}
+                  onChange={e => setForm(f => ({ ...f, quantidade_dose: e.target.value }))}
+                  className="flex-1"
+                  disabled={usarEstoque}
+                />
+                {!usarEstoque && (
+                  unidadeCustom ? (
+                    <Input
+                      value={unidadeDose}
+                      onChange={e => setUnidadeDose(e.target.value)}
+                      placeholder="Ex: comprimido"
+                      className="w-28"
+                    />
+                  ) : (
+                    <Select value={unidadeDose} onValueChange={(v) => v === 'outra' ? setUnidadeCustom(true) : setUnidadeDose(v)}>
+                      <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ml">ml</SelectItem>
+                        <SelectItem value="l">L</SelectItem>
+                        <SelectItem value="g">g</SelectItem>
+                        <SelectItem value="kg">kg</SelectItem>
+                        <SelectItem value="unidade">unidade</SelectItem>
+                        <SelectItem value="dose">dose</SelectItem>
+                        <SelectItem value="ampola">ampola</SelectItem>
+                        <SelectItem value="comprimido">comprimido</SelectItem>
+                        <SelectItem value="outra">Outra...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )
+                )}
+                {usarEstoque && (
+                  <span className="text-sm text-muted-foreground self-center w-28">
+                    {(produtosPecuarios || []).find((p: any) => (p.id || p.produto_id) === produtoId)?.unidade_medida || ''}
+                  </span>
+                )}
+              </div>
               {usarEstoque && <p className="text-xs text-muted-foreground mt-1">Preenchida junto com "Quantidade / Dose usada" acima.</p>}
             </div>
             <div>
