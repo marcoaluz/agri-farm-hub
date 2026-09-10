@@ -176,14 +176,17 @@ export default function MinhaEquipe() {
         console.warn('Falha ao enviar e-mail de convite', e)
       }
 
-      // Diálogo com o link sempre aparece (backup caso o e-mail caia em spam)
-      setLinkGerado(link)
-      setCopiado(false)
-      setShowLinkDialog(true)
       setEmail('')
       setPapel('')
-      if (emailEnviado) toast.success(`Convite enviado por e-mail para ${email.trim()}!`)
-      else toast.warning('Convite criado, mas o e-mail não pôde ser enviado. Compartilhe o link manualmente.')
+      if (emailEnviado) {
+        setConviteEnviadoMsg(`Convite enviado por e-mail para ${email.trim()}!`)
+        setTimeout(() => setConviteEnviadoMsg(null), 6000)
+      } else {
+        setLinkGerado(link)
+        setCopiado(false)
+        setShowLinkDialog(true)
+        toast.warning('Convite criado, mas o e-mail não pôde ser enviado. Compartilhe o link manualmente.')
+      }
       fetchTudo()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao gerar convite')
