@@ -1229,7 +1229,7 @@ export default function GestaoUsuarios() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deletando}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmarExclusao}
+              onClick={handleDeletarUsuario}
               disabled={deletando}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
