@@ -78,6 +78,7 @@ export default function MinhaEquipe() {
   const [linkGerado, setLinkGerado] = useState('')
   const [showLinkDialog, setShowLinkDialog] = useState(false)
   const [copiado, setCopiado] = useState(false)
+  const [conviteEnviadoMsg, setConviteEnviadoMsg] = useState<string | null>(null)
 
   // Dar acesso a mais uma propriedade (pessoa que já tem conta)
   const [emailAcesso, setEmailAcesso] = useState('')
