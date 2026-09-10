@@ -268,12 +268,18 @@ export default function GestaoUsuarios() {
     if (!usuarioAprovando) return
     setAprovando(true)
     try {
-      const { error } = await supabase
-        .from('user_profiles' as any)
-        .update({ status: 'ativo', perfil: papelAprovacao, updated_at: new Date().toISOString() } as any)
-        .eq('id', usuarioAprovando.id)
+      const { data: resultado, error } = await supabase.rpc('admin_aprovar_usuario' as any, {
+        p_user_id: usuarioAprovando.id,
+        p_perfil: papelAprovacao,
+      })
       if (error) throw error
-      toast({ title: '✅ Usuário aprovado com sucesso!' })
+      const vinculadas = (resultado as any)?.propriedades_vinculadas || 0
+      toast({
+        title: '✅ Usuário aprovado com sucesso!',
+        description: vinculadas > 0
+          ? `${vinculadas} propriedade(s) vinculada(s) automaticamente.`
+          : undefined,
+      })
       setUsuarioAprovando(null)
       setPapelAprovacao('consultor')
       fetchUsuarios()
