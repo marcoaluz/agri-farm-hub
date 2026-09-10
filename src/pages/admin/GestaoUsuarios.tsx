@@ -674,6 +674,9 @@ export default function GestaoUsuarios() {
                             : '—'}
                         </TableCell>
                         <TableCell>
+                          {u.id === user?.id ? (
+                            <span className="text-xs text-muted-foreground px-2">Você</span>
+                          ) : (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -686,10 +689,14 @@ export default function GestaoUsuarios() {
                               </Button>
                             </DropdownMenuTrigger>
 
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem onClick={() => abrirDetalhes(u)}>
+                                <Users className="mr-2 h-4 w-4" />
+                                Ver detalhes
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => openEditModal(u)}>
                                 <Edit className="mr-2 h-4 w-4" />
-                                Editar Perfil
+                                Editar perfil
                               </DropdownMenuItem>
                               {u.perfil === 'proprietario' && (
                                 <DropdownMenuItem onClick={() => { setUsuarioAlterandoPlano(u); setNovoPlanoSlug(u.plano_slug || 'essencial'); setNovoCiclo('mensal') }}>
@@ -712,31 +719,50 @@ export default function GestaoUsuarios() {
                                 </>
                               )}
                               {u.perfil !== 'admin' && (
-                                <DropdownMenuItem onClick={() => toggleAdmin(u.id, true)}>
+                                <DropdownMenuItem onClick={() => setUsuarioPromovendo(u)}>
                                   <Shield className="mr-2 h-4 w-4" />
                                   Promover a admin
                                 </DropdownMenuItem>
                               )}
                               {u.perfil === 'admin' && !u.is_super_admin && (
-                                <DropdownMenuItem onClick={() => toggleAdmin(u.id, false)}>
+                                <DropdownMenuItem onClick={() => setUsuarioRebaixando(u)}>
                                   <Shield className="mr-2 h-4 w-4" />
-                                  Remover admin
+                                  Rebaixar admin
                                 </DropdownMenuItem>
                               )}
                               {!u.is_super_admin && u.status !== 'pendente' && (
                                 <>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive"
-                                    onClick={() => {}}
+                                    className={u.status === 'inativo' ? '' : 'text-destructive focus:text-destructive'}
+                                    onClick={() => setUsuarioAlterandoStatus(u)}
                                   >
-                                    <UserX className="mr-2 h-4 w-4" />
-                                    Suspender conta
+                                    {u.status === 'inativo' ? (
+                                      <>
+                                        <UserCheck className="mr-2 h-4 w-4" />
+                                        Reativar conta
+                                      </>
+                                    ) : (
+                                      <>
+                                        <UserX className="mr-2 h-4 w-4" />
+                                        Suspender conta
+                                      </>
+                                    )}
                                   </DropdownMenuItem>
                                 </>
                               )}
+                              {!u.is_super_admin && (
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setUsuarioDeletando(u)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Deletar usuário
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
