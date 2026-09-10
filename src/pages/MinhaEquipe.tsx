@@ -217,7 +217,6 @@ export default function MinhaEquipe() {
           toast.info('Essa pessoa já tinha acesso a essa propriedade.')
         } else {
           toast.success('Acesso concedido! A pessoa já pode entrar nessa propriedade e recebeu um aviso no sistema.')
-          queryClient.invalidateQueries({ queryKey: ['equipe'] })
           setEmailAcesso('')
           setPropriedadeAcesso('')
           setPapelAcesso('')
