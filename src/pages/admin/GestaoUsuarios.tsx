@@ -1012,11 +1012,11 @@ export default function GestaoUsuarios() {
         </DialogContent>
       </Dialog>
 
-      {/* Proprietário detail dialog */}
+      {/* User detail dialog */}
       <Dialog open={!!usuarioDetalhando} onOpenChange={open => !open && setUsuarioDetalhando(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalhes do Proprietário</DialogTitle>
+            <DialogTitle>Detalhes do Usuário</DialogTitle>
           </DialogHeader>
 
           {usuarioDetalhando && (
@@ -1033,11 +1033,39 @@ export default function GestaoUsuarios() {
                 </div>
               </div>
 
-              {carregandoDetalhes ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <div className="grid grid-cols-2 gap-3 rounded-md border p-3 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Perfil</p>
+                  {renderPerfilBadge(usuarioDetalhando.perfil, usuarioDetalhando.is_super_admin)}
                 </div>
-              ) : detalhesProprietario ? (
+                <div>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <p className="font-medium capitalize">{usuarioDetalhando.status || (usuarioDetalhando.confirmado ? 'ativo' : '—')}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Último acesso</p>
+                  <p className="font-medium">
+                    {usuarioDetalhando.ultimo_acesso
+                      ? format(new Date(usuarioDetalhando.ultimo_acesso), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                      : 'Nunca acessou'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Data de cadastro</p>
+                  <p className="font-medium">
+                    {usuarioDetalhando.criado_em
+                      ? format(new Date(usuarioDetalhando.criado_em), 'dd/MM/yyyy', { locale: ptBR })
+                      : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {usuarioDetalhando.perfil === 'proprietario' && (
+                carregandoDetalhes ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : detalhesProprietario ? (
                 <>
                   <Separator />
 
