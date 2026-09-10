@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Wrench, Trash2, Gauge, DollarSign, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
 
 interface HistoricoManutencoesProps {
@@ -182,52 +183,43 @@ export function HistoricoManutencoes({ maquina }: HistoricoManutencoesProps) {
       ) : !manutencoes || manutencoes.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">Nenhuma manutenção registrada ainda.</p>
       ) : (
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Agendadas
-              </h4>
-              <Badge variant="outline">{agendadas.length}</Badge>
-            </div>
+        <Tabs defaultValue="agendadas">
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="agendadas" className="text-xs sm:text-sm">
+              Agendadas ({agendadas.length})
+            </TabsTrigger>
+            <TabsTrigger value="realizadas" className="text-xs sm:text-sm">
+              Realizadas ({concluidas.length})
+            </TabsTrigger>
+            <TabsTrigger value="canceladas" className="text-xs sm:text-sm">
+              Canceladas ({canceladas.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="agendadas" className="mt-3">
             {agendadas.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma manutenção agendada.</p>
+              <p className="text-sm text-muted-foreground text-center py-6">Nenhuma manutenção agendada.</p>
             ) : (
               <div className="space-y-2">{agendadas.map(m => renderCard(m, true))}</div>
             )}
-          </div>
+          </TabsContent>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                Concluídas
-              </h4>
-              <Badge variant="outline">{concluidas.length}</Badge>
-            </div>
+          <TabsContent value="realizadas" className="mt-3">
             {concluidas.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma manutenção concluída ainda.</p>
+              <p className="text-sm text-muted-foreground text-center py-6">Nenhuma manutenção concluída ainda.</p>
             ) : (
               <div className="space-y-2">{concluidas.map(m => renderCard(m, false))}</div>
             )}
-          </div>
+          </TabsContent>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <XCircle className="h-4 w-4" />
-                Canceladas
-              </h4>
-              <Badge variant="outline">{canceladas.length}</Badge>
-            </div>
+          <TabsContent value="canceladas" className="mt-3">
             {canceladas.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma manutenção cancelada.</p>
+              <p className="text-sm text-muted-foreground text-center py-6">Nenhuma manutenção cancelada.</p>
             ) : (
               <div className="space-y-2">{canceladas.map(m => renderCard(m, true))}</div>
             )}
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );
