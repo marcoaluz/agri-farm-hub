@@ -322,11 +322,17 @@ export function Maquinas() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await supabase.from('maquinas').update({ ativo: false }).eq('id', id).select('id');
-      if (error) throw error;
-      if (!data?.length) throw new Error('A máquina não foi encontrada ou você não tem permissão para removê-la.');
+      return await solicitarExclusaoEntidade('maquina', id);
     },
-    onSuccess: () => {
+    onSuccess: (resultado) => {
+      queryClient.invalidateQueries({ queryKey: ['solicitacoes-exclusao-pendentes'] });
+      if (!resultado.executado) {
+        toast({
+          title: 'Pedido enviado!',
+          description: resultado.mensagem || 'Aguardando aprovação do proprietário.',
+        });
+        return;
+      }
       toast({ title: 'Máquina removida com sucesso' });
       queryClient.invalidateQueries({ queryKey: ['maquinas'] });
     },

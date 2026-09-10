@@ -427,17 +427,20 @@ export default function Pecuaria() {
       return
     }
 
-    const { data: removidos, error } = await supabase
-      .from('rebanhos' as any)
-      .update({ ativo: false })
-      .eq('id', deleteId)
-      .select('id')
-    if (error) {
-      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
+    let resultado
+    try {
+      resultado = await solicitarExclusaoEntidade('rebanho', deleteId)
+    } catch (err) {
+      toast({ title: 'Erro ao excluir', description: (err as Error).message, variant: 'destructive' })
       return
     }
-    if (!removidos || (removidos as any[]).length === 0) {
-      toast({ title: 'Nada foi excluído', description: 'O rebanho não foi encontrado ou você não tem permissão.', variant: 'destructive' })
+    queryClient.invalidateQueries({ queryKey: ['solicitacoes-exclusao-pendentes'] })
+    if (!resultado.executado) {
+      toast({
+        title: 'Pedido enviado!',
+        description: resultado.mensagem || 'Aguardando aprovação do proprietário.',
+      })
+      setDeleteId(null)
       return
     }
     queryClient.invalidateQueries({ queryKey: ['rebanhos'] })

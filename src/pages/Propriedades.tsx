@@ -25,6 +25,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Plus, MoreVertical, Pencil, Trash2, Home, MapPin, Loader2, User, MapPinned } from 'lucide-react'
+import { SolicitacoesPendentes } from '@/components/exclusoes/SolicitacoesPendentes'
 
 export function Propriedades() {
   const {
