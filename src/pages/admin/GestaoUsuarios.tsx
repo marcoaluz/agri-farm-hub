@@ -622,7 +622,7 @@ export default function GestaoUsuarios() {
                       <TableRow
                         key={u.id}
                         className={u.perfil === 'proprietario' ? 'cursor-pointer hover:bg-muted/50' : ''}
-                        onClick={() => u.perfil === 'proprietario' && abrirDetalheProprietario(u)}
+                        onClick={() => u.perfil === 'proprietario' && abrirDetalhes(u)}
                       >
                         <TableCell>
                           <div className="flex items-center gap-3">
