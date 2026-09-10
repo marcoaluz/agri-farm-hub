@@ -144,6 +144,8 @@ export function Propriedades() {
         </Button>
       </div>
 
+      <SolicitacoesPendentes />
+
       {activePropriedades.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
