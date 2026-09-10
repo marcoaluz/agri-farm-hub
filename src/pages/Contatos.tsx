@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Loader2, Search, Contact as ContactIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, Search, Contact as ContactIcon, Tags, Check as CheckIcon, X as XIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -37,16 +38,32 @@ interface Contato {
   ativo: boolean
 }
 
-const TIPOS = [
-  { v: 'fornecedor', l: 'Fornecedor' },
-  { v: 'cliente', l: 'Cliente' },
-  { v: 'ambos', l: 'Ambos' },
+interface CategoriaContato {
+  id: string
+  nome: string
+  ativo?: boolean
+}
+
+// Categorias padrão usadas como reserva, caso o usuário ainda não tenha criado nenhuma
+const TIPOS_PADRAO: CategoriaContato[] = [
+  { id: 'fornecedor', nome: 'fornecedor' },
+  { id: 'cliente', nome: 'cliente' },
+  { id: 'ambos', nome: 'ambos' },
 ]
+
+const LABELS_LEGADO: Record<string, string> = {
+  fornecedor: 'Fornecedor', cliente: 'Cliente', ambos: 'Ambos',
+}
+
+function labelTipo(t: string) {
+  return LABELS_LEGADO[t] ?? t
+}
 
 function badgeTipo(t: string) {
   if (t === 'cliente') return 'bg-emerald-100 text-emerald-700'
   if (t === 'ambos') return 'bg-indigo-100 text-indigo-700'
-  return 'bg-amber-100 text-amber-700'
+  if (t === 'fornecedor') return 'bg-amber-100 text-amber-700'
+  return 'bg-sky-100 text-sky-700'
 }
 
 const initialForm = {
@@ -56,6 +73,7 @@ const initialForm = {
 
 export default function Contatos() {
   const { propriedadeAtual } = useGlobal()
+  const { user } = useAuth()
   const queryClient = useQueryClient()
   const [contatos, setContatos] = useState<Contato[]>([])
   const [loading, setLoading] = useState(false)
@@ -65,6 +83,15 @@ export default function Contatos() {
   const [editando, setEditando] = useState<Contato | null>(null)
   const [excluir, setExcluir] = useState<Contato | null>(null)
   const [form, setForm] = useState(initialForm)
+
+  // Categorias de contato (editáveis pelo usuário)
+  const [categorias, setCategorias] = useState<CategoriaContato[]>(TIPOS_PADRAO)
+  const [gerenciarOpen, setGerenciarOpen] = useState(false)
+  const [novaCategoria, setNovaCategoria] = useState('')
+  const [renomeandoId, setRenomeandoId] = useState<string | null>(null)
+  const [nomeRenomeado, setNomeRenomeado] = useState('')
+  const [savingCat, setSavingCat] = useState(false)
+  const [excluirCategoria, setExcluirCategoria] = useState<CategoriaContato | null>(null)
 
   const fetchContatos = useCallback(async () => {
     if (!propriedadeAtual?.id) return
@@ -84,7 +111,76 @@ export default function Contatos() {
     setContatos((data as any) ?? [])
   }, [propriedadeAtual?.id])
 
+  const fetchCategorias = useCallback(async () => {
+    if (!user?.id) return
+    const { data, error } = await supabase
+      .from('categorias_contato' as any)
+      .select('*')
+      .eq('usuario_id', user.id)
+      .eq('ativo', true)
+      .order('nome')
+    if (error || !data || (data as any[]).length === 0) {
+      setCategorias(TIPOS_PADRAO)
+      return
+    }
+    setCategorias(data as any)
+  }, [user?.id])
+
   useEffect(() => { fetchContatos() }, [fetchContatos])
+  useEffect(() => { fetchCategorias() }, [fetchCategorias])
+
+  async function criarCategoria() {
+    const nome = novaCategoria.trim()
+    if (!nome || !user?.id) return
+    setSavingCat(true)
+    const { error } = await supabase
+      .from('categorias_contato' as any)
+      .insert({ nome, usuario_id: user.id, ativo: true })
+    setSavingCat(false)
+    if (error) {
+      toast.error((error as any).code === '23505' ? 'Essa categoria já existe' : 'Erro ao criar categoria')
+      return
+    }
+    setNovaCategoria('')
+    toast.success('Categoria criada')
+    fetchCategorias()
+  }
+
+  async function salvarRenomear(cat: CategoriaContato) {
+    const nome = nomeRenomeado.trim()
+    if (!nome || nome === cat.nome) { setRenomeandoId(null); return }
+    setSavingCat(true)
+    const { error } = await supabase
+      .from('categorias_contato' as any)
+      .update({ nome })
+      .eq('id', cat.id)
+    setSavingCat(false)
+    if (error) {
+      toast.error('Erro ao renomear categoria')
+      return
+    }
+    setRenomeandoId(null)
+    toast.success('Categoria renomeada')
+    fetchCategorias()
+    fetchContatos()
+  }
+
+  async function confirmarExclusaoCategoria() {
+    if (!excluirCategoria) return
+    setSavingCat(true)
+    const { error } = await supabase
+      .from('categorias_contato' as any)
+      .update({ ativo: false })
+      .eq('id', excluirCategoria.id)
+    setSavingCat(false)
+    if (error) {
+      toast.error('Erro ao remover categoria')
+      return
+    }
+    setExcluirCategoria(null)
+    toast.success('Categoria removida')
+    fetchCategorias()
+  }
 
   function abrirNovo() {
     setEditando(null)
@@ -184,9 +280,14 @@ export default function Contatos() {
           </h1>
           <p className="text-sm text-muted-foreground">Fornecedores e clientes da propriedade</p>
         </div>
-        <Button onClick={abrirNovo} disabled={!propriedadeAtual}>
-          <Plus className="h-4 w-4 mr-1" /> Novo contato
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => setGerenciarOpen(true)} disabled={!user}>
+            <Tags className="h-4 w-4 mr-1" /> Gerenciar categorias
+          </Button>
+          <Button onClick={abrirNovo} disabled={!propriedadeAtual}>
+            <Plus className="h-4 w-4 mr-1" /> Novo contato
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -234,7 +335,7 @@ export default function Contatos() {
                         <TableCell className="font-medium">{c.nome}</TableCell>
                         <TableCell>
                           <Badge className={badgeTipo(c.tipo)} variant="secondary">
-                            {TIPOS.find(t => t.v === c.tipo)?.l ?? c.tipo}
+                            {labelTipo(c.tipo)}
                           </Badge>
                         </TableCell>
                         <TableCell>{c.documento ?? '—'}</TableCell>
@@ -267,13 +368,13 @@ export default function Contatos() {
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-medium">{c.nome}</div>
                           <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                            <div>{TIPOS.find(t => t.v === c.tipo)?.l ?? c.tipo}{c.telefone ? ` · ${c.telefone}` : ''}</div>
+                            <div>{labelTipo(c.tipo)}{c.telefone ? ` · ${c.telefone}` : ''}</div>
                             {c.email && <div className="truncate">{c.email}</div>}
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <Badge className={badgeTipo(c.tipo)} variant="secondary">
-                            {TIPOS.find(t => t.v === c.tipo)?.l ?? c.tipo}
+                            {labelTipo(c.tipo)}
                           </Badge>
                           <Button
                             variant="ghost"
@@ -312,9 +413,16 @@ export default function Contatos() {
               <div>
                 <Label>Tipo *</Label>
                 <Select value={form.tipo} onValueChange={v => setForm({ ...form, tipo: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
-                    {TIPOS.map(t => <SelectItem key={t.v} value={t.v}>{t.l}</SelectItem>)}
+                    {[
+                      ...categorias,
+                      ...(form.tipo && !categorias.some(c => c.nome === form.tipo)
+                        ? [{ id: form.tipo, nome: form.tipo }]
+                        : []),
+                    ].map(cat => (
+                      <SelectItem key={cat.id} value={cat.nome}>{labelTipo(cat.nome)}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -362,6 +470,101 @@ export default function Contatos() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmarExclusao} disabled={saving}>{saving ? 'Excluindo...' : 'Excluir'}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog gerenciar categorias */}
+      <Dialog open={gerenciarOpen} onOpenChange={setGerenciarOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Categorias de contato</DialogTitle>
+            <DialogDescription>
+              Crie, renomeie ou remova as categorias usadas no cadastro de contatos.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex gap-2">
+            <Input
+              placeholder="Nome da nova categoria"
+              value={novaCategoria}
+              maxLength={50}
+              onChange={e => setNovaCategoria(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criarCategoria() } }}
+            />
+            <Button onClick={criarCategoria} disabled={savingCat || !novaCategoria.trim()}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="max-h-72 overflow-y-auto space-y-1">
+            {categorias.length === 0 && (
+              <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma categoria ainda.</p>
+            )}
+            {categorias.map(cat => (
+              <div key={cat.id} className="flex items-center gap-2 rounded-md border px-2 py-1.5">
+                {renomeandoId === cat.id ? (
+                  <>
+                    <Input
+                      className="h-8"
+                      value={nomeRenomeado}
+                      maxLength={50}
+                      autoFocus
+                      onChange={e => setNomeRenomeado(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); salvarRenomear(cat) } }}
+                    />
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => salvarRenomear(cat)} disabled={savingCat}>
+                      <CheckIcon className="h-4 w-4 text-emerald-600" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setRenomeandoId(null)}>
+                      <XIcon className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 truncate text-sm">{labelTipo(cat.nome)}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => { setRenomeandoId(cat.id); setNomeRenomeado(cat.nome) }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => setExcluirCategoria(cat)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGerenciarOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AlertDialog exclusão de categoria */}
+      <AlertDialog open={!!excluirCategoria} onOpenChange={o => !o && setExcluirCategoria(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover categoria?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A categoria "{excluirCategoria?.nome}" deixará de aparecer na lista. Os contatos já cadastrados com ela continuam como estão.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={savingCat}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarExclusaoCategoria} disabled={savingCat}>
+              {savingCat ? 'Removendo...' : 'Remover'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

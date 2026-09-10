@@ -7,8 +7,13 @@ import { ptBR } from 'date-fns/locale'
 import {
   Users, UserPlus, Copy, Check, Trash2, Loader2,
   Clock, AlertTriangle, RefreshCw, Send, Link as LinkIcon,
-  Shield, X, Plus,
+  Shield, X, Plus, ChevronsUpDown, Settings2,
 } from 'lucide-react'
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { DialogFooter } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -82,9 +87,16 @@ export default function MinhaEquipe() {
 
   // Dar acesso a mais uma propriedade (pessoa que já tem conta)
   const [emailAcesso, setEmailAcesso] = useState('')
-  const [propriedadeAcesso, setPropriedadeAcesso] = useState('')
+  const [nomeAcesso, setNomeAcesso] = useState('')
+  const [pessoaPickerOpen, setPessoaPickerOpen] = useState(false)
+  const [propriedadesAcesso, setPropriedadesAcesso] = useState<string[]>([])
   const [papelAcesso, setPapelAcesso] = useState('')
   const [salvandoAcesso, setSalvandoAcesso] = useState(false)
+
+  // Gerenciar acessos de um membro já existente
+  const [gerenciarMembro, setGerenciarMembro] = useState<PessoaEquipe | null>(null)
+  const [linhasAcesso, setLinhasAcesso] = useState<Record<string, { rowId: string | null; marcado: boolean; papel: string; original: boolean; papelOriginal: string }>>({})
+  const [salvandoGerenciar, setSalvandoGerenciar] = useState(false)
 
   const [confirmarRemoverAcesso, setConfirmarRemoverAcesso] = useState<{ pessoa: PessoaEquipe; acesso: Acesso } | null>(null)
   const [confirmarRemoverConvite, setConfirmarRemoverConvite] = useState<GrupoConvite | null>(null)
@@ -125,12 +137,16 @@ export default function MinhaEquipe() {
   useEffect(() => {
     if (propriedadeAtual?.id && propriedadesGerenciaveis.some(p => p.propriedade_id === propriedadeAtual.id)) {
       setPropriedadesConvite(prev => prev.length === 0 ? [propriedadeAtual.id!] : prev)
-      if (!propriedadeAcesso) setPropriedadeAcesso(propriedadeAtual.id)
+      setPropriedadesAcesso(prev => prev.length === 0 ? [propriedadeAtual.id!] : prev)
     }
   }, [propriedadeAtual?.id, propriedadesGerenciaveis])
 
   const toggleUmaPropriedade = (id: string) => {
     setPropriedadesConvite(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id])
+  }
+
+  const togglePropriedadeAcesso = (id: string) => {
+    setPropriedadesAcesso(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id])
   }
 
   const gerarConvite = async (destEmail: string, propriedadeIds: string[], papelVal: string) => {
@@ -199,40 +215,118 @@ export default function MinhaEquipe() {
     }
   }
 
+  const limparFormAcesso = () => {
+    setEmailAcesso('')
+    setNomeAcesso('')
+    setPropriedadesAcesso([])
+    setPapelAcesso('')
+  }
+
   const handleDefinirAcesso = async () => {
-    if (!emailAcesso.trim() || !propriedadeAcesso || !papelAcesso) return
+    if (!emailAcesso.trim() || propriedadesAcesso.length === 0 || !papelAcesso) return
     setSalvandoAcesso(true)
     try {
-      const { data: resultado, error } = await supabase.rpc('dar_acesso_propriedade_existente' as any, {
-        p_propriedade_id: propriedadeAcesso,
-        p_email: emailAcesso.trim().toLowerCase(),
-        p_papel: papelAcesso,
-      })
-      if (error) {
-        toast.error('Erro ao conceder acesso: ' + error.message)
+      const resultados = await Promise.all(
+        propriedadesAcesso.map(propId =>
+          supabase.rpc('dar_acesso_propriedade_existente' as any, {
+            p_propriedade_id: propId,
+            p_email: emailAcesso.trim().toLowerCase(),
+            p_papel: papelAcesso,
+          })
+        )
+      )
+      const comErro = resultados.find(r => r.error)
+      if (comErro?.error) {
+        toast.error('Erro ao conceder acesso: ' + comErro.error.message)
         return
       }
-      if (resultado.encontrado) {
-        if (resultado.ja_tinha_acesso) {
-          toast.info('Essa pessoa já tinha acesso a essa propriedade.')
+      const dados = resultados.map(r => r.data as any)
+      const encontrada = dados.some(d => d?.encontrado)
+      if (encontrada) {
+        const concedidas = dados.filter(d => d?.encontrado && !d?.ja_tinha_acesso).length
+        const jaTinha = dados.filter(d => d?.ja_tinha_acesso).length
+        if (concedidas > 0) {
+          toast.success(
+            `Acesso concedido a ${concedidas} propriedade(s).` +
+            (jaTinha > 0 ? ` ${jaTinha} já tinha(m) acesso.` : '')
+          )
         } else {
-          toast.success('Acesso concedido! A pessoa já pode entrar nessa propriedade e recebeu um aviso no sistema.')
+          toast.info('Essa pessoa já tinha acesso a todas as propriedades marcadas.')
         }
-        setEmailAcesso('')
-        setPropriedadeAcesso('')
-        setPapelAcesso('')
+        limparFormAcesso()
         fetchTudo()
         return
       }
       // Pessoa ainda não tem conta: segue o fluxo normal de convite por e-mail
-      await gerarConvite(emailAcesso, [propriedadeAcesso], papelAcesso)
-      setEmailAcesso('')
-      setPropriedadeAcesso('')
-      setPapelAcesso('')
+      await gerarConvite(emailAcesso, propriedadesAcesso, papelAcesso)
+      limparFormAcesso()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao dar acesso')
     } finally {
       setSalvandoAcesso(false)
+    }
+  }
+
+  const abrirGerenciar = async (pessoa: PessoaEquipe) => {
+    setGerenciarMembro(pessoa)
+    const { data } = await supabase
+      .from('propriedades_usuarios' as any)
+      .select('id, propriedade_id, papel')
+      .eq('usuario_id', pessoa.usuario_id)
+    const rows = (data as any[]) || []
+    const mapa: Record<string, { rowId: string | null; marcado: boolean; papel: string; original: boolean; papelOriginal: string }> = {}
+    for (const p of propriedadesGerenciaveis) {
+      const row = rows.find(r => r.propriedade_id === p.propriedade_id)
+      const acesso = pessoa.acessos.find(a => a.propriedade_id === p.propriedade_id)
+      const papelAtual = row?.papel || acesso?.papel || 'operador'
+      mapa[p.propriedade_id] = {
+        rowId: row?.id ?? null,
+        marcado: !!acesso || !!row,
+        papel: papelAtual,
+        original: !!acesso || !!row,
+        papelOriginal: papelAtual,
+      }
+    }
+    setLinhasAcesso(mapa)
+  }
+
+  const salvarGerenciar = async () => {
+    if (!gerenciarMembro) return
+    setSalvandoGerenciar(true)
+    try {
+      const acoes: any[] = []
+      for (const [propId, linha] of Object.entries(linhasAcesso)) {
+        if (linha.marcado && !linha.original) {
+          acoes.push(supabase.rpc('dar_acesso_propriedade_existente' as any, {
+            p_propriedade_id: propId,
+            p_email: gerenciarMembro.email.toLowerCase(),
+            p_papel: linha.papel,
+          }))
+        } else if (!linha.marcado && linha.original && linha.rowId) {
+          acoes.push(supabase.rpc('remover_membro_equipe' as any, { p_membro_id: linha.rowId }))
+        } else if (linha.marcado && linha.original && linha.papel !== linha.papelOriginal && linha.rowId) {
+          acoes.push(
+            supabase.from('propriedades_usuarios' as any).update({ papel: linha.papel }).eq('id', linha.rowId)
+          )
+        }
+      }
+      if (acoes.length === 0) {
+        setGerenciarMembro(null)
+        return
+      }
+      const resultados = await Promise.all(acoes)
+      const erro = resultados.find((r: any) => r?.error)
+      if (erro) {
+        toast.error('Erro ao salvar: ' + erro.error.message)
+        return
+      }
+      toast.success('Acessos atualizados.')
+      setGerenciarMembro(null)
+      fetchTudo()
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao salvar acessos')
+    } finally {
+      setSalvandoGerenciar(false)
     }
   }
 
@@ -446,26 +540,68 @@ export default function MinhaEquipe() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>E-mail (conta já existente)</Label>
-                    <Input
-                      type="email"
-                      placeholder="nome@email.com"
-                      value={emailAcesso}
-                      onChange={e => setEmailAcesso(e.target.value)}
-                      disabled={salvandoAcesso}
-                    />
+                    <Label>Pessoa</Label>
+                    <Popover open={pessoaPickerOpen} onOpenChange={setPessoaPickerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          className="w-full justify-between font-normal"
+                          disabled={salvandoAcesso}
+                        >
+                          <span className={nomeAcesso || emailAcesso ? 'truncate' : 'truncate text-muted-foreground'}>
+                            {nomeAcesso || emailAcesso || 'Selecione a pessoa'}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar pessoa..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhuma pessoa encontrada</CommandEmpty>
+                            <CommandGroup>
+                              {equipe.map(p => (
+                                <CommandItem
+                                  key={p.usuario_id}
+                                  value={`${p.nome} ${p.email}`}
+                                  onSelect={() => {
+                                    setNomeAcesso(p.nome || p.email)
+                                    setEmailAcesso(p.email)
+                                    setPessoaPickerOpen(false)
+                                  }}
+                                >
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm">{p.nome || p.email}</p>
+                                    <p className="truncate text-xs text-muted-foreground">{p.email}</p>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Propriedade</Label>
-                    <Select value={propriedadeAcesso} onValueChange={setPropriedadeAcesso} disabled={salvandoAcesso || loading}>
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        {propriedadesGerenciaveis.map(p => (
-                          <SelectItem key={p.propriedade_id} value={p.propriedade_id}>{p.propriedade_nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Propriedades</Label>
+                    <div className="rounded-md border divide-y max-h-48 overflow-y-auto">
+                      {propriedadesGerenciaveis.map(p => (
+                        <label
+                          key={p.propriedade_id}
+                          className="flex items-center gap-2 px-3 py-2 cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={propriedadesAcesso.includes(p.propriedade_id)}
+                            onCheckedChange={() => togglePropriedadeAcesso(p.propriedade_id)}
+                            disabled={salvandoAcesso}
+                          />
+                          <span className="text-sm truncate">{p.propriedade_nome}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -483,7 +619,7 @@ export default function MinhaEquipe() {
                   <Button
                     className="w-full"
                     onClick={handleDefinirAcesso}
-                    disabled={salvandoAcesso || !emailAcesso.trim() || !papelAcesso || !propriedadeAcesso}
+                    disabled={salvandoAcesso || !emailAcesso.trim() || !papelAcesso || propriedadesAcesso.length === 0}
                   >
                     {salvandoAcesso ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando...</> : 'Conceder acesso'}
                   </Button>
@@ -529,6 +665,7 @@ export default function MinhaEquipe() {
                       <TableRow>
                         <TableHead>Pessoa</TableHead>
                         <TableHead>Propriedades e papéis</TableHead>
+                        <TableHead className="w-24 text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -566,6 +703,11 @@ export default function MinhaEquipe() {
                                 </Badge>
                               ))}
                             </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="outline" size="sm" onClick={() => abrirGerenciar(pessoa)}>
+                              <Settings2 className="h-3.5 w-3.5 mr-1" /> Gerenciar
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -743,6 +885,60 @@ export default function MinhaEquipe() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Gerenciar acessos de um membro */}
+      <Dialog open={!!gerenciarMembro} onOpenChange={(open) => !open && setGerenciarMembro(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Acessos de {gerenciarMembro?.nome || gerenciarMembro?.email}</DialogTitle>
+            <DialogDescription>
+              Marque as propriedades que essa pessoa pode acessar e escolha a função em cada uma.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-80 overflow-y-auto space-y-2">
+            {propriedadesGerenciaveis.map(p => {
+              const linha = linhasAcesso[p.propriedade_id]
+              if (!linha) return null
+              return (
+                <div key={p.propriedade_id} className="flex items-center gap-2 rounded-md border px-3 py-2">
+                  <Checkbox
+                    checked={linha.marcado}
+                    disabled={salvandoGerenciar || linha.papelOriginal === 'proprietario'}
+                    onCheckedChange={() => setLinhasAcesso(prev => ({
+                      ...prev,
+                      [p.propriedade_id]: { ...prev[p.propriedade_id], marcado: !prev[p.propriedade_id].marcado },
+                    }))}
+                  />
+                  <span className="flex-1 truncate text-sm">{p.propriedade_nome}</span>
+                  <Select
+                    value={linha.papel}
+                    disabled={!linha.marcado || salvandoGerenciar || linha.papelOriginal === 'proprietario'}
+                    onValueChange={(v) => setLinhasAcesso(prev => ({
+                      ...prev,
+                      [p.propriedade_id]: { ...prev[p.propriedade_id], papel: v },
+                    }))}
+                  >
+                    <SelectTrigger className="w-36"><SelectValue placeholder="Função" /></SelectTrigger>
+                    <SelectContent>
+                      {PAPEIS.map(pp => (
+                        <SelectItem key={pp.value} value={pp.value}>{pp.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGerenciarMembro(null)} disabled={salvandoGerenciar}>Cancelar</Button>
+            <Button onClick={salvarGerenciar} disabled={salvandoGerenciar}>
+              {salvandoGerenciar ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando...</> : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
