@@ -40,3 +40,5 @@
 - [x] `src/pages/Pecuaria.tsx` — botão na aba Sanidade para abrir modal de status de vacinação
 - Aba Sanidade em Relatorios + card horas por safra em Maquinas
 - [x] `src/pages/Maquinas.tsx` — corrigir tela branca após restauração do cache offline e exibir opção de tentar novamente
+- [ ] `src/pages/admin/GestaoUsuarios.tsx` — papel inicial real na aprovação e lista hierárquica por proprietário/equipe
+- [ ] Área administrativa — remover a configuração obsoleta dos cinco módulos, sem alterar telas comuns
