@@ -653,11 +653,11 @@ export default function MinhaEquipe() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Check className="h-5 w-5 text-green-600" />
-              Convite Gerado!
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              Convite criado — e-mail não enviado
             </DialogTitle>
             <DialogDescription>
-              Copie o link abaixo e envie para o membro da sua equipe.
+              Não conseguimos enviar o convite por e-mail automaticamente. Copie o link abaixo e envie manualmente para o membro da sua equipe.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -673,7 +673,7 @@ export default function MinhaEquipe() {
                   : <><Copy className="h-4 w-4 mr-2" /> Copiar</>}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-amber-600 dark:text-amber-400">
               ⚠️ Link de uso único. Expira conforme o prazo selecionado.
             </p>
           </div>
