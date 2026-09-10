@@ -302,19 +302,90 @@ export default function GestaoUsuarios() {
     }
   }
 
-  // Promote / demote
-  async function toggleAdmin(userId: string, tornarAdmin: boolean) {
+  // Promote / demote with confirmation
+  async function confirmarPromocao() {
+    if (!usuarioPromovendo) return
+    setPromovendo(true)
     try {
-      const rpc = tornarAdmin ? 'promote_to_admin' : 'demote_from_admin'
-      const params = tornarAdmin
-        ? { p_user_id: userId }
-        : { p_user_id: userId, p_new_perfil: 'consultor' }
-      const { error } = await supabase.rpc(rpc as any, params as any)
+      const { error } = await supabase.rpc('promote_to_admin' as any, { p_user_id: usuarioPromovendo.id })
       if (error) throw error
-      toast({ title: tornarAdmin ? '✅ Promovido a Admin!' : '✅ Admin removido!' })
+      toast({ title: '✅ Promovido a Admin!' })
+      setUsuarioPromovendo(null)
       fetchUsuarios()
     } catch {
-      toast({ title: 'Erro na operação', variant: 'destructive' })
+      toast({ title: 'Erro ao promover', variant: 'destructive' })
+    } finally {
+      setPromovendo(false)
+    }
+  }
+
+  async function confirmarRebaixamento() {
+    if (!usuarioRebaixando) return
+    setRebaixando(true)
+    try {
+      const { error } = await supabase.rpc('demote_from_admin' as any, {
+        p_user_id: usuarioRebaixando.id,
+        p_new_perfil: 'proprietario',
+      })
+      if (error) throw error
+      toast({ title: '✅ Admin rebaixado para Proprietário!' })
+      setUsuarioRebaixando(null)
+      fetchUsuarios()
+    } catch {
+      toast({ title: 'Erro ao rebaixar', variant: 'destructive' })
+    } finally {
+      setRebaixando(false)
+    }
+  }
+
+  // Suspend / reactivate
+  async function confirmarAlteracaoStatus() {
+    if (!usuarioAlterandoStatus) return
+    const novoStatus = usuarioAlterandoStatus.status === 'inativo' ? 'ativo' : 'inativo'
+    setAlterandoStatus(true)
+    try {
+      const { error } = await supabase
+        .from('user_profiles' as any)
+        .update({ status: novoStatus, updated_at: new Date().toISOString() } as any)
+        .eq('id', usuarioAlterandoStatus.id)
+      if (error) throw error
+      toast({ title: novoStatus === 'ativo' ? '✅ Conta reativada!' : 'Conta suspensa.' })
+      setUsuarioAlterandoStatus(null)
+      fetchUsuarios()
+    } catch {
+      toast({ title: 'Erro ao alterar status', variant: 'destructive' })
+    } finally {
+      setAlterandoStatus(false)
+    }
+  }
+
+  // Delete user via edge function
+  async function confirmarExclusao() {
+    if (!usuarioDeletando) return
+    setDeletando(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deletar-usuario-admin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ usuario_id: usuarioDeletando.id }),
+      })
+      const resultado = await resp.json()
+      if (!resp.ok) {
+        toast({ title: resultado.error || 'Erro ao excluir usuário', variant: 'destructive' })
+      } else {
+        toast({ title: 'Usuário excluído' })
+        setUsuarioDeletando(null)
+        fetchUsuarios()
+      }
+    } catch {
+      toast({ title: 'Erro ao excluir usuário', variant: 'destructive' })
+    } finally {
+      setDeletando(false)
     }
   }
 
