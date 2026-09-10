@@ -78,6 +78,7 @@ export default function MinhaEquipe() {
   const [linkGerado, setLinkGerado] = useState('')
   const [showLinkDialog, setShowLinkDialog] = useState(false)
   const [copiado, setCopiado] = useState(false)
+  const [conviteEnviadoMsg, setConviteEnviadoMsg] = useState<string | null>(null)
 
   // Dar acesso a mais uma propriedade (pessoa que já tem conta)
   const [emailAcesso, setEmailAcesso] = useState('')
@@ -175,14 +176,17 @@ export default function MinhaEquipe() {
         console.warn('Falha ao enviar e-mail de convite', e)
       }
 
-      // Diálogo com o link sempre aparece (backup caso o e-mail caia em spam)
-      setLinkGerado(link)
-      setCopiado(false)
-      setShowLinkDialog(true)
       setEmail('')
       setPapel('')
-      if (emailEnviado) toast.success(`Convite enviado por e-mail para ${email.trim()}!`)
-      else toast.warning('Convite criado, mas o e-mail não pôde ser enviado. Compartilhe o link manualmente.')
+      if (emailEnviado) {
+        setConviteEnviadoMsg(`Convite enviado por e-mail para ${email.trim()}!`)
+        setTimeout(() => setConviteEnviadoMsg(null), 6000)
+      } else {
+        setLinkGerado(link)
+        setCopiado(false)
+        setShowLinkDialog(true)
+        toast.warning('Convite criado, mas o e-mail não pôde ser enviado. Compartilhe o link manualmente.')
+      }
       fetchTudo()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao gerar convite')
@@ -406,6 +410,12 @@ export default function MinhaEquipe() {
                       ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando...</>
                       : <><Send className="h-4 w-4 mr-2" /> Enviar Convite</>}
                   </Button>
+
+                  {conviteEnviadoMsg && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-900/20 dark:text-green-300">
+                      {conviteEnviadoMsg}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -643,11 +653,11 @@ export default function MinhaEquipe() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Check className="h-5 w-5 text-green-600" />
-              Convite Gerado!
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              Convite criado — e-mail não enviado
             </DialogTitle>
             <DialogDescription>
-              Copie o link abaixo e envie para o membro da sua equipe.
+              Não conseguimos enviar o convite por e-mail automaticamente. Copie o link abaixo e envie manualmente para o membro da sua equipe.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -663,7 +673,7 @@ export default function MinhaEquipe() {
                   : <><Copy className="h-4 w-4 mr-2" /> Copiar</>}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-amber-600 dark:text-amber-400">
               ⚠️ Link de uso único. Expira conforme o prazo selecionado.
             </p>
           </div>
