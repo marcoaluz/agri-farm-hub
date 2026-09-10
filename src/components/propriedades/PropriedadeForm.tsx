@@ -126,7 +126,10 @@ export function PropriedadeForm({
   }, [open, propriedade, form])
 
   const handleSubmit = (data: PropriedadeFormValues) => {
-    onSubmit(data)
+    onSubmit({
+      ...data,
+      dono_id: !propriedade && donoSelecionado !== 'proprio' ? donoSelecionado : null,
+    })
   }
 
   return (
