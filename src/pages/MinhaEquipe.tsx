@@ -294,7 +294,7 @@ export default function MinhaEquipe() {
     if (!gerenciarMembro) return
     setSalvandoGerenciar(true)
     try {
-      const acoes: Promise<any>[] = []
+      const acoes: any[] = []
       for (const [propId, linha] of Object.entries(linhasAcesso)) {
         if (linha.marcado && !linha.original) {
           acoes.push(supabase.rpc('dar_acesso_propriedade_existente' as any, {
