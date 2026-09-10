@@ -798,6 +798,16 @@ export default function GestaoUsuarios() {
               <Separator />
 
               <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Nome</label>
+                <Input
+                  value={nomeEditando}
+                  onChange={e => setNomeEditando(e.target.value)}
+                  placeholder="Nome completo"
+                  maxLength={100}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Perfil de Acesso</label>
                 {usuarioEditando.is_super_admin ? (
                   <div className="space-y-2">
@@ -817,14 +827,16 @@ export default function GestaoUsuarios() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(PERFIL_CONFIG).map(([key, config]) => (
-                        <SelectItem key={key} value={key}>
-                          <div className="flex flex-col">
-                            <span>{config.label}</span>
-                            <span className="text-xs text-muted-foreground">{PERFIL_DESCRICAO[key]}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {Object.entries(PERFIL_CONFIG)
+                        .filter(([key]) => key !== 'admin')
+                        .map(([key, config]) => (
+                          <SelectItem key={key} value={key}>
+                            <div className="flex flex-col">
+                              <span>{config.label}</span>
+                              <span className="text-xs text-muted-foreground">{PERFIL_DESCRICAO[key]}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 )}
@@ -838,7 +850,12 @@ export default function GestaoUsuarios() {
             </Button>
             <Button
               onClick={salvarPerfil}
-              disabled={salvando || usuarioEditando?.is_super_admin || novoPerfilSelecionado === usuarioEditando?.perfil}
+              disabled={
+                salvando ||
+                usuarioEditando?.is_super_admin ||
+                !novoPerfilSelecionado ||
+                (novoPerfilSelecionado === usuarioEditando?.perfil && nomeEditando.trim() === (usuarioEditando?.nome || ''))
+              }
             >
               {salvando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Salvar alterações
