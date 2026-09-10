@@ -146,6 +146,28 @@ export function PropriedadeForm({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            {!propriedade && donos.length > 0 && (
+              <div className="space-y-2">
+                <FormLabel>Criar propriedade para</FormLabel>
+                <Select value={donoSelecionado} onValueChange={setDonoSelecionado}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="proprio">Minha própria propriedade</SelectItem>
+                    {donos.map((d) => (
+                      <SelectItem key={d.dono_id} value={d.dono_id}>
+                        {d.dono_nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Escolha para quem esta propriedade será cadastrada.
+                </p>
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="nome"
