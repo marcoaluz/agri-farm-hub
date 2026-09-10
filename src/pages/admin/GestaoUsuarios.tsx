@@ -1142,11 +1142,99 @@ export default function GestaoUsuarios() {
                     )}
                   </div>
                 </>
-              ) : null}
+              ) : null)}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Promote AlertDialog */}
+      <AlertDialog open={!!usuarioPromovendo} onOpenChange={open => !open && setUsuarioPromovendo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Promover a administrador?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Promover <strong>{usuarioPromovendo?.nome || usuarioPromovendo?.email}</strong> a administrador da plataforma? Ele terá acesso total ao sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={promovendo}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarPromocao} disabled={promovendo}>
+              {promovendo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Sim, promover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Demote AlertDialog */}
+      <AlertDialog open={!!usuarioRebaixando} onOpenChange={open => !open && setUsuarioRebaixando(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rebaixar administrador?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{usuarioRebaixando?.nome || usuarioRebaixando?.email}</strong> deixará de ser admin e passará a ter o perfil de Proprietário.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rebaixando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarRebaixamento} disabled={rebaixando}>
+              {rebaixando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Sim, rebaixar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Suspend/Reactivate AlertDialog */}
+      <AlertDialog open={!!usuarioAlterandoStatus} onOpenChange={open => !open && setUsuarioAlterandoStatus(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {usuarioAlterandoStatus?.status === 'inativo' ? 'Reativar conta?' : 'Suspender conta?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {usuarioAlterandoStatus?.status === 'inativo'
+                ? <>A conta de <strong>{usuarioAlterandoStatus?.nome || usuarioAlterandoStatus?.email}</strong> voltará a ter acesso ao sistema.</>
+                : <>A conta de <strong>{usuarioAlterandoStatus?.nome || usuarioAlterandoStatus?.email}</strong> ficará sem acesso ao sistema até ser reativada.</>}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={alterandoStatus}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarAlteracaoStatus}
+              disabled={alterandoStatus}
+              className={usuarioAlterandoStatus?.status === 'inativo' ? '' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'}
+            >
+              {alterandoStatus ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {usuarioAlterandoStatus?.status === 'inativo' ? 'Sim, reativar' : 'Sim, suspender'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete user AlertDialog */}
+      <AlertDialog open={!!usuarioDeletando} onOpenChange={open => !open && setUsuarioDeletando(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação <strong>não pode ser desfeita</strong>. O usuário <strong>{usuarioDeletando?.nome || usuarioDeletando?.email}</strong> será removido definitivamente do sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarExclusao}
+              disabled={deletando}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Sim, excluir definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
