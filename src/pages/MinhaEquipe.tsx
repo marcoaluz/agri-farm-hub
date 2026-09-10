@@ -217,11 +217,11 @@ export default function MinhaEquipe() {
           toast.info('Essa pessoa já tinha acesso a essa propriedade.')
         } else {
           toast.success('Acesso concedido! A pessoa já pode entrar nessa propriedade e recebeu um aviso no sistema.')
-          setEmailAcesso('')
-          setPropriedadeAcesso('')
-          setPapelAcesso('')
-          fetchTudo()
         }
+        setEmailAcesso('')
+        setPropriedadeAcesso('')
+        setPapelAcesso('')
+        fetchTudo()
         return
       }
       // Pessoa ainda não tem conta: segue o fluxo normal de convite por e-mail
