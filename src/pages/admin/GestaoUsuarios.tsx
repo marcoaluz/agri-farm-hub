@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -126,6 +127,19 @@ export default function GestaoUsuarios() {
   const [detalhesProprietario, setDetalhesProprietario] = useState<DetalheProprietario | null>(null)
   const [carregandoDetalhes, setCarregandoDetalhes] = useState(false)
 
+  // Edit name
+  const [nomeEditando, setNomeEditando] = useState('')
+
+  // Action confirmations
+  const [usuarioPromovendo, setUsuarioPromovendo] = useState<UserProfile | null>(null)
+  const [promovendo, setPromovendo] = useState(false)
+  const [usuarioRebaixando, setUsuarioRebaixando] = useState<UserProfile | null>(null)
+  const [rebaixando, setRebaixando] = useState(false)
+  const [usuarioAlterandoStatus, setUsuarioAlterandoStatus] = useState<UserProfile | null>(null)
+  const [alterandoStatus, setAlterandoStatus] = useState(false)
+  const [usuarioDeletando, setUsuarioDeletando] = useState<UserProfile | null>(null)
+  const [deletando, setDeletando] = useState(false)
+
   const [activeTab, setActiveTab] = useState('pendentes')
 
 
@@ -224,14 +238,18 @@ export default function GestaoUsuarios() {
     })
   }, [usuarios, busca, filtroPerfil, filtroStatus])
 
-  // Save profile
+  // Save profile (nome + perfil)
   async function salvarPerfil() {
-    if (!usuarioEditando || !novoPerfilSelecionado) return
+    if (!usuarioEditando) return
     setSalvando(true)
     try {
       const { error } = await supabase
         .from('user_profiles' as any)
-        .update({ perfil: novoPerfilSelecionado, updated_at: new Date().toISOString() } as any)
+        .update({
+          full_name: nomeEditando.trim(),
+          perfil: novoPerfilSelecionado,
+          updated_at: new Date().toISOString(),
+        } as any)
         .eq('id', usuarioEditando.id)
       if (error) throw error
       toast({ title: '✅ Perfil atualizado com sucesso!' })
@@ -285,19 +303,90 @@ export default function GestaoUsuarios() {
     }
   }
 
-  // Promote / demote
-  async function toggleAdmin(userId: string, tornarAdmin: boolean) {
+  // Promote / demote with confirmation
+  async function confirmarPromocao() {
+    if (!usuarioPromovendo) return
+    setPromovendo(true)
     try {
-      const rpc = tornarAdmin ? 'promote_to_admin' : 'demote_from_admin'
-      const params = tornarAdmin
-        ? { p_user_id: userId }
-        : { p_user_id: userId, p_new_perfil: 'consultor' }
-      const { error } = await supabase.rpc(rpc as any, params as any)
+      const { error } = await supabase.rpc('promote_to_admin' as any, { p_user_id: usuarioPromovendo.id })
       if (error) throw error
-      toast({ title: tornarAdmin ? '✅ Promovido a Admin!' : '✅ Admin removido!' })
+      toast({ title: '✅ Promovido a Admin!' })
+      setUsuarioPromovendo(null)
       fetchUsuarios()
     } catch {
-      toast({ title: 'Erro na operação', variant: 'destructive' })
+      toast({ title: 'Erro ao promover', variant: 'destructive' })
+    } finally {
+      setPromovendo(false)
+    }
+  }
+
+  async function confirmarRebaixamento() {
+    if (!usuarioRebaixando) return
+    setRebaixando(true)
+    try {
+      const { error } = await supabase.rpc('demote_from_admin' as any, {
+        p_user_id: usuarioRebaixando.id,
+        p_new_perfil: 'proprietario',
+      })
+      if (error) throw error
+      toast({ title: '✅ Admin rebaixado para Proprietário!' })
+      setUsuarioRebaixando(null)
+      fetchUsuarios()
+    } catch {
+      toast({ title: 'Erro ao rebaixar', variant: 'destructive' })
+    } finally {
+      setRebaixando(false)
+    }
+  }
+
+  // Suspend / reactivate
+  async function confirmarAlteracaoStatus() {
+    if (!usuarioAlterandoStatus) return
+    const novoStatus = usuarioAlterandoStatus.status === 'inativo' ? 'ativo' : 'inativo'
+    setAlterandoStatus(true)
+    try {
+      const { error } = await supabase
+        .from('user_profiles' as any)
+        .update({ status: novoStatus, updated_at: new Date().toISOString() } as any)
+        .eq('id', usuarioAlterandoStatus.id)
+      if (error) throw error
+      toast({ title: novoStatus === 'ativo' ? '✅ Conta reativada!' : 'Conta suspensa.' })
+      setUsuarioAlterandoStatus(null)
+      fetchUsuarios()
+    } catch {
+      toast({ title: 'Erro ao alterar status', variant: 'destructive' })
+    } finally {
+      setAlterandoStatus(false)
+    }
+  }
+
+  // Delete user via edge function
+  async function confirmarExclusao() {
+    if (!usuarioDeletando) return
+    setDeletando(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deletar-usuario-admin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ usuario_id: usuarioDeletando.id }),
+      })
+      const resultado = await resp.json()
+      if (!resp.ok) {
+        toast({ title: resultado.error || 'Erro ao excluir usuário', variant: 'destructive' })
+      } else {
+        toast({ title: 'Usuário excluído' })
+        setUsuarioDeletando(null)
+        fetchUsuarios()
+      }
+    } catch {
+      toast({ title: 'Erro ao excluir usuário', variant: 'destructive' })
+    } finally {
+      setDeletando(false)
     }
   }
 
@@ -325,13 +414,14 @@ export default function GestaoUsuarios() {
   function openEditModal(u: UserProfile) {
     setUsuarioEditando(u)
     setNovoPerfilSelecionado(u.perfil)
+    setNomeEditando(u.nome || '')
   }
 
-  async function abrirDetalheProprietario(u: UserProfile) {
-    if (u.perfil !== 'proprietario') return
+  async function abrirDetalhes(u: UserProfile) {
     setUsuarioDetalhando(u)
-    setCarregandoDetalhes(true)
     setDetalhesProprietario(null)
+    if (u.perfil !== 'proprietario') return
+    setCarregandoDetalhes(true)
     try {
       const { data, error } = await supabase.rpc('admin_get_detalhe_proprietario' as any, {
         p_usuario_id: u.id,
@@ -340,7 +430,6 @@ export default function GestaoUsuarios() {
       setDetalhesProprietario(data as DetalheProprietario)
     } catch (err: any) {
       toast({ title: 'Erro ao carregar detalhes', description: err.message, variant: 'destructive' })
-      setUsuarioDetalhando(null)
     } finally {
       setCarregandoDetalhes(false)
     }
@@ -533,7 +622,7 @@ export default function GestaoUsuarios() {
                       <TableRow
                         key={u.id}
                         className={u.perfil === 'proprietario' ? 'cursor-pointer hover:bg-muted/50' : ''}
-                        onClick={() => u.perfil === 'proprietario' && abrirDetalheProprietario(u)}
+                        onClick={() => u.perfil === 'proprietario' && abrirDetalhes(u)}
                       >
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -585,6 +674,9 @@ export default function GestaoUsuarios() {
                             : '—'}
                         </TableCell>
                         <TableCell>
+                          {u.id === user?.id ? (
+                            <span className="text-xs text-muted-foreground px-2">Você</span>
+                          ) : (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -597,10 +689,14 @@ export default function GestaoUsuarios() {
                               </Button>
                             </DropdownMenuTrigger>
 
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem onClick={() => abrirDetalhes(u)}>
+                                <Users className="mr-2 h-4 w-4" />
+                                Ver detalhes
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => openEditModal(u)}>
                                 <Edit className="mr-2 h-4 w-4" />
-                                Editar Perfil
+                                Editar perfil
                               </DropdownMenuItem>
                               {u.perfil === 'proprietario' && (
                                 <DropdownMenuItem onClick={() => { setUsuarioAlterandoPlano(u); setNovoPlanoSlug(u.plano_slug || 'essencial'); setNovoCiclo('mensal') }}>
@@ -623,31 +719,50 @@ export default function GestaoUsuarios() {
                                 </>
                               )}
                               {u.perfil !== 'admin' && (
-                                <DropdownMenuItem onClick={() => toggleAdmin(u.id, true)}>
+                                <DropdownMenuItem onClick={() => setUsuarioPromovendo(u)}>
                                   <Shield className="mr-2 h-4 w-4" />
                                   Promover a admin
                                 </DropdownMenuItem>
                               )}
                               {u.perfil === 'admin' && !u.is_super_admin && (
-                                <DropdownMenuItem onClick={() => toggleAdmin(u.id, false)}>
+                                <DropdownMenuItem onClick={() => setUsuarioRebaixando(u)}>
                                   <Shield className="mr-2 h-4 w-4" />
-                                  Remover admin
+                                  Rebaixar admin
                                 </DropdownMenuItem>
                               )}
                               {!u.is_super_admin && u.status !== 'pendente' && (
                                 <>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive"
-                                    onClick={() => {}}
+                                    className={u.status === 'inativo' ? '' : 'text-destructive focus:text-destructive'}
+                                    onClick={() => setUsuarioAlterandoStatus(u)}
                                   >
-                                    <UserX className="mr-2 h-4 w-4" />
-                                    Suspender conta
+                                    {u.status === 'inativo' ? (
+                                      <>
+                                        <UserCheck className="mr-2 h-4 w-4" />
+                                        Reativar conta
+                                      </>
+                                    ) : (
+                                      <>
+                                        <UserX className="mr-2 h-4 w-4" />
+                                        Suspender conta
+                                      </>
+                                    )}
                                   </DropdownMenuItem>
                                 </>
                               )}
+                              {!u.is_super_admin && (
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setUsuarioDeletando(u)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Deletar usuário
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -683,6 +798,16 @@ export default function GestaoUsuarios() {
               <Separator />
 
               <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Nome</label>
+                <Input
+                  value={nomeEditando}
+                  onChange={e => setNomeEditando(e.target.value)}
+                  placeholder="Nome completo"
+                  maxLength={100}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Perfil de Acesso</label>
                 {usuarioEditando.is_super_admin ? (
                   <div className="space-y-2">
@@ -702,14 +827,16 @@ export default function GestaoUsuarios() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(PERFIL_CONFIG).map(([key, config]) => (
-                        <SelectItem key={key} value={key}>
-                          <div className="flex flex-col">
-                            <span>{config.label}</span>
-                            <span className="text-xs text-muted-foreground">{PERFIL_DESCRICAO[key]}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {Object.entries(PERFIL_CONFIG)
+                        .filter(([key]) => key !== 'admin')
+                        .map(([key, config]) => (
+                          <SelectItem key={key} value={key}>
+                            <div className="flex flex-col">
+                              <span>{config.label}</span>
+                              <span className="text-xs text-muted-foreground">{PERFIL_DESCRICAO[key]}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 )}
@@ -723,7 +850,12 @@ export default function GestaoUsuarios() {
             </Button>
             <Button
               onClick={salvarPerfil}
-              disabled={salvando || usuarioEditando?.is_super_admin || novoPerfilSelecionado === usuarioEditando?.perfil}
+              disabled={
+                salvando ||
+                usuarioEditando?.is_super_admin ||
+                !novoPerfilSelecionado ||
+                (novoPerfilSelecionado === usuarioEditando?.perfil && nomeEditando.trim() === (usuarioEditando?.nome || ''))
+              }
             >
               {salvando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Salvar alterações
@@ -880,11 +1012,11 @@ export default function GestaoUsuarios() {
         </DialogContent>
       </Dialog>
 
-      {/* Proprietário detail dialog */}
+      {/* User detail dialog */}
       <Dialog open={!!usuarioDetalhando} onOpenChange={open => !open && setUsuarioDetalhando(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalhes do Proprietário</DialogTitle>
+            <DialogTitle>Detalhes do Usuário</DialogTitle>
           </DialogHeader>
 
           {usuarioDetalhando && (
@@ -901,11 +1033,39 @@ export default function GestaoUsuarios() {
                 </div>
               </div>
 
-              {carregandoDetalhes ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <div className="grid grid-cols-2 gap-3 rounded-md border p-3 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Perfil</p>
+                  {renderPerfilBadge(usuarioDetalhando.perfil, usuarioDetalhando.is_super_admin)}
                 </div>
-              ) : detalhesProprietario ? (
+                <div>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <p className="font-medium capitalize">{usuarioDetalhando.status || (usuarioDetalhando.confirmado ? 'ativo' : '—')}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Último acesso</p>
+                  <p className="font-medium">
+                    {usuarioDetalhando.ultimo_acesso
+                      ? format(new Date(usuarioDetalhando.ultimo_acesso), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                      : 'Nunca acessou'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Data de cadastro</p>
+                  <p className="font-medium">
+                    {usuarioDetalhando.criado_em
+                      ? format(new Date(usuarioDetalhando.criado_em), 'dd/MM/yyyy', { locale: ptBR })
+                      : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {usuarioDetalhando.perfil === 'proprietario' && (
+                carregandoDetalhes ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : detalhesProprietario ? (
                 <>
                   <Separator />
 
@@ -982,11 +1142,99 @@ export default function GestaoUsuarios() {
                     )}
                   </div>
                 </>
-              ) : null}
+              ) : null)}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Promote AlertDialog */}
+      <AlertDialog open={!!usuarioPromovendo} onOpenChange={open => !open && setUsuarioPromovendo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Promover a administrador?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Promover <strong>{usuarioPromovendo?.nome || usuarioPromovendo?.email}</strong> a administrador da plataforma? Ele terá acesso total ao sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={promovendo}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarPromocao} disabled={promovendo}>
+              {promovendo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Sim, promover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Demote AlertDialog */}
+      <AlertDialog open={!!usuarioRebaixando} onOpenChange={open => !open && setUsuarioRebaixando(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rebaixar administrador?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{usuarioRebaixando?.nome || usuarioRebaixando?.email}</strong> deixará de ser admin e passará a ter o perfil de Proprietário.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rebaixando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarRebaixamento} disabled={rebaixando}>
+              {rebaixando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Sim, rebaixar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Suspend/Reactivate AlertDialog */}
+      <AlertDialog open={!!usuarioAlterandoStatus} onOpenChange={open => !open && setUsuarioAlterandoStatus(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {usuarioAlterandoStatus?.status === 'inativo' ? 'Reativar conta?' : 'Suspender conta?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {usuarioAlterandoStatus?.status === 'inativo'
+                ? <>A conta de <strong>{usuarioAlterandoStatus?.nome || usuarioAlterandoStatus?.email}</strong> voltará a ter acesso ao sistema.</>
+                : <>A conta de <strong>{usuarioAlterandoStatus?.nome || usuarioAlterandoStatus?.email}</strong> ficará sem acesso ao sistema até ser reativada.</>}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={alterandoStatus}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarAlteracaoStatus}
+              disabled={alterandoStatus}
+              className={usuarioAlterandoStatus?.status === 'inativo' ? '' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'}
+            >
+              {alterandoStatus ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {usuarioAlterandoStatus?.status === 'inativo' ? 'Sim, reativar' : 'Sim, suspender'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete user AlertDialog */}
+      <AlertDialog open={!!usuarioDeletando} onOpenChange={open => !open && setUsuarioDeletando(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação <strong>não pode ser desfeita</strong>. O usuário <strong>{usuarioDeletando?.nome || usuarioDeletando?.email}</strong> será removido definitivamente do sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarExclusao}
+              disabled={deletando}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Sim, excluir definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
