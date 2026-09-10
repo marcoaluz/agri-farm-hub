@@ -133,61 +133,65 @@ export default function MinhaEquipe() {
     setPropriedadesConvite(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id])
   }
 
+  const gerarConvite = async (destEmail: string, propriedadeIds: string[], papelVal: string) => {
+    const { data, error } = await supabase.rpc('gerar_convite_equipe' as any, {
+      p_email: destEmail.trim().toLowerCase(),
+      p_propriedade_ids: propriedadeIds,
+      p_papel: papelVal,
+      p_horas_validade: parseInt(horas),
+    })
+    if (error) throw error
+    const result = data as any
+    const link = `${window.location.origin}/convite?token=${result.token}&tipo=existente`
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    const session = sessionData?.session
+    const nomesPropriedades = propriedadeIds
+      .map(id => propriedadesGerenciaveis.find(p => p.propriedade_id === id)?.propriedade_nome)
+      .filter(Boolean)
+    let emailEnviado = false
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enviar-convite-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            email: destEmail.trim().toLowerCase(),
+            link,
+            papel: papelVal,
+            propriedades_nomes: nomesPropriedades,
+          }),
+        },
+      )
+      emailEnviado = response.ok
+    } catch (e) {
+      console.warn('Falha ao enviar e-mail de convite', e)
+    }
+
+    if (emailEnviado) {
+      setConviteEnviadoMsg(`Convite enviado por e-mail para ${destEmail.trim()}!`)
+      setTimeout(() => setConviteEnviadoMsg(null), 6000)
+    } else {
+      setLinkGerado(link)
+      setCopiado(false)
+      setShowLinkDialog(true)
+      toast.warning('Convite criado, mas o e-mail não pôde ser enviado. Compartilhe o link manualmente.')
+    }
+    fetchTudo()
+  }
+
   const handleConvidar = async () => {
     if (!email.trim() || !papel || propriedadesConvite.length === 0) return
     setGerando(true)
     try {
-      const { data, error } = await supabase.rpc('gerar_convite_equipe' as any, {
-        p_email: email.trim().toLowerCase(),
-        p_propriedade_ids: propriedadesConvite,
-        p_papel: papel,
-        p_horas_validade: parseInt(horas),
-      })
-      if (error) throw error
-      const result = data as any
-      const link = `${window.location.origin}/convite?token=${result.token}&tipo=existente`
-
-      const { data: sessionData } = await supabase.auth.getSession()
-      const session = sessionData?.session
-      const nomesPropriedades = propriedadesConvite
-        .map(id => propriedadesGerenciaveis.find(p => p.propriedade_id === id)?.propriedade_nome)
-        .filter(Boolean)
-      let emailEnviado = false
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enviar-convite-email`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${session?.access_token}`,
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            },
-            body: JSON.stringify({
-              email: email.trim().toLowerCase(),
-              link,
-              papel,
-              propriedades_nomes: nomesPropriedades,
-            }),
-          },
-        )
-        emailEnviado = response.ok
-      } catch (e) {
-        console.warn('Falha ao enviar e-mail de convite', e)
-      }
-
+      await gerarConvite(email, propriedadesConvite, papel)
       setEmail('')
       setPapel('')
-      if (emailEnviado) {
-        setConviteEnviadoMsg(`Convite enviado por e-mail para ${email.trim()}!`)
-        setTimeout(() => setConviteEnviadoMsg(null), 6000)
-      } else {
-        setLinkGerado(link)
-        setCopiado(false)
-        setShowLinkDialog(true)
-        toast.warning('Convite criado, mas o e-mail não pôde ser enviado. Compartilhe o link manualmente.')
-      }
-      fetchTudo()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao gerar convite')
     } finally {
@@ -199,21 +203,32 @@ export default function MinhaEquipe() {
     if (!emailAcesso.trim() || !propriedadeAcesso || !papelAcesso) return
     setSalvandoAcesso(true)
     try {
-      const { data, error } = await supabase.rpc('definir_acesso_usuario' as any, {
-        p_email: emailAcesso.trim().toLowerCase(),
+      const { data: resultado, error } = await supabase.rpc('dar_acesso_propriedade_existente' as any, {
         p_propriedade_id: propriedadeAcesso,
+        p_email: emailAcesso.trim().toLowerCase(),
         p_papel: papelAcesso,
       })
-      if (error) throw error
-      const result = data as any
-      if (!result.sucesso) {
-        toast.error(result.erro || 'Não foi possível dar acesso')
-      } else {
-        toast.success('Acesso concedido!')
+      if (error) {
+        toast.error('Erro ao conceder acesso: ' + error.message)
+        return
+      }
+      if (resultado.encontrado) {
+        if (resultado.ja_tinha_acesso) {
+          toast.info('Essa pessoa já tinha acesso a essa propriedade.')
+        } else {
+          toast.success('Acesso concedido! A pessoa já pode entrar nessa propriedade e recebeu um aviso no sistema.')
+        }
         setEmailAcesso('')
+        setPropriedadeAcesso('')
         setPapelAcesso('')
         fetchTudo()
+        return
       }
+      // Pessoa ainda não tem conta: segue o fluxo normal de convite por e-mail
+      await gerarConvite(emailAcesso, [propriedadeAcesso], papelAcesso)
+      setEmailAcesso('')
+      setPropriedadeAcesso('')
+      setPapelAcesso('')
     } catch (err: any) {
       toast.error(err.message || 'Erro ao dar acesso')
     } finally {
