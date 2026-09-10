@@ -410,6 +410,12 @@ export default function MinhaEquipe() {
                       ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando...</>
                       : <><Send className="h-4 w-4 mr-2" /> Enviar Convite</>}
                   </Button>
+
+                  {conviteEnviadoMsg && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-900/20 dark:text-green-300">
+                      {conviteEnviadoMsg}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
