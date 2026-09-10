@@ -13,6 +13,7 @@ interface PropriedadeFormData {
   responsavel?: string
   latitude?: number | null
   longitude?: number | null
+  dono_id?: string | null
 }
 
 export function usePropriedades() {
