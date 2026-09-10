@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
+import { toast as toastSonner } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
@@ -361,8 +362,9 @@ export default function GestaoUsuarios() {
   }
 
   // Delete user via edge function
-  async function confirmarExclusao() {
+  async function handleDeletarUsuario() {
     if (!usuarioDeletando) return
+    console.log('Iniciando exclusão do usuário', usuarioDeletando.id)
     setDeletando(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -376,6 +378,7 @@ export default function GestaoUsuarios() {
         body: JSON.stringify({ usuario_id: usuarioDeletando.id }),
       })
       const resultado = await resp.json()
+      console.log('Resposta da função:', resultado)
       if (!resp.ok) {
         toast({ title: resultado.error || 'Erro ao excluir usuário', variant: 'destructive' })
       } else {
@@ -383,8 +386,9 @@ export default function GestaoUsuarios() {
         setUsuarioDeletando(null)
         fetchUsuarios()
       }
-    } catch {
-      toast({ title: 'Erro ao excluir usuário', variant: 'destructive' })
+    } catch (err) {
+      console.error('Erro capturado na exclusão:', err)
+      toastSonner.error('Erro ao excluir: ' + (err as Error).message)
     } finally {
       setDeletando(false)
     }
@@ -1225,7 +1229,7 @@ export default function GestaoUsuarios() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deletando}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmarExclusao}
+              onClick={handleDeletarUsuario}
               disabled={deletando}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
