@@ -126,6 +126,19 @@ export default function GestaoUsuarios() {
   const [detalhesProprietario, setDetalhesProprietario] = useState<DetalheProprietario | null>(null)
   const [carregandoDetalhes, setCarregandoDetalhes] = useState(false)
 
+  // Edit name
+  const [nomeEditando, setNomeEditando] = useState('')
+
+  // Action confirmations
+  const [usuarioPromovendo, setUsuarioPromovendo] = useState<UserProfile | null>(null)
+  const [promovendo, setPromovendo] = useState(false)
+  const [usuarioRebaixando, setUsuarioRebaixando] = useState<UserProfile | null>(null)
+  const [rebaixando, setRebaixando] = useState(false)
+  const [usuarioAlterandoStatus, setUsuarioAlterandoStatus] = useState<UserProfile | null>(null)
+  const [alterandoStatus, setAlterandoStatus] = useState(false)
+  const [usuarioDeletando, setUsuarioDeletando] = useState<UserProfile | null>(null)
+  const [deletando, setDeletando] = useState(false)
+
   const [activeTab, setActiveTab] = useState('pendentes')
 
 
@@ -224,14 +237,18 @@ export default function GestaoUsuarios() {
     })
   }, [usuarios, busca, filtroPerfil, filtroStatus])
 
-  // Save profile
+  // Save profile (nome + perfil)
   async function salvarPerfil() {
-    if (!usuarioEditando || !novoPerfilSelecionado) return
+    if (!usuarioEditando) return
     setSalvando(true)
     try {
       const { error } = await supabase
         .from('user_profiles' as any)
-        .update({ perfil: novoPerfilSelecionado, updated_at: new Date().toISOString() } as any)
+        .update({
+          full_name: nomeEditando.trim(),
+          perfil: novoPerfilSelecionado,
+          updated_at: new Date().toISOString(),
+        } as any)
         .eq('id', usuarioEditando.id)
       if (error) throw error
       toast({ title: '✅ Perfil atualizado com sucesso!' })
