@@ -11,6 +11,7 @@ export interface AdminUser {
   confirmado: boolean
   criado_em: string
   avatar_url: string | null
+  status: string
 }
 
 export interface AdminStats {
