@@ -11,6 +11,7 @@ export interface AdminUser {
   confirmado: boolean
   criado_em: string
   avatar_url: string | null
+  status: string
 }
 
 export interface AdminStats {
@@ -108,5 +109,67 @@ export function useDemoteFromAdmin() {
     onError: () => {
       toast({ title: 'Erro ao rebaixar', variant: 'destructive' })
     },
+  })
+}
+
+export function useSuspendUser() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.from('user_profiles' as any).update({ status: 'inativo' } as any).eq('id', userId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      toast({ title: 'Conta suspensa.' })
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    },
+    onError: () => toast({ title: 'Erro ao suspender conta', variant: 'destructive' }),
+  })
+}
+
+export function useReactivateUser() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.from('user_profiles' as any).update({ status: 'ativo' } as any).eq('id', userId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      toast({ title: 'Conta reativada.' })
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    },
+    onError: () => toast({ title: 'Erro ao reativar conta', variant: 'destructive' }),
+  })
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deletar-usuario-admin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ usuario_id: userId }),
+      })
+      const resultado = await resp.json()
+      if (!resp.ok) throw new Error(resultado.error || 'Erro ao excluir usuário')
+      return resultado
+    },
+    onSuccess: () => {
+      toast({ title: 'Usuário excluído.' })
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    },
+    onError: (err: any) => toast({ title: err.message || 'Erro ao excluir usuário', variant: 'destructive' }),
   })
 }

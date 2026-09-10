@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useAdminUsers, useAdminStats, useCheckAdmin, usePromoteToAdmin, useDemoteFromAdmin } from "@/hooks/useAdmin";
+import { useAdminUsers, useAdminStats, useCheckAdmin, usePromoteToAdmin, useDemoteFromAdmin, useSuspendUser, useReactivateUser, useDeleteUser, type AdminUser } from "@/hooks/useAdmin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,23 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,15 +78,25 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: isAdmin, isLoading: checkingAdmin } = useCheckAdmin(user?.id);
   const { data: users = [], isLoading: loadingUsers } = useAdminUsers();
   const { data: stats, isLoading: loadingStats } = useAdminStats();
   const promoteToAdmin = usePromoteToAdmin();
   const demoteFromAdmin = useDemoteFromAdmin();
+  const suspendUser = useSuspendUser();
+  const reactivateUser = useReactivateUser();
+  const deleteUser = useDeleteUser();
 
   const [busca, setBusca] = useState("");
   const [filtroPerfil, setFiltroPerfil] = useState("todos");
+
+  const [usuarioDetalhe, setUsuarioDetalhe] = useState<AdminUser | null>(null);
+  const [usuarioEditando, setUsuarioEditando] = useState<AdminUser | null>(null);
+  const [nomeEdicao, setNomeEdicao] = useState('');
+  const [perfilEdicao, setPerfilEdicao] = useState('');
+  const [usuarioExcluindo, setUsuarioExcluindo] = useState<AdminUser | null>(null);
 
   const { data: extraStats, isLoading: loadingExtra } = useQuery({
     queryKey: ['admin-extra-stats'],
@@ -338,10 +365,10 @@ export default function AdminDashboard() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setUsuarioDetalhe(u)}>
                             <UserCog className="h-4 w-4 mr-2" /> Ver detalhes
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => { setUsuarioEditando(u); setNomeEdicao(u.nome || ''); setPerfilEdicao(u.perfil) }}>
                             <UserCog className="h-4 w-4 mr-2" /> Editar perfil
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -357,13 +384,23 @@ export default function AdminDashboard() {
                               <ChevronUp className="h-4 w-4 mr-2 rotate-180" /> Rebaixar de admin
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-warning">
-                            <Ban className="h-4 w-4 mr-2" /> Suspender conta
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="h-4 w-4 mr-2" /> Deletar usuário
-                          </DropdownMenuItem>
+                          {u.id !== user?.id && (
+                            <>
+                              <DropdownMenuSeparator />
+                              {u.status === 'ativo' ? (
+                                <DropdownMenuItem className="text-warning" onClick={() => suspendUser.mutate(u.id)}>
+                                  <Ban className="h-4 w-4 mr-2" /> Suspender conta
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem className="text-success" onClick={() => reactivateUser.mutate(u.id)}>
+                                  <Ban className="h-4 w-4 mr-2" /> Reativar conta
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem className="text-destructive" onClick={() => setUsuarioExcluindo(u)}>
+                                <Trash2 className="h-4 w-4 mr-2" /> Deletar usuário
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -374,6 +411,95 @@ export default function AdminDashboard() {
           </Table>
         </div>
       </Card>
+
+      {/* Dialog: Detalhes */}
+      <Dialog open={!!usuarioDetalhe} onOpenChange={(open) => !open && setUsuarioDetalhe(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Detalhes do usuário</DialogTitle>
+          </DialogHeader>
+          {usuarioDetalhe && (
+            <div className="space-y-2 text-sm">
+              <p><span className="font-medium">Nome:</span> {usuarioDetalhe.nome || '—'}</p>
+              <p><span className="font-medium">E-mail:</span> {usuarioDetalhe.email}</p>
+              <p className="flex items-center gap-2"><span className="font-medium">Perfil:</span> {getPerfilBadge(usuarioDetalhe.perfil)}</p>
+              <p><span className="font-medium">Status:</span> {usuarioDetalhe.status === 'ativo' ? 'Ativo' : 'Inativo'}</p>
+              <p><span className="font-medium">Último acesso:</span> {usuarioDetalhe.ultimo_acesso ? format(new Date(usuarioDetalhe.ultimo_acesso), "dd/MM/yy HH:mm", { locale: ptBR }) : '—'}</p>
+              <p><span className="font-medium">Cadastro:</span> {format(new Date(usuarioDetalhe.criado_em), "dd/MM/yy HH:mm", { locale: ptBR })}</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Editar perfil */}
+      <Dialog open={!!usuarioEditando} onOpenChange={(open) => !open && setUsuarioEditando(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar perfil</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nome</Label>
+              <Input value={nomeEdicao} onChange={(e) => setNomeEdicao(e.target.value)} />
+            </div>
+            <div>
+              <Label>Perfil</Label>
+              <Select value={perfilEdicao} onValueChange={setPerfilEdicao}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="proprietario">Proprietário</SelectItem>
+                  <SelectItem value="gerente">Gerente</SelectItem>
+                  <SelectItem value="operador">Operador</SelectItem>
+                  <SelectItem value="consultor">Consultor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setUsuarioEditando(null)}>Cancelar</Button>
+              <Button
+                onClick={async () => {
+                  if (!usuarioEditando) return;
+                  const { error } = await supabase.from('user_profiles' as any).update({ full_name: nomeEdicao, perfil: perfilEdicao } as any).eq('id', usuarioEditando.id);
+                  if (error) {
+                    toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+                  } else {
+                    queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+                    setUsuarioEditando(null);
+                    toast({ title: 'Perfil atualizado.' });
+                  }
+                }}
+              >
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* AlertDialog: Excluir */}
+      <AlertDialog open={!!usuarioExcluindo} onOpenChange={(open) => !open && setUsuarioExcluindo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir {usuarioExcluindo?.nome || usuarioExcluindo?.email}? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setUsuarioExcluindo(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (usuarioExcluindo) {
+                  deleteUser.mutate(usuarioExcluindo.id, { onSuccess: () => setUsuarioExcluindo(null) });
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
