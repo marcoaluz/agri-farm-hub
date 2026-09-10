@@ -1,5 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { supabase } from '@/lib/supabase'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { Propriedade } from '@/types'
@@ -40,11 +48,16 @@ const propriedadeSchema = z.object({
 
 type PropriedadeFormValues = z.infer<typeof propriedadeSchema>
 
+interface Dono {
+  dono_id: string
+  dono_nome: string
+}
+
 interface PropriedadeFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   propriedade?: Propriedade
-  onSubmit: (data: PropriedadeFormValues) => void
+  onSubmit: (data: PropriedadeFormValues & { dono_id?: string | null }) => void
   isLoading?: boolean
 }
 
@@ -66,6 +79,27 @@ export function PropriedadeForm({
       longitude: null,
     },
   })
+
+  const [donos, setDonos] = useState<Dono[]>([])
+  const [donoSelecionado, setDonoSelecionado] = useState<string>('proprio')
+
+  useEffect(() => {
+    if (!open || propriedade) return
+    setDonoSelecionado('proprio')
+    let cancelado = false
+    ;(async () => {
+      const { data, error } = await supabase.rpc('listar_donos_que_atendo' as any)
+      if (cancelado) return
+      if (error || !Array.isArray(data)) {
+        setDonos([])
+        return
+      }
+      setDonos(data as any as Dono[])
+    })()
+    return () => {
+      cancelado = true
+    }
+  }, [open, propriedade])
 
   useEffect(() => {
     if (open) {
@@ -92,7 +126,10 @@ export function PropriedadeForm({
   }, [open, propriedade, form])
 
   const handleSubmit = (data: PropriedadeFormValues) => {
-    onSubmit(data)
+    onSubmit({
+      ...data,
+      dono_id: !propriedade && donoSelecionado !== 'proprio' ? donoSelecionado : null,
+    })
   }
 
   return (
@@ -109,6 +146,28 @@ export function PropriedadeForm({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            {!propriedade && donos.length > 0 && (
+              <div className="space-y-2">
+                <FormLabel>Criar propriedade para</FormLabel>
+                <Select value={donoSelecionado} onValueChange={setDonoSelecionado}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="proprio">Minha própria propriedade</SelectItem>
+                    {donos.map((d) => (
+                      <SelectItem key={d.dono_id} value={d.dono_id}>
+                        {d.dono_nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Escolha para quem esta propriedade será cadastrada.
+                </p>
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="nome"

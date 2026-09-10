@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useGlobal } from '@/contexts/GlobalContext';
 import { useToast } from '@/hooks/use-toast';
+import { solicitarExclusaoEntidade } from '@/lib/solicitarExclusao';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -322,11 +323,17 @@ export function Maquinas() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await supabase.from('maquinas').update({ ativo: false }).eq('id', id).select('id');
-      if (error) throw error;
-      if (!data?.length) throw new Error('A máquina não foi encontrada ou você não tem permissão para removê-la.');
+      return await solicitarExclusaoEntidade('maquina', id);
     },
-    onSuccess: () => {
+    onSuccess: (resultado) => {
+      queryClient.invalidateQueries({ queryKey: ['solicitacoes-exclusao-pendentes'] });
+      if (!resultado.executado) {
+        toast({
+          title: 'Pedido enviado!',
+          description: resultado.mensagem || 'Aguardando aprovação do proprietário.',
+        });
+        return;
+      }
       toast({ title: 'Máquina removida com sucesso' });
       queryClient.invalidateQueries({ queryKey: ['maquinas'] });
     },

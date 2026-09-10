@@ -4,6 +4,7 @@ import { Propriedade } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { solicitarExclusaoEntidade } from '@/lib/solicitarExclusao'
 
 
 interface PropriedadeFormData {
@@ -13,6 +14,7 @@ interface PropriedadeFormData {
   responsavel?: string
   latitude?: number | null
   longitude?: number | null
+  dono_id?: string | null
 }
 
 export function usePropriedades() {
@@ -39,6 +41,20 @@ export function usePropriedades() {
 
   const createMutation = useMutation({
     mutationFn: async (propriedade: PropriedadeFormData) => {
+      if (propriedade.dono_id) {
+        const { data, error } = await supabase.rpc('criar_propriedade_para_dono' as any, {
+          p_dono_id: propriedade.dono_id,
+          p_nome: propriedade.nome,
+          p_area_total: propriedade.area_total ?? null,
+          p_localizacao: propriedade.localizacao || null,
+          p_responsavel: propriedade.responsavel || null,
+          p_latitude: propriedade.latitude ?? null,
+          p_longitude: propriedade.longitude ?? null,
+        })
+        if (error) throw error
+        return data
+      }
+
       const { data, error } = await supabase
         .from('propriedades')
         .insert({
@@ -120,14 +136,17 @@ export function usePropriedades() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('propriedades')
-        .update({ ativo: false })
-        .eq('id', id)
-
-      if (error) throw error
+      return await solicitarExclusaoEntidade('propriedade', id)
     },
-    onSuccess: async () => {
+    onSuccess: async (resultado) => {
+      queryClient.invalidateQueries({ queryKey: ['solicitacoes-exclusao-pendentes'] })
+      if (!resultado.executado) {
+        toast({
+          title: 'Pedido enviado!',
+          description: resultado.mensagem || 'Aguardando aprovação do proprietário.',
+        })
+        return
+      }
       queryClient.invalidateQueries({ queryKey: ['propriedades'] })
       queryClient.invalidateQueries({ queryKey: ['user-properties'] })
       await refetchPropriedades()
