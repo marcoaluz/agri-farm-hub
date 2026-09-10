@@ -80,6 +80,27 @@ export function PropriedadeForm({
     },
   })
 
+  const [donos, setDonos] = useState<Dono[]>([])
+  const [donoSelecionado, setDonoSelecionado] = useState<string>('proprio')
+
+  useEffect(() => {
+    if (!open || propriedade) return
+    setDonoSelecionado('proprio')
+    let cancelado = false
+    ;(async () => {
+      const { data, error } = await supabase.rpc('listar_donos_que_atendo' as any)
+      if (cancelado) return
+      if (error || !Array.isArray(data)) {
+        setDonos([])
+        return
+      }
+      setDonos(data as any as Dono[])
+    })()
+    return () => {
+      cancelado = true
+    }
+  }, [open, propriedade])
+
   useEffect(() => {
     if (open) {
       if (propriedade) {
