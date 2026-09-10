@@ -48,11 +48,16 @@ const propriedadeSchema = z.object({
 
 type PropriedadeFormValues = z.infer<typeof propriedadeSchema>
 
+interface Dono {
+  dono_id: string
+  dono_nome: string
+}
+
 interface PropriedadeFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   propriedade?: Propriedade
-  onSubmit: (data: PropriedadeFormValues) => void
+  onSubmit: (data: PropriedadeFormValues & { dono_id?: string | null }) => void
   isLoading?: boolean
 }
 
