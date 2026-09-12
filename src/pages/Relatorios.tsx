@@ -2676,10 +2676,10 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
         </p>
       )}
 
-      {talhoesSel.length > 0 && (
+      {separadoPorTalhao && (
         <p className="text-xs text-muted-foreground flex items-center gap-1">
           <Info className="h-3 w-3 shrink-0" />
-          Manutenção não é filtrada por talhão — mostra sempre o total da máquina.
+          Manutenção não é vinculada a talhão — aparece em bloco separado no final.
         </p>
       )}
 
@@ -2694,45 +2694,56 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          {gruposFiltrados.length === 0 ? (
+        <CardContent className="space-y-6">
+          {secoes.length === 0 && gruposManutencao.length === 0 ? (
             <EmptyState message="Nenhum resultado para o filtro selecionado" />
           ) : (
             <>
-              <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
-                <span className="flex-1">Item</span>
-                <span className="w-24 text-right">Qtd</span>
-                <span className="w-28 text-right">Valor</span>
-              </div>
+              {secoes.map((sec: any) => (
+                <div key={sec.talhao_id} className="space-y-1">
+                  {separadoPorTalhao && (
+                    <div className="flex items-center justify-between bg-muted/50 rounded px-3 py-1.5">
+                      <span className="font-semibold text-sm">{sec.talhao_nome}</span>
+                      <span className="font-bold text-sm">{fmt(sec.subtotal)}</span>
+                    </div>
+                  )}
 
-              {gruposFiltrados.map((g: any) => (
-                <div key={g.maquina_id}>
-                  <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
-                    <span className="flex items-center gap-2">
-                      {g.nome}
-                      <Badge variant="outline" className="text-[10px] font-normal">{g.horimetro}</Badge>
-                    </span>
-                    <span>{fmt(g.subtotal)}</span>
+                  <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
+                    <span className="flex-1">Item</span>
+                    <span className="w-24 text-right">Qtd</span>
+                    <span className="w-28 text-right">Valor</span>
                   </div>
 
-                  {g.itens.map((item: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className={cn(
-                        "flex items-center text-sm py-1",
-                        item.isChild ? "pl-8 text-foreground/75 text-xs" : "pl-4 text-foreground/80"
-                      )}
-                    >
-                      <span className="flex-1 truncate">{item.nome}</span>
-                      <span className="w-24 text-right text-xs text-muted-foreground">{item.qtdLabel}</span>
-                      <span className="w-28 text-right font-medium">{fmt(item.valor ?? 0)}</span>
-                    </div>
+                  {sec.grupos.map((g: any) => (
+                    <MaquinaGrupo key={`${sec.talhao_id}-${g.maquina_id}`} grupo={g} />
                   ))}
                 </div>
               ))}
+
+              {gruposManutencao.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between bg-muted/50 rounded px-3 py-1.5">
+                    <span className="font-semibold text-sm">Manutenção (não vinculada a talhão)</span>
+                    <span className="font-bold text-sm">
+                      {fmt(gruposManutencao.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0))}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
+                    <span className="flex-1">Item</span>
+                    <span className="w-24 text-right">Qtd</span>
+                    <span className="w-28 text-right">Valor</span>
+                  </div>
+
+                  {gruposManutencao.map((g: any) => (
+                    <MaquinaGrupo key={`mnt-${g.maquina_id}`} grupo={g} />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </CardContent>
+
       </Card>
     </div>
   )
