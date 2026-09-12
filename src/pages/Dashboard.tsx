@@ -564,7 +564,7 @@ export default function Dashboard() {
 
 
           {/* Charts */}
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className={`grid gap-6 lg:grid-cols-3 ${semPermissaoFin ? 'hidden' : ''}`}>
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Investimento por Mês</CardTitle>
