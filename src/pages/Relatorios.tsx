@@ -1856,6 +1856,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
             nomeArquivo: 'custos-detalhados',
             propriedadeNome,
             safraNome: safraAtual?.nome,
+            resumoFiltros: resumoFiltrosTexto || undefined,
             operacional: incluirOperacional
               ? operacional.map((g: any) => ({ ...g, grupo: labelGrupo(g.grupo) }))
               : [],
@@ -1871,7 +1872,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
         </Button>
         <Button
           variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]"
-          onClick={() => exportarExcel({ nomeArquivo: 'custos-detalhados', nomeAba: 'Custos Detalhados', colunas: colunasExport, linhas: linhasExport, propriedadeNome, safraNome: safraAtual?.nome })}
+          onClick={() => exportarExcel({ nomeArquivo: 'custos-detalhados', nomeAba: 'Custos Detalhados', colunas: colunasExport, linhas: linhasExport, propriedadeNome, safraNome: safraAtual?.nome, resumoFiltros: resumoFiltrosTexto || undefined })}
         >
           <FileSpreadsheet className="h-4 w-4 mr-1" /> Exportar Excel
         </Button>
@@ -1961,6 +1962,12 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
           </div>
         </CardContent>
       </Card>
+
+      {resumoFiltros.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Mostrando: <span className="font-medium text-foreground">{resumoFiltrosTexto}</span>
+        </p>
+      )}
 
       {relatorioQ.isLoading ? (
         <SkeletonAba />
