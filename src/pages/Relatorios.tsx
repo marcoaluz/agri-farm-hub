@@ -1907,47 +1907,35 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Categoria</label>
-              <Select value={categoriaFiltro || '_todos'} onValueChange={v => setCategoriaFiltro(v === '_todos' ? '' : v)}>
-                <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_todos">Todas</SelectItem>
-                  {(combos.length ? categoriasDisponiveis : (categoriasServicoQ.data || [])).map((c: string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <MultiSelectFilter
+                className="w-full"
+                placeholder="Todas"
+                opcoes={opcoesCategoria}
+                selecionados={categoriasSel}
+                onChange={setCategoriasSel}
+              />
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Item usado</label>
-              <Select
-                value={itemFiltro ? `${itemFiltro.tipo}:${itemFiltro.id}` : '_todos'}
-                onValueChange={(v) => {
-                  if (v === '_todos') { setItemFiltro(null); return }
-                  const [tipo, id] = v.split(':')
-                  setItemFiltro({ tipo, id })
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_todos">Todos</SelectItem>
-                  {(combos.length ? itensDisponiveis : (itensFiltraveisQ.data || [])).map((it: any) => (
-                    <SelectItem key={`${it.item_tipo}:${it.item_id}`} value={`${it.item_tipo}:${it.item_id}`}>
-                      {it.item_nome} {it.item_tipo === 'maquina' ? '(máquina)' : it.item_tipo === 'servico' ? '(serviço)' : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MultiSelectFilter
+                className="w-full"
+                placeholder="Todos"
+                opcoes={opcoesItem}
+                selecionados={itensSel}
+                onChange={setItensSel}
+              />
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Talhão</label>
-              <Select value={talhaoFiltro || '_todos'} onValueChange={v => setTalhaoFiltro(v === '_todos' ? '' : v)}>
-                <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_todos">Todos</SelectItem>
-                  {combos.length
-                    ? talhoesDisponiveis.map((t: any) => <SelectItem key={t.talhao_id} value={t.talhao_id}>{t.talhao_nome}</SelectItem>)
-                    : (talhoesQ.data || []).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <MultiSelectFilter
+                className="w-full"
+                placeholder="Todos"
+                opcoes={opcoesTalhao}
+                selecionados={talhoesSel}
+                onChange={setTalhoesSel}
+              />
             </div>
+
             <div>
               <label className="text-xs text-muted-foreground">Ordenar por</label>
               <Select value={ordenarPor} onValueChange={setOrdenarPor}>
