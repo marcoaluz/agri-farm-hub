@@ -1949,7 +1949,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
               </Select>
             </div>
           </div>
-          {(dataInicio || dataFim || categoriaFiltro || itemFiltro || talhaoFiltro) && (
+          {(dataInicio || dataFim || categoriasSel.length > 0 || itensSel.length > 0 || talhoesSel.length > 0) && (
             <Button variant="ghost" size="sm" className="mt-2" onClick={limparFiltros}>
               Limpar filtros
             </Button>
