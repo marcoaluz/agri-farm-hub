@@ -160,7 +160,9 @@ export default function RelatorioRentabilidade() {
         </div>
       )}
 
-      {enabled && !isLoading && (
+      {enabled && !isLoading && semPermissao && <AvisoSemPermissaoFinanceiro />}
+
+      {enabled && !isLoading && !semPermissao && (
         <>
           {/* KPI Cards */}
           <div className="grid gap-4 md:grid-cols-4">
