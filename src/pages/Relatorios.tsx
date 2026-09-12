@@ -6,7 +6,7 @@ import { ptBR } from 'date-fns/locale'
 import {
   BarChart3, ClipboardList, DollarSign, Sprout, TrendingUp, Package,
   ArrowUpDown, ChevronUp, ChevronDown, Download, FileX, Lock, Circle, Leaf,
-  FileSpreadsheet, FileText, ListTree, AlertTriangle, Tractor, ShieldCheck, ShieldAlert,
+  FileSpreadsheet, FileText, ListTree, AlertTriangle, Tractor, ShieldCheck, ShieldAlert, Info,
 
 
 
@@ -2219,29 +2219,66 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
 function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
   const { safraAtual } = useGlobal()
 
+  const [filtroMaquina, setFiltroMaquina] = useState<string>('_all')
+  const [filtroTipoCusto, setFiltroTipoCusto] = useState<string>('_all')
+  const [filtroTalhao, setFiltroTalhao] = useState<string>('_all')
+
   const maqQ = useQuery({
-    queryKey: ['rel-maquinas', propId, safraId],
+    queryKey: ['rel-maquinas', propId, safraId, filtroTalhao],
     queryFn: async () => {
-      const { data, error } = await db.rpc('get_relatorio_por_maquina', {
+      const { data, error } = await (db as any).rpc('get_relatorio_por_maquina', {
         p_propriedade_id: propId,
         p_safra_id: safraId,
+        p_talhao_id: filtroTalhao === '_all' ? null : filtroTalhao,
       })
       if (error) throw error
       return (data || []) as any[]
     },
   })
 
-  const maquinasRaw = maqQ.data || []
-  const [filtroMaquina, setFiltroMaquina] = useState<string>('_all')
-  const [filtroTipoCusto, setFiltroTipoCusto] = useState<string>('_all')
+  const combosMaqQ = useQuery({
+    queryKey: ['rel-combinacoes-filtro-maquinas', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await (db as any).rpc('get_combinacoes_filtro_maquinas', {
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+    enabled: !!propId && !!safraId,
+  })
 
+  const maquinasRaw = maqQ.data || []
+  const combosMaq = combosMaqQ.data || []
+
+  // Cruzamento dos filtros: talhões limitam máquinas e vice-versa
   const maquinasUnicas = useMemo(() => {
     const map = new Map<string, string>()
-    maquinasRaw.forEach((m: any) => {
-      if (m.maquina_id) map.set(m.maquina_id, String(m.maquina_nome || 'Máquina'))
-    })
+    combosMaq
+      .filter((c: any) => filtroTalhao === '_all' || c.talhao_id === filtroTalhao)
+      .forEach((c: any) => {
+        if (c.maquina_id) map.set(c.maquina_id, String(c.maquina_nome || 'Máquina'))
+      })
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
-  }, [maquinasRaw])
+  }, [combosMaq, filtroTalhao])
+
+  const talhoesUnicos = useMemo(() => {
+    const map = new Map<string, string>()
+    combosMaq
+      .filter((c: any) => filtroMaquina === '_all' || c.maquina_id === filtroMaquina)
+      .forEach((c: any) => {
+        if (c.talhao_id) map.set(c.talhao_id, String(c.talhao_nome || 'Talhão'))
+      })
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
+  }, [combosMaq, filtroMaquina])
+
+  // Reseta filtros que ficaram sem combinação válida
+  useEffect(() => {
+    if (!combosMaq.length) return
+    if (filtroMaquina !== '_all' && !maquinasUnicas.some(([id]) => id === filtroMaquina)) setFiltroMaquina('_all')
+    if (filtroTalhao !== '_all' && !talhoesUnicos.some(([id]) => id === filtroTalhao)) setFiltroTalhao('_all')
+  }, [maquinasUnicas, talhoesUnicos])
 
   const grupos = useMemo(() => {
     return maquinasRaw.map((m: any) => {
@@ -2363,6 +2400,24 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
           </SelectContent>
         </Select>
 
+        <Select value={filtroTalhao} onValueChange={setFiltroTalhao}>
+          <SelectTrigger className="w-full sm:w-[220px]">
+            {filtroTalhao === '_all' ? (
+              <span>Todos os talhões</span>
+            ) : (
+              <span className="truncate">
+                {talhoesUnicos.find(([id]) => id === filtroTalhao)?.[1] ?? 'Talhão'}
+              </span>
+            )}
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_all">Todos os talhões</SelectItem>
+            {talhoesUnicos.map(([id, nome]) => (
+              <SelectItem key={id} value={id}>{nome}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Select value={filtroTipoCusto} onValueChange={setFiltroTipoCusto}>
           <SelectTrigger className="w-full sm:w-[220px]">
             <SelectValue placeholder="Tipo de custo" />
@@ -2409,6 +2464,13 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
           </Button>
         </div>
       </div>
+
+      {filtroTalhao !== '_all' && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <Info className="h-3 w-3 shrink-0" />
+          Manutenção não é filtrada por talhão — mostra sempre o total da máquina.
+        </p>
+      )}
 
       <Card>
         <CardHeader>
