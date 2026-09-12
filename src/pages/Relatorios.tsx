@@ -2079,46 +2079,59 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
 
       {relatorioQ.isLoading ? (
         <SkeletonAba />
-      ) : (incluirOperacional ? operacional : []).length === 0 && (incluirFinanceiro ? financeiro : []).length === 0 ? (
+      ) : (incluirOperacional ? porTalhao : []).every((sec: any) => (sec.operacional || []).length === 0) && (incluirFinanceiro ? financeiro : []).length === 0 ? (
         <Card><CardContent className="pt-6"><EmptyState message="Nenhum custo encontrado com esses filtros" /></CardContent></Card>
       ) : (
         <>
-          {/* Seção Operacional */}
-          {incluirOperacional && operacional.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4" />
-                  Operacional
-                  <span className="ml-auto text-sm font-normal text-muted-foreground">
-                    Total: <span className="font-bold text-foreground">{fmt(totalOperacional)}</span>
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
-                  <span className="flex-1">Item</span>
-                  <span className="w-36 text-right">Qtde.</span>
-                  <span className="w-28 text-right">Valor</span>
-                </div>
-                {operacional.map((grupo: any) => (
-                  <div key={grupo.grupo}>
-                    <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
-                      <span>{labelGrupo(grupo.grupo)}</span>
-                      <span>{fmt(Number(grupo.subtotal))}</span>
-                    </div>
-                    {(grupo.itens || []).map((item: any, idx: number) => (
-                      <div key={idx} className="flex items-center text-sm pl-4 py-1 text-foreground/80">
-                        <span className="flex-1">{item.nome}</span>
-                        <span className="w-36 text-right text-xs text-muted-foreground">{formatarQtdeOperacional(item)}</span>
-                        <span className="w-28 text-right font-medium">{fmt(Number(item.valor))}</span>
+          {/* Seção Operacional — um bloco por talhão */}
+          {incluirOperacional && porTalhao.some((sec: any) => (sec.operacional || []).length > 0) && (
+            <>
+              <div className="flex items-center gap-2 text-base font-semibold">
+                <ClipboardList className="h-4 w-4" />
+                Operacional
+                <span className="ml-auto text-sm font-normal text-muted-foreground">
+                  Total: <span className="font-bold text-foreground">{fmt(totalOperacional)}</span>
+                </span>
+              </div>
+              {porTalhao.map((sec: any) => (
+                (sec.operacional || []).length > 0 && (
+                  <Card key={String(sec.talhao_id ?? sec.talhao_nome)}>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        {sec.talhao_nome}
+                        <span className="ml-auto text-sm font-normal text-muted-foreground">
+                          Subtotal: <span className="font-bold text-foreground">{fmt(Number(sec.subtotal))}</span>
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
+                        <span className="flex-1">Item</span>
+                        <span className="w-36 text-right">Qtde.</span>
+                        <span className="w-28 text-right">Valor</span>
                       </div>
-                    ))}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                      {(sec.operacional || []).map((grupo: any) => (
+                        <div key={grupo.grupo}>
+                          <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
+                            <span>{labelGrupo(grupo.grupo)}</span>
+                            <span>{fmt(Number(grupo.subtotal))}</span>
+                          </div>
+                          {(grupo.itens || []).map((item: any, idx: number) => (
+                            <div key={idx} className="flex items-center text-sm pl-4 py-1 text-foreground/80">
+                              <span className="flex-1">{item.nome}</span>
+                              <span className="w-36 text-right text-xs text-muted-foreground">{formatarQtdeOperacional(item)}</span>
+                              <span className="w-28 text-right font-medium">{fmt(Number(item.valor))}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )
+              ))}
+            </>
           )}
+
 
           {/* Seção Financeiro */}
           {incluirFinanceiro && financeiro.length > 0 && (
