@@ -62,6 +62,37 @@ function mergeSecaoCustos(listas: any[][]) {
     .sort((a, b) => b.subtotal - a.subtotal)
 }
 
+/* Junta os resultados do relatório de estoque quando há várias categorias marcadas. */
+function mergeEstoque(listas: any[][]) {
+  const tipos = new Map<string, any>()
+  listas.forEach((lista) => (lista || []).forEach((t: any) => {
+    const chave = String(t.tipo_estoque)
+    let alvo = tipos.get(chave)
+    if (!alvo) {
+      alvo = { tipo_estoque: t.tipo_estoque, total_itens: 0, itens_zerados: 0, categorias: new Map<string, any>() }
+      tipos.set(chave, alvo)
+    }
+    alvo.total_itens += Number(t.total_itens || 0)
+    alvo.itens_zerados += Number(t.itens_zerados || 0)
+    ;(t.categorias || []).forEach((c: any) => {
+      const existente = alvo.categorias.get(String(c.categoria))
+      if (existente) {
+        existente.total_itens = Number(existente.total_itens || 0) + Number(c.total_itens || 0)
+        existente.itens = [...(existente.itens || []), ...(c.itens || [])]
+      } else {
+        alvo.categorias.set(String(c.categoria), { ...c, itens: [...(c.itens || [])] })
+      }
+    })
+  }))
+  return Array.from(tipos.values()).map((t) => ({
+    ...t,
+    categorias: Array.from(t.categorias.values()).sort((a: any, b: any) =>
+      String(a.categoria).localeCompare(String(b.categoria))
+    ),
+  }))
+}
+
+
 
 
 import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, exportarEstoquePDF, exportarInsumosPDF, exportarObservacoesPDF, exportarMaquinasPDF, type Coluna } from '@/lib/exportTabela'
