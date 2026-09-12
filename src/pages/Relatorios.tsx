@@ -2219,29 +2219,66 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
 function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
   const { safraAtual } = useGlobal()
 
+  const [filtroMaquina, setFiltroMaquina] = useState<string>('_all')
+  const [filtroTipoCusto, setFiltroTipoCusto] = useState<string>('_all')
+  const [filtroTalhao, setFiltroTalhao] = useState<string>('_all')
+
   const maqQ = useQuery({
-    queryKey: ['rel-maquinas', propId, safraId],
+    queryKey: ['rel-maquinas', propId, safraId, filtroTalhao],
     queryFn: async () => {
-      const { data, error } = await db.rpc('get_relatorio_por_maquina', {
+      const { data, error } = await (db as any).rpc('get_relatorio_por_maquina', {
         p_propriedade_id: propId,
         p_safra_id: safraId,
+        p_talhao_id: filtroTalhao === '_all' ? null : filtroTalhao,
       })
       if (error) throw error
       return (data || []) as any[]
     },
   })
 
-  const maquinasRaw = maqQ.data || []
-  const [filtroMaquina, setFiltroMaquina] = useState<string>('_all')
-  const [filtroTipoCusto, setFiltroTipoCusto] = useState<string>('_all')
+  const combosMaqQ = useQuery({
+    queryKey: ['rel-combinacoes-filtro-maquinas', propId, safraId],
+    queryFn: async () => {
+      const { data, error } = await (db as any).rpc('get_combinacoes_filtro_maquinas', {
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
+      })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+    enabled: !!propId && !!safraId,
+  })
 
+  const maquinasRaw = maqQ.data || []
+  const combosMaq = combosMaqQ.data || []
+
+  // Cruzamento dos filtros: talhões limitam máquinas e vice-versa
   const maquinasUnicas = useMemo(() => {
     const map = new Map<string, string>()
-    maquinasRaw.forEach((m: any) => {
-      if (m.maquina_id) map.set(m.maquina_id, String(m.maquina_nome || 'Máquina'))
-    })
+    combosMaq
+      .filter((c: any) => filtroTalhao === '_all' || c.talhao_id === filtroTalhao)
+      .forEach((c: any) => {
+        if (c.maquina_id) map.set(c.maquina_id, String(c.maquina_nome || 'Máquina'))
+      })
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
-  }, [maquinasRaw])
+  }, [combosMaq, filtroTalhao])
+
+  const talhoesUnicos = useMemo(() => {
+    const map = new Map<string, string>()
+    combosMaq
+      .filter((c: any) => filtroMaquina === '_all' || c.maquina_id === filtroMaquina)
+      .forEach((c: any) => {
+        if (c.talhao_id) map.set(c.talhao_id, String(c.talhao_nome || 'Talhão'))
+      })
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
+  }, [combosMaq, filtroMaquina])
+
+  // Reseta filtros que ficaram sem combinação válida
+  useEffect(() => {
+    if (!combosMaq.length) return
+    if (filtroMaquina !== '_all' && !maquinasUnicas.some(([id]) => id === filtroMaquina)) setFiltroMaquina('_all')
+    if (filtroTalhao !== '_all' && !talhoesUnicos.some(([id]) => id === filtroTalhao)) setFiltroTalhao('_all')
+  }, [maquinasUnicas, talhoesUnicos])
 
   const grupos = useMemo(() => {
     return maquinasRaw.map((m: any) => {
