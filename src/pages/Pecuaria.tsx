@@ -114,7 +114,8 @@ export default function Pecuaria() {
     queryKey: ['rebanho-movimentacoes', propId],
     queryFn: async () => {
       const { data, error } = await supabase.from('rebanho_movimentacoes' as any)
-        .select('*, rebanho:rebanhos(nome)')
+        .select('*, rebanho_origem:rebanhos!rebanho_movimentacoes_rebanho_id_fkey(nome), rebanho_destino:rebanhos!rebanho_movimentacoes_rebanho_destino_id_fkey(nome)')
+
         .eq('propriedade_id', propId)
         .order('data_evento', { ascending: false })
         .limit(100)
