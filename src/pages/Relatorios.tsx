@@ -2592,7 +2592,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
   if (maqQ.isLoading) return <SkeletonAba />
 
-  if (grupos.length === 0) {
+  if (secoesRaw.length === 0 && manutencaoSemTalhao.length === 0) {
     return (
       <Card>
         <CardContent className="pt-6">
