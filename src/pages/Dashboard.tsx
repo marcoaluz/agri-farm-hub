@@ -335,6 +335,11 @@ export default function Dashboard() {
     enabled: enabledFiltered,
   })
 
+  // Erro 42501 (acesso negado a relatório financeiro): erro definitivo, sem retry —
+  // mostra aviso em vez de deixar a tela em branco/travada.
+  const semPermissaoFin = [errKpisV2, errConsolidadoV2, errMes, errPlanejado, errCat]
+    .some(ehErroPermissaoFinanceiro)
+
   // ── Computed (filtered mode) ──
   const producaoAgrupada = useMemo(() => {
     if (!producaoSafra?.length) return []
