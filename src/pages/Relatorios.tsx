@@ -1242,6 +1242,7 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
     })), [cards])
 
   if (talhaoQ.isLoading || rentQ.isLoading) return <SkeletonAba />
+  if ([talhaoQ.error, rentQ.error].some(ehErroPermissaoFinanceiro)) return <AvisoSemPermissaoFinanceiro />
   if (cards.length === 0) return <Card><CardContent className="pt-6"><EmptyState message="Nenhum talhão com operações nesta safra" /></CardContent></Card>
 
   return (
