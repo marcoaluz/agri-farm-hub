@@ -2503,6 +2503,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
               nomeAba: 'Máquinas',
               propriedadeNome,
               safraNome: safraAtual?.nome,
+              resumoFiltros: resumoFiltrosTexto || undefined,
               colunas: [
                 { header: 'Máquina', key: 'maquina', width: 22 },
                 { header: 'Item', key: 'item', width: 26 },
@@ -2523,6 +2524,12 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
           </Button>
         </div>
       </div>
+
+      {resumoFiltros.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Mostrando: <span className="font-medium text-foreground">{resumoFiltrosTexto}</span>
+        </p>
+      )}
 
       {filtroTalhao !== '_all' && (
         <p className="text-xs text-muted-foreground flex items-center gap-1">
