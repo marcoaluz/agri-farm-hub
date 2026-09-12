@@ -1349,7 +1349,7 @@ export function LancamentoForm() {
                       <SelectValue placeholder={loadingTalhoes ? "Carregando talhões..." : "Selecione o talhão"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Sem talhão específico</SelectItem>
+                      <SelectItem value="none">Propriedade</SelectItem>
                       {talhoes?.map((talhao) => (
                         <SelectItem key={talhao.id} value={talhao.id}>
                           {talhao.nome} ({talhao.area_ha} ha)
