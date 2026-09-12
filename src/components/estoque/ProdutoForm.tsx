@@ -119,12 +119,12 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
     const nome = novaCategoriaNome.trim();
     if (!nome) return;
     setSalvandoCategoria(true);
-    const { data: userData } = await supabase.auth.getUser();
-    const { error } = await supabase.from("categorias_produto").insert({
-      usuario_id: userData?.user?.id,
-      nome,
-      tipo_estoque: tipoEstoque || "agricola",
-    } as any);
+    const { error } = await supabase.rpc("criar_categoria_compartilhada" as any, {
+      p_tabela: "categorias_produto",
+      p_propriedade_id: propriedadeAtual?.id,
+      p_nome: nome,
+      p_icone: null,
+    });
     setSalvandoCategoria(false);
     if (error) {
       toast.error((error as any).code === "23505" ? "Categoria já existe" : "Erro ao criar categoria");

@@ -125,12 +125,12 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
     const nome = novaDescricaoNome.trim();
     if (!nome) return;
     setSalvandoDescricao(true);
-    const { data: userData } = await supabase.auth.getUser();
-    const { error } = await supabase.from('descricoes_manutencao').insert({
-      usuario_id: userData?.user?.id,
-      nome,
-      ativo: true,
-    } as any);
+    const { error } = await supabase.rpc('criar_categoria_compartilhada' as any, {
+      p_tabela: 'descricoes_manutencao',
+      p_propriedade_id: propriedadeAtual?.id,
+      p_nome: nome,
+      p_icone: null,
+    });
     setSalvandoDescricao(false);
     if (error) {
       toast({
@@ -166,12 +166,12 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
     const nome = novaCategoriaNome.trim();
     if (!nome) return;
     setSalvandoCategoria(true);
-    const { data: userData } = await supabase.auth.getUser();
-    const { error } = await supabase.from('categorias_manutencao').insert({
-      usuario_id: userData?.user?.id,
-      nome,
-      ativo: true,
-    } as any);
+    const { error } = await supabase.rpc('criar_categoria_compartilhada' as any, {
+      p_tabela: 'categorias_manutencao',
+      p_propriedade_id: propriedadeAtual?.id,
+      p_nome: nome,
+      p_icone: null,
+    });
     setSalvandoCategoria(false);
     if (error) {
       toast({

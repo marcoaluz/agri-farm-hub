@@ -131,11 +131,14 @@ export default function Contatos() {
 
   async function criarCategoria() {
     const nome = novaCategoria.trim()
-    if (!nome || !user?.id) return
+    if (!nome || !propriedadeAtual?.id) return
     setSavingCat(true)
-    const { error } = await supabase
-      .from('categorias_contato' as any)
-      .insert({ nome, usuario_id: user.id, ativo: true })
+    const { error } = await supabase.rpc('criar_categoria_compartilhada' as any, {
+      p_tabela: 'categorias_contato',
+      p_propriedade_id: propriedadeAtual.id,
+      p_nome: nome,
+      p_icone: null,
+    })
     setSavingCat(false)
     if (error) {
       toast.error((error as any).code === '23505' ? 'Essa categoria já existe' : 'Erro ao criar categoria')
