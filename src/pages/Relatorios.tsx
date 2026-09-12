@@ -2216,17 +2216,13 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
 
 
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <Select value={categoriaFiltro || 'todas'} onValueChange={(v) => setCategoriaFiltro(v === 'todas' ? '' : v)}>
-          <SelectTrigger className="w-56">
-            <SelectValue placeholder="Todas as categorias" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todas">Todas as categorias</SelectItem>
-            {categoriasDisponiveis.map((c) => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          className="w-56"
+          placeholder="Todas as categorias"
+          opcoes={opcoesCategoria}
+          selecionados={categoriasSel}
+          onChange={setCategoriasSel}
+        />
         <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={tipos.length === 0}>
           <FileText className="h-4 w-4 mr-1" /> Exportar PDF
         </Button>
@@ -2235,7 +2231,8 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
       {tipos.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
-            Nenhum produto em estoque{categoriaFiltro ? ' nessa categoria' : ''}.
+            Nenhum produto em estoque{categoriasSel.length ? ' nessa(s) categoria(s)' : ''}.
+
           </CardContent>
         </Card>
       ) : (
