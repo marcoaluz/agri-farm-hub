@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
+import { toast as sonnerToast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useTalhoes } from '@/hooks/useTalhoes'
@@ -43,7 +44,9 @@ import {
   AlertTriangle,
   Fuel,
   Cog,
-  Tractor
+  Tractor,
+  Plus,
+  Clock
 } from 'lucide-react'
 import { PrateleiraIcon } from '@/components/icons/PrateleiraIcon'
 
@@ -85,6 +88,8 @@ export function LancamentoForm() {
     })(),
     itens: []
   })
+  const [lancamentosDaSessao, setLancamentosDaSessao] = useState<any[]>([])
+  const [novoLancamentoDialogAberto, setNovoLancamentoDialogAberto] = useState(false)
   const [dadosOriginais, setDadosOriginais] = useState<LancamentoFormData | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingItens, setLoadingItens] = useState(false)
@@ -666,6 +671,35 @@ export function LancamentoForm() {
     return false
   }, [formData, dadosOriginais, lancamentoId])
 
+  const formularioEmAndamento = !!formData.servico_id
+    || !!formData.talhao_id
+    || formData.itens.length > 0
+    || !!formData.observacoes?.trim()
+
+  const resetarFormulario = useCallback(() => {
+    const hoje = new Date()
+    const dataHoje = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
+    setFormData({
+      servico_id: '',
+      talhao_id: undefined,
+      data_execucao: dataHoje,
+      observacoes: '',
+      itens: [],
+    })
+    setDadosOriginais(null)
+    setAdicionandoTipo(null)
+    setReposicaoMaquinaId(null)
+    setValidandoEstoque(false)
+  }, [])
+
+  const handleNovoLancamento = () => {
+    if (formularioEmAndamento) {
+      setNovoLancamentoDialogAberto(true)
+      return
+    }
+    resetarFormulario()
+  }
+
   // Mutation para salvar lançamento
   const salvarMutation = useMutation({
     mutationFn: async (data: LancamentoFormData) => {
@@ -871,7 +905,7 @@ export function LancamentoForm() {
         await sincronizarAbastecimentos(lancamentoId, itensComCusto, data.data_execucao)
         await sincronizarManutencoes(lancamentoId, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
 
-        return { id: lancamentoId }
+        return { id: lancamentoId, custoTotal }
       }
 
       // ========== MODO CRIAÇÃO ==========
@@ -925,14 +959,27 @@ export function LancamentoForm() {
       await sincronizarAbastecimentos(novoLancamento.id, itensComCusto, data.data_execucao)
       await sincronizarManutencoes(novoLancamento.id, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
 
-      return { id: novoLancamento.id }
+      return { id: novoLancamento.id, custoTotal }
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (resultado, variables) => {
+      if (!lancamentoId) {
+        const servico = servicos?.find(item => item.id === variables.servico_id)
+        const talhao = talhoes?.find(item => item.id === variables.talhao_id)
+        setLancamentosDaSessao(atuais => [{
+          id: resultado.id,
+          horario: new Date(),
+          servico: servico?.nome || 'Serviço',
+          local: talhao?.nome || 'Propriedade',
+          custoTotal: resultado.custoTotal,
+        }, ...atuais])
+        sonnerToast.success('Lançamento salvo!')
+      }
+
       const maquinasAtualizadas = variables.itens
         .filter(i => i.tipo_ref === 'maquina' && i.quantidade > 0)
         .map(i => `${i.nome}: +${i.quantidade}h`)
 
-      if (maquinasAtualizadas.length > 0) {
+      if (lancamentoId && maquinasAtualizadas.length > 0) {
         toast({
           title: '✅ Lançamento salvo com sucesso!',
           description: (
@@ -945,7 +992,7 @@ export function LancamentoForm() {
             </div>
           )
         })
-      } else {
+      } else if (lancamentoId) {
         toast({
           title: '✅ Lançamento salvo com sucesso!',
           description: 'Estoque e custos atualizados automaticamente.'
@@ -963,7 +1010,11 @@ export function LancamentoForm() {
       queryClient.invalidateQueries({ queryKey: ['manutencoes-todas'] })
       queryClient.invalidateQueries({ queryKey: ['abastecimentos-stats'] })
 
-      navigate('/lancamentos')
+      if (lancamentoId) {
+        navigate('/lancamentos')
+      } else {
+        resetarFormulario()
+      }
     },
     onError: (error: Error) => {
       setValidandoEstoque(false)
@@ -1184,18 +1235,26 @@ export function LancamentoForm() {
       )}
 
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(fromEstoque ? '/estoque' : '/lancamentos')}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">
-            {lancamentoId ? 'Editar' : 'Novo'} Lançamento
-          </h1>
-          <p className="text-muted-foreground">
-            {propriedadeAtual.nome} • Safra {safraAtual.ano_inicio}/{safraAtual.ano_fim}
-          </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate(fromEstoque ? '/estoque' : '/lancamentos')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold">
+              {lancamentoId ? 'Editar' : 'Novo'} Lançamento
+            </h1>
+            <p className="truncate text-muted-foreground">
+              {propriedadeAtual.nome} • Safra {safraAtual.ano_inicio}/{safraAtual.ano_fim}
+            </p>
+          </div>
         </div>
+        {!lancamentoId && (
+          <Button type="button" variant="outline" onClick={handleNovoLancamento} disabled={salvarMutation.isPending} className="w-full gap-2 sm:w-auto">
+            <Plus className="h-4 w-4" />
+            Novo Lançamento
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -1603,6 +1662,42 @@ export function LancamentoForm() {
               </Card>
             )}
 
+            {!lancamentoId && lancamentosDaSessao.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-primary" />
+                    Lançamentos feitos agora
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="divide-y">
+                    {lancamentosDaSessao.map((lancamento) => (
+                      <div key={lancamento.id} className="grid gap-2 py-3 first:pt-0 last:pb-0 sm:grid-cols-[70px,1fr,1fr,auto] sm:items-center">
+                        <span className="text-sm text-muted-foreground">
+                          {lancamento.horario.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground">Serviço</p>
+                          <p className="truncate text-sm font-medium">{lancamento.servico}</p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground">Talhão</p>
+                          <p className="truncate text-sm">{lancamento.local}</p>
+                        </div>
+                        <div className="sm:text-right">
+                          <p className="text-xs text-muted-foreground">Custo Total</p>
+                          <p className="whitespace-nowrap text-sm font-semibold">
+                            {Number(lancamento.custoTotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Botões - Mobile */}
 
             <div className="lg:hidden flex flex-col gap-3 pt-4 border-t">
@@ -1839,6 +1934,26 @@ export function LancamentoForm() {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => custoAltoDialog.resolve?.(false)}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => custoAltoDialog.resolve?.(true)}>Sim, Salvar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={novoLancamentoDialogAberto} onOpenChange={setNovoLancamentoDialogAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Lançamento não salvo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem um lançamento em andamento que ainda não foi salvo. Se continuar, os dados preenchidos serão perdidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              resetarFormulario()
+              setNovoLancamentoDialogAberto(false)
+            }}>
+              Continuar
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
