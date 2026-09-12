@@ -78,3 +78,7 @@ export function prepararDadosPizza<T extends Record<string, any>>(
 
 export const fmtMoedaBR = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0)
+
+// Rótulo exibido quando um lançamento não está vinculado a um talhão específico
+export const talhaoLabel = (nome?: string | null) =>
+  nome && String(nome).trim() ? String(nome) : 'Propriedade'
