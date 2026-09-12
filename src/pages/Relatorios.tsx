@@ -313,7 +313,9 @@ export function Relatorios() {
 
 
         <TabsContent value="operacional"><AbaOperacional propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
-        <TabsContent value="financeiro"><AbaFinanceiro propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        {mostrarFinanceiro && (
+          <TabsContent value="financeiro"><AbaFinanceiro propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        )}
         <TabsContent value="talhao"><AbaPorTalhao propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="comparativo"><AbaComparativo propId={propId} safraAtualId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="insumos"><AbaInsumos propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
