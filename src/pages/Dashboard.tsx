@@ -512,12 +512,14 @@ export default function Dashboard() {
           </div>
 
           {/* SEÇÃO 3 — Gráficos Consolidados */}
-          <div>
-            <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-              📊 Análise Financeira Consolidada
-            </h2>
-            <GraficosConsolidados data={consolidadoV2 || []} isLoading={loadConsolidadoV2} />
-          </div>
+          {!semPermissaoFin && (
+            <div>
+              <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                📊 Análise Financeira Consolidada
+              </h2>
+              <GraficosConsolidados data={consolidadoV2 || []} isLoading={loadConsolidadoV2} />
+            </div>
+          )}
 
           {/* SEÇÃO 4 — Estoque de Produção Consolidado */}
           <div>
