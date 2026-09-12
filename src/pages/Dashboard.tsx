@@ -468,12 +468,16 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards V2 */}
-      <DashboardKPIsV2
-        data={kpiV2Data}
-        isLoading={kpiV2Loading}
-        onAlertClick={propId ? () => setAlertsOpen(true) : undefined}
-      />
+      {/* KPI Cards V2 — só para quem pode ver financeiro */}
+      {semPermissaoFin ? (
+        <AvisoSemPermissaoFinanceiro />
+      ) : (
+        <DashboardKPIsV2
+          data={kpiV2Data}
+          isLoading={kpiV2Loading && !semPermissaoFin}
+          onAlertClick={propId ? () => setAlertsOpen(true) : undefined}
+        />
+      )}
 
       {/* Alerts Panel (filtered mode only) */}
       {propId && (
