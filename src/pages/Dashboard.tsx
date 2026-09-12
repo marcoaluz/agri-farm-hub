@@ -163,6 +163,11 @@ export default function Dashboard() {
 
   const [alertsOpen, setAlertsOpen] = useState(false)
 
+  // Somente Proprietário/Gerente podem ver (e portanto buscar) dado financeiro.
+  const { podeVerFinanceiro, isLoading: loadPapel } = usePapelUsuario()
+  const podeFin = !!podeVerFinanceiro
+  const semPermissaoFin = !loadPapel && !podeFin
+
   // ── NEW KPI RPC (filtered mode) ──
   const { data: kpisV2, isLoading: loadKpisV2 } = useQuery({
     queryKey: ['dash-kpis-v2', propId, safraAtual?.id],
@@ -174,7 +179,8 @@ export default function Dashboard() {
       if (error) throw error
       return data as any
     },
-    enabled: !!propId,
+    enabled: !!propId && podeFin,
+    retry: false,
   })
 
   // ── NEW CONSOLIDATED V2 ──
@@ -185,7 +191,8 @@ export default function Dashboard() {
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: isConsolidado,
+    enabled: isConsolidado && podeFin,
+    retry: false,
   })
 
   // Aggregate consolidated KPIs for top cards
