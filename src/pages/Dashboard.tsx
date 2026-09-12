@@ -35,8 +35,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { usePapelUsuario } from '@/hooks/usePapelUsuario'
-import { AvisoSemPermissaoFinanceiro } from '@/lib/erroFinanceiro'
+
+import { AvisoSemPermissaoFinanceiro, ehErroPermissaoFinanceiro } from '@/lib/erroFinanceiro'
 
 const PIE_COLORS = [
   'hsl(142, 45%, 28%)', 'hsl(42, 85%, 55%)', 'hsl(199, 89%, 48%)',
@@ -163,13 +163,8 @@ export default function Dashboard() {
 
   const [alertsOpen, setAlertsOpen] = useState(false)
 
-  // Somente Proprietário/Gerente podem ver (e portanto buscar) dado financeiro.
-  const { podeVerFinanceiro, isLoading: loadPapel } = usePapelUsuario()
-  const podeFin = !!podeVerFinanceiro
-  const semPermissaoFin = !loadPapel && !podeFin
-
   // ── NEW KPI RPC (filtered mode) ──
-  const { data: kpisV2, isLoading: loadKpisV2 } = useQuery({
+  const { data: kpisV2, isLoading: loadKpisV2, error: errKpisV2 } = useQuery({
     queryKey: ['dash-kpis-v2', propId, safraAtual?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc('get_dashboard_kpis_completo', {
@@ -179,19 +174,19 @@ export default function Dashboard() {
       if (error) throw error
       return data as any
     },
-    enabled: !!propId && podeFin,
+    enabled: !!propId,
     retry: false,
   })
 
   // ── NEW CONSOLIDATED V2 ──
-  const { data: consolidadoV2, isLoading: loadConsolidadoV2 } = useQuery({
+  const { data: consolidadoV2, isLoading: loadConsolidadoV2, error: errConsolidadoV2 } = useQuery({
     queryKey: ['dash-consolidado-v2'],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc('get_dashboard_consolidado_v2')
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: isConsolidado && podeFin,
+    enabled: isConsolidado,
     retry: false,
   })
 
@@ -235,7 +230,7 @@ export default function Dashboard() {
       })
       return Array.from(catMap.entries()).map(([categoria, custo_total]) => ({ categoria, custo_total }))
     },
-    enabled: isConsolidado && !!consolidadoV2 && podeFin,
+    enabled: isConsolidado && !!consolidadoV2,
     retry: false,
   })
 
@@ -285,7 +280,7 @@ export default function Dashboard() {
     enabled: enabledFiltered,
   })
 
-  const { data: custosMes, isLoading: loadMes } = useQuery({
+  const { data: custosMes, isLoading: loadMes, error: errMes } = useQuery({
     queryKey: ['custos-mes', propriedadeAtual?.id, safraAtual?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc('get_custos_por_mes', {
@@ -295,11 +290,11 @@ export default function Dashboard() {
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: !!propriedadeAtual?.id && podeFin && (!safraAtual || safraAtual.propriedade_id === propriedadeAtual.id),
+    enabled: !!propriedadeAtual?.id && (!safraAtual || safraAtual.propriedade_id === propriedadeAtual.id),
     retry: false,
   })
 
-  const { data: planejado, isLoading: loadPlanejado } = useQuery({
+  const { data: planejado, isLoading: loadPlanejado, error: errPlanejado } = useQuery({
     queryKey: ['planejado-totais', propriedadeAtual?.id, safraAtual?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc('get_planejado_totais', {
@@ -309,11 +304,11 @@ export default function Dashboard() {
       if (error) throw error
       return data?.[0] || { total_a_pagar: 0, total_a_receber: 0 }
     },
-    enabled: !!propriedadeAtual?.id && podeFin,
+    enabled: !!propriedadeAtual?.id,
     retry: false,
   })
 
-  const { data: custosCategoria, isLoading: loadCat } = useQuery({
+  const { data: custosCategoria, isLoading: loadCat, error: errCat } = useQuery({
     queryKey: ['dash-custos-cat', propId, safraId],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc('get_relatorio_por_categoria', {
@@ -322,7 +317,7 @@ export default function Dashboard() {
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: enabledFiltered && podeFin,
+    enabled: enabledFiltered,
     retry: false,
   })
 
