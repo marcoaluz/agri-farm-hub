@@ -11,6 +11,7 @@ interface ConsolidadoRow {
   safra_ativa_nome: string | null
   area_ha: number
   custo_safra: number
+  custo_propriedade: number
   receita_paga: number
   resultado: number
   custo_por_ha: number
@@ -45,6 +46,7 @@ export function TabelaConsolidadaV2({ data, isLoading, onSelectPropriedade }: Pr
             <TableHead>Propriedade</TableHead>
             <TableHead>Safra Ativa</TableHead>
             <TableHead className="text-right">Custo</TableHead>
+            <TableHead className="text-right">Despesas</TableHead>
             <TableHead className="text-right">Receita</TableHead>
             <TableHead className="text-right">Resultado</TableHead>
             <TableHead className="text-center">Alertas</TableHead>
@@ -60,6 +62,7 @@ export function TabelaConsolidadaV2({ data, isLoading, onSelectPropriedade }: Pr
               <TableCell className="font-medium">{row.propriedade_nome}</TableCell>
               <TableCell className="text-muted-foreground text-sm">{row.safra_ativa_nome || '—'}</TableCell>
               <TableCell className="text-right text-sm">{fmt(row.custo_safra)}</TableCell>
+              <TableCell className="text-right text-sm">{fmt(row.custo_propriedade)}</TableCell>
               <TableCell className="text-right text-sm">{fmt(row.receita_paga)}</TableCell>
               <TableCell className={`text-right text-sm font-medium ${(row.resultado ?? 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {fmt(row.resultado)}
