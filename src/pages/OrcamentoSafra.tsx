@@ -22,6 +22,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
 import { Pencil, DollarSign, TrendingUp, AlertTriangle, Target } from 'lucide-react'
+import { ehErroPermissaoFinanceiro, AvisoSemPermissaoFinanceiro } from '@/lib/erroFinanceiro'
 import { cn } from '@/lib/utils'
 
 /* ------------------------------------------------------------------ */
@@ -235,7 +236,7 @@ export default function OrcamentoSafra() {
 
   const [editOpen, setEditOpen] = useState(false)
 
-  const { data: rows = [], isLoading } = useQuery<OrcamentoRow[]>({
+  const { data: rows = [], isLoading, error: erroOrcamento } = useQuery<OrcamentoRow[]>({
     queryKey: ['orcamento-vs-realizado', propId, safraId],
     queryFn: async () => {
       if (!propId || !safraId) return []
@@ -244,6 +245,8 @@ export default function OrcamentoSafra() {
         p_safra: safraId,
       })
       if (error) {
+        // Erro de permissão é definitivo: propaga para exibir aviso, sem nova tentativa
+        if (ehErroPermissaoFinanceiro(error)) throw error
         console.error('Erro orcamento:', error.message)
         toast.error('Erro ao carregar orçamento: ' + error.message)
         return []
@@ -293,6 +296,17 @@ export default function OrcamentoSafra() {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground">
         Selecione uma propriedade e safra para ver o orçamento.
+      </div>
+    )
+  }
+
+  if (ehErroPermissaoFinanceiro(erroOrcamento)) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Orçamento da Safra</h1>
+        </div>
+        <AvisoSemPermissaoFinanceiro />
       </div>
     )
   }

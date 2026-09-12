@@ -26,6 +26,7 @@ const PIE_COLORS = [
   'hsl(320,60%,50%)', 'hsl(60,80%,45%)',
 ]
 
+import { ehErroPermissaoFinanceiro, AvisoSemPermissaoFinanceiro } from '@/lib/erroFinanceiro'
 const db = supabase as any
 
 export default function RelatorioRentabilidade() {
@@ -101,6 +102,7 @@ export default function RelatorioRentabilidade() {
   })
 
   const isLoading = resumo.isLoading || breakdown.isLoading || talhoes.isLoading || insumos.isLoading || evolucao.isLoading
+  const semPermissao = [resumo.error, breakdown.error, talhoes.error, insumos.error, evolucao.error].some(ehErroPermissaoFinanceiro)
   const r = resumo.data || {} as any
 
   const temProducaoZero = useMemo(() =>
@@ -159,7 +161,9 @@ export default function RelatorioRentabilidade() {
         </div>
       )}
 
-      {enabled && !isLoading && (
+      {enabled && !isLoading && semPermissao && <AvisoSemPermissaoFinanceiro />}
+
+      {enabled && !isLoading && !semPermissao && (
         <>
           {/* KPI Cards */}
           <div className="grid gap-4 md:grid-cols-4">

@@ -32,6 +32,8 @@ import { useGlobal } from '@/contexts/GlobalContext'
 import { cn } from '@/lib/utils'
 import { MultiSelectFilter, type OpcaoFiltro } from '@/components/relatorios/MultiSelectFilter'
 import { calcularOpcoesDisponiveis } from '@/lib/filtrosCombinacoes'
+import { usePapelUsuario } from '@/hooks/usePapelUsuario'
+import { ehErroPermissaoFinanceiro, AvisoSemPermissaoFinanceiro } from '@/lib/erroFinanceiro'
 
 /* Junta os resultados de várias chamadas do relatório de custos detalhados
    (uma por combinação marcada nos filtros de múltipla escolha). */
@@ -261,10 +263,13 @@ function ExportButtons({
    ════════════════════════════════════════════════ */
 export function Relatorios() {
   const { propriedadeAtual, safraAtual, loading } = useGlobal()
+  const { podeVerFinanceiro, isLoading: papelLoading } = usePapelUsuario()
   const propId = propriedadeAtual?.id || ''
   const safraId = safraAtual?.id || ''
   const contextoValido = !!propId && !!safraId && safraAtual?.propriedade_id === propId
   const semContexto = loading || !contextoValido
+  // Enquanto o papel carrega, não mostra a aba (evita piscar para Operador/Visualizador)
+  const mostrarFinanceiro = !papelLoading && podeVerFinanceiro
 
   if (semContexto) {
     return (
@@ -289,7 +294,9 @@ export function Relatorios() {
         <div className="-mx-1 overflow-x-auto pb-1">
           <TabsList className="w-max min-w-full">
             <TabsTrigger value="operacional" className="whitespace-nowrap"><ClipboardList className="h-4 w-4 mr-1" />Operacional</TabsTrigger>
-            <TabsTrigger value="financeiro" className="whitespace-nowrap"><DollarSign className="h-4 w-4 mr-1" />Financeiro</TabsTrigger>
+            {mostrarFinanceiro && (
+              <TabsTrigger value="financeiro" className="whitespace-nowrap"><DollarSign className="h-4 w-4 mr-1" />Financeiro</TabsTrigger>
+            )}
             <TabsTrigger value="talhao" className="whitespace-nowrap"><Sprout className="h-4 w-4 mr-1" />Por Talhão</TabsTrigger>
             <TabsTrigger value="comparativo" className="whitespace-nowrap"><TrendingUp className="h-4 w-4 mr-1" />Comparativo</TabsTrigger>
             <TabsTrigger value="insumos" className="whitespace-nowrap"><Package className="h-4 w-4 mr-1" />Insumos</TabsTrigger>
@@ -306,7 +313,9 @@ export function Relatorios() {
 
 
         <TabsContent value="operacional"><AbaOperacional propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
-        <TabsContent value="financeiro"><AbaFinanceiro propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        {mostrarFinanceiro && (
+          <TabsContent value="financeiro"><AbaFinanceiro propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
+        )}
         <TabsContent value="talhao"><AbaPorTalhao propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="comparativo"><AbaComparativo propId={propId} safraAtualId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
         <TabsContent value="insumos"><AbaInsumos propId={propId} safraId={safraId} propriedadeNome={propriedadeAtual?.nome || ''} /></TabsContent>
@@ -1078,6 +1087,7 @@ function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; s
     })), [breakdown, breakTotal])
 
   if (evolQ.isLoading || fluxoQ.isLoading || breakQ.isLoading) return <SkeletonAba />
+  if ([evolQ.error, fluxoQ.error, breakQ.error].some(ehErroPermissaoFinanceiro)) return <AvisoSemPermissaoFinanceiro />
 
   return (
     <div className="space-y-4">
@@ -1232,6 +1242,7 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
     })), [cards])
 
   if (talhaoQ.isLoading || rentQ.isLoading) return <SkeletonAba />
+  if ([talhaoQ.error, rentQ.error].some(ehErroPermissaoFinanceiro)) return <AvisoSemPermissaoFinanceiro />
   if (cards.length === 0) return <Card><CardContent className="pt-6"><EmptyState message="Nenhum talhão com operações nesta safra" /></CardContent></Card>
 
   return (
@@ -1557,6 +1568,7 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
   }
 
   if (insQ.isLoading) return <SkeletonAba />
+  if (ehErroPermissaoFinanceiro(insQ.error)) return <AvisoSemPermissaoFinanceiro />
   if (itens.length === 0) return <Card><CardContent className="pt-6"><EmptyState message="Nenhum insumo registrado nesta safra" /></CardContent></Card>
 
   return (
