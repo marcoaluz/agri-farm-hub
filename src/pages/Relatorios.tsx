@@ -261,10 +261,13 @@ function ExportButtons({
    ════════════════════════════════════════════════ */
 export function Relatorios() {
   const { propriedadeAtual, safraAtual, loading } = useGlobal()
+  const { podeVerFinanceiro, isLoading: papelLoading } = usePapelUsuario()
   const propId = propriedadeAtual?.id || ''
   const safraId = safraAtual?.id || ''
   const contextoValido = !!propId && !!safraId && safraAtual?.propriedade_id === propId
   const semContexto = loading || !contextoValido
+  // Enquanto o papel carrega, não mostra a aba (evita piscar para Operador/Visualizador)
+  const mostrarFinanceiro = !papelLoading && podeVerFinanceiro
 
   if (semContexto) {
     return (
