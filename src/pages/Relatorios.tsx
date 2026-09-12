@@ -30,6 +30,38 @@ import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { cn } from '@/lib/utils'
+import { MultiSelectFilter, type OpcaoFiltro } from '@/components/relatorios/MultiSelectFilter'
+import { calcularOpcoesDisponiveis } from '@/lib/filtrosCombinacoes'
+
+/* Junta os resultados de várias chamadas do relatório de custos detalhados
+   (uma por combinação marcada nos filtros de múltipla escolha). */
+function mergeSecaoCustos(listas: any[][]) {
+  const grupos = new Map<string, { grupo: any; subtotal: number; itens: Map<string, any> }>()
+  listas.forEach((lista) => (lista || []).forEach((g: any) => {
+    const chave = String(g.grupo)
+    let alvo = grupos.get(chave)
+    if (!alvo) { alvo = { grupo: g.grupo, subtotal: 0, itens: new Map() }; grupos.set(chave, alvo) }
+    alvo.subtotal += Number(g.subtotal || 0)
+    ;(g.itens || []).forEach((it: any) => {
+      const ик = `${it.tipo_ref || it.tipo || ''}:${it.nome}`
+      const existente = alvo!.itens.get(ик)
+      if (existente) {
+        existente.valor = Number(existente.valor || 0) + Number(it.valor || 0)
+        if (it.quantidade != null) existente.quantidade = Number(existente.quantidade || 0) + Number(it.quantidade)
+        if (it.vezes != null) existente.vezes = Number(existente.vezes || 0) + Number(it.vezes)
+      } else {
+        alvo!.itens.set(ик, { ...it })
+      }
+    })
+  }))
+  return Array.from(grupos.values())
+    .map((g) => ({
+      ...g,
+      itens: Array.from(g.itens.values()).sort((a, b) => Number(b.valor || 0) - Number(a.valor || 0)),
+    }))
+    .sort((a, b) => b.subtotal - a.subtotal)
+}
+
 
 
 import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, exportarEstoquePDF, exportarInsumosPDF, exportarObservacoesPDF, exportarMaquinasPDF, type Coluna } from '@/lib/exportTabela'
