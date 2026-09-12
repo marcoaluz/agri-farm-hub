@@ -2385,22 +2385,20 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
   const [talhoesSel, setTalhoesSel] = useState<string[]>([])
 
   const maqQ = useQuery({
-    queryKey: ['rel-maquinas', propId, safraId, talhoesSel],
+    queryKey: ['rel-maquinas-v2', propId, safraId, maquinasSel, talhoesSel],
     queryFn: async () => {
-      const alvos: (string | null)[] = talhoesSel.length ? talhoesSel : [null]
-      const resultados = await Promise.all(alvos.map(async (talhao) => {
-        const { data, error } = await (db as any).rpc('get_relatorio_por_maquina', {
-          p_propriedade_id: propId,
-          p_safra_id: safraId,
-          p_talhao_id: talhao,
-        })
-        if (error) throw error
-        return (data || []) as any[]
-      }))
-      if (resultados.length === 1) return resultados[0]
-      return mergeMaquinas(resultados)
+      const { data, error } = await (db as any).rpc('get_relatorio_por_maquina_v2', {
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
+        p_maquina_ids: maquinasSel.length ? maquinasSel : null,
+        p_talhoes: talhoesSel.length ? talhoesSel : null,
+      })
+      if (error) throw error
+      return (data || {}) as any
     },
+    enabled: !!propId && !!safraId,
   })
+
 
   const combosMaqQ = useQuery({
     queryKey: ['rel-combinacoes-filtro-maquinas', propId, safraId],
