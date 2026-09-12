@@ -309,7 +309,8 @@ export default function Dashboard() {
       if (error) throw error
       return data?.[0] || { total_a_pagar: 0, total_a_receber: 0 }
     },
-    enabled: !!propriedadeAtual?.id,
+    enabled: !!propriedadeAtual?.id && podeFin,
+    retry: false,
   })
 
   const { data: custosCategoria, isLoading: loadCat } = useQuery({
