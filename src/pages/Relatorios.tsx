@@ -2511,43 +2511,23 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <div className="flex flex-col sm:flex-row gap-2">
-        <Select value={filtroMaquina} onValueChange={setFiltroMaquina}>
-          <SelectTrigger className="w-full sm:w-[240px]">
-            {filtroMaquina === '_all' ? (
-              <span>Todas as máquinas</span>
-            ) : (
-              <span className="truncate">
-                {maquinasUnicas.find(([id]) => id === filtroMaquina)?.[1] ?? 'Máquina'}
-              </span>
-            )}
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="_all">Todas as máquinas</SelectItem>
-            {maquinasUnicas.map(([id, nome]) => (
-              <SelectItem key={id} value={id}>{nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          className="w-full sm:w-[240px]"
+          placeholder="Todas as máquinas"
+          opcoes={opcoesMaquina}
+          selecionados={maquinasSel}
+          onChange={setMaquinasSel}
+        />
 
-        <Select value={filtroTalhao} onValueChange={setFiltroTalhao}>
-          <SelectTrigger className="w-full sm:w-[220px]">
-            {filtroTalhao === '_all' ? (
-              <span>Todos os talhões</span>
-            ) : (
-              <span className="truncate">
-                {talhoesUnicos.find(([id]) => id === filtroTalhao)?.[1] ?? 'Talhão'}
-              </span>
-            )}
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="_all">Todos os talhões</SelectItem>
-            {talhoesUnicos.map(([id, nome]) => (
-              <SelectItem key={id} value={id}>{nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          className="w-full sm:w-[220px]"
+          placeholder="Todos os talhões"
+          opcoes={opcoesTalhao}
+          selecionados={talhoesSel}
+          onChange={setTalhoesSel}
+        />
 
-        <Select value={filtroTipoCusto} onValueChange={setFiltroTipoCusto}>
+
           <SelectTrigger className="w-full sm:w-[220px]">
             <SelectValue placeholder="Tipo de custo" />
           </SelectTrigger>
