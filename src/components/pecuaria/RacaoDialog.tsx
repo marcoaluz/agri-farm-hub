@@ -136,26 +136,28 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
 
     const rebanhoNome = rebanhos.find((r: any) => r.id === rebanhoId)?.nome || ''
 
-    const obsCompleta = [
-      quantidade ? `${quantidade} ${unidade}` : '',
-      observacoes,
-    ].filter(Boolean).join(' — ')
-
     setSaving(true)
     try {
+      const { data: userData } = await supabase.auth.getUser()
+
+      const { data: safraAtiva } = await supabase
+        .from('safras' as any)
+        .select('id')
+        .eq('propriedade_id', propriedadeId)
+        .eq('ativa', true)
+        .maybeSingle()
+
       const { error } = await supabase.from('transacoes' as any).insert({
         propriedade_id: propriedadeId,
-        safra_id: safraId,
+        safra_id: safraAtiva?.id,
         tipo: 'despesa',
-        categoria: 'alimentacao_animal',
-        descricao: `${tipoRacao} - ${rebanhoNome}`,
+        categoria: 'racao_animal',
+        descricao: `Ração — ${rebanhoNome}: ${tipoRacao}`,
         valor: parseFloat(custo),
         data_vencimento: data,
         data_pagamento: data,
         status: 'pago',
-        origem: 'pecuaria_racao',
-        fornecedor_cliente: fornecedor || null,
-        observacoes: obsCompleta || null,
+        criado_por: userData?.user?.id,
       } as any)
 
       if (error) throw error
