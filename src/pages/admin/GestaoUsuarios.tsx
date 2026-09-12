@@ -548,6 +548,83 @@ export default function GestaoUsuarios() {
     )
   }
 
+
+  function renderStatusBadge(u: UserProfile) {
+    if (u.status === 'pendente') {
+      return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800">Pendente</Badge>
+    }
+    if (u.status === 'inativo') {
+      return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">Inativo</Badge>
+    }
+    return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">Ativo</Badge>
+  }
+
+  function renderMenuAcoes(u: UserProfile) {
+    if (u.id === user?.id) return <span className="text-xs text-muted-foreground px-2">Você</span>
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(event) => event.stopPropagation()}>
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+          <DropdownMenuItem onClick={() => abrirDetalhes(u)}>
+            <Users className="mr-2 h-4 w-4" /> Ver detalhes
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => openEditModal(u)}>
+            <Edit className="mr-2 h-4 w-4" /> Editar perfil
+          </DropdownMenuItem>
+          {u.perfil === 'proprietario' && (
+            <DropdownMenuItem onClick={() => { setUsuarioAlterandoPlano(u); setNovoPlanoSlug(u.plano_slug || 'essencial'); setNovoCiclo('mensal') }}>
+              <Shield className="mr-2 h-4 w-4" /> Alterar Plano
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          {u.status === 'pendente' && (
+            <>
+              <DropdownMenuItem onClick={() => { setUsuarioAprovando(u); setPapelAprovacao(u.perfil || 'consultor') }}>
+                <UserCheck className="mr-2 h-4 w-4" /> Aprovar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setUsuarioRejeitando(u)} className="text-destructive focus:text-destructive">
+                <UserX className="mr-2 h-4 w-4" /> Rejeitar
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+          {u.perfil !== 'admin' && (
+            <DropdownMenuItem onClick={() => setUsuarioPromovendo(u)}>
+              <Shield className="mr-2 h-4 w-4" /> Promover a admin
+            </DropdownMenuItem>
+          )}
+          {u.perfil === 'admin' && !u.is_super_admin && (
+            <DropdownMenuItem onClick={() => setUsuarioRebaixando(u)}>
+              <Shield className="mr-2 h-4 w-4" /> Rebaixar admin
+            </DropdownMenuItem>
+          )}
+          {!u.is_super_admin && u.status !== 'pendente' && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className={u.status === 'inativo' ? '' : 'text-destructive focus:text-destructive'}
+                onClick={() => setUsuarioAlterandoStatus(u)}
+              >
+                {u.status === 'inativo'
+                  ? <><UserCheck className="mr-2 h-4 w-4" /> Reativar conta</>
+                  : <><UserX className="mr-2 h-4 w-4" /> Suspender conta</>}
+              </DropdownMenuItem>
+            </>
+          )}
+          {!u.is_super_admin && (
+            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setUsuarioDeletando(u)}>
+              <Trash2 className="mr-2 h-4 w-4" /> Deletar usuário
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -693,185 +770,121 @@ export default function GestaoUsuarios() {
             </CardContent>
           </Card>
 
-          {/* Table */}
-          <Card>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="flex items-center justify-center py-16">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : usuariosFiltrados.length === 0 ? (
-                <div className="text-center py-16 text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p className="font-medium">Nenhum usuário encontrado</p>
-                  <p className="text-sm">Ajuste os filtros para ver resultados</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Usuário</TableHead>
-                      <TableHead>Perfil</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Plano</TableHead>
-                      <TableHead>Cadastro</TableHead>
-                      <TableHead className="w-[50px]" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {usuariosFiltrados.map(u => (
-                      <TableRow
-                        key={u.id}
-                        className={u.perfil === 'proprietario' ? 'cursor-pointer hover:bg-muted/50' : ''}
-                        onClick={() => u.perfil === 'proprietario' && abrirDetalhes(u)}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-3">
+          {/* Hierarchical user list */}
+          <div className="space-y-3">
+            {loading ? (
+              <Card><CardContent className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
+            ) : totalFiltrado === 0 ? (
+              <Card><CardContent className="text-center py-16 text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">Nenhum usuário encontrado</p>
+                <p className="text-sm">Ajuste os filtros para ver resultados</p>
+              </CardContent></Card>
+            ) : (
+              <>
+                {proprietariosFiltrados.map((dono) => {
+                  const expandido = proprietariosExpandidos.has(dono.id)
+                  return (
+                    <Card key={dono.id} className="overflow-hidden">
+                      <div className="flex items-center gap-3 p-4">
+                        <Button
+                          variant="ghost"
+                          className="h-auto min-w-0 flex-1 justify-start gap-3 p-0 text-left hover:bg-transparent"
+                          onClick={() => alternarProprietario(dono.id)}
+                          aria-expanded={expandido}
+                        >
+                          <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expandido ? '' : '-rotate-90'}`} />
+                          <Avatar className="h-10 w-10 shrink-0">
+                            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">{getInitials(dono.nome)}</AvatarFallback>
+                          </Avatar>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium text-foreground">{dono.nome || 'Sem nome'}</span>
+                            <span className="block truncate text-xs font-normal text-muted-foreground">{dono.email || '—'}</span>
+                          </span>
+                        </Button>
+                        <div className="hidden sm:block">{renderStatusBadge(dono)}</div>
+                        <Badge variant="secondary" className="shrink-0">
+                          {dono.propriedades.length} {dono.propriedades.length === 1 ? 'propriedade' : 'propriedades'}
+                        </Badge>
+                        {renderMenuAcoes(dono)}
+                      </div>
 
-                            <Avatar className="h-9 w-9">
-                              <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                                {getInitials(u.nome)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium text-foreground">{u.nome || 'Sem nome'}</p>
-                              <p className="text-xs text-muted-foreground">{u.email || '—'}</p>
-                            </div>
+                      {expandido && (
+                        <div className="border-t bg-muted/20 px-4 py-4 sm:px-6">
+                          <div className="mb-4 space-y-2">
+                            <p className="text-xs font-semibold uppercase text-muted-foreground">Propriedades</p>
+                            {dono.propriedades.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">Nenhuma propriedade cadastrada</p>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {dono.propriedades.map((propriedade) => (
+                                  <Badge key={propriedade.id} variant="outline" className="gap-1.5 bg-background">
+                                    <MapPin className="h-3 w-3" /> {propriedade.nome}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        </TableCell>
-                        <TableCell>{renderPerfilBadge(u.perfil, u.is_super_admin)}</TableCell>
-                        <TableCell>
-                          {u.status === 'pendente' ? (
-                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800">
-                              Pendente
-                            </Badge>
-                          ) : u.status === 'inativo' ? (
-                            <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
-                              Inativo
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
-                              Ativo
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {u.plano ? (
-                            <div>
-                              <span className="text-sm font-medium">{u.plano}</span>
-                              {u.vencimento && (
-                                <p className="text-[10px] text-muted-foreground">
-                                  Vence {format(new Date(u.vencimento), 'dd/MM/yy', { locale: ptBR })}
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {u.criado_em
-                            ? format(new Date(u.criado_em), "dd MMM yyyy", { locale: ptBR })
-                            : '—'}
-                        </TableCell>
-                        <TableCell>
-                          {u.id === user?.id ? (
-                            <span className="text-xs text-muted-foreground px-2">Você</span>
-                          ) : (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
 
-                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                              <DropdownMenuItem onClick={() => abrirDetalhes(u)}>
-                                <Users className="mr-2 h-4 w-4" />
-                                Ver detalhes
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openEditModal(u)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar perfil
-                              </DropdownMenuItem>
-                              {u.perfil === 'proprietario' && (
-                                <DropdownMenuItem onClick={() => { setUsuarioAlterandoPlano(u); setNovoPlanoSlug(u.plano_slug || 'essencial'); setNovoCiclo('mensal') }}>
-                                  <Shield className="mr-2 h-4 w-4" />
-                                  Alterar Plano
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              {u.status === 'pendente' && (
-                                <>
-                                  <DropdownMenuItem onClick={() => { setUsuarioAprovando(u); setPapelAprovacao(u.perfil || 'consultor') }}>
-                                    <UserCheck className="mr-2 h-4 w-4" />
-                                    Aprovar
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => setUsuarioRejeitando(u)} className="text-destructive focus:text-destructive">
-                                    <UserX className="mr-2 h-4 w-4" />
-                                    Rejeitar
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                </>
-                              )}
-                              {u.perfil !== 'admin' && (
-                                <DropdownMenuItem onClick={() => setUsuarioPromovendo(u)}>
-                                  <Shield className="mr-2 h-4 w-4" />
-                                  Promover a admin
-                                </DropdownMenuItem>
-                              )}
-                              {u.perfil === 'admin' && !u.is_super_admin && (
-                                <DropdownMenuItem onClick={() => setUsuarioRebaixando(u)}>
-                                  <Shield className="mr-2 h-4 w-4" />
-                                  Rebaixar admin
-                                </DropdownMenuItem>
-                              )}
-                              {!u.is_super_admin && u.status !== 'pendente' && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    className={u.status === 'inativo' ? '' : 'text-destructive focus:text-destructive'}
-                                    onClick={() => setUsuarioAlterandoStatus(u)}
-                                  >
-                                    {u.status === 'inativo' ? (
-                                      <>
-                                        <UserCheck className="mr-2 h-4 w-4" />
-                                        Reativar conta
-                                      </>
-                                    ) : (
-                                      <>
-                                        <UserX className="mr-2 h-4 w-4" />
-                                        Suspender conta
-                                      </>
-                                    )}
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                              {!u.is_super_admin && (
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => setUsuarioDeletando(u)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Deletar usuário
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          )}
-                        </TableCell>
-                      </TableRow>
+                          <div className="space-y-2 border-l-2 border-primary/30 pl-3 sm:pl-5">
+                            <p className="text-xs font-semibold uppercase text-muted-foreground">Equipe</p>
+                            {dono.equipe.length === 0 ? (
+                              <p className="py-2 text-sm text-muted-foreground">Nenhum membro de equipe ainda</p>
+                            ) : dono.equipe.map((membro) => (
+                              <div key={membro.id} className="flex flex-col gap-3 rounded-md border bg-background p-3 sm:flex-row sm:items-center">
+                                <div className="flex min-w-0 flex-1 items-center gap-3">
+                                  <Avatar className="h-9 w-9 shrink-0">
+                                    <AvatarFallback className="bg-muted text-sm font-medium">{getInitials(membro.nome)}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium text-foreground">{membro.nome || 'Sem nome'}</p>
+                                    <p className="truncate text-xs text-muted-foreground">{membro.email || '—'}</p>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {membro.acessos.map((acesso) => (
+                                    <Badge key={`${acesso.propriedade_id}-${acesso.papel}`} variant="outline">
+                                      {acesso.propriedade_nome} · {PERFIL_CONFIG[acesso.papel]?.label || acesso.papel}
+                                    </Badge>
+                                  ))}
+                                </div>
+                                <div className="flex items-center justify-between gap-2 sm:justify-end">
+                                  {renderStatusBadge(membro)}
+                                  {renderMenuAcoes(membro)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  )
+                })}
+
+                {semPropriedadeFiltrados.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <p className="px-1 text-xs font-semibold uppercase text-muted-foreground">Sem propriedade ou acesso</p>
+                    {semPropriedadeFiltrados.map((u) => (
+                      <Card key={u.id}>
+                        <CardContent className="flex items-center gap-3 p-4">
+                          <Avatar className="h-10 w-10 shrink-0">
+                            <AvatarFallback className="bg-muted text-sm font-medium">{getInitials(u.nome)}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium text-foreground">{u.nome || 'Sem nome'}</p>
+                            <p className="truncate text-xs text-muted-foreground">{u.email || '—'}</p>
+                          </div>
+                          <div className="hidden sm:block">{renderPerfilBadge(u.perfil, u.is_super_admin)}</div>
+                          {renderStatusBadge(u)}
+                          {renderMenuAcoes(u)}
+                        </CardContent>
+                      </Card>
                     ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
