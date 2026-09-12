@@ -1087,6 +1087,7 @@ function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; s
     })), [breakdown, breakTotal])
 
   if (evolQ.isLoading || fluxoQ.isLoading || breakQ.isLoading) return <SkeletonAba />
+  if ([evolQ.error, fluxoQ.error, breakQ.error].some(ehErroPermissaoFinanceiro)) return <AvisoSemPermissaoFinanceiro />
 
   return (
     <div className="space-y-4">
