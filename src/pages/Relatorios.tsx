@@ -53,6 +53,10 @@ const fmtN = (v: number, d = 2) =>
 const fmtPct = (v: number) => `${(Number(v) || 0).toFixed(1)}%`
 const fmtData = (s?: string) => (s ? format(new Date(String(s).substring(0, 10) + 'T12:00:00'), 'dd/MM/yyyy') : '-')
 
+// UUID especial retornado pelas RPCs de combinações para lançamentos "sem talhão" (nível Propriedade)
+const TALHAO_PROPRIEDADE_ID = '00000000-0000-0000-0000-000000000000'
+const nomeTalhaoFiltro = (id: string, fallback?: string) => (id === TALHAO_PROPRIEDADE_ID ? 'Propriedade' : (fallback || ''))
+
 // Remove sufixo entre parênteses do fim da unidade (ex: "Sacas (60kg)" -> "Sacas")
 const unidadeCurta = (u?: string) => (u || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
 
@@ -1715,11 +1719,16 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
       (!itemFiltro || (c.item_tipo === itemFiltro.tipo && c.item_id === itemFiltro.id))
     )
     const vistos = new Set<string>()
-    return filtradas.filter((c: any) => {
-      if (!c.talhao_id || vistos.has(c.talhao_id)) return false
-      vistos.add(c.talhao_id)
-      return true
-    })
+    return filtradas
+      .filter((c: any) => {
+        if (!c.talhao_id || vistos.has(c.talhao_id)) return false
+        vistos.add(c.talhao_id)
+        return true
+      })
+      .sort((a: any, b: any) =>
+        (a.talhao_id === TALHAO_PROPRIEDADE_ID ? 1 : 0) - (b.talhao_id === TALHAO_PROPRIEDADE_ID ? 1 : 0) ||
+        String(a.talhao_nome || '').localeCompare(String(b.talhao_nome || ''))
+      )
   }, [combos, categoriaFiltro, itemFiltro])
 
   // Reseta filtros que ficaram sem combinação válida
@@ -1815,6 +1824,28 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   const limparFiltros = () => {
     setDataInicio(''); setDataFim(''); setCategoriaFiltro(''); setItemFiltro(null); setTalhaoFiltro(''); setOrdenarPor('valor_desc')
   }
+
+  // Resumo dos filtros ativos (tela + cabeçalho dos exports)
+  const resumoFiltros = useMemo(() => {
+    const partes: string[] = []
+    if (dataInicio || dataFim) {
+      partes.push(`Período: ${dataInicio ? fmtData(dataInicio) : '...'} a ${dataFim ? fmtData(dataFim) : '...'}`)
+    }
+    if (categoriaFiltro) partes.push(`Categoria: ${categoriaFiltro}`)
+    if (itemFiltro) {
+      const item = [...itensDisponiveis, ...(itensFiltraveisQ.data || [])]
+        .find((i: any) => i.item_tipo === itemFiltro.tipo && i.item_id === itemFiltro.id)
+      const sufixo = itemFiltro.tipo === 'maquina' ? ' (máquina)' : itemFiltro.tipo === 'servico' ? ' (serviço)' : ''
+      partes.push(`Item: ${item?.item_nome || ''}${sufixo}`)
+    }
+    if (talhaoFiltro) {
+      const nome = talhoesDisponiveis.find((t: any) => t.talhao_id === talhaoFiltro)?.talhao_nome
+        || (talhoesQ.data || []).find((t: any) => t.id === talhaoFiltro)?.nome
+      partes.push(`Talhão: ${nomeTalhaoFiltro(talhaoFiltro, nome)}`)
+    }
+    return partes
+  }, [dataInicio, dataFim, categoriaFiltro, itemFiltro, talhaoFiltro, itensDisponiveis, talhoesDisponiveis, itensFiltraveisQ.data, talhoesQ.data])
+  const resumoFiltrosTexto = resumoFiltros.join(' · ')
 
   return (
     <div className="space-y-4">
