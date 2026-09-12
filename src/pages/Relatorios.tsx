@@ -2526,9 +2526,9 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
           selecionados={talhoesSel}
           onChange={setTalhoesSel}
         />
-
-
+        <Select value={filtroTipoCusto} onValueChange={setFiltroTipoCusto}>
           <SelectTrigger className="w-full sm:w-[220px]">
+
             <SelectValue placeholder="Tipo de custo" />
           </SelectTrigger>
           <SelectContent>
