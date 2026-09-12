@@ -632,6 +632,7 @@ export default function Dashboard() {
           <div className="grid gap-6 lg:grid-cols-3">
             <CardClima />
 
+            {!semPermissaoFin && (
             <ChartCard title="Distribuição por Categoria" description="Custos por tipo de serviço" className="lg:col-span-2">
               {isLoadingCatRender ? (
                 <Skeleton className="h-[350px] md:h-[400px] rounded-lg" />
