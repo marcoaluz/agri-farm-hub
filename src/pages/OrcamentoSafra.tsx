@@ -235,7 +235,7 @@ export default function OrcamentoSafra() {
 
   const [editOpen, setEditOpen] = useState(false)
 
-  const { data: rows = [], isLoading } = useQuery<OrcamentoRow[]>({
+  const { data: rows = [], isLoading, error: erroOrcamento } = useQuery<OrcamentoRow[]>({
     queryKey: ['orcamento-vs-realizado', propId, safraId],
     queryFn: async () => {
       if (!propId || !safraId) return []
@@ -244,6 +244,8 @@ export default function OrcamentoSafra() {
         p_safra: safraId,
       })
       if (error) {
+        // Erro de permissão é definitivo: propaga para exibir aviso, sem nova tentativa
+        if (ehErroPermissaoFinanceiro(error)) throw error
         console.error('Erro orcamento:', error.message)
         toast.error('Erro ao carregar orçamento: ' + error.message)
         return []
