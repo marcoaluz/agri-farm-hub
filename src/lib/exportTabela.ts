@@ -134,13 +134,13 @@ export async function exportarCustosDetalhadosPDF(opts: {
   propriedadeNome: string
   safraNome?: string
   resumoFiltros?: string
-  operacional: { grupo: string; subtotal: number; itens: { nome: string; vezes?: number; valor: number }[] }[]
+  porTalhao: { talhao_nome: string; subtotal: number; operacional: { grupo: string; subtotal: number; itens: { nome: string; vezes?: number; valor: number }[] }[] }[]
   financeiro: { grupo: string; subtotal: number; itens: { nome: string; valor: number; tipo?: string }[] }[]
   totalOperacional: number
   totalDespesas: number
   totalReceitas: number
 }) {
-  const { nomeArquivo, propriedadeNome, safraNome, resumoFiltros, operacional, financeiro, totalOperacional, totalDespesas, totalReceitas } = opts
+  const { nomeArquivo, propriedadeNome, safraNome, resumoFiltros, porTalhao, financeiro, totalOperacional, totalDespesas, totalReceitas } = opts
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
