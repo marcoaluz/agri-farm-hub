@@ -194,13 +194,13 @@ export default function GestaoUsuarios() {
       const resultado = (data || {}) as any
       const normalizarUsuario = (item: any, perfilPadrao?: string): UserProfile => ({
         id: item.id || item.usuario_id,
-        email: item.email || item.usuario_email || null,
-        nome: item.nome || item.usuario_nome || item.full_name || null,
+        email: item.email || item.usuario_email || item.proprietario_email || null,
+        nome: item.nome || item.usuario_nome || item.full_name || item.proprietario_nome || null,
         perfil: item.perfil || item.papel || perfilPadrao || 'consultor',
-        status: item.status || null,
-        ultimo_acesso: item.ultimo_acesso || null,
+        status: item.status || item.proprietario_status || null,
+        ultimo_acesso: item.ultimo_acesso || item.proprietario_ultimo_acesso || null,
         confirmado: item.confirmado ?? item.status === 'ativo',
-        criado_em: item.criado_em || item.created_at || '',
+        criado_em: item.criado_em || item.created_at || item.proprietario_criado_em || '',
         avatar_url: item.avatar_url || null,
         is_super_admin: item.is_super_admin || false,
         plano: item.plano || item.plano_nome || null,
