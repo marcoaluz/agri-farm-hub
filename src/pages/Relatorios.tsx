@@ -1905,6 +1905,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
       (grupo.itens || []).forEach((item: any) => {
         linhas.push({
           secao: 'Financeiro',
+          talhao: '',
           categoria: labelGrupo(grupo.grupo),
           item: item.nome,
           quantidade: '',
@@ -1914,9 +1915,9 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
       })
     })
     return linhas
-  }, [operacional, financeiro])
+  }, [porTalhao, financeiro])
 
-  const totalOperacional = operacional.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
+  const totalOperacional = porTalhao.reduce((s: number, sec: any) => s + Number(sec.subtotal || 0), 0)
   const totalDespesas = useMemo(() => {
     let soma = 0
     financeiro.forEach((grupo: any) => {
