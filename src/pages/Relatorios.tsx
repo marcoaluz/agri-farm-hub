@@ -1840,37 +1840,30 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   }, [opcoesCategoria, opcoesItem, opcoesTalhao])
 
   const relatorioQ = useQuery({
-    queryKey: ['rel-custos-detalhado', propId, safraId, dataInicio, dataFim, categoriasSel, itensSel, talhoesSel, ordenarPor],
+    queryKey: ['rel-custos-detalhado-v2', propId, safraId, dataInicio, dataFim, categoriasSel, itensSel, talhoesSel, ordenarPor],
     queryFn: async () => {
-      const cats: (string | null)[] = categoriasSel.length ? categoriasSel : [null]
+      // Item continua seleção única na RPC — uma chamada por item marcado
       const itens: (string | null)[] = itensSel.length ? itensSel : [null]
-      const talhoes: (string | null)[] = talhoesSel.length ? talhoesSel : [null]
 
-      const chamadas: { categoria: string | null; item: string | null; talhao: string | null }[] = []
-      cats.forEach((categoria) => itens.forEach((item) => talhoes.forEach((talhao) => {
-        chamadas.push({ categoria, item, talhao })
-      })))
-
-      const resultados = await Promise.all(chamadas.map(async ({ categoria, item, talhao }) => {
+      const resultados = await Promise.all(itens.map(async (item) => {
         const [itemTipo, itemId] = item ? item.split(':') : [null, null]
-        const { data, error } = await db.rpc('get_relatorio_custos_detalhado', {
+        const { data, error } = await db.rpc('get_relatorio_custos_detalhado_v2', {
           p_propriedade_id: propId,
           p_safra_id: safraId,
           p_data_inicio: dataInicio || null,
           p_data_fim: dataFim || null,
-          p_categoria: categoria,
+          p_categorias: categoriasSel.length ? categoriasSel : null,
+          p_talhoes: talhoesSel.length ? talhoesSel : null,
           p_item_tipo: itemTipo,
           p_item_id: itemId,
-          p_talhao_id: talhao,
           p_ordenar_por: ordenarPor,
         })
         if (error) throw error
         return data as any
       }))
 
-      if (resultados.length === 1) return resultados[0]
       return {
-        operacional: mergeSecaoCustos(resultados.map((r: any) => r?.operacional || [])),
+        por_talhao: mergePorTalhao(resultados),
         financeiro: mergeSecaoCustos(resultados.map((r: any) => r?.financeiro || [])),
       }
     },
@@ -1878,7 +1871,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   })
 
 
-  const operacional = (relatorioQ.data?.operacional || []) as any[]
+  const porTalhao = (relatorioQ.data?.por_talhao || []) as any[]
   const financeiro = (relatorioQ.data?.financeiro || []) as any[]
 
   const colunasExport: Coluna[] = [
