@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { getNotificationDestination } from '@/lib/notificationNavigation'
 
 interface PainelAlertasProps {
   propriedadeId: string
@@ -59,7 +60,8 @@ export function PainelAlertas({ propriedadeId, totalAlertas, forceOpen }: Painel
     await supabase.rpc('marcar_notificacao_lida' as any, { p_notificacao_id: a.id })
     queryClient.invalidateQueries({ queryKey: ['alertas-nao-lidos'] })
     queryClient.invalidateQueries({ queryKey: ['contar-notificacoes-dashboard'] })
-    if (a.link_acao) navigate(a.link_acao)
+    const destino = getNotificationDestination(a.tipo, a.link_acao)
+    if (destino) navigate(destino)
   }
 
   return (

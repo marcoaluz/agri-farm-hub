@@ -15,9 +15,11 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { getNotificationDestination } from '@/lib/notificationNavigation'
 
 interface Notificacao {
   id: string
+  tipo: string | null
   titulo: string
   mensagem: string | null
   link_acao: string | null
@@ -114,7 +116,8 @@ export function NotificationBell() {
     }
     setOpen(false)
     await Promise.all([fetchCount(), fetchList()])
-    if (n.link_acao) navigate(n.link_acao)
+    const destino = getNotificationDestination(n.tipo, n.link_acao)
+    if (destino) navigate(destino)
   }
 
   const handleMarcarTodas = async () => {

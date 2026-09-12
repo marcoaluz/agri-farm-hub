@@ -260,10 +260,11 @@ function ExportButtons({
    PÁGINA
    ════════════════════════════════════════════════ */
 export function Relatorios() {
-  const { propriedadeAtual, safraAtual } = useGlobal()
+  const { propriedadeAtual, safraAtual, loading } = useGlobal()
   const propId = propriedadeAtual?.id || ''
   const safraId = safraAtual?.id || ''
-  const semContexto = !propId || !safraId
+  const contextoValido = !!propId && !!safraId && safraAtual?.propriedade_id === propId
+  const semContexto = loading || !contextoValido
 
   if (semContexto) {
     return (
@@ -1009,6 +1010,8 @@ function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; s
       if (error) throw error
       return (data || []) as any[]
     },
+    enabled: !!propId && !!safraId,
+    retry: false,
   })
   const fluxoQ = useQuery({
     queryKey: ['rel-fin-fluxo', propId, safraId],
@@ -1019,6 +1022,8 @@ function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; s
       if (error) throw error
       return (data || []) as any[]
     },
+    enabled: !!propId && !!safraId,
+    retry: false,
   })
   const breakQ = useQuery({
     queryKey: ['rel-fin-break', propId, safraId],
@@ -1029,6 +1034,8 @@ function AbaFinanceiro({ propId, safraId, propriedadeNome }: { propId: string; s
       if (error) throw error
       return (data || []) as any[]
     },
+    enabled: !!propId && !!safraId,
+    retry: false,
   })
 
   const evol = evolQ.data || []
@@ -1188,6 +1195,8 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
       if (error) throw error
       return (data || []) as any[]
     },
+    enabled: !!propId && !!safraId,
+    retry: false,
   })
 
   const base = talhaoQ.data || []
@@ -1491,6 +1500,8 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
       if (error) throw error
       return (data || []) as any[]
     },
+    enabled: !!propId && !!safraId,
+    retry: false,
   })
 
   const itens = useMemo(() => {

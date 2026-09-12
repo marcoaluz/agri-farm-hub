@@ -285,7 +285,8 @@ export default function Dashboard() {
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: !!propriedadeAtual?.id,
+    enabled: !!propriedadeAtual?.id && (!safraAtual || safraAtual.propriedade_id === propriedadeAtual.id),
+    retry: false,
   })
 
   const { data: planejado, isLoading: loadPlanejado } = useQuery({

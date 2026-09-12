@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { getNotificationDestination } from '@/lib/notificationNavigation'
 
 interface CardAlertasProps {
   propriedadeId: string | null
@@ -34,7 +35,8 @@ export function CardAlertas({ propriedadeId, totalAlertas }: CardAlertasProps) {
     await supabase.rpc('marcar_notificacao_lida' as any, { p_notificacao_id: a.id })
     queryClient.invalidateQueries({ queryKey: ['alertas-nao-lidos'] })
     queryClient.invalidateQueries({ queryKey: ['contar-notificacoes-dashboard'] })
-    if (a.link_acao) navigate(a.link_acao)
+    const destino = getNotificationDestination(a.tipo, a.link_acao)
+    if (destino) navigate(destino)
   }
 
   return (

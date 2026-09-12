@@ -137,7 +137,7 @@ export default function Calendario() {
       data: s.data_proxima,
       titulo: `💉 ${s.descricao}`,
       detalhe: `${s.tipo} — ${s.rebanho?.nome || ''}`,
-      link: '/pecuaria',
+      link: '/pecuaria?tab=sanidade',
     }))
 
     manutencoes?.forEach((m: any) => push(m.data_prevista, {

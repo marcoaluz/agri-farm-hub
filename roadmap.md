@@ -43,3 +43,5 @@
 - [x] `src/pages/admin/GestaoUsuarios.tsx` — papel inicial real na aprovação e lista hierárquica por proprietário/equipe
 - [x] Área administrativa — remover a configuração obsoleta dos cinco módulos, sem alterar telas comuns
 - [x] `src/pages/LancamentoForm.tsx` — permitir lançamentos consecutivos com histórico da sessão e descarte confirmado
+- [x] Relatórios financeiros — bloquear chamadas sem contexto válido e impedir repetição automática após erro
+- [x] Alertas de Sanidade — navegar diretamente para `/pecuaria?tab=sanidade`
