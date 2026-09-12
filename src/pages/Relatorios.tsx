@@ -314,7 +314,7 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
     const headers = ['Data', 'Serviço', 'Categoria', 'Talhão', 'Área (ha)', 'Custo Total', 'Custo/ha', 'Observações']
     const rows = ordenados.map((l: any) => [
       fmtData(l.data_execucao), l.servico_nome || '', l.servico_categoria || '',
-      l.talhao_nome || '', Number(l.talhao_area_ha || 0),
+      l.talhao_nome || 'Propriedade', Number(l.talhao_area_ha || 0),
       Number(l.custo_total || 0), Number(l.custo_por_ha || 0), l.observacoes || '',
     ])
     downloadCSV(`relatorio-operacional-${Date.now()}.csv`, headers, rows)
@@ -343,7 +343,7 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
           data: fmtData(l.data_execucao),
           servico: l.servico_nome || '',
           categoria: l.servico_categoria || '',
-          talhao: l.talhao_nome || '',
+          talhao: l.talhao_nome || 'Propriedade',
           area: l.talhao_area_ha ? fmtN(Number(l.talhao_area_ha)) : '',
           custo: fmt(Number(l.custo_total || 0)),
           custoHa: l.custo_por_ha ? fmt(Number(l.custo_por_ha)) : '',
@@ -463,7 +463,7 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
                       <TableCell>{fmtData(l.data_execucao)}</TableCell>
                       <TableCell className="font-medium">{l.servico_nome || '-'}</TableCell>
                       <TableCell>{l.servico_categoria || '-'}</TableCell>
-                      <TableCell>{l.talhao_nome || '-'}</TableCell>
+                      <TableCell>{l.talhao_nome || 'Propriedade'}</TableCell>
                       <TableCell className="text-right">{l.talhao_area_ha ? fmtN(Number(l.talhao_area_ha)) : '-'}</TableCell>
                       <TableCell className="text-right font-medium">{fmt(Number(l.custo_total || 0))}</TableCell>
                       <TableCell className="text-right">{l.custo_por_ha ? fmt(Number(l.custo_por_ha)) : '-'}</TableCell>
@@ -1097,7 +1097,7 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
       const r = rentMap.get(t.talhao_id) || {}
       return {
         talhao_id: t.talhao_id,
-        nome: t.talhao_nome || '—',
+        nome: t.talhao_nome || 'Propriedade',
         cultura: r.cultura_nome || t.cultura_nome || '',
         unidade: r.unidade_label || 'un',
         area: Number(t.area_ha || r.area_ha || 0),
@@ -2306,7 +2306,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
     combosMaq
       .filter((c: any) => filtroMaquina === '_all' || c.maquina_id === filtroMaquina)
       .forEach((c: any) => {
-        if (c.talhao_id) map.set(c.talhao_id, String(c.talhao_nome || 'Talhão'))
+        if (c.talhao_id) map.set(c.talhao_id, String(c.talhao_nome || 'Propriedade'))
       })
     return Array.from(map.entries()).sort((a, b) =>
       (a[0] === TALHAO_PROPRIEDADE_ID ? 1 : 0) - (b[0] === TALHAO_PROPRIEDADE_ID ? 1 : 0) ||

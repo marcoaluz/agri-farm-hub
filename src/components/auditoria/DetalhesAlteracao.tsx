@@ -47,7 +47,7 @@ export function DetalhesAlteracao({ item }: DetalhesAlteracaoProps) {
             <div>💰 Custo: {formatarMoeda(Number(dados.custo_total))}</div>
           )}
           {item.servico_nome && <div>🔧 Serviço: {item.servico_nome}</div>}
-          {item.talhao_nome && <div>🌾 Talhão: {item.talhao_nome}</div>}
+          <div>🌾 Talhão: {item.talhao_nome || 'Propriedade'}</div>
           {dados.observacoes && (
             <div className="truncate max-w-[250px]">📝 Obs: {dados.observacoes}</div>
           )}
