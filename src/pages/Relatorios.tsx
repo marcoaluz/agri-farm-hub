@@ -32,6 +32,8 @@ import { useGlobal } from '@/contexts/GlobalContext'
 import { cn } from '@/lib/utils'
 import { MultiSelectFilter, type OpcaoFiltro } from '@/components/relatorios/MultiSelectFilter'
 import { calcularOpcoesDisponiveis } from '@/lib/filtrosCombinacoes'
+import { usePapelUsuario } from '@/hooks/usePapelUsuario'
+import { ehErroPermissaoFinanceiro, AvisoSemPermissaoFinanceiro } from '@/lib/erroFinanceiro'
 
 /* Junta os resultados de várias chamadas do relatório de custos detalhados
    (uma por combinação marcada nos filtros de múltipla escolha). */
