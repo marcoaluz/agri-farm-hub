@@ -268,12 +268,20 @@ export async function exportarCustosDetalhadosPDF(opts: {
     y += 4
   }
 
-  if (operacional.length > 0) {
-    desenharSecao('Operacional', totalOperacional, operacional, (item) => [
-      item.nome,
-      formatarQtdeOperacional(item),
-      `R$ ${fmt2(item.valor)}`,
-    ])
+  const secoesComItens = (porTalhao || []).filter((sec) => (sec.operacional || []).length > 0)
+  if (secoesComItens.length > 0) {
+    secoesComItens.forEach((sec, idx) => {
+      desenharSecao(
+        idx === 0 ? `Operacional — ${sec.talhao_nome}` : sec.talhao_nome,
+        idx === 0 && secoesComItens.length === 1 ? totalOperacional : Number(sec.subtotal || 0),
+        sec.operacional,
+        (item) => [
+          item.nome,
+          formatarQtdeOperacional(item),
+          `R$ ${fmt2(item.valor)}`,
+        ]
+      )
+    })
   }
 
   if (financeiro.length > 0) {
