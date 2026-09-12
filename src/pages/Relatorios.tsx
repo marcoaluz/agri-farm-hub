@@ -1840,35 +1840,34 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   }, [opcoesCategoria, opcoesItem, opcoesTalhao])
 
   const relatorioQ = useQuery({
-    queryKey: ['rel-custos-detalhado-v2', propId, safraId, dataInicio, dataFim, categoriasSel, itensSel, talhoesSel, ordenarPor],
+    queryKey: ['rel-custos-detalhado-v3', propId, safraId, dataInicio, dataFim, categoriasSel, itensSel, talhoesSel, ordenarPor],
     queryFn: async () => {
-      // Item continua seleção única na RPC — uma chamada por item marcado
-      const itens: (string | null)[] = itensSel.length ? itensSel : [null]
+      // Itens marcados vão como lista de { tipo, id } numa única chamada
+      const itens = itensSel.map((v) => {
+        const [tipo, id] = v.split(':')
+        return { tipo, id }
+      })
 
-      const resultados = await Promise.all(itens.map(async (item) => {
-        const [itemTipo, itemId] = item ? item.split(':') : [null, null]
-        const { data, error } = await db.rpc('get_relatorio_custos_detalhado_v2', {
-          p_propriedade_id: propId,
-          p_safra_id: safraId,
-          p_data_inicio: dataInicio || null,
-          p_data_fim: dataFim || null,
-          p_categorias: categoriasSel.length ? categoriasSel : null,
-          p_talhoes: talhoesSel.length ? talhoesSel : null,
-          p_item_tipo: itemTipo,
-          p_item_id: itemId,
-          p_ordenar_por: ordenarPor,
-        })
-        if (error) throw error
-        return data as any
-      }))
+      const { data, error } = await db.rpc('get_relatorio_custos_detalhado_v3', {
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
+        p_data_inicio: dataInicio || null,
+        p_data_fim: dataFim || null,
+        p_categorias: categoriasSel.length ? categoriasSel : null,
+        p_talhoes: talhoesSel.length ? talhoesSel : null,
+        p_itens: itens.length ? itens : null,
+        p_ordenar_por: ordenarPor,
+      })
+      if (error) throw error
 
       return {
-        por_talhao: mergePorTalhao(resultados),
-        financeiro: mergeSecaoCustos(resultados.map((r: any) => r?.financeiro || [])),
+        por_talhao: mergePorTalhao([data]),
+        financeiro: mergeSecaoCustos([(data as any)?.financeiro || []]),
       }
     },
     enabled: !!propId && !!safraId,
   })
+
 
 
   const porTalhao = (relatorioQ.data?.por_talhao || []) as any[]
@@ -2386,22 +2385,20 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
   const [talhoesSel, setTalhoesSel] = useState<string[]>([])
 
   const maqQ = useQuery({
-    queryKey: ['rel-maquinas', propId, safraId, talhoesSel],
+    queryKey: ['rel-maquinas-v2', propId, safraId, maquinasSel, talhoesSel],
     queryFn: async () => {
-      const alvos: (string | null)[] = talhoesSel.length ? talhoesSel : [null]
-      const resultados = await Promise.all(alvos.map(async (talhao) => {
-        const { data, error } = await (db as any).rpc('get_relatorio_por_maquina', {
-          p_propriedade_id: propId,
-          p_safra_id: safraId,
-          p_talhao_id: talhao,
-        })
-        if (error) throw error
-        return (data || []) as any[]
-      }))
-      if (resultados.length === 1) return resultados[0]
-      return mergeMaquinas(resultados)
+      const { data, error } = await (db as any).rpc('get_relatorio_por_maquina_v2', {
+        p_propriedade_id: propId,
+        p_safra_id: safraId,
+        p_maquina_ids: maquinasSel.length ? maquinasSel : null,
+        p_talhoes: talhoesSel.length ? talhoesSel : null,
+      })
+      if (error) throw error
+      return (data || {}) as any
     },
+    enabled: !!propId && !!safraId,
   })
+
 
   const combosMaqQ = useQuery({
     queryKey: ['rel-combinacoes-filtro-maquinas', propId, safraId],
@@ -2416,7 +2413,11 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
     enabled: !!propId && !!safraId,
   })
 
-  const maquinasRaw = maqQ.data || []
+  const dadosMaq = (maqQ.data || {}) as any
+  const separadoPorTalhao = !!dadosMaq.separado_por_talhao
+  const secoesRaw = (dadosMaq.por_talhao || []) as any[]
+  const manutencaoSemTalhao = (dadosMaq.manutencao_sem_talhao || []) as any[]
+
   const combosMaq = combosMaqQ.data || []
 
   // Cruzamento dos filtros (interseção com fallback): talhões limitam máquinas e vice-versa
@@ -2440,81 +2441,121 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
   }, [opcoesMaquina, opcoesTalhao])
 
 
-  const grupos = useMemo(() => {
-    return maquinasRaw.map((m: any) => {
-      const itens: { nome: string; qtdLabel: string; valor: number; isChild?: boolean; kind: 'uso' | 'abastecimento' | 'manutencao' }[] = []
+  type ItemMaq = { nome: string; qtdLabel: string; valor: number; isChild?: boolean; kind: 'uso' | 'abastecimento' | 'manutencao' }
 
-      if (m.horas_uso_direto > 0) {
-        itens.push({
-          nome: 'Uso da máquina (lançamentos)',
-          qtdLabel: `${fmtN(Number(m.horas_uso_direto))} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
-          valor: Number(m.custo_uso_direto || 0),
-          kind: 'uso',
-        })
-      }
-
-      if (m.qtd_abastecimentos > 0) {
-        itens.push({
-          nome: `Combustível (${m.qtd_abastecimentos}x abastecido)`,
-          qtdLabel: `${fmtN(Number(m.litros_total || 0))} L`,
-          valor: Number(m.custo_abastecimento || 0),
-          kind: 'abastecimento',
-        })
-      }
-
-      ;(m.manutencoes_detalhadas || []).forEach((mnt: any) => {
-        itens.push({
-          nome: mnt.descricao,
-          qtdLabel: '',
-          valor: Number(mnt.valor_total || 0),
-          kind: 'manutencao',
-        })
-
-
-        ;(mnt.itens || []).forEach((it: any) => {
-          if (it.do_estoque) {
-            itens.push({
-              nome: `└ ${it.produto_nome || 'Item do estoque'} (item do estoque)`,
-              qtdLabel: `${fmtN(Number(it.produto_qtd || 0))} ${unidadeCurta(it.produto_unidade)}`,
-              valor: Number(it.valor || 0),
-              isChild: true,
-              kind: 'manutencao',
-            })
-          } else {
-            itens.push({
-              nome: `└ ${(mnt.descricao || '').toLowerCase()} sem estoque`,
-              qtdLabel: `${Number(it.vezes || 0)}x`,
-              valor: Number(it.valor || 0),
-              isChild: true,
-              kind: 'manutencao',
-            })
-          }
-        })
+  const montarItensManutencao = (m: any): ItemMaq[] => {
+    const itens: ItemMaq[] = []
+    ;(m.manutencoes_detalhadas || []).forEach((mnt: any) => {
+      itens.push({ nome: mnt.descricao, qtdLabel: '', valor: Number(mnt.valor_total || 0), kind: 'manutencao' })
+      ;(mnt.itens || []).forEach((it: any) => {
+        if (it.do_estoque) {
+          itens.push({
+            nome: `└ ${it.produto_nome || 'Item do estoque'} (item do estoque)`,
+            qtdLabel: `${fmtN(Number(it.produto_qtd || 0))} ${unidadeCurta(it.produto_unidade)}`,
+            valor: Number(it.valor || 0),
+            isChild: true,
+            kind: 'manutencao',
+          })
+        } else {
+          itens.push({
+            nome: `└ ${(mnt.descricao || '').toLowerCase()} sem estoque`,
+            qtdLabel: `${Number(it.vezes || 0)}x`,
+            valor: Number(it.valor || 0),
+            isChild: true,
+            kind: 'manutencao',
+          })
+        }
       })
-
-      return {
-        maquina_id: m.maquina_id,
-        nome: `${m.maquina_nome}${m.modelo ? ` (${m.modelo})` : ''}`,
-        subtotal: Number(m.custo_total || 0),
-        horimetro: `${fmtN(Number(m.horimetro_atual || 0), 1)} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
-        itens,
-      }
     })
-  }, [maquinasRaw])
+    return itens
+  }
 
-  const gruposFiltrados = useMemo(() => {
-    const porMaquina = maquinasSel.length === 0 ? grupos : grupos.filter((g: any) => maquinasSel.includes(g.maquina_id))
-    if (filtroTipoCusto === '_all') return porMaquina
-    return porMaquina
+  const montarGrupo = (m: any, incluirManutencao: boolean) => {
+    const itens: ItemMaq[] = []
+
+    if (m.horas_uso_direto > 0) {
+      itens.push({
+        nome: 'Uso da máquina (lançamentos)',
+        qtdLabel: `${fmtN(Number(m.horas_uso_direto))} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
+        valor: Number(m.custo_uso_direto || 0),
+        kind: 'uso',
+      })
+    }
+
+    if (m.qtd_abastecimentos > 0) {
+      itens.push({
+        nome: `Combustível (${m.qtd_abastecimentos}x abastecido)`,
+        qtdLabel: `${fmtN(Number(m.litros_total || 0))} L`,
+        valor: Number(m.custo_abastecimento || 0),
+        kind: 'abastecimento',
+      })
+    }
+
+    if (incluirManutencao) itens.push(...montarItensManutencao(m))
+
+    const subtotal = incluirManutencao
+      ? Number(m.custo_total || 0)
+      : itens.reduce((s, it) => s + (it.isChild ? 0 : Number(it.valor || 0)), 0)
+
+    return {
+      maquina_id: m.maquina_id,
+      nome: `${m.maquina_nome}${m.modelo ? ` (${m.modelo})` : ''}`,
+      subtotal,
+      horimetro: `${fmtN(Number(m.horimetro_atual || 0), 1)} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
+      itens,
+    }
+  }
+
+  const aplicarFiltroTipo = (gs: any[]) => {
+    if (filtroTipoCusto === '_all') return gs
+    return gs
       .map((g: any) => {
         const itens = g.itens.filter((it: any) => it.kind === filtroTipoCusto)
         const subtotal = itens.reduce((s: number, it: any) => s + (it.isChild ? 0 : Number(it.valor || 0)), 0)
         return { ...g, itens, subtotal }
       })
       .filter((g: any) => g.itens.length > 0)
-  }, [grupos, maquinasSel, filtroTipoCusto])
+  }
+
+  const secoes = useMemo(() => {
+    return secoesRaw.map((sec: any) => {
+      const grupos = aplicarFiltroTipo((sec.maquinas || []).map((m: any) => montarGrupo(m, !separadoPorTalhao)))
+      return {
+        talhao_id: sec.talhao_id ?? 'geral',
+        talhao_nome: sec.talhao_nome || 'Geral',
+        grupos,
+        subtotal: grupos.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0),
+      }
+    }).filter((sec: any) => sec.grupos.length > 0)
+  }, [secoesRaw, separadoPorTalhao, filtroTipoCusto])
+
+  const gruposManutencao = useMemo(() => {
+    if (!separadoPorTalhao) return []
+    if (filtroTipoCusto !== '_all' && filtroTipoCusto !== 'manutencao') return []
+    return manutencaoSemTalhao
+      .map((m: any) => ({
+        maquina_id: m.maquina_id,
+        nome: m.maquina_nome,
+        subtotal: Number(m.custo_manutencao || 0),
+        horimetro: '',
+        itens: montarItensManutencao(m),
+      }))
+      .filter((g: any) => g.itens.length > 0)
+  }, [manutencaoSemTalhao, separadoPorTalhao, filtroTipoCusto])
+
+  // Lista achatada usada nos exports
+  const gruposFiltrados = useMemo(
+    () => [
+      ...secoes.flatMap((sec: any) =>
+        sec.grupos.map((g: any) => ({ ...g, nome: separadoPorTalhao ? `${sec.talhao_nome} — ${g.nome}` : g.nome }))
+      ),
+      ...gruposManutencao.map((g: any) => ({ ...g, nome: `Manutenção — ${g.nome}` })),
+    ],
+    [secoes, gruposManutencao, separadoPorTalhao]
+  )
 
   const totalGeral = gruposFiltrados.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
+
 
   // Resumo dos filtros ativos (tela + cabeçalho dos exports)
   const resumoFiltros = useMemo(() => {
@@ -2551,7 +2592,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
   if (maqQ.isLoading) return <SkeletonAba />
 
-  if (grupos.length === 0) {
+  if (secoesRaw.length === 0 && manutencaoSemTalhao.length === 0) {
     return (
       <Card>
         <CardContent className="pt-6">
@@ -2635,10 +2676,10 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
         </p>
       )}
 
-      {talhoesSel.length > 0 && (
+      {separadoPorTalhao && (
         <p className="text-xs text-muted-foreground flex items-center gap-1">
           <Info className="h-3 w-3 shrink-0" />
-          Manutenção não é filtrada por talhão — mostra sempre o total da máquina.
+          Manutenção não é vinculada a talhão — aparece em bloco separado no final.
         </p>
       )}
 
@@ -2653,46 +2694,89 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          {gruposFiltrados.length === 0 ? (
+        <CardContent className="space-y-6">
+          {secoes.length === 0 && gruposManutencao.length === 0 ? (
             <EmptyState message="Nenhum resultado para o filtro selecionado" />
           ) : (
             <>
-              <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
-                <span className="flex-1">Item</span>
-                <span className="w-24 text-right">Qtd</span>
-                <span className="w-28 text-right">Valor</span>
-              </div>
+              {secoes.map((sec: any) => (
+                <div key={sec.talhao_id} className="space-y-1">
+                  {separadoPorTalhao && (
+                    <div className="flex items-center justify-between bg-muted/50 rounded px-3 py-1.5">
+                      <span className="font-semibold text-sm">{sec.talhao_nome}</span>
+                      <span className="font-bold text-sm">{fmt(sec.subtotal)}</span>
+                    </div>
+                  )}
 
-              {gruposFiltrados.map((g: any) => (
-                <div key={g.maquina_id}>
-                  <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
-                    <span className="flex items-center gap-2">
-                      {g.nome}
-                      <Badge variant="outline" className="text-[10px] font-normal">{g.horimetro}</Badge>
-                    </span>
-                    <span>{fmt(g.subtotal)}</span>
+                  <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
+                    <span className="flex-1">Item</span>
+                    <span className="w-24 text-right">Qtd</span>
+                    <span className="w-28 text-right">Valor</span>
                   </div>
 
-                  {g.itens.map((item: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className={cn(
-                        "flex items-center text-sm py-1",
-                        item.isChild ? "pl-8 text-foreground/75 text-xs" : "pl-4 text-foreground/80"
-                      )}
-                    >
-                      <span className="flex-1 truncate">{item.nome}</span>
-                      <span className="w-24 text-right text-xs text-muted-foreground">{item.qtdLabel}</span>
-                      <span className="w-28 text-right font-medium">{fmt(item.valor ?? 0)}</span>
-                    </div>
+                  {sec.grupos.map((g: any) => (
+                    <MaquinaGrupo key={`${sec.talhao_id}-${g.maquina_id}`} grupo={g} />
                   ))}
                 </div>
               ))}
+
+              {gruposManutencao.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between bg-muted/50 rounded px-3 py-1.5">
+                    <span className="font-semibold text-sm">Manutenção (não vinculada a talhão)</span>
+                    <span className="font-bold text-sm">
+                      {fmt(gruposManutencao.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0))}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
+                    <span className="flex-1">Item</span>
+                    <span className="w-24 text-right">Qtd</span>
+                    <span className="w-28 text-right">Valor</span>
+                  </div>
+
+                  {gruposManutencao.map((g: any) => (
+                    <MaquinaGrupo key={`mnt-${g.maquina_id}`} grupo={g} />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </CardContent>
+
       </Card>
     </div>
   )
 }
+
+/* Card de uma máquina (cabeçalho + itens) — usado nas seções por talhão e no bloco de manutenção */
+function MaquinaGrupo({ grupo }: { grupo: any }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
+        <span className="flex items-center gap-2">
+          {grupo.nome}
+          {grupo.horimetro && (
+            <Badge variant="outline" className="text-[10px] font-normal">{grupo.horimetro}</Badge>
+          )}
+        </span>
+        <span>{fmt(grupo.subtotal)}</span>
+      </div>
+
+      {grupo.itens.map((item: any, idx: number) => (
+        <div
+          key={idx}
+          className={cn(
+            'flex items-center text-sm py-1',
+            item.isChild ? 'pl-8 text-foreground/75 text-xs' : 'pl-4 text-foreground/80'
+          )}
+        >
+          <span className="flex-1 truncate">{item.nome}</span>
+          <span className="w-24 text-right text-xs text-muted-foreground">{item.qtdLabel}</span>
+          <span className="w-28 text-right font-medium">{fmt(item.valor ?? 0)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
