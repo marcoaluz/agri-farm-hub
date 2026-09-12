@@ -2327,20 +2327,25 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
 function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; safraId: string; propriedadeNome: string }) {
   const { safraAtual } = useGlobal()
 
-  const [filtroMaquina, setFiltroMaquina] = useState<string>('_all')
+  const [maquinasSel, setMaquinasSel] = useState<string[]>([])
   const [filtroTipoCusto, setFiltroTipoCusto] = useState<string>('_all')
-  const [filtroTalhao, setFiltroTalhao] = useState<string>('_all')
+  const [talhoesSel, setTalhoesSel] = useState<string[]>([])
 
   const maqQ = useQuery({
-    queryKey: ['rel-maquinas', propId, safraId, filtroTalhao],
+    queryKey: ['rel-maquinas', propId, safraId, talhoesSel],
     queryFn: async () => {
-      const { data, error } = await (db as any).rpc('get_relatorio_por_maquina', {
-        p_propriedade_id: propId,
-        p_safra_id: safraId,
-        p_talhao_id: filtroTalhao === '_all' ? null : filtroTalhao,
-      })
-      if (error) throw error
-      return (data || []) as any[]
+      const alvos: (string | null)[] = talhoesSel.length ? talhoesSel : [null]
+      const resultados = await Promise.all(alvos.map(async (talhao) => {
+        const { data, error } = await (db as any).rpc('get_relatorio_por_maquina', {
+          p_propriedade_id: propId,
+          p_safra_id: safraId,
+          p_talhao_id: talhao,
+        })
+        if (error) throw error
+        return (data || []) as any[]
+      }))
+      if (resultados.length === 1) return resultados[0]
+      return mergeMaquinas(resultados)
     },
   })
 
@@ -2360,36 +2365,26 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
   const maquinasRaw = maqQ.data || []
   const combosMaq = combosMaqQ.data || []
 
-  // Cruzamento dos filtros: talhões limitam máquinas e vice-versa
-  const maquinasUnicas = useMemo(() => {
-    const map = new Map<string, string>()
-    combosMaq
-      .filter((c: any) => filtroTalhao === '_all' || c.talhao_id === filtroTalhao)
-      .forEach((c: any) => {
-        if (c.maquina_id) map.set(c.maquina_id, String(c.maquina_nome || 'Máquina'))
-      })
-    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
-  }, [combosMaq, filtroTalhao])
+  // Cruzamento dos filtros (interseção com fallback): talhões limitam máquinas e vice-versa
+  const opcoesMaquina = useMemo<OpcaoFiltro[]>(
+    () => calcularOpcoesDisponiveis(combosMaq, 'maquina', [{ chave: 'talhao', valoresSelecionados: talhoesSel }]),
+    [combosMaq, talhoesSel]
+  )
 
-  const talhoesUnicos = useMemo(() => {
-    const map = new Map<string, string>()
-    combosMaq
-      .filter((c: any) => filtroMaquina === '_all' || c.maquina_id === filtroMaquina)
-      .forEach((c: any) => {
-        if (c.talhao_id) map.set(c.talhao_id, String(c.talhao_nome || 'Propriedade'))
-      })
-    return Array.from(map.entries()).sort((a, b) =>
-      (a[0] === TALHAO_PROPRIEDADE_ID ? 1 : 0) - (b[0] === TALHAO_PROPRIEDADE_ID ? 1 : 0) ||
-      a[1].localeCompare(b[1])
-    )
-  }, [combosMaq, filtroMaquina])
+  const opcoesTalhao = useMemo<OpcaoFiltro[]>(
+    () => calcularOpcoesDisponiveis(combosMaq, 'talhao', [{ chave: 'maquina', valoresSelecionados: maquinasSel }]),
+    [combosMaq, maquinasSel]
+  )
 
-  // Reseta filtros que ficaram sem combinação válida
+  // Remove seleções que ficaram sem combinação válida
   useEffect(() => {
     if (!combosMaq.length) return
-    if (filtroMaquina !== '_all' && !maquinasUnicas.some(([id]) => id === filtroMaquina)) setFiltroMaquina('_all')
-    if (filtroTalhao !== '_all' && !talhoesUnicos.some(([id]) => id === filtroTalhao)) setFiltroTalhao('_all')
-  }, [maquinasUnicas, talhoesUnicos])
+    const validasMaq = maquinasSel.filter((v) => opcoesMaquina.some((o) => o.value === v))
+    if (validasMaq.length !== maquinasSel.length) setMaquinasSel(validasMaq)
+    const validasTal = talhoesSel.filter((v) => opcoesTalhao.some((o) => o.value === v))
+    if (validasTal.length !== talhoesSel.length) setTalhoesSel(validasTal)
+  }, [opcoesMaquina, opcoesTalhao])
+
 
   const grupos = useMemo(() => {
     return maquinasRaw.map((m: any) => {
