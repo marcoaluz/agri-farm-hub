@@ -2413,7 +2413,11 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
     enabled: !!propId && !!safraId,
   })
 
-  const maquinasRaw = maqQ.data || []
+  const dadosMaq = (maqQ.data || {}) as any
+  const separadoPorTalhao = !!dadosMaq.separado_por_talhao
+  const secoesRaw = (dadosMaq.por_talhao || []) as any[]
+  const manutencaoSemTalhao = (dadosMaq.manutencao_sem_talhao || []) as any[]
+
   const combosMaq = combosMaqQ.data || []
 
   // Cruzamento dos filtros (interseção com fallback): talhões limitam máquinas e vice-versa
