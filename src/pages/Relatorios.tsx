@@ -2400,6 +2400,24 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
           </SelectContent>
         </Select>
 
+        <Select value={filtroTalhao} onValueChange={setFiltroTalhao}>
+          <SelectTrigger className="w-full sm:w-[220px]">
+            {filtroTalhao === '_all' ? (
+              <span>Todos os talhões</span>
+            ) : (
+              <span className="truncate">
+                {talhoesUnicos.find(([id]) => id === filtroTalhao)?.[1] ?? 'Talhão'}
+              </span>
+            )}
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_all">Todos os talhões</SelectItem>
+            {talhoesUnicos.map(([id, nome]) => (
+              <SelectItem key={id} value={id}>{nome}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Select value={filtroTipoCusto} onValueChange={setFiltroTipoCusto}>
           <SelectTrigger className="w-full sm:w-[220px]">
             <SelectValue placeholder="Tipo de custo" />
