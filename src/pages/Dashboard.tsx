@@ -295,7 +295,7 @@ export default function Dashboard() {
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: !!propriedadeAtual?.id && (!safraAtual || safraAtual.propriedade_id === propriedadeAtual.id),
+    enabled: !!propriedadeAtual?.id && podeFin && (!safraAtual || safraAtual.propriedade_id === propriedadeAtual.id),
     retry: false,
   })
 
