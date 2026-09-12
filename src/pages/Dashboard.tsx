@@ -646,6 +646,7 @@ export default function Dashboard() {
                 />
               )}
             </ChartCard>
+            )}
           </div>
 
           {/* Bottom row — Lançamentos & Alertas */}
