@@ -1838,7 +1838,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   }, [financeiro])
 
   const limparFiltros = () => {
-    setDataInicio(''); setDataFim(''); setCategoriaFiltro(''); setItemFiltro(null); setTalhaoFiltro(''); setOrdenarPor('valor_desc')
+    setDataInicio(''); setDataFim(''); setCategoriasSel([]); setItensSel([]); setTalhoesSel([]); setOrdenarPor('valor_desc')
   }
 
   // Resumo dos filtros ativos (tela + cabeçalho dos exports)
@@ -1847,21 +1847,21 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
     if (dataInicio || dataFim) {
       partes.push(`Período: ${dataInicio ? fmtData(dataInicio) : '...'} a ${dataFim ? fmtData(dataFim) : '...'}`)
     }
-    if (categoriaFiltro) partes.push(`Categoria: ${categoriaFiltro}`)
-    if (itemFiltro) {
-      const item = [...itensDisponiveis, ...(itensFiltraveisQ.data || [])]
-        .find((i: any) => i.item_tipo === itemFiltro.tipo && i.item_id === itemFiltro.id)
-      const sufixo = itemFiltro.tipo === 'maquina' ? ' (máquina)' : itemFiltro.tipo === 'servico' ? ' (serviço)' : ''
-      partes.push(`Item: ${item?.item_nome || ''}${sufixo}`)
+    if (categoriasSel.length) partes.push(`Categoria: ${categoriasSel.join(', ')}`)
+    if (itensSel.length) {
+      const nomes = itensSel.map((v) => opcoesItem.find((o) => o.value === v)?.label || '').filter(Boolean)
+      partes.push(`Item: ${nomes.join(', ')}`)
     }
-    if (talhaoFiltro) {
-      const nome = talhoesDisponiveis.find((t: any) => t.talhao_id === talhaoFiltro)?.talhao_nome
-        || (talhoesQ.data || []).find((t: any) => t.id === talhaoFiltro)?.nome
-      partes.push(`Talhão: ${nomeTalhaoFiltro(talhaoFiltro, nome)}`)
+    if (talhoesSel.length) {
+      const nomes = talhoesSel.map((v) =>
+        v === TALHAO_PROPRIEDADE_ID ? 'Propriedade' : (opcoesTalhao.find((o) => o.value === v)?.label || '')
+      ).filter(Boolean)
+      partes.push(`Talhão: ${nomes.join(', ')}`)
     }
     return partes
-  }, [dataInicio, dataFim, categoriaFiltro, itemFiltro, talhaoFiltro, itensDisponiveis, talhoesDisponiveis, itensFiltraveisQ.data, talhoesQ.data])
+  }, [dataInicio, dataFim, categoriasSel, itensSel, talhoesSel, opcoesItem, opcoesTalhao])
   const resumoFiltrosTexto = resumoFiltros.join(' · ')
+
 
   return (
     <div className="space-y-4">
