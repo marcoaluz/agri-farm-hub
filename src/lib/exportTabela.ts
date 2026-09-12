@@ -34,14 +34,16 @@ export function exportarExcel(opts: {
   linhas: any[]
   propriedadeNome?: string
   safraNome?: string
+  resumoFiltros?: string
 }) {
-  const { nomeArquivo, nomeAba, colunas, linhas, propriedadeNome, safraNome } = opts
+  const { nomeArquivo, nomeAba, colunas, linhas, propriedadeNome, safraNome, resumoFiltros } = opts
   const aoa: any[][] = []
 
   aoa.push(['Agro GFI'])
   aoa.push([`Relatório: ${nomeAba}`])
   if (propriedadeNome) aoa.push([`Propriedade: ${propriedadeNome}`])
   if (safraNome) aoa.push([`Safra: ${safraNome}`])
+  if (resumoFiltros) aoa.push([`Mostrando: ${resumoFiltros}`])
   aoa.push([`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`])
   aoa.push([])
   aoa.push(colunas.map((c) => c.header))
@@ -131,13 +133,14 @@ export async function exportarCustosDetalhadosPDF(opts: {
   nomeArquivo: string
   propriedadeNome: string
   safraNome?: string
+  resumoFiltros?: string
   operacional: { grupo: string; subtotal: number; itens: { nome: string; vezes?: number; valor: number }[] }[]
   financeiro: { grupo: string; subtotal: number; itens: { nome: string; valor: number; tipo?: string }[] }[]
   totalOperacional: number
   totalDespesas: number
   totalReceitas: number
 }) {
-  const { nomeArquivo, propriedadeNome, safraNome, operacional, financeiro, totalOperacional, totalDespesas, totalReceitas } = opts
+  const { nomeArquivo, propriedadeNome, safraNome, resumoFiltros, operacional, financeiro, totalOperacional, totalDespesas, totalReceitas } = opts
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -209,6 +212,13 @@ export async function exportarCustosDetalhadosPDF(opts: {
   if (safraNome) doc.text(`Safra: ${safraNome}`, margin, 36)
   doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, safraNome ? 42 : 36)
   y = safraNome ? 50 : 44
+  if (resumoFiltros) {
+    doc.setFontSize(8)
+    doc.setTextColor(110)
+    doc.text(`Mostrando: ${resumoFiltros}`, margin, y - 4)
+    doc.setTextColor(0)
+    y += 4
+  }
 
   const COL_QTDE_X = pageWidth - margin - 38
 
@@ -630,6 +640,7 @@ export async function exportarMaquinasPDF(opts: {
   nomeArquivo: string
   propriedadeNome: string
   safraNome?: string
+  resumoFiltros?: string
   totalGeral: number
   grupos: {
     nome: string
@@ -638,7 +649,7 @@ export async function exportarMaquinasPDF(opts: {
     itens: { nome: string; qtdLabel: string; valor: number | null }[]
   }[]
 }) {
-  const { nomeArquivo, propriedadeNome, safraNome, totalGeral, grupos } = opts
+  const { nomeArquivo, propriedadeNome, safraNome, resumoFiltros, totalGeral, grupos } = opts
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
