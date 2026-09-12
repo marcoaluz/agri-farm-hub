@@ -134,13 +134,13 @@ export async function exportarCustosDetalhadosPDF(opts: {
   propriedadeNome: string
   safraNome?: string
   resumoFiltros?: string
-  operacional: { grupo: string; subtotal: number; itens: { nome: string; vezes?: number; valor: number }[] }[]
+  porTalhao: { talhao_nome: string; subtotal: number; operacional: { grupo: string; subtotal: number; itens: { nome: string; vezes?: number; valor: number }[] }[] }[]
   financeiro: { grupo: string; subtotal: number; itens: { nome: string; valor: number; tipo?: string }[] }[]
   totalOperacional: number
   totalDespesas: number
   totalReceitas: number
 }) {
-  const { nomeArquivo, propriedadeNome, safraNome, resumoFiltros, operacional, financeiro, totalOperacional, totalDespesas, totalReceitas } = opts
+  const { nomeArquivo, propriedadeNome, safraNome, resumoFiltros, porTalhao, financeiro, totalOperacional, totalDespesas, totalReceitas } = opts
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -268,12 +268,27 @@ export async function exportarCustosDetalhadosPDF(opts: {
     y += 4
   }
 
-  if (operacional.length > 0) {
-    desenharSecao('Operacional', totalOperacional, operacional, (item) => [
-      item.nome,
-      formatarQtdeOperacional(item),
-      `R$ ${fmt2(item.valor)}`,
-    ])
+  const secoesComItens = (porTalhao || []).filter((sec) => (sec.operacional || []).length > 0)
+  if (secoesComItens.length > 0) {
+    secoesComItens.forEach((sec) => {
+      desenharSecao(
+        `Operacional — ${sec.talhao_nome}`,
+        Number(sec.subtotal || 0),
+        sec.operacional,
+        (item) => [
+          item.nome,
+          formatarQtdeOperacional(item),
+          `R$ ${fmt2(item.valor)}`,
+        ]
+      )
+    })
+    if (secoesComItens.length > 1) {
+      novaPaginaSeNecessario(10)
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold')
+      doc.text('Total Operacional', margin, y)
+      doc.text(`R$ ${fmt2(totalOperacional)}`, pageWidth - margin, y, { align: 'right' })
+      y += 8
+    }
   }
 
   if (financeiro.length > 0) {

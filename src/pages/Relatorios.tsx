@@ -62,6 +62,25 @@ function mergeSecaoCustos(listas: any[][]) {
     .sort((a, b) => b.subtotal - a.subtotal)
 }
 
+/* Junta as seções por_talhao de várias chamadas (uma por item marcado),
+   somando subtotais e mesclando os grupos operacionais de cada talhão. */
+function mergePorTalhao(resultados: any[]) {
+  const secoes = new Map<string, { talhao_id: any; talhao_nome: string; subtotal: number; operacional: any[][] }>()
+  resultados.forEach((r) => ((r?.por_talhao || []) as any[]).forEach((sec: any) => {
+    const chave = String(sec.talhao_id ?? sec.talhao_nome ?? 'geral')
+    let alvo = secoes.get(chave)
+    if (!alvo) { alvo = { talhao_id: sec.talhao_id ?? null, talhao_nome: sec.talhao_nome || 'Geral', subtotal: 0, operacional: [] }; secoes.set(chave, alvo) }
+    alvo.subtotal += Number(sec.subtotal || 0)
+    alvo.operacional.push(sec.operacional || [])
+  }))
+  return Array.from(secoes.values()).map((s) => ({
+    talhao_id: s.talhao_id,
+    talhao_nome: s.talhao_nome,
+    subtotal: s.subtotal,
+    operacional: mergeSecaoCustos(s.operacional),
+  }))
+}
+
 /* Junta os resultados do relatório de estoque quando há várias categorias marcadas. */
 function mergeEstoque(listas: any[][]) {
   const tipos = new Map<string, any>()
@@ -1821,37 +1840,30 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   }, [opcoesCategoria, opcoesItem, opcoesTalhao])
 
   const relatorioQ = useQuery({
-    queryKey: ['rel-custos-detalhado', propId, safraId, dataInicio, dataFim, categoriasSel, itensSel, talhoesSel, ordenarPor],
+    queryKey: ['rel-custos-detalhado-v2', propId, safraId, dataInicio, dataFim, categoriasSel, itensSel, talhoesSel, ordenarPor],
     queryFn: async () => {
-      const cats: (string | null)[] = categoriasSel.length ? categoriasSel : [null]
+      // Item continua seleção única na RPC — uma chamada por item marcado
       const itens: (string | null)[] = itensSel.length ? itensSel : [null]
-      const talhoes: (string | null)[] = talhoesSel.length ? talhoesSel : [null]
 
-      const chamadas: { categoria: string | null; item: string | null; talhao: string | null }[] = []
-      cats.forEach((categoria) => itens.forEach((item) => talhoes.forEach((talhao) => {
-        chamadas.push({ categoria, item, talhao })
-      })))
-
-      const resultados = await Promise.all(chamadas.map(async ({ categoria, item, talhao }) => {
+      const resultados = await Promise.all(itens.map(async (item) => {
         const [itemTipo, itemId] = item ? item.split(':') : [null, null]
-        const { data, error } = await db.rpc('get_relatorio_custos_detalhado', {
+        const { data, error } = await db.rpc('get_relatorio_custos_detalhado_v2', {
           p_propriedade_id: propId,
           p_safra_id: safraId,
           p_data_inicio: dataInicio || null,
           p_data_fim: dataFim || null,
-          p_categoria: categoria,
+          p_categorias: categoriasSel.length ? categoriasSel : null,
+          p_talhoes: talhoesSel.length ? talhoesSel : null,
           p_item_tipo: itemTipo,
           p_item_id: itemId,
-          p_talhao_id: talhao,
           p_ordenar_por: ordenarPor,
         })
         if (error) throw error
         return data as any
       }))
 
-      if (resultados.length === 1) return resultados[0]
       return {
-        operacional: mergeSecaoCustos(resultados.map((r: any) => r?.operacional || [])),
+        por_talhao: mergePorTalhao(resultados),
         financeiro: mergeSecaoCustos(resultados.map((r: any) => r?.financeiro || [])),
       }
     },
@@ -1859,11 +1871,12 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   })
 
 
-  const operacional = (relatorioQ.data?.operacional || []) as any[]
+  const porTalhao = (relatorioQ.data?.por_talhao || []) as any[]
   const financeiro = (relatorioQ.data?.financeiro || []) as any[]
 
   const colunasExport: Coluna[] = [
     { header: 'Seção', key: 'secao', width: 14 },
+    { header: 'Talhão', key: 'talhao', width: 16 },
     { header: 'Categoria', key: 'categoria', width: 18 },
     { header: 'Item', key: 'item', width: 24 },
     { header: 'Quantidade', key: 'quantidade', width: 14 },
@@ -1873,15 +1886,18 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
 
   const linhasExport = useMemo(() => {
     const linhas: any[] = []
-    operacional.forEach((grupo: any) => {
-      (grupo.itens || []).forEach((item: any) => {
-        linhas.push({
-          secao: 'Operacional',
-          categoria: labelGrupo(grupo.grupo),
-          item: item.nome,
-          quantidade: item.quantidade ?? '',
-          unidade: item.unidade ?? '',
-          valor: fmt(Number(item.valor)),
+    porTalhao.forEach((sec: any) => {
+      (sec.operacional || []).forEach((grupo: any) => {
+        (grupo.itens || []).forEach((item: any) => {
+          linhas.push({
+            secao: 'Operacional',
+            talhao: sec.talhao_nome,
+            categoria: labelGrupo(grupo.grupo),
+            item: item.nome,
+            quantidade: item.quantidade ?? '',
+            unidade: item.unidade ?? '',
+            valor: fmt(Number(item.valor)),
+          })
         })
       })
     })
@@ -1889,6 +1905,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
       (grupo.itens || []).forEach((item: any) => {
         linhas.push({
           secao: 'Financeiro',
+          talhao: '',
           categoria: labelGrupo(grupo.grupo),
           item: item.nome,
           quantidade: '',
@@ -1898,9 +1915,9 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
       })
     })
     return linhas
-  }, [operacional, financeiro])
+  }, [porTalhao, financeiro])
 
-  const totalOperacional = operacional.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
+  const totalOperacional = porTalhao.reduce((s: number, sec: any) => s + Number(sec.subtotal || 0), 0)
   const totalDespesas = useMemo(() => {
     let soma = 0
     financeiro.forEach((grupo: any) => {
@@ -1957,8 +1974,11 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
             propriedadeNome,
             safraNome: safraAtual?.nome,
             resumoFiltros: resumoFiltrosTexto || undefined,
-            operacional: incluirOperacional
-              ? operacional.map((g: any) => ({ ...g, grupo: labelGrupo(g.grupo) }))
+            porTalhao: incluirOperacional
+              ? porTalhao.map((sec: any) => ({
+                  ...sec,
+                  operacional: (sec.operacional || []).map((g: any) => ({ ...g, grupo: labelGrupo(g.grupo) })),
+                }))
               : [],
             financeiro: incluirFinanceiro
               ? financeiro.map((g: any) => ({ ...g, grupo: labelGrupo(g.grupo) }))
@@ -2059,46 +2079,59 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
 
       {relatorioQ.isLoading ? (
         <SkeletonAba />
-      ) : (incluirOperacional ? operacional : []).length === 0 && (incluirFinanceiro ? financeiro : []).length === 0 ? (
+      ) : (incluirOperacional ? porTalhao : []).every((sec: any) => (sec.operacional || []).length === 0) && (incluirFinanceiro ? financeiro : []).length === 0 ? (
         <Card><CardContent className="pt-6"><EmptyState message="Nenhum custo encontrado com esses filtros" /></CardContent></Card>
       ) : (
         <>
-          {/* Seção Operacional */}
-          {incluirOperacional && operacional.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4" />
-                  Operacional
-                  <span className="ml-auto text-sm font-normal text-muted-foreground">
-                    Total: <span className="font-bold text-foreground">{fmt(totalOperacional)}</span>
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
-                  <span className="flex-1">Item</span>
-                  <span className="w-36 text-right">Qtde.</span>
-                  <span className="w-28 text-right">Valor</span>
-                </div>
-                {operacional.map((grupo: any) => (
-                  <div key={grupo.grupo}>
-                    <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
-                      <span>{labelGrupo(grupo.grupo)}</span>
-                      <span>{fmt(Number(grupo.subtotal))}</span>
-                    </div>
-                    {(grupo.itens || []).map((item: any, idx: number) => (
-                      <div key={idx} className="flex items-center text-sm pl-4 py-1 text-foreground/80">
-                        <span className="flex-1">{item.nome}</span>
-                        <span className="w-36 text-right text-xs text-muted-foreground">{formatarQtdeOperacional(item)}</span>
-                        <span className="w-28 text-right font-medium">{fmt(Number(item.valor))}</span>
+          {/* Seção Operacional — um bloco por talhão */}
+          {incluirOperacional && porTalhao.some((sec: any) => (sec.operacional || []).length > 0) && (
+            <>
+              <div className="flex items-center gap-2 text-base font-semibold">
+                <ClipboardList className="h-4 w-4" />
+                Operacional
+                <span className="ml-auto text-sm font-normal text-muted-foreground">
+                  Total: <span className="font-bold text-foreground">{fmt(totalOperacional)}</span>
+                </span>
+              </div>
+              {porTalhao.map((sec: any) => (
+                (sec.operacional || []).length > 0 && (
+                  <Card key={String(sec.talhao_id ?? sec.talhao_nome)}>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        {sec.talhao_nome}
+                        <span className="ml-auto text-sm font-normal text-muted-foreground">
+                          Subtotal: <span className="font-bold text-foreground">{fmt(Number(sec.subtotal))}</span>
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center text-xs font-medium text-muted-foreground pl-4 pb-1">
+                        <span className="flex-1">Item</span>
+                        <span className="w-36 text-right">Qtde.</span>
+                        <span className="w-28 text-right">Valor</span>
                       </div>
-                    ))}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                      {(sec.operacional || []).map((grupo: any) => (
+                        <div key={grupo.grupo}>
+                          <div className="flex items-center justify-between font-semibold text-sm border-b pb-1 mb-1">
+                            <span>{labelGrupo(grupo.grupo)}</span>
+                            <span>{fmt(Number(grupo.subtotal))}</span>
+                          </div>
+                          {(grupo.itens || []).map((item: any, idx: number) => (
+                            <div key={idx} className="flex items-center text-sm pl-4 py-1 text-foreground/80">
+                              <span className="flex-1">{item.nome}</span>
+                              <span className="w-36 text-right text-xs text-muted-foreground">{formatarQtdeOperacional(item)}</span>
+                              <span className="w-28 text-right font-medium">{fmt(Number(item.valor))}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )
+              ))}
+            </>
           )}
+
 
           {/* Seção Financeiro */}
           {incluirFinanceiro && financeiro.length > 0 && (
