@@ -92,6 +92,27 @@ function mergeEstoque(listas: any[][]) {
   }))
 }
 
+/* Junta os resultados do relatório por máquina quando há vários talhões marcados.
+   Manutenções não são filtradas por talhão, então não são somadas duas vezes. */
+function mergeMaquinas(listas: any[][]) {
+  const maquinas = new Map<string, any>()
+  listas.forEach((lista) => (lista || []).forEach((m: any) => {
+    const chave = String(m.maquina_id)
+    const existente = maquinas.get(chave)
+    if (!existente) {
+      maquinas.set(chave, { ...m, manutencoes_detalhadas: m.manutencoes_detalhadas || [] })
+      return
+    }
+    existente.horas_uso_direto = Number(existente.horas_uso_direto || 0) + Number(m.horas_uso_direto || 0)
+    existente.custo_uso_direto = Number(existente.custo_uso_direto || 0) + Number(m.custo_uso_direto || 0)
+    existente.qtd_abastecimentos = Number(existente.qtd_abastecimentos || 0) + Number(m.qtd_abastecimentos || 0)
+    existente.litros_total = Number(existente.litros_total || 0) + Number(m.litros_total || 0)
+    existente.custo_abastecimento = Number(existente.custo_abastecimento || 0) + Number(m.custo_abastecimento || 0)
+  }))
+  return Array.from(maquinas.values())
+}
+
+
 
 
 
