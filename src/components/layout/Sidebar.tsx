@@ -23,7 +23,6 @@ import {
   Shield,
   Users,
   Beef,
-  Puzzle,
   UserPlus,
   Bell,
   Contact,
@@ -314,20 +313,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         {pendentesCount}
                       </Badge>
                     )}
-                  </Button>
-                </Link>
-                <Link to="/admin/modulos" onClick={onClose}>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      'w-full justify-start gap-2 h-8 text-sm font-medium transition-all duration-200',
-                      location.pathname === '/admin/modulos'
-                        ? 'bg-destructive/20 text-sidebar-foreground'
-                        : 'text-sidebar-foreground/70 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground'
-                    )}
-                  >
-                    <Puzzle className="h-4 w-4 text-destructive" />
-                    Módulos
                   </Button>
                 </Link>
                 <Link to="/admin/convites" onClick={onClose}>

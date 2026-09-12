@@ -35,7 +35,6 @@ import RelatorioDinamico from '@/pages/RelatorioDinamico'
 import OrcamentoSafra from '@/pages/OrcamentoSafra'
 import AdminDashboard from '@/pages/admin/Dashboard'
 import GestaoUsuarios from '@/pages/admin/GestaoUsuarios'
-import ModulosPropriedades from '@/pages/admin/ModulosPropriedades'
 import Perfil from '@/pages/Perfil'
 import Notificacoes from '@/pages/Notificacoes'
 import Convite from '@/pages/Convite'
@@ -147,7 +146,6 @@ export function AppRoutes() {
         <Route path="notificacoes" element={<Notificacoes />} />
         <Route path="admin" element={<AdminDashboard />} />
         <Route path="admin/usuarios" element={<GestaoUsuarios />} />
-        <Route path="admin/modulos" element={<ModulosPropriedades />} />
         <Route path="admin/convites" element={<Convites />} />
       </Route>
 
