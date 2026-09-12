@@ -42,3 +42,4 @@
 - [x] `src/pages/Maquinas.tsx` — corrigir tela branca após restauração do cache offline e exibir opção de tentar novamente
 - [x] `src/pages/admin/GestaoUsuarios.tsx` — papel inicial real na aprovação e lista hierárquica por proprietário/equipe
 - [x] Área administrativa — remover a configuração obsoleta dos cinco módulos, sem alterar telas comuns
+- [x] `src/pages/LancamentoForm.tsx` — permitir lançamentos consecutivos com histórico da sessão e descarte confirmado

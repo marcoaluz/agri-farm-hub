@@ -970,6 +970,7 @@ export function LancamentoForm() {
           horario: new Date(),
           servico: servico?.nome || 'Serviço',
           local: talhao?.nome || 'Propriedade',
+          localLabel: talhao ? 'Talhão' : 'Propriedade',
           custoTotal: resultado.custoTotal,
         }, ...atuais])
         sonnerToast.success('Lançamento salvo!')
@@ -1682,7 +1683,7 @@ export function LancamentoForm() {
                           <p className="truncate text-sm font-medium">{lancamento.servico}</p>
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs text-muted-foreground">Talhão</p>
+                          <p className="text-xs text-muted-foreground">{lancamento.localLabel}</p>
                           <p className="truncate text-sm">{lancamento.local}</p>
                         </div>
                         <div className="sm:text-right">
