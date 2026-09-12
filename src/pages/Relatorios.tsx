@@ -2581,7 +2581,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
         </p>
       )}
 
-      {filtroTalhao !== '_all' && (
+      {talhoesSel.length > 0 && (
         <p className="text-xs text-muted-foreground flex items-center gap-1">
           <Info className="h-3 w-3 shrink-0" />
           Manutenção não é filtrada por talhão — mostra sempre o total da máquina.
