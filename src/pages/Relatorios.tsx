@@ -2362,24 +2362,33 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
                   </div>
                   <div className="border-t pt-1" />
 
-                  {(cat.itens || []).map((item: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className={`flex items-center justify-between py-1 text-sm ${item.abaixo_minimo ? 'text-red-600' : ''}`}
-                    >
-                      <span className="flex-1 truncate">
-                        {item.nome}
-                        {item.abaixo_minimo && (
-                          <Badge variant="destructive" className="ml-2 text-[10px] py-0 px-1.5">
-                            abaixo do mínimo
-                          </Badge>
-                        )}
-                      </span>
-                      <span className="w-36 text-right font-medium">
-                        {fmtN(Number(item.saldo_atual))} {unidadeCurta(item.unidade)}
-                      </span>
-                    </div>
-                  ))}
+                  {(cat.itens || []).map((item: any, idx: number) => {
+                    const isZerado = Number(item.saldo_atual) === 0 || Number(item.quantidade) === 0
+                    const isAbaixo = !isZerado && item.abaixo_minimo
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex items-center justify-between py-1 text-sm ${isZerado || isAbaixo ? 'text-red-600' : ''}`}
+                      >
+                        <span className="flex-1 truncate">
+                          {item.nome}
+                          {isZerado && (
+                            <Badge variant="destructive" className="ml-2 text-[10px] py-0 px-1.5">
+                              Zerado
+                            </Badge>
+                          )}
+                          {isAbaixo && (
+                            <Badge variant="destructive" className="ml-2 text-[10px] py-0 px-1.5">
+                              abaixo do mínimo
+                            </Badge>
+                          )}
+                        </span>
+                        <span className="w-36 text-right font-medium">
+                          {fmtN(Number(item.saldo_atual))} {unidadeCurta(item.unidade)}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
               ))}
             </CardContent>
