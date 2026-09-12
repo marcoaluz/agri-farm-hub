@@ -35,6 +35,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { usePapelUsuario } from '@/hooks/usePapelUsuario'
+import { AvisoSemPermissaoFinanceiro } from '@/lib/erroFinanceiro'
 
 const PIE_COLORS = [
   'hsl(142, 45%, 28%)', 'hsl(42, 85%, 55%)', 'hsl(199, 89%, 48%)',
@@ -161,6 +163,11 @@ export default function Dashboard() {
 
   const [alertsOpen, setAlertsOpen] = useState(false)
 
+  // Somente Proprietário/Gerente podem ver (e portanto buscar) dado financeiro.
+  const { podeVerFinanceiro, isLoading: loadPapel } = usePapelUsuario()
+  const podeFin = !!podeVerFinanceiro
+  const semPermissaoFin = !loadPapel && !podeFin
+
   // ── NEW KPI RPC (filtered mode) ──
   const { data: kpisV2, isLoading: loadKpisV2 } = useQuery({
     queryKey: ['dash-kpis-v2', propId, safraAtual?.id],
@@ -172,7 +179,8 @@ export default function Dashboard() {
       if (error) throw error
       return data as any
     },
-    enabled: !!propId,
+    enabled: !!propId && podeFin,
+    retry: false,
   })
 
   // ── NEW CONSOLIDATED V2 ──
@@ -183,7 +191,8 @@ export default function Dashboard() {
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: isConsolidado,
+    enabled: isConsolidado && podeFin,
+    retry: false,
   })
 
   // Aggregate consolidated KPIs for top cards
@@ -226,7 +235,8 @@ export default function Dashboard() {
       })
       return Array.from(catMap.entries()).map(([categoria, custo_total]) => ({ categoria, custo_total }))
     },
-    enabled: isConsolidado && !!consolidadoV2,
+    enabled: isConsolidado && !!consolidadoV2 && podeFin,
+    retry: false,
   })
 
   const { data: lancConsolidado, isLoading: loadLancConsolidado } = useQuery({
@@ -285,7 +295,7 @@ export default function Dashboard() {
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: !!propriedadeAtual?.id && (!safraAtual || safraAtual.propriedade_id === propriedadeAtual.id),
+    enabled: !!propriedadeAtual?.id && podeFin && (!safraAtual || safraAtual.propriedade_id === propriedadeAtual.id),
     retry: false,
   })
 
@@ -299,7 +309,8 @@ export default function Dashboard() {
       if (error) throw error
       return data?.[0] || { total_a_pagar: 0, total_a_receber: 0 }
     },
-    enabled: !!propriedadeAtual?.id,
+    enabled: !!propriedadeAtual?.id && podeFin,
+    retry: false,
   })
 
   const { data: custosCategoria, isLoading: loadCat } = useQuery({
@@ -311,7 +322,8 @@ export default function Dashboard() {
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: enabledFiltered,
+    enabled: enabledFiltered && podeFin,
+    retry: false,
   })
 
   const { data: producaoSafra, isLoading: loadProd } = useQuery({
@@ -456,12 +468,16 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards V2 */}
-      <DashboardKPIsV2
-        data={kpiV2Data}
-        isLoading={kpiV2Loading}
-        onAlertClick={propId ? () => setAlertsOpen(true) : undefined}
-      />
+      {/* KPI Cards V2 — só para quem pode ver financeiro */}
+      {semPermissaoFin ? (
+        <AvisoSemPermissaoFinanceiro />
+      ) : (
+        <DashboardKPIsV2
+          data={kpiV2Data}
+          isLoading={kpiV2Loading && !semPermissaoFin}
+          onAlertClick={propId ? () => setAlertsOpen(true) : undefined}
+        />
+      )}
 
       {/* Alerts Panel (filtered mode only) */}
       {propId && (
@@ -496,12 +512,14 @@ export default function Dashboard() {
           </div>
 
           {/* SEÇÃO 3 — Gráficos Consolidados */}
-          <div>
-            <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-              📊 Análise Financeira Consolidada
-            </h2>
-            <GraficosConsolidados data={consolidadoV2 || []} isLoading={loadConsolidadoV2} />
-          </div>
+          {!semPermissaoFin && (
+            <div>
+              <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                📊 Análise Financeira Consolidada
+              </h2>
+              <GraficosConsolidados data={consolidadoV2 || []} isLoading={loadConsolidadoV2} />
+            </div>
+          )}
 
           {/* SEÇÃO 4 — Estoque de Produção Consolidado */}
           <div>
@@ -546,7 +564,7 @@ export default function Dashboard() {
 
 
           {/* Charts */}
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className={`grid gap-6 lg:grid-cols-3 ${semPermissaoFin ? 'hidden' : ''}`}>
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Investimento por Mês</CardTitle>
@@ -614,6 +632,7 @@ export default function Dashboard() {
           <div className="grid gap-6 lg:grid-cols-3">
             <CardClima />
 
+            {!semPermissaoFin && (
             <ChartCard title="Distribuição por Categoria" description="Custos por tipo de serviço" className="lg:col-span-2">
               {isLoadingCatRender ? (
                 <Skeleton className="h-[350px] md:h-[400px] rounded-lg" />
@@ -627,6 +646,7 @@ export default function Dashboard() {
                 />
               )}
             </ChartCard>
+            )}
           </div>
 
           {/* Bottom row — Lançamentos & Alertas */}
