@@ -53,6 +53,10 @@ const fmtN = (v: number, d = 2) =>
 const fmtPct = (v: number) => `${(Number(v) || 0).toFixed(1)}%`
 const fmtData = (s?: string) => (s ? format(new Date(String(s).substring(0, 10) + 'T12:00:00'), 'dd/MM/yyyy') : '-')
 
+// UUID especial retornado pelas RPCs de combinações para lançamentos "sem talhão" (nível Propriedade)
+const TALHAO_PROPRIEDADE_ID = '00000000-0000-0000-0000-000000000000'
+const nomeTalhaoFiltro = (id: string, fallback?: string) => (id === TALHAO_PROPRIEDADE_ID ? 'Propriedade' : (fallback || ''))
+
 // Remove sufixo entre parênteses do fim da unidade (ex: "Sacas (60kg)" -> "Sacas")
 const unidadeCurta = (u?: string) => (u || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
 
@@ -1715,11 +1719,16 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
       (!itemFiltro || (c.item_tipo === itemFiltro.tipo && c.item_id === itemFiltro.id))
     )
     const vistos = new Set<string>()
-    return filtradas.filter((c: any) => {
-      if (!c.talhao_id || vistos.has(c.talhao_id)) return false
-      vistos.add(c.talhao_id)
-      return true
-    })
+    return filtradas
+      .filter((c: any) => {
+        if (!c.talhao_id || vistos.has(c.talhao_id)) return false
+        vistos.add(c.talhao_id)
+        return true
+      })
+      .sort((a: any, b: any) =>
+        (a.talhao_id === TALHAO_PROPRIEDADE_ID ? 1 : 0) - (b.talhao_id === TALHAO_PROPRIEDADE_ID ? 1 : 0) ||
+        String(a.talhao_nome || '').localeCompare(String(b.talhao_nome || ''))
+      )
   }, [combos, categoriaFiltro, itemFiltro])
 
   // Reseta filtros que ficaram sem combinação válida
@@ -1816,6 +1825,28 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
     setDataInicio(''); setDataFim(''); setCategoriaFiltro(''); setItemFiltro(null); setTalhaoFiltro(''); setOrdenarPor('valor_desc')
   }
 
+  // Resumo dos filtros ativos (tela + cabeçalho dos exports)
+  const resumoFiltros = useMemo(() => {
+    const partes: string[] = []
+    if (dataInicio || dataFim) {
+      partes.push(`Período: ${dataInicio ? fmtData(dataInicio) : '...'} a ${dataFim ? fmtData(dataFim) : '...'}`)
+    }
+    if (categoriaFiltro) partes.push(`Categoria: ${categoriaFiltro}`)
+    if (itemFiltro) {
+      const item = [...itensDisponiveis, ...(itensFiltraveisQ.data || [])]
+        .find((i: any) => i.item_tipo === itemFiltro.tipo && i.item_id === itemFiltro.id)
+      const sufixo = itemFiltro.tipo === 'maquina' ? ' (máquina)' : itemFiltro.tipo === 'servico' ? ' (serviço)' : ''
+      partes.push(`Item: ${item?.item_nome || ''}${sufixo}`)
+    }
+    if (talhaoFiltro) {
+      const nome = talhoesDisponiveis.find((t: any) => t.talhao_id === talhaoFiltro)?.talhao_nome
+        || (talhoesQ.data || []).find((t: any) => t.id === talhaoFiltro)?.nome
+      partes.push(`Talhão: ${nomeTalhaoFiltro(talhaoFiltro, nome)}`)
+    }
+    return partes
+  }, [dataInicio, dataFim, categoriaFiltro, itemFiltro, talhaoFiltro, itensDisponiveis, talhoesDisponiveis, itensFiltraveisQ.data, talhoesQ.data])
+  const resumoFiltrosTexto = resumoFiltros.join(' · ')
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap justify-end gap-2 mb-2">
@@ -1825,6 +1856,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
             nomeArquivo: 'custos-detalhados',
             propriedadeNome,
             safraNome: safraAtual?.nome,
+            resumoFiltros: resumoFiltrosTexto || undefined,
             operacional: incluirOperacional
               ? operacional.map((g: any) => ({ ...g, grupo: labelGrupo(g.grupo) }))
               : [],
@@ -1840,7 +1872,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
         </Button>
         <Button
           variant="outline" size="sm" className="flex-1 sm:flex-none min-w-[140px]"
-          onClick={() => exportarExcel({ nomeArquivo: 'custos-detalhados', nomeAba: 'Custos Detalhados', colunas: colunasExport, linhas: linhasExport, propriedadeNome, safraNome: safraAtual?.nome })}
+          onClick={() => exportarExcel({ nomeArquivo: 'custos-detalhados', nomeAba: 'Custos Detalhados', colunas: colunasExport, linhas: linhasExport, propriedadeNome, safraNome: safraAtual?.nome, resumoFiltros: resumoFiltrosTexto || undefined })}
         >
           <FileSpreadsheet className="h-4 w-4 mr-1" /> Exportar Excel
         </Button>
@@ -1930,6 +1962,12 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
           </div>
         </CardContent>
       </Card>
+
+      {resumoFiltros.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Mostrando: <span className="font-medium text-foreground">{resumoFiltrosTexto}</span>
+        </p>
+      )}
 
       {relatorioQ.isLoading ? (
         <SkeletonAba />
@@ -2270,7 +2308,10 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
       .forEach((c: any) => {
         if (c.talhao_id) map.set(c.talhao_id, String(c.talhao_nome || 'Talhão'))
       })
-    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
+    return Array.from(map.entries()).sort((a, b) =>
+      (a[0] === TALHAO_PROPRIEDADE_ID ? 1 : 0) - (b[0] === TALHAO_PROPRIEDADE_ID ? 1 : 0) ||
+      a[1].localeCompare(b[1])
+    )
   }, [combosMaq, filtroMaquina])
 
   // Reseta filtros que ficaram sem combinação válida
@@ -2356,11 +2397,29 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
   const totalGeral = gruposFiltrados.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
 
+  // Resumo dos filtros ativos (tela + cabeçalho dos exports)
+  const resumoFiltros = useMemo(() => {
+    const partes: string[] = []
+    if (filtroMaquina !== '_all') {
+      partes.push(`Máquina: ${maquinasUnicas.find(([id]) => id === filtroMaquina)?.[1] || ''}`)
+    }
+    if (filtroTalhao !== '_all') {
+      partes.push(`Talhão: ${nomeTalhaoFiltro(filtroTalhao, talhoesUnicos.find(([id]) => id === filtroTalhao)?.[1])}`)
+    }
+    if (filtroTipoCusto !== '_all') {
+      const tipoLabel = filtroTipoCusto === 'uso' ? 'Uso da máquina' : filtroTipoCusto === 'abastecimento' ? 'Abastecimento' : 'Manutenção'
+      partes.push(`Tipo: ${tipoLabel}`)
+    }
+    return partes
+  }, [filtroMaquina, filtroTalhao, filtroTipoCusto, maquinasUnicas, talhoesUnicos])
+  const resumoFiltrosTexto = resumoFiltros.join(' · ')
+
   const handleExportPDF = () => {
     exportarMaquinasPDF({
       nomeArquivo: 'relatorio-maquinas',
       propriedadeNome,
       safraNome: safraAtual?.nome,
+      resumoFiltros: resumoFiltrosTexto || undefined,
       totalGeral,
       grupos: gruposFiltrados,
     })
@@ -2444,6 +2503,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
               nomeAba: 'Máquinas',
               propriedadeNome,
               safraNome: safraAtual?.nome,
+              resumoFiltros: resumoFiltrosTexto || undefined,
               colunas: [
                 { header: 'Máquina', key: 'maquina', width: 22 },
                 { header: 'Item', key: 'item', width: 26 },
@@ -2464,6 +2524,12 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
           </Button>
         </div>
       </div>
+
+      {resumoFiltros.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Mostrando: <span className="font-medium text-foreground">{resumoFiltrosTexto}</span>
+        </p>
+      )}
 
       {filtroTalhao !== '_all' && (
         <p className="text-xs text-muted-foreground flex items-center gap-1">
