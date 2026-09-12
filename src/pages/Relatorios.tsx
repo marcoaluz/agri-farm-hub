@@ -1974,8 +1974,11 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
             propriedadeNome,
             safraNome: safraAtual?.nome,
             resumoFiltros: resumoFiltrosTexto || undefined,
-            operacional: incluirOperacional
-              ? operacional.map((g: any) => ({ ...g, grupo: labelGrupo(g.grupo) }))
+            porTalhao: incluirOperacional
+              ? porTalhao.map((sec: any) => ({
+                  ...sec,
+                  operacional: (sec.operacional || []).map((g: any) => ({ ...g, grupo: labelGrupo(g.grupo) })),
+                }))
               : [],
             financeiro: incluirFinanceiro
               ? financeiro.map((g: any) => ({ ...g, grupo: labelGrupo(g.grupo) }))
