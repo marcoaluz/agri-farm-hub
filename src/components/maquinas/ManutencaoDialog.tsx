@@ -78,7 +78,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
       });
       if (error) throw error;
       return ((data as any[]) || []).filter(
-        (p) => p.ativo !== false && (p.categoria || '').toLowerCase().includes('manuten')
+        (p) => p.ativo !== false && p.tipo_estoque === 'geral' && p.categoria === 'Manutenção'
       );
     },
     enabled: !!propriedadeId && open,
