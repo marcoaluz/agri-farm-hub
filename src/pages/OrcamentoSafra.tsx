@@ -257,7 +257,8 @@ export default function OrcamentoSafra() {
         status_orcamento: r.status_orcamento || 'sem_orcamento',
       }))
     },
-    enabled: !!propId && !!safraId,
+    enabled: !!propId && !!safraId && safraAtual?.propriedade_id === propId,
+    retry: false,
   })
 
   // Totals

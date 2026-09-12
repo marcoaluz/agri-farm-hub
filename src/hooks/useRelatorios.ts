@@ -45,6 +45,7 @@ export function useRelatorioOperacional(
       return result
     },
     enabled: !!idProp && !!idSafra,
+    retry: false,
   })
 
   const porTalhao = useQuery({
@@ -58,6 +59,7 @@ export function useRelatorioOperacional(
       return (data || []) as any[]
     },
     enabled: !!idProp && !!idSafra,
+    retry: false,
   })
 
   const porCategoria = useQuery({
@@ -71,6 +73,7 @@ export function useRelatorioOperacional(
       return (data || []) as any[]
     },
     enabled: !!idProp && !!idSafra,
+    retry: false,
   })
 
   const porMes = useQuery({
@@ -84,6 +87,7 @@ export function useRelatorioOperacional(
       return (data || []) as any[]
     },
     enabled: !!idProp && !!idSafra,
+    retry: false,
   })
 
   return { lancamentos, porTalhao, porCategoria, porMes }
@@ -119,6 +123,7 @@ export function useRelatorioFinanceiro(
       return result
     },
     enabled: !!idProp && !!idSafra,
+    retry: false,
   })
 
   const fluxoMensal = useQuery({
@@ -132,6 +137,7 @@ export function useRelatorioFinanceiro(
       return (data || []) as any[]
     },
     enabled: !!idProp && !!idSafra,
+    retry: false,
   })
 
   return { transacoes, fluxoMensal }
@@ -170,6 +176,7 @@ export function useRelatorioComparativo(
       return results
     },
     enabled: !!idProp && safraIds.length > 0,
+    retry: false,
   })
 
   return { porSafra }

@@ -33,7 +33,7 @@ export default function RelatorioRentabilidade() {
 
   const propId = propriedadeSelecionada?.id || ''
   const safraId = safraSelecionada?.id || ''
-  const enabled = !!propId && !!safraId
+  const enabled = !!propId && !!safraId && safraSelecionada?.propriedade_id === propId
 
   const resumo = useQuery({
     queryKey: ['rentabilidade-resumo', propId, safraId],
@@ -43,6 +43,7 @@ export default function RelatorioRentabilidade() {
       return data
     },
     enabled,
+    retry: false,
   })
 
   const breakdown = useQuery({
@@ -53,6 +54,7 @@ export default function RelatorioRentabilidade() {
       return (data || []) as any[]
     },
     enabled,
+    retry: false,
   })
 
   const talhoes = useQuery({
@@ -63,6 +65,7 @@ export default function RelatorioRentabilidade() {
       return (data || []) as any[]
     },
     enabled,
+    retry: false,
   })
 
   const insumos = useQuery({
@@ -73,6 +76,7 @@ export default function RelatorioRentabilidade() {
       return (data || []) as any[]
     },
     enabled,
+    retry: false,
   })
 
   const evolucao = useQuery({
@@ -83,6 +87,7 @@ export default function RelatorioRentabilidade() {
       return (data || []) as any[]
     },
     enabled,
+    retry: false,
   })
 
   const comparativo = useQuery({
