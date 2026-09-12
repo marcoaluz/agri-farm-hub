@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { Fragment, useState, useEffect, useMemo } from 'react'
 
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
@@ -9,7 +9,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   Users, Search, MoreVertical, Crown, Shield,
-  Edit, Trash2, UserCheck, UserX, UserPlus, Loader2, Clock,
+  Edit, Trash2, UserCheck, UserX, UserPlus, Loader2, Clock, ChevronDown, MapPin,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -73,6 +73,26 @@ interface DetalheProprietario {
   equipe: EquipeDetalhe[]
 }
 
+interface PropriedadeHierarquica {
+  id: string
+  nome: string
+}
+
+interface AcessoHierarquico {
+  propriedade_id: string
+  propriedade_nome: string
+  papel: string
+}
+
+interface MembroHierarquico extends UserProfile {
+  acessos: AcessoHierarquico[]
+}
+
+interface ProprietarioHierarquico extends UserProfile {
+  propriedades: PropriedadeHierarquica[]
+  equipe: MembroHierarquico[]
+}
+
 const PERFIL_CONFIG: Record<string, { label: string; className: string; variant?: 'destructive' | 'secondary' | 'default' }> = {
   admin: { label: 'Admin', className: 'bg-destructive/10 text-destructive border-destructive/20', variant: 'destructive' },
   proprietario: { label: 'Proprietário', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
@@ -100,6 +120,9 @@ export default function GestaoUsuarios() {
   const { toast } = useToast()
 
   const [usuarios, setUsuarios] = useState<UserProfile[]>([])
+  const [proprietarios, setProprietarios] = useState<ProprietarioHierarquico[]>([])
+  const [semPropriedade, setSemPropriedade] = useState<UserProfile[]>([])
+  const [proprietariosExpandidos, setProprietariosExpandidos] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
   const [filtroPerfil, setFiltroPerfil] = useState('proprietario')
@@ -165,40 +188,83 @@ export default function GestaoUsuarios() {
   async function fetchUsuarios() {
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('vw_all_users_admin' as any)
-        .select('*')
-        .order('criado_em', { ascending: false })
+      const { data, error } = await supabase.rpc('admin_listar_usuarios_hierarquico' as any)
+      if (error) throw error
 
-      if (error) {
-        const { data: fallback, error: err2 } = await supabase
-          .from('user_profiles' as any)
-          .select('*')
-          .order('created_at', { ascending: false })
-        if (err2) throw err2
-        setUsuarios((fallback || []) as any)
-      } else {
-        const usersWithPlan = await Promise.all(
-          ((data || []) as any[]).map(async (u: any) => {
-            try {
-              const { data: planoData } = await supabase.rpc('get_plano_ativo_usuario' as any, { p_usuario_id: u.id })
-              const plano = Array.isArray(planoData) && planoData.length > 0 ? planoData[0] : null
-              return {
-                ...u,
-                plano: plano?.plano_nome || null,
-                plano_slug: plano?.plano_slug || null,
-                assinatura_status: plano?.status || null,
-                vencimento: plano?.data_fim || null,
+      const resultado = (data || {}) as any
+      const normalizarUsuario = (item: any, perfilPadrao?: string): UserProfile => ({
+        id: item.id || item.usuario_id,
+        email: item.email || item.usuario_email || null,
+        nome: item.nome || item.usuario_nome || item.full_name || null,
+        perfil: item.perfil || item.papel || perfilPadrao || 'consultor',
+        status: item.status || null,
+        ultimo_acesso: item.ultimo_acesso || null,
+        confirmado: item.confirmado ?? item.status === 'ativo',
+        criado_em: item.criado_em || item.created_at || '',
+        avatar_url: item.avatar_url || null,
+        is_super_admin: item.is_super_admin || false,
+        plano: item.plano || item.plano_nome || null,
+        plano_slug: item.plano_slug || null,
+        assinatura_status: item.assinatura_status || null,
+        vencimento: item.vencimento || item.data_fim || null,
+      })
+
+      const donos = ((resultado.proprietarios || []) as any[]).map((item) => {
+        const dono = normalizarUsuario(item, 'proprietario')
+        const propriedades = ((item.propriedades || []) as any[]).map((prop) => ({
+          id: prop.id || prop.propriedade_id,
+          nome: prop.nome || prop.propriedade_nome || 'Propriedade',
+        }))
+        const equipeAgrupada = new Map<string, MembroHierarquico>()
+        for (const membroRaw of (item.equipe || []) as any[]) {
+          const membro = normalizarUsuario(membroRaw, membroRaw.papel)
+          if (!membro.id) continue
+          const existente = equipeAgrupada.get(membro.id)
+          const acessosRaw = Array.isArray(membroRaw.acessos)
+            ? membroRaw.acessos
+            : [{
+                propriedade_id: membroRaw.propriedade_id,
+                propriedade_nome: membroRaw.propriedade_nome,
+                papel: membroRaw.papel || membro.perfil,
+              }]
+          const acessos = acessosRaw
+            .filter((acesso: any) => acesso.propriedade_id || acesso.propriedade_nome)
+            .map((acesso: any) => ({
+              propriedade_id: acesso.propriedade_id || acesso.id || acesso.propriedade_nome,
+              propriedade_nome: acesso.propriedade_nome || acesso.nome || 'Propriedade',
+              papel: acesso.papel || membro.perfil,
+            }))
+          if (existente) {
+            for (const acesso of acessos) {
+              if (!existente.acessos.some((atual) => atual.propriedade_id === acesso.propriedade_id && atual.papel === acesso.papel)) {
+                existente.acessos.push(acesso)
               }
-            } catch {
-              return u
             }
-          })
-        )
-        setUsuarios(usersWithPlan as any)
+          } else {
+            equipeAgrupada.set(membro.id, { ...membro, acessos })
+          }
+        }
+        return { ...dono, propriedades, equipe: Array.from(equipeAgrupada.values()) }
+      }) as ProprietarioHierarquico[]
+
+      const avulsos = ((resultado.sem_propriedade || []) as any[]).map((item) => normalizarUsuario(item))
+      const todos = new Map<string, UserProfile>()
+      for (const dono of donos) {
+        todos.set(dono.id, dono)
+        for (const membro of dono.equipe) todos.set(membro.id, membro)
       }
-    } catch {
-      toast({ title: 'Erro ao carregar usuários', variant: 'destructive' })
+      for (const avulso of avulsos) todos.set(avulso.id, avulso)
+
+      setProprietarios(donos)
+      setSemPropriedade(avulsos)
+      setUsuarios(Array.from(todos.values()))
+      setProprietariosExpandidos((atuais) => atuais.size > 0 ? atuais : new Set(donos.map((dono) => dono.id)))
+    } catch (err) {
+      toast({
+        title: 'Erro ao carregar usuários',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -225,19 +291,44 @@ export default function GestaoUsuarios() {
     return usuarios.filter(u => u.status === 'pendente')
   }, [usuarios])
 
-  // Filtered list (all users tab)
-  const usuariosFiltrados = useMemo(() => {
-    return usuarios.filter(u => {
-      const matchBusca = !busca ||
-        (u.nome?.toLowerCase().includes(busca.toLowerCase())) ||
-        (u.email?.toLowerCase().includes(busca.toLowerCase()))
-      const matchPerfil = filtroPerfil === 'todos' || u.perfil === filtroPerfil
-      const matchStatus = filtroStatus === 'todos' ||
-        (filtroStatus === 'ativo' && (u.status === 'ativo' || u.confirmado)) ||
-        (filtroStatus === 'pendente' && u.status === 'pendente')
-      return matchBusca && matchPerfil && matchStatus
+  // Filtered hierarchical list (all users tab)
+  const correspondeFiltros = (u: UserProfile) => {
+    const termo = busca.trim().toLowerCase()
+    const matchBusca = !termo || u.nome?.toLowerCase().includes(termo) || u.email?.toLowerCase().includes(termo)
+    const matchPerfil = filtroPerfil === 'todos' || u.perfil === filtroPerfil
+    const matchStatus = filtroStatus === 'todos' ||
+      (filtroStatus === 'ativo' && (u.status === 'ativo' || u.confirmado)) ||
+      (filtroStatus === 'pendente' && u.status === 'pendente')
+    return Boolean(matchBusca && matchPerfil && matchStatus)
+  }
+
+  const proprietariosFiltrados = useMemo(() => {
+    return proprietarios
+      .map((dono) => {
+        const donoCorresponde = correspondeFiltros(dono)
+        const equipeFiltrada = filtroPerfil === 'proprietario' && !busca.trim() && filtroStatus === 'todos'
+          ? dono.equipe
+          : dono.equipe.filter(correspondeFiltros)
+        return { ...dono, equipe: donoCorresponde ? dono.equipe : equipeFiltrada }
+      })
+      .filter((dono) => correspondeFiltros(dono) || dono.equipe.length > 0)
+  }, [proprietarios, busca, filtroPerfil, filtroStatus])
+
+  const semPropriedadeFiltrados = useMemo(
+    () => semPropriedade.filter(correspondeFiltros),
+    [semPropriedade, busca, filtroPerfil, filtroStatus],
+  )
+
+  const totalFiltrado = proprietariosFiltrados.length + semPropriedadeFiltrados.length
+
+  function alternarProprietario(id: string) {
+    setProprietariosExpandidos((atuais) => {
+      const proximo = new Set(atuais)
+      if (proximo.has(id)) proximo.delete(id)
+      else proximo.add(id)
+      return proximo
     })
-  }, [usuarios, busca, filtroPerfil, filtroStatus])
+  }
 
   // Save profile (nome + perfil)
   async function salvarPerfil() {
@@ -281,7 +372,7 @@ export default function GestaoUsuarios() {
           : undefined,
       })
       setUsuarioAprovando(null)
-      setPapelAprovacao('consultor')
+      setPapelAprovacao(usuarioAprovando.perfil || 'consultor')
       fetchUsuarios()
     } catch {
       toast({ title: 'Erro ao aprovar usuário', variant: 'destructive' })
@@ -538,7 +629,7 @@ export default function GestaoUsuarios() {
                       <Button
                         size="sm"
                         className="flex-1 gap-1.5 bg-green-600 hover:bg-green-700 text-white"
-                        onClick={() => { setUsuarioAprovando(u); setPapelAprovacao('consultor') }}
+                        onClick={() => { setUsuarioAprovando(u); setPapelAprovacao(u.perfil || 'consultor') }}
                       >
                         <UserCheck className="h-4 w-4" />
                         Aprovar
@@ -717,7 +808,7 @@ export default function GestaoUsuarios() {
                               <DropdownMenuSeparator />
                               {u.status === 'pendente' && (
                                 <>
-                                  <DropdownMenuItem onClick={() => { setUsuarioAprovando(u); setPapelAprovacao('consultor') }}>
+                                  <DropdownMenuItem onClick={() => { setUsuarioAprovando(u); setPapelAprovacao(u.perfil || 'consultor') }}>
                                     <UserCheck className="mr-2 h-4 w-4" />
                                     Aprovar
                                   </DropdownMenuItem>
