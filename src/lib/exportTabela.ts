@@ -695,6 +695,13 @@ export async function exportarMaquinasPDF(opts: {
   if (safraNome) doc.text(`Safra: ${safraNome}`, margin, 36)
   doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, safraNome ? 42 : 36)
   y = safraNome ? 50 : 44
+  if (resumoFiltros) {
+    doc.setFontSize(8)
+    doc.setTextColor(110)
+    doc.text(`Mostrando: ${resumoFiltros}`, margin, y - 4)
+    doc.setTextColor(0)
+    y += 4
+  }
 
   doc.setFontSize(12); doc.setFont('helvetica', 'bold')
   doc.text('Total', margin, y)
