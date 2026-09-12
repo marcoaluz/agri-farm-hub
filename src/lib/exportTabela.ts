@@ -270,10 +270,10 @@ export async function exportarCustosDetalhadosPDF(opts: {
 
   const secoesComItens = (porTalhao || []).filter((sec) => (sec.operacional || []).length > 0)
   if (secoesComItens.length > 0) {
-    secoesComItens.forEach((sec, idx) => {
+    secoesComItens.forEach((sec) => {
       desenharSecao(
-        idx === 0 ? `Operacional — ${sec.talhao_nome}` : sec.talhao_nome,
-        idx === 0 && secoesComItens.length === 1 ? totalOperacional : Number(sec.subtotal || 0),
+        `Operacional — ${sec.talhao_nome}`,
+        Number(sec.subtotal || 0),
         sec.operacional,
         (item) => [
           item.nome,
@@ -282,6 +282,13 @@ export async function exportarCustosDetalhadosPDF(opts: {
         ]
       )
     })
+    if (secoesComItens.length > 1) {
+      novaPaginaSeNecessario(10)
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold')
+      doc.text('Total Operacional', margin, y)
+      doc.text(`R$ ${fmt2(totalOperacional)}`, pageWidth - margin, y, { align: 'right' })
+      y += 8
+    }
   }
 
   if (financeiro.length > 0) {
