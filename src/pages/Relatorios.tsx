@@ -2108,7 +2108,7 @@ const TIPO_ESTOQUE_LABEL: Record<string, string> = {
 }
 
 function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNome: string }) {
-  const [categoriaFiltro, setCategoriaFiltro] = useState('')
+  const [categoriasSel, setCategoriasSel] = useState<string[]>([])
 
   const [incluirAgricola, setIncluirAgricola] = useState(true)
 
@@ -2126,23 +2126,29 @@ function AbaEstoque({ propId, propriedadeNome }: { propId: string; propriedadeNo
     enabled: !!propId,
   })
 
-  const categoriasDisponiveis = useMemo(() => {
+  const opcoesCategoria = useMemo<OpcaoFiltro[]>(() => {
     const set = new Set((categoriasQ.data || []).map((c) => c.categoria))
-    return Array.from(set).sort()
+    return Array.from(set).sort().map((c) => ({ value: c, label: c }))
   }, [categoriasQ.data])
 
   const estoqueQ = useQuery({
-    queryKey: ['rel-estoque', propId, categoriaFiltro],
+    queryKey: ['rel-estoque', propId, categoriasSel],
     queryFn: async () => {
-      const { data, error } = await db.rpc('get_relatorio_estoque', {
-        p_propriedade_id: propId,
-        p_categoria: categoriaFiltro || null,
-      })
-      if (error) throw error
-      return (data || []) as any[]
+      const alvos: (string | null)[] = categoriasSel.length ? categoriasSel : [null]
+      const resultados = await Promise.all(alvos.map(async (categoria) => {
+        const { data, error } = await db.rpc('get_relatorio_estoque', {
+          p_propriedade_id: propId,
+          p_categoria: categoria,
+        })
+        if (error) throw error
+        return (data || []) as any[]
+      }))
+      if (resultados.length === 1) return resultados[0]
+      return mergeEstoque(resultados)
     },
     enabled: !!propId,
   })
+
 
   const incluidos: Record<string, boolean> = { agricola: incluirAgricola, pecuario: incluirPecuario, geral: incluirGeral }
 
