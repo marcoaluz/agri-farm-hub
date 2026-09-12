@@ -322,7 +322,8 @@ export default function Dashboard() {
       if (error) throw error
       return (data || []) as any[]
     },
-    enabled: enabledFiltered,
+    enabled: enabledFiltered && podeFin,
+    retry: false,
   })
 
   const { data: producaoSafra, isLoading: loadProd } = useQuery({
