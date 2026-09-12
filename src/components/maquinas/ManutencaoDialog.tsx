@@ -222,7 +222,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
     setQuantidadeProduto('1');
   };
 
-  const { safraAtual } = useGlobal();
+  const { safraAtual, propriedadeAtual } = useGlobal();
 
   const handleSave = async () => {
     if (!maquina || !descricao.trim()) {
