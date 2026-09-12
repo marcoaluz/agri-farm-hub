@@ -1641,9 +1641,10 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
   const { safraAtual } = useGlobal()
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
-  const [categoriaFiltro, setCategoriaFiltro] = useState('')
-  const [itemFiltro, setItemFiltro] = useState<{ tipo: string; id: string } | null>(null)
-  const [talhaoFiltro, setTalhaoFiltro] = useState('')
+  const [categoriasSel, setCategoriasSel] = useState<string[]>([])
+  const [itensSel, setItensSel] = useState<string[]>([])
+  const [talhoesSel, setTalhoesSel] = useState<string[]>([])
+
   const [ordenarPor, setOrdenarPor] = useState('valor_desc')
   const [incluirOperacional, setIncluirOperacional] = useState(true)
   const [incluirFinanceiro, setIncluirFinanceiro] = useState(true)
