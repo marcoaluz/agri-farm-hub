@@ -2441,81 +2441,121 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
   }, [opcoesMaquina, opcoesTalhao])
 
 
-  const grupos = useMemo(() => {
-    return maquinasRaw.map((m: any) => {
-      const itens: { nome: string; qtdLabel: string; valor: number; isChild?: boolean; kind: 'uso' | 'abastecimento' | 'manutencao' }[] = []
+  type ItemMaq = { nome: string; qtdLabel: string; valor: number; isChild?: boolean; kind: 'uso' | 'abastecimento' | 'manutencao' }
 
-      if (m.horas_uso_direto > 0) {
-        itens.push({
-          nome: 'Uso da máquina (lançamentos)',
-          qtdLabel: `${fmtN(Number(m.horas_uso_direto))} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
-          valor: Number(m.custo_uso_direto || 0),
-          kind: 'uso',
-        })
-      }
-
-      if (m.qtd_abastecimentos > 0) {
-        itens.push({
-          nome: `Combustível (${m.qtd_abastecimentos}x abastecido)`,
-          qtdLabel: `${fmtN(Number(m.litros_total || 0))} L`,
-          valor: Number(m.custo_abastecimento || 0),
-          kind: 'abastecimento',
-        })
-      }
-
-      ;(m.manutencoes_detalhadas || []).forEach((mnt: any) => {
-        itens.push({
-          nome: mnt.descricao,
-          qtdLabel: '',
-          valor: Number(mnt.valor_total || 0),
-          kind: 'manutencao',
-        })
-
-
-        ;(mnt.itens || []).forEach((it: any) => {
-          if (it.do_estoque) {
-            itens.push({
-              nome: `└ ${it.produto_nome || 'Item do estoque'} (item do estoque)`,
-              qtdLabel: `${fmtN(Number(it.produto_qtd || 0))} ${unidadeCurta(it.produto_unidade)}`,
-              valor: Number(it.valor || 0),
-              isChild: true,
-              kind: 'manutencao',
-            })
-          } else {
-            itens.push({
-              nome: `└ ${(mnt.descricao || '').toLowerCase()} sem estoque`,
-              qtdLabel: `${Number(it.vezes || 0)}x`,
-              valor: Number(it.valor || 0),
-              isChild: true,
-              kind: 'manutencao',
-            })
-          }
-        })
+  const montarItensManutencao = (m: any): ItemMaq[] => {
+    const itens: ItemMaq[] = []
+    ;(m.manutencoes_detalhadas || []).forEach((mnt: any) => {
+      itens.push({ nome: mnt.descricao, qtdLabel: '', valor: Number(mnt.valor_total || 0), kind: 'manutencao' })
+      ;(mnt.itens || []).forEach((it: any) => {
+        if (it.do_estoque) {
+          itens.push({
+            nome: `└ ${it.produto_nome || 'Item do estoque'} (item do estoque)`,
+            qtdLabel: `${fmtN(Number(it.produto_qtd || 0))} ${unidadeCurta(it.produto_unidade)}`,
+            valor: Number(it.valor || 0),
+            isChild: true,
+            kind: 'manutencao',
+          })
+        } else {
+          itens.push({
+            nome: `└ ${(mnt.descricao || '').toLowerCase()} sem estoque`,
+            qtdLabel: `${Number(it.vezes || 0)}x`,
+            valor: Number(it.valor || 0),
+            isChild: true,
+            kind: 'manutencao',
+          })
+        }
       })
-
-      return {
-        maquina_id: m.maquina_id,
-        nome: `${m.maquina_nome}${m.modelo ? ` (${m.modelo})` : ''}`,
-        subtotal: Number(m.custo_total || 0),
-        horimetro: `${fmtN(Number(m.horimetro_atual || 0), 1)} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
-        itens,
-      }
     })
-  }, [maquinasRaw])
+    return itens
+  }
 
-  const gruposFiltrados = useMemo(() => {
-    const porMaquina = maquinasSel.length === 0 ? grupos : grupos.filter((g: any) => maquinasSel.includes(g.maquina_id))
-    if (filtroTipoCusto === '_all') return porMaquina
-    return porMaquina
+  const montarGrupo = (m: any, incluirManutencao: boolean) => {
+    const itens: ItemMaq[] = []
+
+    if (m.horas_uso_direto > 0) {
+      itens.push({
+        nome: 'Uso da máquina (lançamentos)',
+        qtdLabel: `${fmtN(Number(m.horas_uso_direto))} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
+        valor: Number(m.custo_uso_direto || 0),
+        kind: 'uso',
+      })
+    }
+
+    if (m.qtd_abastecimentos > 0) {
+      itens.push({
+        nome: `Combustível (${m.qtd_abastecimentos}x abastecido)`,
+        qtdLabel: `${fmtN(Number(m.litros_total || 0))} L`,
+        valor: Number(m.custo_abastecimento || 0),
+        kind: 'abastecimento',
+      })
+    }
+
+    if (incluirManutencao) itens.push(...montarItensManutencao(m))
+
+    const subtotal = incluirManutencao
+      ? Number(m.custo_total || 0)
+      : itens.reduce((s, it) => s + (it.isChild ? 0 : Number(it.valor || 0)), 0)
+
+    return {
+      maquina_id: m.maquina_id,
+      nome: `${m.maquina_nome}${m.modelo ? ` (${m.modelo})` : ''}`,
+      subtotal,
+      horimetro: `${fmtN(Number(m.horimetro_atual || 0), 1)} ${m.unidade_calculo === 'km' ? 'km' : 'h'}`,
+      itens,
+    }
+  }
+
+  const aplicarFiltroTipo = (gs: any[]) => {
+    if (filtroTipoCusto === '_all') return gs
+    return gs
       .map((g: any) => {
         const itens = g.itens.filter((it: any) => it.kind === filtroTipoCusto)
         const subtotal = itens.reduce((s: number, it: any) => s + (it.isChild ? 0 : Number(it.valor || 0)), 0)
         return { ...g, itens, subtotal }
       })
       .filter((g: any) => g.itens.length > 0)
-  }, [grupos, maquinasSel, filtroTipoCusto])
+  }
+
+  const secoes = useMemo(() => {
+    return secoesRaw.map((sec: any) => {
+      const grupos = aplicarFiltroTipo((sec.maquinas || []).map((m: any) => montarGrupo(m, !separadoPorTalhao)))
+      return {
+        talhao_id: sec.talhao_id ?? 'geral',
+        talhao_nome: sec.talhao_nome || 'Geral',
+        grupos,
+        subtotal: grupos.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0),
+      }
+    }).filter((sec: any) => sec.grupos.length > 0)
+  }, [secoesRaw, separadoPorTalhao, filtroTipoCusto])
+
+  const gruposManutencao = useMemo(() => {
+    if (!separadoPorTalhao) return []
+    if (filtroTipoCusto !== '_all' && filtroTipoCusto !== 'manutencao') return []
+    return manutencaoSemTalhao
+      .map((m: any) => ({
+        maquina_id: m.maquina_id,
+        nome: m.maquina_nome,
+        subtotal: Number(m.custo_manutencao || 0),
+        horimetro: '',
+        itens: montarItensManutencao(m),
+      }))
+      .filter((g: any) => g.itens.length > 0)
+  }, [manutencaoSemTalhao, separadoPorTalhao, filtroTipoCusto])
+
+  // Lista achatada usada nos exports
+  const gruposFiltrados = useMemo(
+    () => [
+      ...secoes.flatMap((sec: any) =>
+        sec.grupos.map((g: any) => ({ ...g, nome: separadoPorTalhao ? `${sec.talhao_nome} — ${g.nome}` : g.nome }))
+      ),
+      ...gruposManutencao.map((g: any) => ({ ...g, nome: `Manutenção — ${g.nome}` })),
+    ],
+    [secoes, gruposManutencao, separadoPorTalhao]
+  )
 
   const totalGeral = gruposFiltrados.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
+
 
   // Resumo dos filtros ativos (tela + cabeçalho dos exports)
   const resumoFiltros = useMemo(() => {
