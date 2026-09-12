@@ -66,6 +66,7 @@ export const PAPEL_USUARIO_LABELS: Record<string, string> = {
   gerente: 'Gerente',
   operador: 'Operador',
   visualizador: 'Visualizador',
+  consultor: 'Consultor',
 };
 
 export const SERVICO_TIPO_LABELS: Record<string, string> = {
