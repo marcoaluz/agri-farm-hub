@@ -101,6 +101,7 @@ export default function RelatorioRentabilidade() {
   })
 
   const isLoading = resumo.isLoading || breakdown.isLoading || talhoes.isLoading || insumos.isLoading || evolucao.isLoading
+  const semPermissao = [resumo.error, breakdown.error, talhoes.error, insumos.error, evolucao.error].some(ehErroPermissaoFinanceiro)
   const r = resumo.data || {} as any
 
   const temProducaoZero = useMemo(() =>
