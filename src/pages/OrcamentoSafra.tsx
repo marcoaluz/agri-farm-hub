@@ -22,6 +22,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
 import { Pencil, DollarSign, TrendingUp, AlertTriangle, Target } from 'lucide-react'
+import { ehErroPermissaoFinanceiro, AvisoSemPermissaoFinanceiro } from '@/lib/erroFinanceiro'
 import { cn } from '@/lib/utils'
 
 /* ------------------------------------------------------------------ */

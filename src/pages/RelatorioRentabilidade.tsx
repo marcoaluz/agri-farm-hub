@@ -26,6 +26,7 @@ const PIE_COLORS = [
   'hsl(320,60%,50%)', 'hsl(60,80%,45%)',
 ]
 
+import { ehErroPermissaoFinanceiro, AvisoSemPermissaoFinanceiro } from '@/lib/erroFinanceiro'
 const db = supabase as any
 
 export default function RelatorioRentabilidade() {
