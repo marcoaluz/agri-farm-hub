@@ -204,7 +204,7 @@ export default function Notificacoes() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigate('/pecuaria')}
+                  onClick={() => navigate('/pecuaria?tab=sanidade')}
                 >
                   Ver Pecuária
                 </Button>
