@@ -1691,74 +1691,89 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
 
   const combos = combinacoesQ.data || []
 
-  const categoriasDisponiveis = useMemo(() => {
-    const filtradas = combos.filter((c: any) =>
-      (!itemFiltro || (c.item_tipo === itemFiltro.tipo && c.item_id === itemFiltro.id)) &&
-      (!talhaoFiltro || c.talhao_id === talhaoFiltro)
-    )
-    return [...new Set(filtradas.map((c: any) => c.categoria).filter(Boolean))].sort() as string[]
-  }, [combos, itemFiltro, talhaoFiltro])
+  const opcoesCategoria = useMemo<OpcaoFiltro[]>(() => {
+    if (combos.length) {
+      return calcularOpcoesDisponiveis(combos, 'categoria', [
+        { chave: 'item', valoresSelecionados: itensSel },
+        { chave: 'talhao', valoresSelecionados: talhoesSel },
+      ])
+    }
+    return (categoriasServicoQ.data || []).map((c: string) => ({ value: c, label: c }))
+  }, [combos, itensSel, talhoesSel, categoriasServicoQ.data])
 
-  const itensDisponiveis = useMemo(() => {
-    const filtradas = combos.filter((c: any) =>
-      (!categoriaFiltro || c.categoria === categoriaFiltro) &&
-      (!talhaoFiltro || c.talhao_id === talhaoFiltro)
-    )
-    const vistos = new Set<string>()
-    return filtradas.filter((c: any) => {
-      if (!c.item_id) return false
-      const chave = `${c.item_tipo}:${c.item_id}`
-      if (vistos.has(chave)) return false
-      vistos.add(chave)
-      return true
-    })
-  }, [combos, categoriaFiltro, talhaoFiltro])
+  const opcoesItem = useMemo<OpcaoFiltro[]>(() => {
+    if (combos.length) {
+      return calcularOpcoesDisponiveis(combos, 'item', [
+        { chave: 'categoria', valoresSelecionados: categoriasSel },
+        { chave: 'talhao', valoresSelecionados: talhoesSel },
+      ])
+    }
+    return (itensFiltraveisQ.data || []).map((it: any) => ({
+      value: `${it.item_tipo}:${it.item_id}`,
+      label: `${it.item_nome}${it.item_tipo === 'maquina' ? ' (máquina)' : it.item_tipo === 'servico' ? ' (serviço)' : ''}`,
+    }))
+  }, [combos, categoriasSel, talhoesSel, itensFiltraveisQ.data])
 
-  const talhoesDisponiveis = useMemo(() => {
-    const filtradas = combos.filter((c: any) =>
-      (!categoriaFiltro || c.categoria === categoriaFiltro) &&
-      (!itemFiltro || (c.item_tipo === itemFiltro.tipo && c.item_id === itemFiltro.id))
-    )
-    const vistos = new Set<string>()
-    return filtradas
-      .filter((c: any) => {
-        if (!c.talhao_id || vistos.has(c.talhao_id)) return false
-        vistos.add(c.talhao_id)
-        return true
-      })
-      .sort((a: any, b: any) =>
-        (a.talhao_id === TALHAO_PROPRIEDADE_ID ? 1 : 0) - (b.talhao_id === TALHAO_PROPRIEDADE_ID ? 1 : 0) ||
-        String(a.talhao_nome || '').localeCompare(String(b.talhao_nome || ''))
-      )
-  }, [combos, categoriaFiltro, itemFiltro])
+  const opcoesTalhao = useMemo<OpcaoFiltro[]>(() => {
+    if (combos.length) {
+      return calcularOpcoesDisponiveis(combos, 'talhao', [
+        { chave: 'categoria', valoresSelecionados: categoriasSel },
+        { chave: 'item', valoresSelecionados: itensSel },
+      ])
+    }
+    return (talhoesQ.data || []).map((t: any) => ({ value: t.id, label: t.nome }))
+  }, [combos, categoriasSel, itensSel, talhoesQ.data])
 
-  // Reseta filtros que ficaram sem combinação válida
+  // Remove seleções que ficaram sem combinação válida
   useEffect(() => {
     if (!combos.length) return
-    if (categoriaFiltro && !categoriasDisponiveis.includes(categoriaFiltro)) setCategoriaFiltro('')
-    if (itemFiltro && !itensDisponiveis.some((c: any) => c.item_tipo === itemFiltro.tipo && c.item_id === itemFiltro.id)) setItemFiltro(null)
-    if (talhaoFiltro && !talhoesDisponiveis.some((c: any) => c.talhao_id === talhaoFiltro)) setTalhaoFiltro('')
-  }, [categoriasDisponiveis, itensDisponiveis, talhoesDisponiveis])
+    const validos = (sel: string[], ops: OpcaoFiltro[]) => sel.filter((v) => ops.some((o) => o.value === v))
+    const c = validos(categoriasSel, opcoesCategoria)
+    const i = validos(itensSel, opcoesItem)
+    const t = validos(talhoesSel, opcoesTalhao)
+    if (c.length !== categoriasSel.length) setCategoriasSel(c)
+    if (i.length !== itensSel.length) setItensSel(i)
+    if (t.length !== talhoesSel.length) setTalhoesSel(t)
+  }, [opcoesCategoria, opcoesItem, opcoesTalhao])
 
   const relatorioQ = useQuery({
-    queryKey: ['rel-custos-detalhado', propId, safraId, dataInicio, dataFim, categoriaFiltro, itemFiltro, talhaoFiltro, ordenarPor],
+    queryKey: ['rel-custos-detalhado', propId, safraId, dataInicio, dataFim, categoriasSel, itensSel, talhoesSel, ordenarPor],
     queryFn: async () => {
-      const { data, error } = await db.rpc('get_relatorio_custos_detalhado', {
-        p_propriedade_id: propId,
-        p_safra_id: safraId,
-        p_data_inicio: dataInicio || null,
-        p_data_fim: dataFim || null,
-        p_categoria: categoriaFiltro || null,
-        p_item_tipo: itemFiltro?.tipo || null,
-        p_item_id: itemFiltro?.id || null,
-        p_talhao_id: talhaoFiltro || null,
-        p_ordenar_por: ordenarPor,
-      })
-      if (error) throw error
-      return data as any
+      const cats: (string | null)[] = categoriasSel.length ? categoriasSel : [null]
+      const itens: (string | null)[] = itensSel.length ? itensSel : [null]
+      const talhoes: (string | null)[] = talhoesSel.length ? talhoesSel : [null]
+
+      const chamadas: { categoria: string | null; item: string | null; talhao: string | null }[] = []
+      cats.forEach((categoria) => itens.forEach((item) => talhoes.forEach((talhao) => {
+        chamadas.push({ categoria, item, talhao })
+      })))
+
+      const resultados = await Promise.all(chamadas.map(async ({ categoria, item, talhao }) => {
+        const [itemTipo, itemId] = item ? item.split(':') : [null, null]
+        const { data, error } = await db.rpc('get_relatorio_custos_detalhado', {
+          p_propriedade_id: propId,
+          p_safra_id: safraId,
+          p_data_inicio: dataInicio || null,
+          p_data_fim: dataFim || null,
+          p_categoria: categoria,
+          p_item_tipo: itemTipo,
+          p_item_id: itemId,
+          p_talhao_id: talhao,
+          p_ordenar_por: ordenarPor,
+        })
+        if (error) throw error
+        return data as any
+      }))
+
+      if (resultados.length === 1) return resultados[0]
+      return {
+        operacional: mergeSecaoCustos(resultados.map((r: any) => r?.operacional || [])),
+        financeiro: mergeSecaoCustos(resultados.map((r: any) => r?.financeiro || [])),
+      }
     },
     enabled: !!propId && !!safraId,
   })
+
 
   const operacional = (relatorioQ.data?.operacional || []) as any[]
   const financeiro = (relatorioQ.data?.financeiro || []) as any[]
