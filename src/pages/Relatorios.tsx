@@ -1568,6 +1568,7 @@ function AbaInsumos({ propId, safraId, propriedadeNome }: { propId: string; safr
   }
 
   if (insQ.isLoading) return <SkeletonAba />
+  if (ehErroPermissaoFinanceiro(insQ.error)) return <AvisoSemPermissaoFinanceiro />
   if (itens.length === 0) return <Card><CardContent className="pt-6"><EmptyState message="Nenhum insumo registrado nesta safra" /></CardContent></Card>
 
   return (
