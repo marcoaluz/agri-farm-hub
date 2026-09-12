@@ -35,6 +35,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { usePapelUsuario } from '@/hooks/usePapelUsuario'
+import { AvisoSemPermissaoFinanceiro } from '@/lib/erroFinanceiro'
 
 const PIE_COLORS = [
   'hsl(142, 45%, 28%)', 'hsl(42, 85%, 55%)', 'hsl(199, 89%, 48%)',
