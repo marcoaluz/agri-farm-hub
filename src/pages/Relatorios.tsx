@@ -2465,6 +2465,13 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
         </div>
       </div>
 
+      {filtroTalhao !== '_all' && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <Info className="h-3 w-3 shrink-0" />
+          Manutenção não é filtrada por talhão — mostra sempre o total da máquina.
+        </p>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
