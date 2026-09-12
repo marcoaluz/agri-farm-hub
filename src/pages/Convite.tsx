@@ -33,6 +33,7 @@ const PAPEL_LABELS: Record<string, string> = {
   gerente: 'Gerente',
   operador: 'Operador',
   visualizador: 'Visualizador',
+  consultor: 'Consultor',
 }
 
 function getPasswordStrength(pw: string): { level: number; label: string; color: string } {

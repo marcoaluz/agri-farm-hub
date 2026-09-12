@@ -34,6 +34,7 @@ const PAPEIS = [
   { value: 'gerente', label: 'Gerente', desc: 'Pode criar e editar registros' },
   { value: 'operador', label: 'Operador', desc: 'Registra operações do dia a dia' },
   { value: 'visualizador', label: 'Visualizador', desc: 'Somente leitura' },
+  { value: 'consultor', label: 'Consultor', desc: 'Acesso de leitura, incluindo Financeiro (ideal para contador/escritório de contabilidade)' },
 ]
 
 const VALIDADES = [
@@ -44,13 +45,14 @@ const VALIDADES = [
 ]
 
 const papelLabel: Record<string, string> = {
-  gerente: 'Gerente', operador: 'Operador', visualizador: 'Visualizador', proprietario: 'Proprietário',
+  gerente: 'Gerente', operador: 'Operador', visualizador: 'Visualizador', proprietario: 'Proprietário', consultor: 'Consultor',
 }
 const papelVariant: Record<string, string> = {
   gerente: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
   operador: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
   visualizador: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
   proprietario: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  consultor: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
 }
 
 function getInitials(name: string | null, email: string | null) {

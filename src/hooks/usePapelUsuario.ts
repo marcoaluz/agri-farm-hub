@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGlobal } from '@/contexts/GlobalContext'
 
-export type Papel = 'proprietario' | 'gerente' | 'operador' | 'visualizador' | null
+export type Papel = 'proprietario' | 'gerente' | 'operador' | 'visualizador' | 'consultor' | null
 
 /** Papel do usuário logado na propriedade atualmente selecionada. */
 export function usePapelUsuario() {
@@ -44,7 +44,7 @@ export function usePapelUsuario() {
     ehProprietarioOuGerente: efetivo === 'proprietario' || efetivo === 'gerente',
     ehOperador: efetivo === 'operador',
     ehVisualizador: efetivo === 'visualizador',
-    podeVerFinanceiro: efetivo === 'proprietario' || efetivo === 'gerente',
+    podeVerFinanceiro: efetivo === 'proprietario' || efetivo === 'gerente' || efetivo === 'consultor',
     podeVerAuditoria: efetivo === 'proprietario' || efetivo === 'gerente',
     podeVerEquipe: efetivo === 'proprietario' || efetivo === 'gerente',
   }
