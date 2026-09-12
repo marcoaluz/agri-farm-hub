@@ -70,8 +70,12 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
     const nome = novoTipoNome.trim()
     if (!nome) return
     setSalvandoTipo(true)
-    const { data: userData } = await supabase.auth.getUser()
-    const { error } = await supabase.from('tipos_racao' as any).insert({ usuario_id: userData?.user?.id, nome, ativo: true } as any)
+    const { error } = await supabase.rpc('criar_categoria_compartilhada' as any, {
+      p_tabela: 'tipos_racao',
+      p_propriedade_id: propriedadeId,
+      p_nome: nome,
+      p_icone: null,
+    })
     setSalvandoTipo(false)
     if (error) {
       toast({ title: (error as any).code === '23505' ? 'Tipo já existe' : 'Erro ao criar tipo', variant: 'destructive' })
