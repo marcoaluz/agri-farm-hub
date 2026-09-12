@@ -83,10 +83,11 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
     const nomeCat = novaCategoriaNome.trim();
     if (!nomeCat) return;
     setSalvandoCategoria(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from('categorias_servico').insert({
-      usuario_id: user?.id,
-      nome: nomeCat,
+    const { error } = await supabase.rpc('criar_categoria_compartilhada' as any, {
+      p_tabela: 'categorias_servico',
+      p_propriedade_id: propriedadeId,
+      p_nome: nomeCat,
+      p_icone: null,
     });
     setSalvandoCategoria(false);
     if (error) {
