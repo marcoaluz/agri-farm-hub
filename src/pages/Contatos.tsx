@@ -116,7 +116,6 @@ export default function Contatos() {
     const { data, error } = await supabase
       .from('categorias_contato' as any)
       .select('*')
-      .eq('usuario_id', user.id)
       .eq('ativo', true)
       .order('nome')
     if (error || !data || (data as any[]).length === 0) {
