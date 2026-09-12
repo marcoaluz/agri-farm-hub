@@ -1876,6 +1876,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
 
   const colunasExport: Coluna[] = [
     { header: 'Seção', key: 'secao', width: 14 },
+    { header: 'Talhão', key: 'talhao', width: 16 },
     { header: 'Categoria', key: 'categoria', width: 18 },
     { header: 'Item', key: 'item', width: 24 },
     { header: 'Quantidade', key: 'quantidade', width: 14 },
@@ -1885,15 +1886,18 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
 
   const linhasExport = useMemo(() => {
     const linhas: any[] = []
-    operacional.forEach((grupo: any) => {
-      (grupo.itens || []).forEach((item: any) => {
-        linhas.push({
-          secao: 'Operacional',
-          categoria: labelGrupo(grupo.grupo),
-          item: item.nome,
-          quantidade: item.quantidade ?? '',
-          unidade: item.unidade ?? '',
-          valor: fmt(Number(item.valor)),
+    porTalhao.forEach((sec: any) => {
+      (sec.operacional || []).forEach((grupo: any) => {
+        (grupo.itens || []).forEach((item: any) => {
+          linhas.push({
+            secao: 'Operacional',
+            talhao: sec.talhao_nome,
+            categoria: labelGrupo(grupo.grupo),
+            item: item.nome,
+            quantidade: item.quantidade ?? '',
+            unidade: item.unidade ?? '',
+            valor: fmt(Number(item.valor)),
+          })
         })
       })
     })
