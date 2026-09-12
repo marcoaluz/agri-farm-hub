@@ -2449,7 +2449,7 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
   }, [maquinasRaw])
 
   const gruposFiltrados = useMemo(() => {
-    const porMaquina = filtroMaquina === '_all' ? grupos : grupos.filter((g: any) => g.maquina_id === filtroMaquina)
+    const porMaquina = maquinasSel.length === 0 ? grupos : grupos.filter((g: any) => maquinasSel.includes(g.maquina_id))
     if (filtroTipoCusto === '_all') return porMaquina
     return porMaquina
       .map((g: any) => {
@@ -2458,26 +2458,31 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
         return { ...g, itens, subtotal }
       })
       .filter((g: any) => g.itens.length > 0)
-  }, [grupos, filtroMaquina, filtroTipoCusto])
+  }, [grupos, maquinasSel, filtroTipoCusto])
 
   const totalGeral = gruposFiltrados.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
 
   // Resumo dos filtros ativos (tela + cabeçalho dos exports)
   const resumoFiltros = useMemo(() => {
     const partes: string[] = []
-    if (filtroMaquina !== '_all') {
-      partes.push(`Máquina: ${maquinasUnicas.find(([id]) => id === filtroMaquina)?.[1] || ''}`)
+    if (maquinasSel.length) {
+      const nomes = maquinasSel.map((v) => opcoesMaquina.find((o) => o.value === v)?.label || '').filter(Boolean)
+      partes.push(`Máquina: ${nomes.join(', ')}`)
     }
-    if (filtroTalhao !== '_all') {
-      partes.push(`Talhão: ${nomeTalhaoFiltro(filtroTalhao, talhoesUnicos.find(([id]) => id === filtroTalhao)?.[1])}`)
+    if (talhoesSel.length) {
+      const nomes = talhoesSel.map((v) =>
+        v === TALHAO_PROPRIEDADE_ID ? 'Propriedade' : (opcoesTalhao.find((o) => o.value === v)?.label || '')
+      ).filter(Boolean)
+      partes.push(`Talhão: ${nomes.join(', ')}`)
     }
     if (filtroTipoCusto !== '_all') {
       const tipoLabel = filtroTipoCusto === 'uso' ? 'Uso da máquina' : filtroTipoCusto === 'abastecimento' ? 'Abastecimento' : 'Manutenção'
       partes.push(`Tipo: ${tipoLabel}`)
     }
     return partes
-  }, [filtroMaquina, filtroTalhao, filtroTipoCusto, maquinasUnicas, talhoesUnicos])
+  }, [maquinasSel, talhoesSel, filtroTipoCusto, opcoesMaquina, opcoesTalhao])
   const resumoFiltrosTexto = resumoFiltros.join(' · ')
+
 
   const handleExportPDF = () => {
     exportarMaquinasPDF({
