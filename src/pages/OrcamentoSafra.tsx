@@ -299,6 +299,17 @@ export default function OrcamentoSafra() {
     )
   }
 
+  if (ehErroPermissaoFinanceiro(erroOrcamento)) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Orçamento da Safra</h1>
+        </div>
+        <AvisoSemPermissaoFinanceiro />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
