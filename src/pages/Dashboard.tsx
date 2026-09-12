@@ -656,7 +656,7 @@ export default function Dashboard() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground truncate">{l.servico_nome || 'Serviço'}</p>
                         <p className="text-xs text-muted-foreground">
-                          {l.talhao_nome || 'Talhão'} • {l.data_execucao || '—'}
+                          {l.talhao_nome || 'Propriedade'} • {l.data_execucao || '—'}
                         </p>
                       </div>
                       <span className="text-sm font-semibold text-foreground ml-3 shrink-0">{fmt(Number(l.custo_total || 0))}</span>

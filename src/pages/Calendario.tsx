@@ -128,7 +128,7 @@ export default function Calendario() {
       tipo: 'lancamento',
       data: l.data_execucao,
       titulo: l.servico?.nome || 'Lançamento',
-      detalhe: `${l.talhao?.nome ? l.talhao.nome + ' — ' : ''}R$ ${Number(l.custo_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      detalhe: `${(l.talhao?.nome || 'Propriedade') + ' — '}R$ ${Number(l.custo_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       link: l.id ? `/lancamentos/${l.id}` : undefined,
     }))
 
