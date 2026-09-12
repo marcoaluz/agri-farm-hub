@@ -2308,7 +2308,10 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
       .forEach((c: any) => {
         if (c.talhao_id) map.set(c.talhao_id, String(c.talhao_nome || 'Talhão'))
       })
-    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
+    return Array.from(map.entries()).sort((a, b) =>
+      (a[0] === TALHAO_PROPRIEDADE_ID ? 1 : 0) - (b[0] === TALHAO_PROPRIEDADE_ID ? 1 : 0) ||
+      a[1].localeCompare(b[1])
+    )
   }, [combosMaq, filtroMaquina])
 
   // Reseta filtros que ficaram sem combinação válida
@@ -2394,11 +2397,29 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
 
   const totalGeral = gruposFiltrados.reduce((s: number, g: any) => s + Number(g.subtotal || 0), 0)
 
+  // Resumo dos filtros ativos (tela + cabeçalho dos exports)
+  const resumoFiltros = useMemo(() => {
+    const partes: string[] = []
+    if (filtroMaquina !== '_all') {
+      partes.push(`Máquina: ${maquinasUnicas.find(([id]) => id === filtroMaquina)?.[1] || ''}`)
+    }
+    if (filtroTalhao !== '_all') {
+      partes.push(`Talhão: ${nomeTalhaoFiltro(filtroTalhao, talhoesUnicos.find(([id]) => id === filtroTalhao)?.[1])}`)
+    }
+    if (filtroTipoCusto !== '_all') {
+      const tipoLabel = filtroTipoCusto === 'uso' ? 'Uso da máquina' : filtroTipoCusto === 'abastecimento' ? 'Abastecimento' : 'Manutenção'
+      partes.push(`Tipo: ${tipoLabel}`)
+    }
+    return partes
+  }, [filtroMaquina, filtroTalhao, filtroTipoCusto, maquinasUnicas, talhoesUnicos])
+  const resumoFiltrosTexto = resumoFiltros.join(' · ')
+
   const handleExportPDF = () => {
     exportarMaquinasPDF({
       nomeArquivo: 'relatorio-maquinas',
       propriedadeNome,
       safraNome: safraAtual?.nome,
+      resumoFiltros: resumoFiltrosTexto || undefined,
       totalGeral,
       grupos: gruposFiltrados,
     })
