@@ -235,7 +235,8 @@ export default function Dashboard() {
       })
       return Array.from(catMap.entries()).map(([categoria, custo_total]) => ({ categoria, custo_total }))
     },
-    enabled: isConsolidado && !!consolidadoV2,
+    enabled: isConsolidado && !!consolidadoV2 && podeFin,
+    retry: false,
   })
 
   const { data: lancConsolidado, isLoading: loadLancConsolidado } = useQuery({
