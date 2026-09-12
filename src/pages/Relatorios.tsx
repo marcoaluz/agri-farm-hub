@@ -43,14 +43,14 @@ function mergeSecaoCustos(listas: any[][]) {
     if (!alvo) { alvo = { grupo: g.grupo, subtotal: 0, itens: new Map() }; grupos.set(chave, alvo) }
     alvo.subtotal += Number(g.subtotal || 0)
     ;(g.itens || []).forEach((it: any) => {
-      const ик = `${it.tipo_ref || it.tipo || ''}:${it.nome}`
-      const existente = alvo!.itens.get(ик)
+      const chaveItem = `${it.tipo_ref || it.tipo || ''}:${it.nome}`
+      const existente = alvo!.itens.get(chaveItem)
       if (existente) {
         existente.valor = Number(existente.valor || 0) + Number(it.valor || 0)
         if (it.quantidade != null) existente.quantidade = Number(existente.quantidade || 0) + Number(it.quantidade)
         if (it.vezes != null) existente.vezes = Number(existente.vezes || 0) + Number(it.vezes)
       } else {
-        alvo!.itens.set(ик, { ...it })
+        alvo!.itens.set(chaveItem, { ...it })
       }
     })
   }))
