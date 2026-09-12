@@ -62,6 +62,25 @@ function mergeSecaoCustos(listas: any[][]) {
     .sort((a, b) => b.subtotal - a.subtotal)
 }
 
+/* Junta as seções por_talhao de várias chamadas (uma por item marcado),
+   somando subtotais e mesclando os grupos operacionais de cada talhão. */
+function mergePorTalhao(resultados: any[]) {
+  const secoes = new Map<string, { talhao_id: any; talhao_nome: string; subtotal: number; operacional: any[][] }>()
+  resultados.forEach((r) => ((r?.por_talhao || []) as any[]).forEach((sec: any) => {
+    const chave = String(sec.talhao_id ?? sec.talhao_nome ?? 'geral')
+    let alvo = secoes.get(chave)
+    if (!alvo) { alvo = { talhao_id: sec.talhao_id ?? null, talhao_nome: sec.talhao_nome || 'Geral', subtotal: 0, operacional: [] }; secoes.set(chave, alvo) }
+    alvo.subtotal += Number(sec.subtotal || 0)
+    alvo.operacional.push(sec.operacional || [])
+  }))
+  return Array.from(secoes.values()).map((s) => ({
+    talhao_id: s.talhao_id,
+    talhao_nome: s.talhao_nome,
+    subtotal: s.subtotal,
+    operacional: mergeSecaoCustos(s.operacional),
+  }))
+}
+
 /* Junta os resultados do relatório de estoque quando há várias categorias marcadas. */
 function mergeEstoque(listas: any[][]) {
   const tipos = new Map<string, any>()
