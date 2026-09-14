@@ -48,6 +48,7 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
   const [statusPagamento, setStatusPagamento] = useState('pago');
   const [dataVencimento, setDataVencimento] = useState('');
   const [numParcelas, setNumParcelas] = useState(2);
+  const [valorEntrada, setValorEntrada] = useState('');
   const [arquivoNF, setArquivoNF] = useState<File | null>(null);
   const [tipoFiltro, setTipoFiltro] = useState<string>('todos');
 
@@ -138,10 +139,11 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
             .update({ parcelado: true, numero_parcelas: numParcelas } as any)
             .eq('id', (transacao as any).id);
 
-          const { error: parcError } = await supabase.rpc('gerar_parcelas' as any, {
+           const { error: parcError } = await supabase.rpc('gerar_parcelas' as any, {
             p_transacao_id: (transacao as any).id,
             p_num_parcelas: numParcelas,
             p_data_primeira: dataVencimento,
+            p_valor_entrada: Number(valorEntrada) || 0,
           });
           if (parcError) {
             toast({
@@ -440,40 +442,60 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
           </RadioGroup>
         </div>
 
-        {statusPagamento !== 'pago' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="data_vencimento">
-                {statusPagamento === 'parcelado' ? 'Data da 1ª parcela *' : 'Data de vencimento *'}
-              </Label>
-              <Input
-                id="data_vencimento"
-                type="date"
-                value={dataVencimento}
-                onChange={(e) => setDataVencimento(e.target.value)}
-                min={hoje}
-                required
-              />
+          {statusPagamento !== 'pago' && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="data_vencimento">
+                  {statusPagamento === 'parcelado' ? 'Data da 1ª parcela *' : 'Data de vencimento *'}
+                </Label>
+                <Input
+                  id="data_vencimento"
+                  type="date"
+                  value={dataVencimento}
+                  onChange={(e) => setDataVencimento(e.target.value)}
+                  min={hoje}
+                  required
+                />
+              </div>
+              {statusPagamento === 'parcelado' && (
+                <div>
+                  <Label htmlFor="num_parcelas">Número de parcelas *</Label>
+                  <Input
+                    id="num_parcelas"
+                    type="number"
+                    min={2}
+                    max={36}
+                    value={numParcelas}
+                    onChange={(e) => setNumParcelas(Number(e.target.value))}
+                  />
+                </div>
+              )}
             </div>
+
             {statusPagamento === 'parcelado' && (
               <div>
-                <Label htmlFor="num_parcelas">Número de parcelas *</Label>
+                <Label htmlFor="valor_entrada">Valor de entrada (opcional)</Label>
                 <Input
-                  id="num_parcelas"
+                  id="valor_entrada"
                   type="number"
-                  min={2}
-                  max={36}
-                  value={numParcelas}
-                  onChange={(e) => setNumParcelas(Number(e.target.value))}
+                  step="0.01"
+                  min="0"
+                  placeholder="0,00"
+                  value={valorEntrada}
+                  onChange={(e) => setValorEntrada(e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Já entra como paga hoje. As parcelas abaixo dividem só o restante.
+                </p>
                 {valorTotal > 0 && numParcelas >= 2 && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    {numParcelas}x de R$ {(valorTotal / numParcelas).toFixed(2)}
+                    {numParcelas}x de R$ {((valorTotal - (Number(valorEntrada) || 0)) / numParcelas).toFixed(2)}
                   </p>
                 )}
               </div>
             )}
-          </div>
+          </>
         )}
 
 
