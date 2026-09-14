@@ -1365,6 +1365,8 @@ export function LancamentoForm() {
                       </p>
                     )}
                   </div>
+                </div>
+
 
                 {/* TALHÃO */}
                 <div className="space-y-2">
