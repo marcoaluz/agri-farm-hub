@@ -731,9 +731,57 @@ export function LancamentoForm() {
         throw new Error('Selecione propriedade e safra')
       }
 
+      const userId = (await supabase.auth.getUser()).data.user?.id
+
+      // Em modo edição, reverte o consumo do lançamento antigo ANTES de calcular
+      // o novo — senão o cálculo de estoque disponível compara contra o saldo já
+      // descontado por este mesmo lançamento, gerando "estoque insuficiente" falso
+      // ou, pior, escolhendo o lote errado.
+      if (lancamentoId) {
+        const { data: itensAntigos } = await supabase
+          .from('lancamentos_itens')
+          .select('*, produto:produtos(id), maquina:maquinas(id, horimetro_atual)')
+          .eq('lancamento_id', lancamentoId)
+
+        if (itensAntigos) {
+          for (const ia of itensAntigos) {
+            if (ia.tipo_ref === 'produto' && ia.detalhamento_lotes && Array.isArray(ia.detalhamento_lotes)) {
+              for (const lc of ia.detalhamento_lotes) {
+                const { data: loteAtual } = await supabase
+                  .from('lotes')
+                  .select('quantidade_disponivel')
+                  .eq('id', lc.lote_id)
+                  .single()
+                if (loteAtual) {
+                  await supabase.from('lotes').update({
+                    quantidade_disponivel: loteAtual.quantidade_disponivel + (lc.quantidade_consumida || 0)
+                  }).eq('id', lc.lote_id)
+                }
+              }
+            }
+            if (ia.tipo_ref === 'maquina' && ia.maquina_id && ia.quantidade > 0) {
+              const { data: maq } = await supabase
+                .from('maquinas')
+                .select('horimetro_atual')
+                .eq('id', ia.maquina_id)
+                .single()
+              if (maq) {
+                await supabase.from('maquinas').update({
+                  horimetro_atual: Math.max(0, maq.horimetro_atual - ia.quantidade)
+                }).eq('id', ia.maquina_id)
+              }
+            }
+          }
+        }
+
+        await supabase.from('lancamentos_itens').delete().eq('lancamento_id', lancamentoId)
+        await supabase.from('maquina_manutencoes').delete().eq('lancamento_id', lancamentoId)
+        await supabase.from('abastecimentos').delete().eq('lancamento_id', lancamentoId)
+      }
+
       setValidandoEstoque(true)
 
-      // ETAPA 1: CALCULAR CUSTOS FINAIS
+      // ETAPA 1: CALCULAR CUSTOS FINAIS (com o estoque já revertido, se edição)
       const itensComCusto: ItemLancamento[] = []
       let custoTotal = 0
 
@@ -741,7 +789,6 @@ export function LancamentoForm() {
         if (!itemForm.quantidade || itemForm.quantidade <= 0) continue
 
         if (itemForm.tipo_ref === 'produto' && itemForm.produto_id) {
-          // FIFO: buscar lotes
           const { data: lotes } = await supabase
             .from('lotes')
             .select('id, nota_fiscal, quantidade_disponivel, custo_unitario, data_entrada')
@@ -752,10 +799,8 @@ export function LancamentoForm() {
           let qtdRestante = itemForm.quantidade
           let custoItem = 0
           const previewConsumo: any[] = []
-          let estoqueTotal = 0
 
           for (const lote of lotes || []) {
-            estoqueTotal += lote.quantidade_disponivel
             if (qtdRestante <= 0) continue
             const consumida = Math.min(qtdRestante, lote.quantidade_disponivel)
             const parcial = consumida * lote.custo_unitario
@@ -823,7 +868,6 @@ export function LancamentoForm() {
 
       setValidandoEstoque(false)
 
-      // Confirmação para custos altos
       if (custoTotal > 10000) {
         const confirmar = await new Promise<boolean>((resolve) => {
           setCustoAltoDialog({ open: true, valor: custoTotal.toFixed(2), resolve })
@@ -834,54 +878,8 @@ export function LancamentoForm() {
 
       if (lancamentoId) {
         // ========== MODO EDIÇÃO ==========
-        const userId = (await supabase.auth.getUser()).data.user?.id
+        // Estoque e horímetro já foram revertidos no início desta função.
 
-        // PASSO 1: Buscar itens antigos para reverter
-        const { data: itensAntigos } = await supabase
-          .from('lancamentos_itens')
-          .select('*, produto:produtos(id), maquina:maquinas(id, horimetro_atual)')
-          .eq('lancamento_id', lancamentoId)
-
-        // PASSO 2: Reverter lotes e horímetro
-        if (itensAntigos) {
-          for (const ia of itensAntigos) {
-            // Reverter FIFO
-            if (ia.tipo_ref === 'produto' && ia.detalhamento_lotes && Array.isArray(ia.detalhamento_lotes)) {
-              for (const lc of ia.detalhamento_lotes) {
-                const { data: loteAtual } = await supabase
-                  .from('lotes')
-                  .select('quantidade_disponivel')
-                  .eq('id', lc.lote_id)
-                  .single()
-                if (loteAtual) {
-                  await supabase.from('lotes').update({
-                    quantidade_disponivel: loteAtual.quantidade_disponivel + (lc.quantidade_consumida || 0)
-                  }).eq('id', lc.lote_id)
-                }
-              }
-            }
-            // Reverter horímetro
-            if (ia.tipo_ref === 'maquina' && ia.maquina_id && ia.quantidade > 0) {
-              const { data: maq } = await supabase
-                .from('maquinas')
-                .select('horimetro_atual')
-                .eq('id', ia.maquina_id)
-                .single()
-              if (maq) {
-                await supabase.from('maquinas').update({
-                  horimetro_atual: Math.max(0, maq.horimetro_atual - ia.quantidade)
-                }).eq('id', ia.maquina_id)
-              }
-            }
-          }
-        }
-
-        // PASSO 3: Deletar itens antigos
-        await supabase.from('lancamentos_itens').delete().eq('lancamento_id', lancamentoId)
-        await supabase.from('maquina_manutencoes').delete().eq('lancamento_id', lancamentoId)
-        await supabase.from('abastecimentos').delete().eq('lancamento_id', lancamentoId)
-
-        // PASSO 4: Atualizar cabeçalho
         const { error: erroLanc } = await supabase
           .from('lancamentos')
           .update({
@@ -896,7 +894,6 @@ export function LancamentoForm() {
           .eq('id', lancamentoId)
         if (erroLanc) throw erroLanc
 
-        // PASSO 5: Inserir novos itens
         if (itensComCusto.length > 0) {
           const { error: erroItens } = await supabase
             .from('lancamentos_itens')
@@ -924,7 +921,6 @@ export function LancamentoForm() {
           if (erroItens) throw erroItens
         }
 
-        // PASSO 6: Aplicar novo consumo
         await aplicarConsumoEHorimetro(itensComCusto)
         await sincronizarAbastecimentos(lancamentoId, itensComCusto, data.data_execucao)
         await sincronizarManutencoes(lancamentoId, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
@@ -933,8 +929,6 @@ export function LancamentoForm() {
       }
 
       // ========== MODO CRIAÇÃO ==========
-      const userId = (await supabase.auth.getUser()).data.user?.id
-
       const { data: novoLancamento, error: erroLanc } = await supabase
         .from('lancamentos')
         .insert({
