@@ -506,32 +506,6 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
           </>
         )}
 
-            {statusPagamento === 'parcelado' && (
-              <div>
-                <Label htmlFor="valor_entrada">Valor de entrada (opcional)</Label>
-                <Input
-                  id="valor_entrada"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0,00"
-                  value={valorEntrada}
-                  onChange={(e) => setValorEntrada(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Já entra como paga hoje. As parcelas abaixo dividem só o restante.
-                </p>
-                {valorTotal > 0 && numParcelas >= 2 && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {numParcelas}x de R$ {((valorTotal - (Number(valorEntrada) || 0)) / numParcelas).toFixed(2)}
-                  </p>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-
         {/* Anexo da nota fiscal */}
         <div>
           <Label htmlFor="anexo_nf">Anexar nota fiscal (opcional)</Label>
@@ -557,7 +531,6 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
       </div>
 
 
-      </div>{/* end scrollable area */}
       {/* Botões */}
       <div className="sticky bottom-0 z-10 -mb-2 mt-2 flex justify-end gap-2 border-t bg-background py-3">
         <Button variant="outline" onClick={onSuccess}>
