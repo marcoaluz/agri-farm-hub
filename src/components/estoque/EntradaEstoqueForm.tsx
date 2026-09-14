@@ -123,8 +123,11 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
 
       const loteId = typeof novoLote === 'string' ? novoLote : (novoLote as any)?.id ?? (novoLote as any)?.lote_id;
 
-      // Parcelamento: localizar a transação criada pelo trigger e gerar parcelas
-      if (statusPagamento === 'parcelado' && loteId) {
+      // Parcelamento (inclui "A prazo" com entrada, que é uma parcela só):
+      // localizar a transação criada pelo trigger e gerar as parcelas.
+      const usaEntradaAPrazo = statusPagamento === 'pendente' && Number(valorEntrada) > 0;
+      if ((statusPagamento === 'parcelado' || usaEntradaAPrazo) && loteId) {
+        const parcelasEfetivas = statusPagamento === 'parcelado' ? numParcelas : 1;
         const { data: transacao } = await supabase
           .from('transacoes')
           .select('id')
@@ -136,12 +139,12 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
 
         if (transacao) {
           await supabase.from('transacoes')
-            .update({ parcelado: true, numero_parcelas: numParcelas } as any)
+            .update({ parcelado: true, numero_parcelas: parcelasEfetivas } as any)
             .eq('id', (transacao as any).id);
 
-           const { error: parcError } = await supabase.rpc('gerar_parcelas' as any, {
+          const { error: parcError } = await supabase.rpc('gerar_parcelas' as any, {
             p_transacao_id: (transacao as any).id,
-            p_num_parcelas: numParcelas,
+            p_num_parcelas: parcelasEfetivas,
             p_data_primeira: dataVencimento,
             p_valor_entrada: Number(valorEntrada) || 0,
           });
@@ -442,7 +445,7 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
           </RadioGroup>
         </div>
 
-          {statusPagamento !== 'pago' && (
+                  {statusPagamento !== 'pago' && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -472,6 +475,36 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
                 </div>
               )}
             </div>
+
+            {(statusPagamento === 'parcelado' || statusPagamento === 'pendente') && (
+              <div>
+                <Label htmlFor="valor_entrada">Valor de entrada (opcional)</Label>
+                <Input
+                  id="valor_entrada"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0,00"
+                  value={valorEntrada}
+                  onChange={(e) => setValorEntrada(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Já entra como paga hoje. {statusPagamento === 'parcelado' ? 'As parcelas abaixo dividem só o restante.' : 'O restante vence na data acima.'}
+                </p>
+                {statusPagamento === 'parcelado' && valorTotal > 0 && numParcelas >= 2 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {numParcelas}x de R$ {((valorTotal - (Number(valorEntrada) || 0)) / numParcelas).toFixed(2)}
+                  </p>
+                )}
+                {statusPagamento === 'pendente' && valorTotal > 0 && Number(valorEntrada) > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Restante: R$ {(valorTotal - Number(valorEntrada)).toFixed(2)}
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        )}
 
             {statusPagamento === 'parcelado' && (
               <div>
