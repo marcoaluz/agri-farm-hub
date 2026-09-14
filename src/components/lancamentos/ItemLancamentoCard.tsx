@@ -119,6 +119,12 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
   const usaRefDireta = !!itemForm.tipo_ref
   const isProduto = itemForm.tipo_ref === 'produto' || itemForm.item?.tipo === 'produto_estoque'
 
+  // Item já veio com consumo válido do banco (edição) e o usuário ainda não
+  // alterou a quantidade nesta sessão — não sobrescreve com o preview em tempo
+  // real, que compara contra o estoque atual (ainda não revertido).
+  const quantidadeAlteradaRef = useRef(false)
+  const jaTinhaConsumoValido = isProduto && Array.isArray(itemForm.detalhamento_lotes) && itemForm.detalhamento_lotes.length > 0
+
   // Custo efetivo: override se personalizado, senão o padrão
   const custoEfetivo = itemForm.custo_personalizado && itemForm.custo_unitario_override != null
     ? itemForm.custo_unitario_override
@@ -139,6 +145,10 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
   // Atualizar form quando quantidade ou preview mudarem
   useEffect(() => {
+    if (jaTinhaConsumoValido && !quantidadeAlteradaRef.current) {
+      return
+    }
+
     if (isProduto && preview) {
       // Produto usa FIFO — custo vem do preview, não do override
       onUpdate({
@@ -413,6 +423,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
             step="0.01"
             value={quantidade || ''}
             onChange={(e) => {
+              quantidadeAlteradaRef.current = true
               const val = parseFloat(e.target.value) || 0
               setQuantidade(val)
             }}
