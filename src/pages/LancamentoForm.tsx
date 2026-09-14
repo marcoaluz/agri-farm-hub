@@ -401,6 +401,30 @@ export function LancamentoForm() {
 
   // Handler para mudança de serviço
   const handleServicoChange = (value: string) => {
+    // Modo edição: trocar o serviço é correção de rótulo — não pode apagar
+    // os itens que já foram lançados.
+    if (lancamentoId) {
+      const servicoNovo = servicos?.find(s => s.id === value)
+      setFormData(prev => {
+        // Remove só o item "espelho" do serviço simples anterior, se houver
+        const mantidos = prev.itens.filter(
+          i => !(i.tipo_ref === 'servico_simples' && i.servico_ref_id === prev.servico_id)
+        )
+        if (servicoNovo?.tipo_servico === 'simples') {
+          mantidos.unshift({
+            tipo_ref: 'servico_simples',
+            servico_ref_id: servicoNovo.id,
+            nome: servicoNovo.nome,
+            unidade: servicoNovo.unidade_medida || 'servico',
+            custo_unitario_ref: servicoNovo.custo_padrao || 0,
+            quantidade: 1,
+            obrigatorio: true,
+          } as ItemLancamento)
+        }
+        return { ...prev, servico_id: value, itens: mantidos }
+      })
+      return
+    }
     setFormData(prev => ({ ...prev, servico_id: value, itens: [] }))
     carregarItensServico(value)
   }
