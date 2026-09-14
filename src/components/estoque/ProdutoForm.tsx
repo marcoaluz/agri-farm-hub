@@ -124,6 +124,7 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
       p_propriedade_id: propriedadeAtual?.id,
       p_nome: nome,
       p_icone: null,
+      p_tipo_estoque: tipoEstoque,
     });
     setSalvandoCategoria(false);
     if (error) {
