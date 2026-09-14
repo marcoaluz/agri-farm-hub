@@ -85,7 +85,7 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
-    if (!areaHa || parseFloat(areaHa) <= 0) newErrors.area_ha = "Área deve ser maior que zero";
+    if (areaHa === "" || areaHa == null || Number.isNaN(parseFloat(areaHa))) newErrors.area_ha = "Área é obrigatória";
     if (!culturaId) newErrors.cultura_id = "Selecione a cultura";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
