@@ -135,22 +135,42 @@ export function usePreviewCustoDireto(
 }
 
 // Preview FIFO direto com produto_id
-async function calcularPreviewProduto(produtoId: string, quantidade: number): Promise<PreviewResponse> {
-  const { data: lotes, error } = await supabase
+async function calcularPreviewProduto(
+  produtoId: string,
+  quantidade: number,
+  creditoLotes?: { lote_id: string; quantidade_consumida: number }[]
+): Promise<PreviewResponse> {
+  // Sem o filtro ">0" aqui: um lote que este mesmo item já esgotou precisa
+  // continuar aparecendo para poder receber o crédito de volta abaixo.
+  const { data: lotesRaw, error } = await supabase
     .from('lotes')
     .select('id, nota_fiscal, quantidade_disponivel, custo_unitario, data_entrada')
     .eq('produto_id', produtoId)
-    .gt('quantidade_disponivel', 0)
     .order('data_entrada', { ascending: true })
 
   if (error) throw error
+
+  // Devolve virtualmente, só para este cálculo, a quantidade que este mesmo
+  // item já tinha reservado antes desta edição — a reversão de verdade só
+  // acontece no banco ao salvar.
+  const creditoPorLote = new Map<string, number>()
+  ;(creditoLotes || []).forEach((c) => {
+    creditoPorLote.set(c.lote_id, (creditoPorLote.get(c.lote_id) || 0) + Number(c.quantidade_consumida || 0))
+  })
+
+  const lotes = (lotesRaw || [])
+    .map((l) => ({
+      ...l,
+      quantidade_disponivel: Number(l.quantidade_disponivel) + (creditoPorLote.get(l.id) || 0),
+    }))
+    .filter((l) => l.quantidade_disponivel > 0)
 
   let quantidadeRestante = quantidade
   let custoTotal = 0
   const previewConsumo: PreviewConsumoLote[] = []
   let estoqueTotal = 0
 
-  for (const lote of lotes || []) {
+  for (const lote of lotes) {
     estoqueTotal += lote.quantidade_disponivel
     if (quantidadeRestante <= 0) continue
 
