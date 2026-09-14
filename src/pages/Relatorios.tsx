@@ -1304,6 +1304,13 @@ function AbaPorTalhao({ propId, safraId, propriedadeNome }: { propId: string; sa
                   <p className="text-xs text-muted-foreground">Produtividade / ha</p>
                   <p className="font-semibold">{c.produtividade > 0 ? `${fmtN(c.produtividade)} ${c.unidade}/ha` : '—'}</p>
                 </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Custo / {unidadeCurta(c.unidade)}</p>
+                  <p className="font-semibold text-destructive">
+                    {c.colhida > 0 ? fmt(c.custo / c.colhida) : '—'}
+                  </p>
+                </div>
+                
               </div>
               {(c.primeira || c.ultima) && (
                 <p className="text-xs text-muted-foreground border-t pt-2">
