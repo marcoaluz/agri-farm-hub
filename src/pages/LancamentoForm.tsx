@@ -1359,8 +1359,12 @@ export function LancamentoForm() {
                         )}
                       </SelectContent>
                     </Select>
+                    {lancamentoId && (
+                      <p className="text-xs text-muted-foreground">
+                        Trocar o serviço não altera os itens já lançados.
+                      </p>
+                    )}
                   </div>
-                </div>
 
                 {/* TALHÃO */}
                 <div className="space-y-2">
