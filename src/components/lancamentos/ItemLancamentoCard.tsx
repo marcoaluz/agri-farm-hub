@@ -125,6 +125,10 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
   const quantidadeAlteradaRef = useRef(false)
   const jaTinhaConsumoValido = isProduto && Array.isArray(itemForm.detalhamento_lotes) && itemForm.detalhamento_lotes.length > 0
 
+  const creditoLotesRef = useRef<{ lote_id: string; quantidade_consumida: number }[] | undefined>(
+    jaTinhaConsumoValido ? (itemForm.detalhamento_lotes as any[]) : undefined
+  )
+
   // Custo efetivo: override se personalizado, senão o padrão
   const custoEfetivo = itemForm.custo_personalizado && itemForm.custo_unitario_override != null
     ? itemForm.custo_unitario_override
@@ -137,7 +141,8 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
     itemForm.maquina_id,
     itemForm.servico_ref_id,
     quantidade,
-    isProduto ? undefined : custoEfetivo // Para produtos, FIFO calcula o custo; para outros, usa custo efetivo
+    isProduto ? undefined : custoEfetivo, // Para produtos, FIFO calcula o custo; para outros, usa custo efetivo
+    creditoLotesRef.current
   )
 
   const preview = previewDireto
