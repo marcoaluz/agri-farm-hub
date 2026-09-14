@@ -2514,6 +2514,15 @@ function AbaMaquinas({ propId, safraId, propriedadeNome }: { propId: string; saf
         valor: Number(m.custo_abastecimento || 0),
         kind: 'abastecimento',
       })
+      ;(m.abastecimentos_detalhados || []).forEach((ab: any) => {
+        itens.push({
+          nome: `└ ${ab.origem || (ab.do_estoque ? 'Do estoque' : 'Livre')}`,
+          qtdLabel: `${Number(ab.vezes || 0)}x · ${fmtN(Number(ab.litros || 0))} L`,
+          valor: Number(ab.valor || 0),
+          isChild: true,
+          kind: 'abastecimento',
+        })
+      })
     }
 
     if (incluirManutencao) itens.push(...montarItensManutencao(m))
