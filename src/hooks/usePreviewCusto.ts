@@ -76,17 +76,18 @@ export function usePreviewCustoDireto(
   maquinaId: string | null | undefined,
   servicoRefId: string | null | undefined,
   quantidade: number,
-  custoDireto?: number // custo_hora ou custo_padrao já conhecido
+  custoDireto?: number, // custo_hora ou custo_padrao já conhecido
+  creditoLotes?: { lote_id: string; quantidade_consumida: number }[] // consumo original deste item, a devolver antes de recalcular (edição)
 ) {
   const debouncedQuantidade = useDebounce(quantidade, 500)
 
   return useQuery({
-    queryKey: ['preview-custo-direto', tipoRef, produtoId, maquinaId, servicoRefId, debouncedQuantidade],
+    queryKey: ['preview-custo-direto', tipoRef, produtoId, maquinaId, servicoRefId, debouncedQuantidade, creditoLotes],
     queryFn: async (): Promise<PreviewResponse | null> => {
       if (!tipoRef || debouncedQuantidade <= 0) return null
 
       if (tipoRef === 'produto' && produtoId) {
-        return calcularPreviewProduto(produtoId, debouncedQuantidade)
+        return calcularPreviewProduto(produtoId, debouncedQuantidade, creditoLotes)
       }
 
       if (tipoRef === 'maquina') {
