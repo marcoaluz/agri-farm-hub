@@ -425,14 +425,14 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
             id={`quantidade-${itemForm.produto_id || itemForm.maquina_id || itemForm.servico_ref_id || itemForm.item_id}`}
             type="number"
             min="0"
-            step="0.01"
+            step="0.001"
             value={quantidade || ''}
             onChange={(e) => {
               quantidadeAlteradaRef.current = true
               const val = parseFloat(e.target.value) || 0
               setQuantidade(val)
             }}
-            placeholder="0.00"
+            placeholder="0.000"
             className={cn(
               "font-mono",
               quantidade > 0 && !estoqueInsuficiente && "border-primary/50 focus:border-primary"
