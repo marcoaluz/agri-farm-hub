@@ -111,7 +111,12 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
 }
 
 export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao, maquinas, tiposCombustivel }: ItemLancamentoCardProps) {
-  const [quantidade, setQuantidade] = useState(itemForm.quantidade)
+  // Texto puro do que foi digitado — nunca reformatado a cada tecla, senão
+  // "0", "0." e outros estados intermediários somem no meio da digitação.
+  const [quantidadeTexto, setQuantidadeTexto] = useState(
+    itemForm.quantidade ? String(itemForm.quantidade) : ''
+  )
+  const quantidade = parseFloat(quantidadeTexto.replace(',', '.')) || 0
   const [editandoCusto, setEditandoCusto] = useState(false)
   const [custoEditavel, setCustoEditavel] = useState('')
   const custoInputRef = useRef<HTMLInputElement>(null)
