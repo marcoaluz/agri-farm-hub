@@ -111,7 +111,12 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
 }
 
 export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao, maquinas, tiposCombustivel }: ItemLancamentoCardProps) {
-  const [quantidade, setQuantidade] = useState(itemForm.quantidade)
+  // Texto puro do que foi digitado — nunca reformatado a cada tecla, senão
+  // "0", "0." e outros estados intermediários somem no meio da digitação.
+  const [quantidadeTexto, setQuantidadeTexto] = useState(
+    itemForm.quantidade ? String(itemForm.quantidade) : ''
+  )
+  const quantidade = parseFloat(quantidadeTexto.replace(',', '.')) || 0
   const [editandoCusto, setEditandoCusto] = useState(false)
   const [custoEditavel, setCustoEditavel] = useState('')
   const custoInputRef = useRef<HTMLInputElement>(null)
@@ -423,16 +428,17 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
           </Label>
           <Input
             id={`quantidade-${itemForm.produto_id || itemForm.maquina_id || itemForm.servico_ref_id || itemForm.item_id}`}
-            type="number"
-            min="0"
-            step="0.001"
-            value={quantidade || ''}
+            type="text"
+            inputMode="decimal"
+            value={quantidadeTexto}
             onChange={(e) => {
+              const texto = e.target.value
+              // Só dígitos, vírgula e ponto — aceita as duas formas de decimal
+              if (texto !== '' && !/^[0-9]*[.,]?[0-9]*$/.test(texto)) return
               quantidadeAlteradaRef.current = true
-              const val = parseFloat(e.target.value) || 0
-              setQuantidade(val)
+              setQuantidadeTexto(texto)
             }}
-            placeholder="0.000"
+            placeholder="0,000"
             className={cn(
               "font-mono",
               quantidade > 0 && !estoqueInsuficiente && "border-primary/50 focus:border-primary"
