@@ -36,8 +36,8 @@ interface ItemVinculado {
 
 const UNIDADES_SIMPLES = [
   { value: 'hora', label: 'Hora' },
-  { value: 'dia', label: 'Dia' },
   { value: 'diaria', label: 'Diária' },
+  { value: 'mensal', label: 'Mensal' },
   { value: 'servico', label: 'Serviço' },
   { value: 'ha', label: 'Hectare (ha)' },
 ];
