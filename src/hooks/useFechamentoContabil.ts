@@ -98,3 +98,30 @@ export function useGarantirFechamento(propriedadeId?: string | null, ano?: numbe
     },
   })
 }
+
+/**
+ * Busca todos os meses já contabilizados (fechados) de uma propriedade,
+ * de qualquer ano, e devolve como um Set de chaves "ano-mes" pra checagem
+ * rápida em O(1). Usado pra avisar/travar antes de lançar em período fechado.
+ */
+export function useMesesContabilizados(propriedadeId?: string | null) {
+  return useQuery({
+    queryKey: ['meses-contabilizados', propriedadeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('fechamentos_contabeis' as any)
+        .select('ano, mes')
+        .eq('propriedade_id', propriedadeId)
+        .eq('contabilizado', true)
+      if (error) throw error
+      return new Set((data || []).map((r: any) => `${r.ano}-${r.mes}`))
+    },
+    enabled: !!propriedadeId,
+  })
+}
+
+/** true se a data cair num mês presente no Set retornado por useMesesContabilizados. */
+export function mesEstaFechado(data: Date | null | undefined, mesesFechados: Set<string> | undefined): boolean {
+  if (!data || !mesesFechados) return false
+  return mesesFechados.has(`${data.getFullYear()}-${data.getMonth() + 1}`)
+}

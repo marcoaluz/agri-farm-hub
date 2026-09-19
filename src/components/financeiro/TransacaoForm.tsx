@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/popover'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useSafraFechada } from '@/hooks/useSafraFechada'
+import { useMesesContabilizados, mesEstaFechado } from '@/hooks/useFechamentoContabil'
 import { useTalhoes } from '@/hooks/useTalhoes'
 import { useCreateTransacao, useUpdateTransacao, type Transacao } from '@/hooks/useTransacoes'
 import { supabase } from '@/lib/supabase'
@@ -218,7 +219,15 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
     })
   }, [watchNumParcelas, watchValor, watchDataPrimeira, periodicidade, valorEntrada])
 
-
+  const { data: mesesFechados } = useMesesContabilizados(propId)
+  const watchDataVencimento = form.watch('data_vencimento')
+  const dataPrincipalFechada = mesEstaFechado(watchDataVencimento, mesesFechados)
+  const primeiraParcelaData = watchDataPrimeira ? new Date(watchDataPrimeira + 'T12:00:00') : null
+  const parcelaFechadaEncontrada = watchParcelar
+    ? (primeiraParcelaData && mesEstaFechado(primeiraParcelaData, mesesFechados)
+        ? primeiraParcelaData
+        : (parcelasPreview.find((p) => mesEstaFechado(p.data, mesesFechados))?.data ?? null))
+    : null
 
 
 
@@ -316,6 +325,14 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
 
   const onSubmit = async (data: FormData) => {
     if (!verificarSafra('criar transação')) return
+    if (mesEstaFechado(data.data_vencimento, mesesFechados)) {
+      toast.error('Este mês já está contabilizado e fechado. Desmarque "Contabilizado" no Fechamento Contábil antes de lançar nesse período.')
+      return
+    }
+    if (data.parcelar && parcelaFechadaEncontrada) {
+      toast.error(`A parcela de ${format(parcelaFechadaEncontrada, 'MM/yyyy')} cai num mês já contabilizado e fechado. Ajuste a data ou desmarque a contabilização daquele mês.`)
+      return
+    }
     const safraId = typeof safraAtual === 'object' ? safraAtual?.id : safraAtual
     if (!propId || !safraId) { toast.error('Selecione propriedade e safra'); return }
 
@@ -636,6 +653,11 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                     </PopoverContent>
                   </Popover>
                   <FormMessage />
+                  {dataPrincipalFechada && (
+                    <p className="text-xs text-destructive mt-1">
+                      Este mês já está contabilizado e fechado. Não será possível salvar com esta data.
+                    </p>
+                  )}
                 </FormItem>
               )} />
             </div>
