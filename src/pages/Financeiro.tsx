@@ -461,13 +461,13 @@ export function Financeiro() {
         <TabsContent value="transacoes" className="space-y-4">
           {/* Navegação por mês */}
           <div className="flex items-center justify-between mb-4">
-            <Button variant="outline" size="icon" onClick={() => { setMesAtual(prev => subMonths(prev, 1)); setPage(0) }}>
+            <Button variant="outline" size="icon" onClick={() => { setMesAtual(prev => subMonths(prev, 1)); setDataInicio(undefined); setDataFim(undefined); setPage(0) }}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <h3 className="text-lg font-bold capitalize">
               {format(mesAtual, "MMMM 'de' yyyy", { locale: ptBR })}
             </h3>
-            <Button variant="outline" size="icon" onClick={() => { setMesAtual(prev => addMonths(prev, 1)); setPage(0) }}>
+            <Button variant="outline" size="icon" onClick={() => { setMesAtual(prev => addMonths(prev, 1)); setDataInicio(undefined); setDataFim(undefined); setPage(0) }}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
