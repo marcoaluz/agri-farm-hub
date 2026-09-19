@@ -764,7 +764,7 @@ export async function exportarMaquinasPDF(opts: {
 function desenharGraficoLinha(doc: jsPDF, opts: {
   x: number; y: number; width: number; height: number
   labels: string[]
-  series: { label: string; color: [number, number, number]; valores: number[] }[]
+  series: { label: string; color: [number, number, number]; valores: number[]; mostrarValores?: boolean }[]
 }) {
   const { x, y, width, height, labels, series } = opts
   const todosValores = series.flatMap((s) => s.valores)
@@ -824,7 +824,7 @@ function desenharGraficoLinha(doc: jsPDF, opts: {
     doc.line(plotX, zeroY, plotX + plotWidth, zeroY)
   }
 
-  // Séries
+   // Séries
   series.forEach((s) => {
     doc.setDrawColor(...s.color)
     doc.setFillColor(...s.color)
@@ -838,6 +838,13 @@ function desenharGraficoLinha(doc: jsPDF, opts: {
         doc.line(prevPx, prevPy, px, py)
       }
       doc.circle(px, py, 0.6, 'F')
+      if (s.mostrarValores && v !== 0) {
+        doc.setFontSize(5.5)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(...s.color)
+        doc.text(fmtCompacto(v), px, v >= 0 ? py - 2 : py + 4, { align: 'center' })
+        doc.setTextColor(0)
+      }
     })
   })
   doc.setDrawColor(0)
@@ -858,10 +865,11 @@ const NOMES_MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago
 export async function exportarBalanceteGeralPDF(opts: {
   nomeArquivo: string
   propriedadeNome: string
+  proprietarioNome?: string
   ano: number
   meses: { mes: number; credito: number; debito: number; saldo: number }[]
 }) {
-  const { nomeArquivo, propriedadeNome, ano, meses } = opts
+  const { nomeArquivo, propriedadeNome, proprietarioNome, ano, meses } = opts
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -898,8 +906,14 @@ export async function exportarBalanceteGeralPDF(opts: {
   doc.text('Relatório: Balancete Geral', textX, 20)
   doc.setFontSize(10)
   doc.text(`Propriedade: ${propriedadeNome}`, margin, 30)
-  doc.text(`Ano: ${ano}`, margin, 36)
-  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, 42)
+  let yCabecalho = 36
+  if (proprietarioNome) {
+    doc.text(`Proprietário: ${proprietarioNome}`, margin, yCabecalho)
+    yCabecalho += 6
+  }
+  doc.text(`Ano: ${ano}`, margin, yCabecalho)
+  yCabecalho += 6
+  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, yCabecalho)
 
   const totalCredito = meses.reduce((s, m) => s + m.credito, 0)
   const totalDebito = meses.reduce((s, m) => s + m.debito, 0)
@@ -940,12 +954,12 @@ export async function exportarBalanceteGeralPDF(opts: {
   y += 10
 
   desenharGraficoLinha(doc, {
-    x: margin, y, width: pageWidth - margin * 2, height: 55,
+    x: margin, y, width: pageWidth - margin * 2, height: 65,
     labels: meses.map((m) => NOMES_MESES_ABREV[m.mes - 1]),
     series: [
       { label: 'Crédito', color: COR_RECEITA, valores: meses.map((m) => m.credito) },
       { label: 'Débito', color: COR_DESPESA, valores: meses.map((m) => m.debito) },
-      { label: 'Saldo', color: COR_SALDO, valores: meses.map((m) => m.saldo) },
+      { label: 'Saldo', color: COR_SALDO, valores: meses.map((m) => m.saldo), mostrarValores: true },
     ],
   })
 
@@ -955,11 +969,12 @@ export async function exportarBalanceteGeralPDF(opts: {
 export async function exportarMovimentoCaixaPDF(opts: {
   nomeArquivo: string
   propriedadeNome: string
+  proprietarioNome?: string
   mesLabel: string
   linhas: { data: string; historico: string; entrada: number; saida: number }[]
   saldoAnterior: number
 }) {
-  const { nomeArquivo, propriedadeNome, mesLabel, linhas, saldoAnterior } = opts
+  const { nomeArquivo, propriedadeNome, proprietarioNome, mesLabel, linhas, saldoAnterior } = opts
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -992,8 +1007,14 @@ export async function exportarMovimentoCaixaPDF(opts: {
   doc.text('Relatório: Movimento do Caixa', textX, 20)
   doc.setFontSize(10)
   doc.text(`Propriedade: ${propriedadeNome}`, margin, 30)
-  doc.text(`Período: ${mesLabel}`, margin, 36)
-  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, 42)
+  let yCabecalho = 36
+  if (proprietarioNome) {
+    doc.text(`Proprietário: ${proprietarioNome}`, margin, yCabecalho)
+    yCabecalho += 6
+  }
+  doc.text(`Período: ${mesLabel}`, margin, yCabecalho)
+  yCabecalho += 6
+  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, yCabecalho)
 
   const somaEntrada = linhas.reduce((s, l) => s + l.entrada, 0)
   const somaSaida = linhas.reduce((s, l) => s + l.saida, 0)
@@ -1001,7 +1022,7 @@ export async function exportarMovimentoCaixaPDF(opts: {
   const saldoAtual = saldoAnterior + saldoMes
 
   autoTable(doc, {
-    startY: 48,
+    startY: yCabecalho + 6,
     head: [['Data', 'Histórico', 'Entrada', 'Saída']],
     body: linhas.length > 0
       ? linhas.map((l) => [
@@ -1012,23 +1033,29 @@ export async function exportarMovimentoCaixaPDF(opts: {
         ])
       : [['—', 'Nenhuma transação paga neste mês', '', '']],
     foot: [['', 'SOMA DO MÊS', `R$ ${fmt2(somaEntrada)}`, `R$ ${fmt2(somaSaida)}`]],
-    theme: 'striped',
-    styles: { fontSize: 8.5, cellPadding: 2.5 },
+    theme: 'grid',
+    styles: { fontSize: 8.5, cellPadding: 2.5, lineColor: [220, 220, 220], lineWidth: 0.2 },
     headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold' },
     footStyles: { fillColor: [235, 235, 235], textColor: [30, 30, 30], fontStyle: 'bold' },
-    columnStyles: { 0: { cellWidth: 24 }, 2: { halign: 'right' }, 3: { halign: 'right' } },
-    alternateRowStyles: { fillColor: [245, 245, 245] },
+    columnStyles: { 0: { cellWidth: 24 }, 2: { halign: 'right', cellWidth: 32 }, 3: { halign: 'right', cellWidth: 32 } },
+    alternateRowStyles: { fillColor: [250, 250, 250] },
     margin: { left: margin, right: margin },
     didDrawPage: () => desenharMarcaDagua(),
   })
 
   let y = (doc as any).lastAutoTable.finalY + 10
-  if (y + 26 > pageHeight - 16) { doc.addPage(); desenharMarcaDagua(); y = 24 }
+  if (y + 40 > pageHeight - 16) { doc.addPage(); desenharMarcaDagua(); y = 24 }
 
   const linhaResumo = (label: string, valor: number, destaque = false) => {
+    const negativo = valor < 0
     doc.setFontSize(destaque ? 11 : 9.5)
     doc.setFont('helvetica', destaque ? 'bold' : 'normal')
-    doc.setTextColor(destaque ? 39 : 80, destaque ? 103 : 80, destaque ? 61 : 80)
+    if (destaque) {
+      if (negativo) doc.setTextColor(180, 30, 30)
+      else doc.setTextColor(39, 103, 61)
+    } else {
+      doc.setTextColor(80, 80, 80)
+    }
     doc.text(label, pageWidth - margin - 70, y)
     doc.text(`R$ ${fmt2(valor)}`, pageWidth - margin, y, { align: 'right' })
     doc.setTextColor(0)
@@ -1038,6 +1065,16 @@ export async function exportarMovimentoCaixaPDF(opts: {
   linhaResumo('Soma do Mês', saldoMes)
   linhaResumo('Saldo Anterior', saldoAnterior)
   linhaResumo('Saldo Atual', saldoAtual, true)
+
+  y += 16
+  if (y + 20 > pageHeight - 16) { doc.addPage(); desenharMarcaDagua(); y = 24 }
+  doc.setFontSize(9.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(60)
+  doc.text('Recebido em ____ / ____ / ______', margin, y)
+  y += 12
+  doc.setDrawColor(120)
+  doc.line(margin, y, margin + 80, y)
+  doc.text('Ass.:', margin, y + 4)
+  doc.setTextColor(0)
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 }

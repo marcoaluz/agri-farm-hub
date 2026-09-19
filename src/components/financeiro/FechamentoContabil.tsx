@@ -72,6 +72,7 @@ export function FechamentoContabil() {
       await exportarBalanceteGeralPDF({
         nomeArquivo: `balancete-geral-${ano}`,
         propriedadeNome: propriedadeAtual?.nome || '',
+        proprietarioNome: propriedadeAtual?.responsavel || '',
         ano,
         meses: balancete.map((m) => ({ mes: m.mes, credito: m.credito, debito: m.debito, saldo: m.saldo })),
       })
@@ -128,6 +129,7 @@ export function FechamentoContabil() {
       await exportarMovimentoCaixaPDF({
         nomeArquivo: `movimento-caixa-${ano}-${String(mes).padStart(2, '0')}`,
         propriedadeNome: propriedadeAtual?.nome || '',
+        proprietarioNome: propriedadeAtual?.responsavel || '',
         mesLabel: `${NOMES_MESES[mes - 1]} de ${ano}`,
         linhas,
         saldoAnterior,

@@ -12,7 +12,12 @@ interface Propriedade {
   area_total: number | null
   localizacao: string | null
   ativo: boolean
+  latitude: number | null
+  longitude: number | null
+  responsavel: string | null
 }
+
+
 
 interface Safra {
   id: string

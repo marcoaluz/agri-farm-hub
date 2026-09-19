@@ -445,7 +445,7 @@ export function Financeiro() {
                             }}
                             disabled={marcarPago.isPending || marcarPagoParcela.isPending}
                           >
-                            <Check className="h-3 w-3 mr-1" /> Pagar
+                            <Check className="h-3 w-3 mr-1" /> {labelBaixa(t)}
                           </Button>
                         </div>
                       </div>

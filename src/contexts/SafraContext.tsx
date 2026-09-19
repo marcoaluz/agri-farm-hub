@@ -90,7 +90,7 @@ export function SafraProvider({ children }: { children: ReactNode }) {
 
       const { data, error } = await supabase
         .from('propriedades')
-        .select('id, nome, area_total, localizacao, ativo, latitude, longitude')
+        .select('id, nome, area_total, localizacao, ativo, latitude, longitude, responsavel')
         .eq('ativo', true)
         .order('nome')
 
