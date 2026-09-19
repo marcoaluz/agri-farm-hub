@@ -986,7 +986,10 @@ function desenharGraficoBarras(doc: jsPDF, opts: {
     if (dv !== 0) rotuloComFundo(fmtCompacto(dv), dx + barW / 2, clampY(Math.min(dy, zeroY) - 1.5), COR_DESPESA)
   }
 
-  // 3) Pontos e números do Saldo por cima de tudo — sempre visível, com fundo branco
+  // 3) Pontos e números do Saldo por cima de tudo — sempre visível, com fundo
+  // branco. Se colidir em altura com o rótulo do Crédito ou do Débito daquele
+  // mês, desloca o número do Saldo pro lado oposto, em vez de empilhar.
+  const DIST_MIN = 7
   doc.setFillColor(...COR_SALDO)
   for (let i = 0; i < n; i++) {
     const px = plotX + i * slotWidth + slotWidth / 2
@@ -994,8 +997,15 @@ function desenharGraficoBarras(doc: jsPDF, opts: {
     doc.setFillColor(...COR_SALDO)
     doc.circle(px, py, 0.7, 'F')
     if (saldo[i] !== 0) {
+      const topoCredito = credito[i] ? Math.min(escalaY(credito[i]), zeroY) : null
+      const topoDebito = debito[i] ? Math.min(escalaY(debito[i]), zeroY) : null
+      const colideCredito = topoCredito !== null && Math.abs(py - topoCredito) < DIST_MIN
+      const colideDebito = topoDebito !== null && Math.abs(py - topoDebito) < DIST_MIN
+      let offsetX = 0
+      if (colideCredito) offsetX = slotWidth * 0.24
+      else if (colideDebito) offsetX = -slotWidth * 0.24
       const labelY = saldo[i] >= 0 ? clampY(py - 3) : clampY(py + 5.5)
-      rotuloComFundo(fmtCompacto(saldo[i]), px, labelY, COR_SALDO)
+      rotuloComFundo(fmtCompacto(saldo[i]), px + offsetX, labelY, COR_SALDO)
     }
   }
 
