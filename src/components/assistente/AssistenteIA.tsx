@@ -99,7 +99,7 @@ export function AssistenteIA() {
         .eq('safra_id', safraId || '')
         .order('data_execucao', { ascending: false })
         .limit(20),
-      supabase.from('transacoes')
+       supabase.from('vw_movimentos_financeiros')
         .select('tipo, categoria, descricao, valor, status, data_vencimento')
         .eq('propriedade_id', propId)
         .eq('safra_id', safraId || '')
