@@ -940,6 +940,7 @@ function desenharGraficoBarras(doc: jsPDF, opts: {
   // Barras: Crédito e Débito lado a lado, por mês
   const barW = slotWidth * 0.32
   const gap = slotWidth * 0.06
+  const labelBarY = (topoBarra: number) => Math.min(Math.max(topoBarra - 1.5, y + 3), y + height - 1)
   for (let i = 0; i < n; i++) {
     const slotCenter = plotX + i * slotWidth + slotWidth / 2
     const cx = slotCenter - gap / 2 - barW
@@ -952,7 +953,7 @@ function desenharGraficoBarras(doc: jsPDF, opts: {
     if (cv !== 0) {
       doc.setFontSize(5)
       doc.setTextColor(...COR_RECEITA)
-      doc.text(fmtCompacto(cv), cx + barW / 2, Math.max(Math.min(cy, zeroY) - 1.5, y + 2), { align: 'center' })
+      doc.text(fmtCompacto(cv), cx + barW / 2, labelBarY(Math.min(cy, zeroY)), { align: 'center' })
     }
 
     const dv = debito[i] || 0
@@ -962,12 +963,14 @@ function desenharGraficoBarras(doc: jsPDF, opts: {
     if (dv !== 0) {
       doc.setFontSize(5)
       doc.setTextColor(...COR_DESPESA)
-      doc.text(fmtCompacto(dv), dx + barW / 2, Math.max(Math.min(dy, zeroY) - 1.5, y + 2), { align: 'center' })
+      doc.text(fmtCompacto(dv), dx + barW / 2, labelBarY(Math.min(dy, zeroY)), { align: 'center' })
     }
   }
   doc.setTextColor(0)
 
-  // Linha de Saldo por cima das barras
+  // Linha de Saldo por cima das barras — só a forma, sem número (o valor
+  // exato já está na tabela e no "Resultado do Período" acima do gráfico;
+  // rotular aqui colidiria com as barras sempre que Saldo ~ Crédito).
   doc.setDrawColor(...COR_SALDO)
   doc.setFillColor(...COR_SALDO)
   doc.setLineWidth(0.5)
@@ -980,12 +983,6 @@ function desenharGraficoBarras(doc: jsPDF, opts: {
       doc.line(prevPx, prevPy, px, py)
     }
     doc.circle(px, py, 0.7, 'F')
-    if (saldo[i] !== 0) {
-      doc.setFontSize(5.5)
-      doc.setTextColor(...COR_SALDO)
-      const labelY = saldo[i] >= 0 ? Math.max(py - 2, y + 2) : Math.min(py + 4, y + height - 1)
-      doc.text(fmtCompacto(saldo[i]), px, labelY, { align: 'center' })
-    }
   }
   doc.setDrawColor(0)
   doc.setTextColor(0)
@@ -1181,7 +1178,7 @@ export async function exportarMovimentoCaixaPDF(opts: {
     styles: { fontSize: 8.5, cellPadding: 2.5, valign: 'middle' },
     headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold' },
     footStyles: { fillColor: [235, 235, 235], textColor: [30, 30, 30], fontStyle: 'bold' },
-    columnStyles: { 0: { cellWidth: 24 }, 2: { halign: 'right', cellWidth: 36 }, 3: { halign: 'right', cellWidth: 36 } },
+    columnStyles: { 0: { cellWidth: 24 }, 2: { halign: 'left', cellWidth: 36 }, 3: { halign: 'left', cellWidth: 36 } },
     alternateRowStyles: { fillColor: [245, 245, 245] },
     margin: { left: margin, right: margin },
     didDrawPage: () => desenharMarcaDagua(),
