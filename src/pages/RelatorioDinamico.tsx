@@ -138,7 +138,7 @@ export default function RelatorioDinamico() {
         if (error) throw error
         dados = data || []
       } else if (fonte === 'transacoes') {
-        const { data, error } = await db.from('transacoes')
+        const { data, error } = await db.from('vw_movimentos_financeiros')
           .select('id, valor, tipo, categoria, data_pagamento, data_vencimento, status')
           .eq('propriedade_id', propId).eq('safra_id', safraId)
         if (error) throw error
