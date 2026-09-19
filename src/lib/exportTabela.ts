@@ -772,11 +772,23 @@ function desenharGraficoLinha(doc: jsPDF, opts: {
   const minV = Math.min(...todosValores, 0)
   const range = maxV - minV || 1
   const n = labels.length
-  const stepX = n > 1 ? width / (n - 1) : 0
+
+  const fmtCompacto = (v: number) => {
+    const abs = Math.abs(v)
+    const sinal = v < 0 ? '-' : ''
+    if (abs >= 1000) return `${sinal}${(abs / 1000).toFixed(0)}k`
+    return `${sinal}${abs.toFixed(0)}`
+  }
+
+  // Reserva espaço à esquerda para os números do eixo Y
+  const labelWidth = 14
+  const plotX = x + labelWidth
+  const plotWidth = width - labelWidth
+  const stepX = n > 1 ? plotWidth / (n - 1) : 0
   const escalaY = (v: number) => y + height - ((v - minV) / range) * height
 
   // Legenda
-  let lx = x
+  let lx = plotX
   const ly = y - 5
   series.forEach((s) => {
     doc.setFillColor(...s.color)
@@ -789,13 +801,27 @@ function desenharGraficoLinha(doc: jsPDF, opts: {
   })
   doc.setTextColor(0)
 
+  // Eixo Y: linhas de grade com o valor em R$
+  const NUM_LINHAS_Y = 4
+  doc.setFontSize(6)
+  doc.setFont('helvetica', 'normal')
+  for (let i = 0; i <= NUM_LINHAS_Y; i++) {
+    const v = minV + (range * i) / NUM_LINHAS_Y
+    const py = escalaY(v)
+    doc.setDrawColor(230)
+    doc.line(plotX, py, plotX + plotWidth, py)
+    doc.setTextColor(130)
+    doc.text(fmtCompacto(v), plotX - 2, py + 1.5, { align: 'right' })
+  }
+  doc.setTextColor(0)
+
   // Eixo X e linha do zero (se a faixa cruzar zero)
-  doc.setDrawColor(210)
-  doc.line(x, y + height, x + width, y + height)
+  doc.setDrawColor(180)
+  doc.line(plotX, y + height, plotX + plotWidth, y + height)
   if (minV < 0 && maxV > 0) {
     const zeroY = escalaY(0)
-    doc.setDrawColor(230)
-    doc.line(x, zeroY, x + width, zeroY)
+    doc.setDrawColor(160)
+    doc.line(plotX, zeroY, plotX + plotWidth, zeroY)
   }
 
   // Séries
@@ -804,10 +830,10 @@ function desenharGraficoLinha(doc: jsPDF, opts: {
     doc.setFillColor(...s.color)
     doc.setLineWidth(0.4)
     s.valores.forEach((v, i) => {
-      const px = x + i * stepX
+      const px = plotX + i * stepX
       const py = escalaY(v)
       if (i > 0) {
-        const prevPx = x + (i - 1) * stepX
+        const prevPx = plotX + (i - 1) * stepX
         const prevPy = escalaY(s.valores[i - 1])
         doc.line(prevPx, prevPy, px, py)
       }
@@ -821,7 +847,7 @@ function desenharGraficoLinha(doc: jsPDF, opts: {
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(120)
   labels.forEach((lbl, i) => {
-    const px = x + i * stepX
+    const px = plotX + i * stepX
     doc.text(lbl, px, y + height + 4, { align: 'center' })
   })
   doc.setTextColor(0)
