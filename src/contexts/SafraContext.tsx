@@ -22,6 +22,7 @@ interface Propriedade {
   ativo: boolean
   latitude: number | null
   longitude: number | null
+  responsavel: string | null
 }
 
 interface Safra {
