@@ -2169,6 +2169,7 @@ function AbaCustosDetalhados({ propId, safraId, propriedadeNome }: { propId: str
                   <span className="ml-auto text-sm font-normal text-muted-foreground space-x-3">
                     <span>Despesas: <span className="font-bold text-destructive">{fmt(totalDespesas)}</span></span>
                     <span>Recebimentos: <span className="font-bold text-green-600">{fmt(totalReceitas)}</span></span>
+                    <span>Saldo: <span className={`font-bold ${(totalReceitas - totalDespesas) >= 0 ? 'text-green-600' : 'text-destructive'}`}>{fmt(totalReceitas - totalDespesas)}</span></span>
                   </span>
                 </CardTitle>
               </CardHeader>

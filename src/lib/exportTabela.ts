@@ -292,6 +292,7 @@ export async function exportarCustosDetalhadosPDF(opts: {
   }
 
   if (financeiro.length > 0) {
+    const saldoFinanceiro = totalReceitas - totalDespesas
     novaPaginaSeNecessario(10)
     doc.setFontSize(12); doc.setFont('helvetica', 'bold')
     doc.text('Financeiro', margin, y)
@@ -299,7 +300,12 @@ export async function exportarCustosDetalhadosPDF(opts: {
       `Despesas: R$ ${fmt2(totalDespesas)}   |   Recebimentos: R$ ${fmt2(totalReceitas)}`,
       pageWidth - margin, y, { align: 'right' }
     )
-    y += 6
+    y += 5
+    doc.setFontSize(10)
+    doc.setTextColor(...(saldoFinanceiro >= 0 ? COR_RECEITA : COR_DESPESA))
+    doc.text(`Saldo: R$ ${fmt2(saldoFinanceiro)}`, pageWidth - margin, y, { align: 'right' })
+    doc.setTextColor(0)
+    y += 7
 
     financeiro.forEach((grupo) => {
       novaPaginaSeNecessario(10 + grupo.itens.length * 6)
@@ -825,7 +831,7 @@ function desenharGraficoLinha(doc: jsPDF, opts: {
   }
 
    // Séries
-  series.forEach((s) => {
+  series.forEach((s, si) => {
     doc.setDrawColor(...s.color)
     doc.setFillColor(...s.color)
     doc.setLineWidth(0.4)
@@ -839,10 +845,14 @@ function desenharGraficoLinha(doc: jsPDF, opts: {
       }
       doc.circle(px, py, 0.6, 'F')
       if (s.mostrarValores && v !== 0) {
+        const desvio = 2 + si * 2.4
+        const labelY = v >= 0
+          ? Math.max(py - desvio, y + 2)
+          : Math.min(py + desvio + 2, y + height - 1)
         doc.setFontSize(5.5)
         doc.setFont('helvetica', 'normal')
         doc.setTextColor(...s.color)
-        doc.text(fmtCompacto(v), px, v >= 0 ? py - 2 : py + 4, { align: 'center' })
+        doc.text(fmtCompacto(v), px, labelY, { align: 'center' })
         doc.setTextColor(0)
       }
     })
@@ -920,7 +930,7 @@ export async function exportarBalanceteGeralPDF(opts: {
   const totalSaldo = totalCredito - totalDebito
 
   autoTable(doc, {
-    startY: 48,
+    startY: yCabecalho + 10,
     head: [['Mês', 'Crédito', 'Débito', 'Saldo']],
     body: meses.map((m) => [
       NOMES_MESES_ABREV[m.mes - 1],
@@ -929,12 +939,17 @@ export async function exportarBalanceteGeralPDF(opts: {
       `R$ ${fmt2(m.saldo)}`,
     ]),
     foot: [['TOTAL', `R$ ${fmt2(totalCredito)}`, `R$ ${fmt2(totalDebito)}`, `R$ ${fmt2(totalSaldo)}`]],
-    theme: 'striped',
-    styles: { fontSize: 9, cellPadding: 2.5 },
+    theme: 'grid',
+    styles: { fontSize: 9, cellPadding: 2.5, lineColor: [220, 220, 220], lineWidth: 0.2 },
     headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold' },
     footStyles: { fillColor: [235, 235, 235], textColor: [30, 30, 30], fontStyle: 'bold' },
-    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
-    alternateRowStyles: { fillColor: [245, 245, 245] },
+    columnStyles: {
+      0: { cellWidth: 40 },
+      1: { halign: 'right', cellWidth: (pageWidth - margin * 2 - 40) / 3 },
+      2: { halign: 'right', cellWidth: (pageWidth - margin * 2 - 40) / 3 },
+      3: { halign: 'right', cellWidth: (pageWidth - margin * 2 - 40) / 3 },
+    },
+    alternateRowStyles: { fillColor: [250, 250, 250] },
     margin: { left: margin, right: margin },
     didDrawPage: () => desenharMarcaDagua(),
   })
@@ -947,18 +962,18 @@ export async function exportarBalanceteGeralPDF(opts: {
   doc.setTextColor(0)
   y += 14
 
-  if (y + 65 > pageHeight - 16) { doc.addPage(); desenharMarcaDagua(); y = 24 }
+  if (y + 95 > pageHeight - 16) { doc.addPage(); desenharMarcaDagua(); y = 24 }
   doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(60)
   doc.text('Crédito, Débito e Saldo por Mês', margin, y)
   doc.setTextColor(0)
   y += 10
 
   desenharGraficoLinha(doc, {
-    x: margin, y, width: pageWidth - margin * 2, height: 65,
+    x: margin, y, width: pageWidth - margin * 2, height: 78,
     labels: meses.map((m) => NOMES_MESES_ABREV[m.mes - 1]),
     series: [
-      { label: 'Crédito', color: COR_RECEITA, valores: meses.map((m) => m.credito) },
-      { label: 'Débito', color: COR_DESPESA, valores: meses.map((m) => m.debito) },
+      { label: 'Crédito', color: COR_RECEITA, valores: meses.map((m) => m.credito), mostrarValores: true },
+      { label: 'Débito', color: COR_DESPESA, valores: meses.map((m) => m.debito), mostrarValores: true },
       { label: 'Saldo', color: COR_SALDO, valores: meses.map((m) => m.saldo), mostrarValores: true },
     ],
   })
@@ -1065,16 +1080,6 @@ export async function exportarMovimentoCaixaPDF(opts: {
   linhaResumo('Soma do Mês', saldoMes)
   linhaResumo('Saldo Anterior', saldoAnterior)
   linhaResumo('Saldo Atual', saldoAtual, true)
-
-  y += 16
-  if (y + 20 > pageHeight - 16) { doc.addPage(); desenharMarcaDagua(); y = 24 }
-  doc.setFontSize(9.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(60)
-  doc.text('Recebido em ____ / ____ / ______', margin, y)
-  y += 12
-  doc.setDrawColor(120)
-  doc.line(margin, y, margin + 80, y)
-  doc.text('Ass.:', margin, y + 4)
-  doc.setTextColor(0)
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 }
