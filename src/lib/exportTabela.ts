@@ -759,3 +759,259 @@ export async function exportarMaquinasPDF(opts: {
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 }
+
+/** Desenha um gráfico de linha simples (sem lib externa) com N séries, dentro de um retângulo x/y/width/height. */
+function desenharGraficoLinha(doc: jsPDF, opts: {
+  x: number; y: number; width: number; height: number
+  labels: string[]
+  series: { label: string; color: [number, number, number]; valores: number[] }[]
+}) {
+  const { x, y, width, height, labels, series } = opts
+  const todosValores = series.flatMap((s) => s.valores)
+  const maxV = Math.max(...todosValores, 0)
+  const minV = Math.min(...todosValores, 0)
+  const range = maxV - minV || 1
+  const n = labels.length
+  const stepX = n > 1 ? width / (n - 1) : 0
+  const escalaY = (v: number) => y + height - ((v - minV) / range) * height
+
+  // Legenda
+  let lx = x
+  const ly = y - 5
+  series.forEach((s) => {
+    doc.setFillColor(...s.color)
+    doc.rect(lx, ly - 2.5, 3, 3, 'F')
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(80)
+    doc.text(s.label, lx + 4.5, ly)
+    lx += doc.getTextWidth(s.label) + 16
+  })
+  doc.setTextColor(0)
+
+  // Eixo X e linha do zero (se a faixa cruzar zero)
+  doc.setDrawColor(210)
+  doc.line(x, y + height, x + width, y + height)
+  if (minV < 0 && maxV > 0) {
+    const zeroY = escalaY(0)
+    doc.setDrawColor(230)
+    doc.line(x, zeroY, x + width, zeroY)
+  }
+
+  // Séries
+  series.forEach((s) => {
+    doc.setDrawColor(...s.color)
+    doc.setFillColor(...s.color)
+    doc.setLineWidth(0.4)
+    s.valores.forEach((v, i) => {
+      const px = x + i * stepX
+      const py = escalaY(v)
+      if (i > 0) {
+        const prevPx = x + (i - 1) * stepX
+        const prevPy = escalaY(s.valores[i - 1])
+        doc.line(prevPx, prevPy, px, py)
+      }
+      doc.circle(px, py, 0.6, 'F')
+    })
+  })
+  doc.setDrawColor(0)
+
+  // Rótulos do eixo X
+  doc.setFontSize(6)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(120)
+  labels.forEach((lbl, i) => {
+    const px = x + i * stepX
+    doc.text(lbl, px, y + height + 4, { align: 'center' })
+  })
+  doc.setTextColor(0)
+}
+
+const NOMES_MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+export async function exportarBalanceteGeralPDF(opts: {
+  nomeArquivo: string
+  propriedadeNome: string
+  ano: number
+  meses: { mes: number; credito: number; debito: number; saldo: number }[]
+}) {
+  const { nomeArquivo, propriedadeNome, ano, meses } = opts
+  const doc = new jsPDF()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 14
+
+  const fmt2 = (v: number) =>
+    Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  const COR_RECEITA: [number, number, number] = [21, 101, 52]
+  const COR_DESPESA: [number, number, number] = [180, 30, 30]
+  const COR_SALDO: [number, number, number] = [21, 101, 187]
+
+  const logo = await getLogoBase64()
+  const desenharMarcaDagua = () => {
+    if (!logo) return
+    try {
+      const tamanho = 90
+      doc.saveGraphicsState()
+      // @ts-ignore
+      doc.setGState(new (doc as any).GState({ opacity: 0.06 }))
+      doc.addImage(logo, 'PNG', (pageWidth - tamanho) / 2, (pageHeight - tamanho) / 2, tamanho, tamanho)
+      doc.restoreGraphicsState()
+    } catch {}
+  }
+
+  desenharMarcaDagua()
+  let textX = margin
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', margin, 8, 12, 12); textX = margin + 16 } catch {}
+  }
+  doc.setFontSize(14); doc.setFont('helvetica', 'bold')
+  doc.text('Agro GFI', textX, 14)
+  doc.setFontSize(11); doc.setFont('helvetica', 'normal')
+  doc.text('Relatório: Balancete Geral', textX, 20)
+  doc.setFontSize(10)
+  doc.text(`Propriedade: ${propriedadeNome}`, margin, 30)
+  doc.text(`Ano: ${ano}`, margin, 36)
+  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, 42)
+
+  const totalCredito = meses.reduce((s, m) => s + m.credito, 0)
+  const totalDebito = meses.reduce((s, m) => s + m.debito, 0)
+  const totalSaldo = totalCredito - totalDebito
+
+  autoTable(doc, {
+    startY: 48,
+    head: [['Mês', 'Crédito', 'Débito', 'Saldo']],
+    body: meses.map((m) => [
+      NOMES_MESES_ABREV[m.mes - 1],
+      `R$ ${fmt2(m.credito)}`,
+      `R$ ${fmt2(m.debito)}`,
+      `R$ ${fmt2(m.saldo)}`,
+    ]),
+    foot: [['TOTAL', `R$ ${fmt2(totalCredito)}`, `R$ ${fmt2(totalDebito)}`, `R$ ${fmt2(totalSaldo)}`]],
+    theme: 'striped',
+    styles: { fontSize: 9, cellPadding: 2.5 },
+    headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold' },
+    footStyles: { fillColor: [235, 235, 235], textColor: [30, 30, 30], fontStyle: 'bold' },
+    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    margin: { left: margin, right: margin },
+    didDrawPage: () => desenharMarcaDagua(),
+  })
+
+  let y = (doc as any).lastAutoTable.finalY + 10
+
+  doc.setFontSize(11); doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...(totalSaldo >= 0 ? COR_RECEITA : COR_DESPESA))
+  doc.text(`RESULTADO DO PERÍODO: R$ ${fmt2(totalSaldo)}`, pageWidth - margin, y, { align: 'right' })
+  doc.setTextColor(0)
+  y += 14
+
+  if (y + 65 > pageHeight - 16) { doc.addPage(); desenharMarcaDagua(); y = 24 }
+  doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(60)
+  doc.text('Crédito, Débito e Saldo por Mês', margin, y)
+  doc.setTextColor(0)
+  y += 10
+
+  desenharGraficoLinha(doc, {
+    x: margin, y, width: pageWidth - margin * 2, height: 55,
+    labels: meses.map((m) => NOMES_MESES_ABREV[m.mes - 1]),
+    series: [
+      { label: 'Crédito', color: COR_RECEITA, valores: meses.map((m) => m.credito) },
+      { label: 'Débito', color: COR_DESPESA, valores: meses.map((m) => m.debito) },
+      { label: 'Saldo', color: COR_SALDO, valores: meses.map((m) => m.saldo) },
+    ],
+  })
+
+  doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+}
+
+export async function exportarMovimentoCaixaPDF(opts: {
+  nomeArquivo: string
+  propriedadeNome: string
+  mesLabel: string
+  linhas: { data: string; historico: string; entrada: number; saida: number }[]
+  saldoAnterior: number
+}) {
+  const { nomeArquivo, propriedadeNome, mesLabel, linhas, saldoAnterior } = opts
+  const doc = new jsPDF()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 14
+
+  const fmt2 = (v: number) =>
+    Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  const logo = await getLogoBase64()
+  const desenharMarcaDagua = () => {
+    if (!logo) return
+    try {
+      const tamanho = 90
+      doc.saveGraphicsState()
+      // @ts-ignore
+      doc.setGState(new (doc as any).GState({ opacity: 0.06 }))
+      doc.addImage(logo, 'PNG', (pageWidth - tamanho) / 2, (pageHeight - tamanho) / 2, tamanho, tamanho)
+      doc.restoreGraphicsState()
+    } catch {}
+  }
+
+  desenharMarcaDagua()
+  let textX = margin
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', margin, 8, 12, 12); textX = margin + 16 } catch {}
+  }
+  doc.setFontSize(14); doc.setFont('helvetica', 'bold')
+  doc.text('Agro GFI', textX, 14)
+  doc.setFontSize(11); doc.setFont('helvetica', 'normal')
+  doc.text('Relatório: Movimento do Caixa', textX, 20)
+  doc.setFontSize(10)
+  doc.text(`Propriedade: ${propriedadeNome}`, margin, 30)
+  doc.text(`Período: ${mesLabel}`, margin, 36)
+  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, 42)
+
+  const somaEntrada = linhas.reduce((s, l) => s + l.entrada, 0)
+  const somaSaida = linhas.reduce((s, l) => s + l.saida, 0)
+  const saldoMes = somaEntrada - somaSaida
+  const saldoAtual = saldoAnterior + saldoMes
+
+  autoTable(doc, {
+    startY: 48,
+    head: [['Data', 'Histórico', 'Entrada', 'Saída']],
+    body: linhas.length > 0
+      ? linhas.map((l) => [
+          l.data,
+          l.historico,
+          l.entrada > 0 ? `R$ ${fmt2(l.entrada)}` : '',
+          l.saida > 0 ? `R$ ${fmt2(l.saida)}` : '',
+        ])
+      : [['—', 'Nenhuma transação paga neste mês', '', '']],
+    foot: [['', 'SOMA DO MÊS', `R$ ${fmt2(somaEntrada)}`, `R$ ${fmt2(somaSaida)}`]],
+    theme: 'striped',
+    styles: { fontSize: 8.5, cellPadding: 2.5 },
+    headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold' },
+    footStyles: { fillColor: [235, 235, 235], textColor: [30, 30, 30], fontStyle: 'bold' },
+    columnStyles: { 0: { cellWidth: 24 }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    margin: { left: margin, right: margin },
+    didDrawPage: () => desenharMarcaDagua(),
+  })
+
+  let y = (doc as any).lastAutoTable.finalY + 10
+  if (y + 26 > pageHeight - 16) { doc.addPage(); desenharMarcaDagua(); y = 24 }
+
+  const linhaResumo = (label: string, valor: number, destaque = false) => {
+    doc.setFontSize(destaque ? 11 : 9.5)
+    doc.setFont('helvetica', destaque ? 'bold' : 'normal')
+    doc.setTextColor(destaque ? 39 : 80, destaque ? 103 : 80, destaque ? 61 : 80)
+    doc.text(label, pageWidth - margin - 70, y)
+    doc.text(`R$ ${fmt2(valor)}`, pageWidth - margin, y, { align: 'right' })
+    doc.setTextColor(0)
+    y += destaque ? 7 : 6
+  }
+
+  linhaResumo('Soma do Mês', saldoMes)
+  linhaResumo('Saldo Anterior', saldoAnterior)
+  linhaResumo('Saldo Atual', saldoAtual, true)
+
+  doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+}

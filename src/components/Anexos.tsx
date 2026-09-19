@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 
-export type EntidadeTipo = 'transacao' | 'lancamento' | 'sanitario' | 'maquina' | 'talhao' | 'lote'
+export type EntidadeTipo = 'transacao' | 'lancamento' | 'sanitario' | 'maquina' | 'talhao' | 'lote' | 'fechamento_contabil'
 
 interface AnexosProps {
   entidadeTipo: EntidadeTipo

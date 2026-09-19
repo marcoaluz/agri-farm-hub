@@ -41,6 +41,7 @@ import {
 import { TransacaoForm } from '@/components/financeiro/TransacaoForm'
 import { TransacaoOrigemAcoes, useIdsComAnexo } from '@/components/financeiro/TransacaoOrigemAcoes'
 import { CustosOperacionais } from '@/components/financeiro/CustosOperacionais'
+import { FechamentoContabil } from '@/components/financeiro/FechamentoContabil'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -143,8 +144,10 @@ export function Financeiro() {
   const totalPages = Math.ceil(transacoes.length / perPage)
   const transacoesPag = transacoes.slice(page * perPage, (page + 1) * perPage)
 
-  // Deep-link para transação específica via ?transacao=abc123 ou aba via ?tab=custos
-  const initialTab = transacaoDestaqueId ? 'transacoes' : (tabParam === 'custos' ? 'custos' : 'resumo')
+  // Deep-link para transação específica via ?transacao=abc123 ou aba via ?tab=custos|fechamento
+  const initialTab = transacaoDestaqueId
+    ? 'transacoes'
+    : (tabParam === 'custos' || tabParam === 'fechamento') ? tabParam : 'resumo'
   const [activeTab, setActiveTab] = useState(initialTab)
   const [highlightedId, setHighlightedId] = useState<string | null>(transacaoDestaqueId)
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -353,11 +356,12 @@ export function Financeiro() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 h-auto">
+        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-5 h-auto">
           <TabsTrigger value="resumo" className="text-xs sm:text-sm py-2">📊 Resumo</TabsTrigger>
           <TabsTrigger value="transacoes" className="text-xs sm:text-sm py-2">📋 Transações</TabsTrigger>
           <TabsTrigger value="fluxo" className="text-xs sm:text-sm py-2">📈 Fluxo</TabsTrigger>
           <TabsTrigger value="custos" className="text-xs sm:text-sm py-2">🚜 Custos</TabsTrigger>
+          <TabsTrigger value="fechamento" className="text-xs sm:text-sm py-2">🔒 Fechamento</TabsTrigger>
         </TabsList>
 
 
@@ -856,6 +860,11 @@ export function Financeiro() {
         {/* ═══ ABA CUSTOS OPERACIONAIS ═══ */}
         <TabsContent value="custos" className="space-y-6">
           <CustosOperacionais />
+        </TabsContent>
+
+        {/* ═══ ABA FECHAMENTO CONTÁBIL ═══ */}
+        <TabsContent value="fechamento" className="space-y-6">
+          <FechamentoContabil />
         </TabsContent>
       </Tabs>
 
