@@ -82,7 +82,7 @@ export function FechamentoContabil() {
     }
   }
 
-  const baixarMovimentoCaixa = async (mes: number) => {
+    const baixarMovimentoCaixa = async (mes: number) => {
     if (!propId) return
     setGerandoMovimentoMes(mes)
     try {
@@ -91,19 +91,19 @@ export function FechamentoContabil() {
 
       const [{ data: doMes, error: errMes }, { data: anteriores, error: errAnt }] = await Promise.all([
         supabase
-          .from('transacoes')
-          .select('data_pagamento, descricao, valor, tipo, numero_nf, contatos(nome)')
+          .from('vw_movimentos_financeiros')
+          .select('data_referencia, descricao, valor, tipo, numero_nf, fornecedor_cliente')
           .eq('propriedade_id', propId)
           .eq('status', 'pago')
-          .gte('data_pagamento', inicioMes)
-          .lte('data_pagamento', fimMes)
-          .order('data_pagamento', { ascending: true }),
+          .gte('data_referencia', inicioMes)
+          .lte('data_referencia', fimMes)
+          .order('data_referencia', { ascending: true }),
         supabase
-          .from('transacoes')
+          .from('vw_movimentos_financeiros')
           .select('tipo, valor')
           .eq('propriedade_id', propId)
           .eq('status', 'pago')
-          .lt('data_pagamento', inicioMes),
+          .lt('data_referencia', inicioMes),
       ])
       if (errMes) throw errMes
       if (errAnt) throw errAnt
@@ -115,10 +115,10 @@ export function FechamentoContabil() {
 
       const linhas = (doMes || []).map((t: any) => {
         const partes = [t.descricao]
-        if (t.contatos?.nome) partes.push(t.contatos.nome)
+        if (t.fornecedor_cliente) partes.push(t.fornecedor_cliente)
         if (t.numero_nf) partes.push(`NF ${t.numero_nf}`)
         return {
-          data: format(parseISO(t.data_pagamento), 'dd/MM/yyyy'),
+          data: format(parseISO(t.data_referencia), 'dd/MM/yyyy'),
           historico: partes.join(' — '),
           entrada: t.tipo === 'receita' ? Number(t.valor) : 0,
           saida: t.tipo === 'despesa' ? Number(t.valor) : 0,
