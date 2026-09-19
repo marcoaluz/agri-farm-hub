@@ -937,7 +937,20 @@ function desenharGraficoBarras(doc: jsPDF, opts: {
   doc.setDrawColor(160)
   doc.line(plotX, zeroY, plotX + plotWidth, zeroY)
 
-  // Barras: Crédito e Débito lado a lado, por mês
+  // 1) Linha de Saldo primeiro — fica "por baixo" das barras e dos números
+  doc.setDrawColor(...COR_SALDO)
+  doc.setLineWidth(0.5)
+  for (let i = 0; i < n; i++) {
+    if (i === 0) continue
+    const px = plotX + i * slotWidth + slotWidth / 2
+    const py = escalaY(saldo[i] || 0)
+    const prevPx = plotX + (i - 1) * slotWidth + slotWidth / 2
+    const prevPy = escalaY(saldo[i - 1] || 0)
+    doc.line(prevPx, prevPy, px, py)
+  }
+  doc.setDrawColor(0)
+
+  // 2) Barras de Crédito e Débito por cima da linha, com o valor em cima de cada uma
   const barW = slotWidth * 0.32
   const gap = slotWidth * 0.06
   const labelBarY = (topoBarra: number) => Math.min(Math.max(topoBarra - 1.5, y + 3), y + height - 1)
@@ -968,23 +981,28 @@ function desenharGraficoBarras(doc: jsPDF, opts: {
   }
   doc.setTextColor(0)
 
-  // Linha de Saldo por cima das barras — só a forma, sem número (o valor
-  // exato já está na tabela e no "Resultado do Período" acima do gráfico;
-  // rotular aqui colidiria com as barras sempre que Saldo ~ Crédito).
-  doc.setDrawColor(...COR_SALDO)
+  // 3) Pontos e números do Saldo por cima de tudo — pula o número quando ele
+  //    ficaria colado no número de Crédito ou Débito do mesmo mês.
+  const DIST_MIN = 6
   doc.setFillColor(...COR_SALDO)
-  doc.setLineWidth(0.5)
   for (let i = 0; i < n; i++) {
     const px = plotX + i * slotWidth + slotWidth / 2
     const py = escalaY(saldo[i] || 0)
-    if (i > 0) {
-      const prevPx = plotX + (i - 1) * slotWidth + slotWidth / 2
-      const prevPy = escalaY(saldo[i - 1] || 0)
-      doc.line(prevPx, prevPy, px, py)
-    }
     doc.circle(px, py, 0.7, 'F')
+    if (saldo[i] !== 0) {
+      const topoCredito = credito[i] ? Math.min(escalaY(credito[i]), zeroY) : null
+      const topoDebito = debito[i] ? Math.min(escalaY(debito[i]), zeroY) : null
+      const colide =
+        (topoCredito !== null && Math.abs(py - topoCredito) < DIST_MIN) ||
+        (topoDebito !== null && Math.abs(py - topoDebito) < DIST_MIN)
+      if (!colide) {
+        doc.setFontSize(5.5)
+        doc.setTextColor(...COR_SALDO)
+        const labelY = saldo[i] >= 0 ? Math.max(py - 2, y + 2) : Math.min(py + 4, y + height - 1)
+        doc.text(fmtCompacto(saldo[i]), px, labelY, { align: 'center' })
+      }
+    }
   }
-  doc.setDrawColor(0)
   doc.setTextColor(0)
 
   // Eixo X
