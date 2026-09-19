@@ -17,7 +17,7 @@ import { useGlobal } from '@/contexts/GlobalContext'
 import { usePapelUsuario } from '@/hooks/usePapelUsuario'
 import { useBalanceteMensal, useToggleFechamento, useGarantirFechamento, type BalanceteMes } from '@/hooks/useFechamentoContabil'
 import { Anexos } from '@/components/Anexos'
-import { exportarBalanceteGeralPDF, exportarMovimentoCaixaPDF } from '@/lib/exportTabela'
+import { exportarBalanceteGeralPDF, exportarMovimentoCaixaPDF, exportarMovimentoCaixaAnualPDF } from '@/lib/exportTabela'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
@@ -43,6 +43,7 @@ export function FechamentoContabil() {
   const [anexoAlvo, setAnexoAlvo] = useState<{ mes: number; fechamentoId: string } | null>(null)
   const [gerandoMovimentoMes, setGerandoMovimentoMes] = useState<number | null>(null)
   const [gerandoBalancete, setGerandoBalancete] = useState(false)
+  const [gerandoMovimentoAnual, setGerandoMovimentoAnual] = useState(false)
 
   const { data: balancete = [], isLoading } = useBalanceteMensal(propId, ano)
   const toggleFechamento = useToggleFechamento(propId, ano)
@@ -63,6 +64,70 @@ export function FechamentoContabil() {
       onSuccess: (id) => setAnexoAlvo({ mes: m.mes, fechamentoId: id }),
       onError: (e: any) => toast.error(e?.message || 'Erro ao criar fechamento do mês'),
     })
+  }
+
+  const baixarMovimentoCaixaAnual = async () => {
+    if (!propId) return
+    setGerandoMovimentoAnual(true)
+    try {
+      const inicioAno = `${ano}-01-01`
+      const fimAno = `${ano}-12-31`
+
+      const [{ data: doAno, error: errAno }, { data: anteriores, error: errAnt }] = await Promise.all([
+        supabase
+          .from('vw_movimentos_financeiros')
+          .select('data_referencia, descricao, valor, tipo, numero_nf, fornecedor_cliente')
+          .eq('propriedade_id', propId)
+          .eq('status', 'pago')
+          .gte('data_referencia', inicioAno)
+          .lte('data_referencia', fimAno)
+          .order('data_referencia', { ascending: true }),
+        supabase
+          .from('vw_movimentos_financeiros')
+          .select('tipo, valor')
+          .eq('propriedade_id', propId)
+          .eq('status', 'pago')
+          .lt('data_referencia', inicioAno),
+      ])
+      if (errAno) throw errAno
+      if (errAnt) throw errAnt
+
+      const saldoInicial = (anteriores || []).reduce(
+        (s: number, t: any) => s + (t.tipo === 'receita' ? Number(t.valor) : -Number(t.valor)),
+        0
+      )
+
+      const linhasFormatadas = (doAno || []).map((t: any) => {
+        const partes = [t.descricao]
+        if (t.fornecedor_cliente) partes.push(t.fornecedor_cliente)
+        if (t.numero_nf) partes.push(`NF ${t.numero_nf}`)
+        return {
+          mes: Number(t.data_referencia.substring(5, 7)),
+          data: format(parseISO(t.data_referencia), 'dd/MM/yyyy'),
+          historico: partes.join(' — '),
+          entrada: t.tipo === 'receita' ? Number(t.valor) : 0,
+          saida: t.tipo === 'despesa' ? Number(t.valor) : 0,
+        }
+      })
+
+      const meses = Array.from({ length: 12 }, (_, i) => ({
+        mes: i + 1,
+        linhas: linhasFormatadas.filter((l) => l.mes === i + 1),
+      }))
+
+      await exportarMovimentoCaixaAnualPDF({
+        nomeArquivo: `movimento-caixa-geral-${ano}`,
+        propriedadeNome: propriedadeAtual?.nome || '',
+        proprietarioNome: propriedadeAtual?.responsavel || '',
+        ano,
+        saldoInicial,
+        meses,
+      })
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao gerar o Movimento de Caixa Geral')
+    } finally {
+      setGerandoMovimentoAnual(false)
+    }
   }
 
   const baixarBalanceteGeral = async () => {
@@ -171,14 +236,24 @@ export function FechamentoContabil() {
           </Select>
         </div>
 
-        <Button
-          variant="outline" size="sm" disabled={gerandoBalancete || balancete.length === 0}
-          onClick={baixarBalanceteGeral}
-        >
-          {gerandoBalancete
-            ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Gerando...</>
-            : <><FileText className="h-4 w-4 mr-1" /> Balancete Geral (PDF)</>}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline" size="sm" disabled={gerandoMovimentoAnual || balancete.length === 0}
+            onClick={baixarMovimentoCaixaAnual}
+          >
+            {gerandoMovimentoAnual
+              ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Gerando...</>
+              : <><FileText className="h-4 w-4 mr-1" /> Movimento Caixa Geral (PDF)</>}
+          </Button>
+          <Button
+            variant="outline" size="sm" disabled={gerandoBalancete || balancete.length === 0}
+            onClick={baixarBalanceteGeral}
+          >
+            {gerandoBalancete
+              ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Gerando...</>
+              : <><FileText className="h-4 w-4 mr-1" /> Balancete Geral (PDF)</>}
+          </Button>
+        </div>
       </div>
 
       <Card>

@@ -902,6 +902,20 @@ function desenharGraficoBarras(doc: jsPDF, opts: {
   const escalaY = (v: number) => y + height - ((v - minV) / range) * height
   const zeroY = escalaY(0)
 
+  // Desenha o texto com um fundo branco atrás, pra ficar legível em cima
+  // de barra, linha ou qualquer outra coisa.
+  const rotuloComFundo = (texto: string, px: number, py: number, cor: [number, number, number], tamanho = 5.5) => {
+    doc.setFontSize(tamanho)
+    doc.setFont('helvetica', 'bold')
+    const w = doc.getTextWidth(texto)
+    doc.setFillColor(255, 255, 255)
+    doc.rect(px - w / 2 - 0.8, py - tamanho * 0.32 - 0.8, w + 1.6, tamanho * 0.32 + 1.6, 'F')
+    doc.setTextColor(...cor)
+    doc.text(texto, px, py, { align: 'center' })
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(0)
+  }
+
   // Legenda
   let lx = plotX
   const ly = y - 5
@@ -937,7 +951,7 @@ function desenharGraficoBarras(doc: jsPDF, opts: {
   doc.setDrawColor(160)
   doc.line(plotX, zeroY, plotX + plotWidth, zeroY)
 
-  // 1) Linha de Saldo primeiro — fica "por baixo" das barras e dos números
+  // 1) Linha de Saldo primeiro — fica "por baixo" das barras
   doc.setDrawColor(...COR_SALDO)
   doc.setLineWidth(0.5)
   for (let i = 0; i < n; i++) {
@@ -950,10 +964,10 @@ function desenharGraficoBarras(doc: jsPDF, opts: {
   }
   doc.setDrawColor(0)
 
-  // 2) Barras de Crédito e Débito por cima da linha, com o valor em cima de cada uma
+  // 2) Barras de Crédito e Débito, com número (fundo branco) em cima de cada uma
   const barW = slotWidth * 0.32
   const gap = slotWidth * 0.06
-  const labelBarY = (topoBarra: number) => Math.min(Math.max(topoBarra - 1.5, y + 3), y + height - 1)
+  const clampY = (v: number) => Math.min(Math.max(v, y + 3), y + height - 1)
   for (let i = 0; i < n; i++) {
     const slotCenter = plotX + i * slotWidth + slotWidth / 2
     const cx = slotCenter - gap / 2 - barW
@@ -963,47 +977,27 @@ function desenharGraficoBarras(doc: jsPDF, opts: {
     const cy = escalaY(cv)
     doc.setFillColor(...COR_RECEITA)
     doc.rect(cx, Math.min(cy, zeroY), barW, Math.abs(zeroY - cy), 'F')
-    if (cv !== 0) {
-      doc.setFontSize(5)
-      doc.setTextColor(...COR_RECEITA)
-      doc.text(fmtCompacto(cv), cx + barW / 2, labelBarY(Math.min(cy, zeroY)), { align: 'center' })
-    }
+    if (cv !== 0) rotuloComFundo(fmtCompacto(cv), cx + barW / 2, clampY(Math.min(cy, zeroY) - 1.5), COR_RECEITA)
 
     const dv = debito[i] || 0
     const dy = escalaY(dv)
     doc.setFillColor(...COR_DESPESA)
     doc.rect(dx, Math.min(dy, zeroY), barW, Math.abs(zeroY - dy), 'F')
-    if (dv !== 0) {
-      doc.setFontSize(5)
-      doc.setTextColor(...COR_DESPESA)
-      doc.text(fmtCompacto(dv), dx + barW / 2, labelBarY(Math.min(dy, zeroY)), { align: 'center' })
-    }
+    if (dv !== 0) rotuloComFundo(fmtCompacto(dv), dx + barW / 2, clampY(Math.min(dy, zeroY) - 1.5), COR_DESPESA)
   }
-  doc.setTextColor(0)
 
-  // 3) Pontos e números do Saldo por cima de tudo — pula o número quando ele
-  //    ficaria colado no número de Crédito ou Débito do mesmo mês.
-  const DIST_MIN = 6
+  // 3) Pontos e números do Saldo por cima de tudo — sempre visível, com fundo branco
   doc.setFillColor(...COR_SALDO)
   for (let i = 0; i < n; i++) {
     const px = plotX + i * slotWidth + slotWidth / 2
     const py = escalaY(saldo[i] || 0)
+    doc.setFillColor(...COR_SALDO)
     doc.circle(px, py, 0.7, 'F')
     if (saldo[i] !== 0) {
-      const topoCredito = credito[i] ? Math.min(escalaY(credito[i]), zeroY) : null
-      const topoDebito = debito[i] ? Math.min(escalaY(debito[i]), zeroY) : null
-      const colide =
-        (topoCredito !== null && Math.abs(py - topoCredito) < DIST_MIN) ||
-        (topoDebito !== null && Math.abs(py - topoDebito) < DIST_MIN)
-      if (!colide) {
-        doc.setFontSize(5.5)
-        doc.setTextColor(...COR_SALDO)
-        const labelY = saldo[i] >= 0 ? Math.max(py - 2, y + 2) : Math.min(py + 4, y + height - 1)
-        doc.text(fmtCompacto(saldo[i]), px, labelY, { align: 'center' })
-      }
+      const labelY = saldo[i] >= 0 ? clampY(py - 3) : clampY(py + 5.5)
+      rotuloComFundo(fmtCompacto(saldo[i]), px, labelY, COR_SALDO)
     }
   }
-  doc.setTextColor(0)
 
   // Eixo X
   doc.setFontSize(6)
@@ -1233,6 +1227,147 @@ export async function exportarMovimentoCaixaPDF(opts: {
   doc.setDrawColor(120)
   doc.line(margin, y, margin + 80, y)
   doc.text('Ass.:', margin, y + 4)
+  doc.setTextColor(0)
+
+  doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+}
+
+const NOMES_MESES_COMPLETO = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+]
+
+export async function exportarMovimentoCaixaAnualPDF(opts: {
+  nomeArquivo: string
+  propriedadeNome: string
+  proprietarioNome?: string
+  ano: number
+  saldoInicial: number
+  meses: { mes: number; linhas: { data: string; historico: string; entrada: number; saida: number }[] }[]
+}) {
+  const { nomeArquivo, propriedadeNome, proprietarioNome, ano, saldoInicial, meses } = opts
+  const doc = new jsPDF()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 14
+
+  const fmt2 = (v: number) =>
+    Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  const COR_RECEITA: [number, number, number] = [21, 101, 52]
+  const COR_DESPESA: [number, number, number] = [180, 30, 30]
+
+  const logo = await getLogoBase64()
+  const desenharMarcaDagua = () => {
+    if (!logo) return
+    try {
+      const tamanho = 90
+      doc.saveGraphicsState()
+      // @ts-ignore
+      doc.setGState(new (doc as any).GState({ opacity: 0.06 }))
+      doc.addImage(logo, 'PNG', (pageWidth - tamanho) / 2, (pageHeight - tamanho) / 2, tamanho, tamanho)
+      doc.restoreGraphicsState()
+    } catch {}
+  }
+
+  desenharMarcaDagua()
+  let textX = margin
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', margin, 8, 12, 12); textX = margin + 16 } catch {}
+  }
+  doc.setFontSize(14); doc.setFont('helvetica', 'bold')
+  doc.text('Agro GFI', textX, 14)
+  doc.setFontSize(11); doc.setFont('helvetica', 'normal')
+  doc.text('Relatório: Movimento de Caixa Geral', textX, 20)
+  doc.setFontSize(10)
+  doc.text(`Propriedade: ${propriedadeNome}`, margin, 30)
+  let yCabecalho = 36
+  if (proprietarioNome) {
+    doc.text(`Proprietário: ${proprietarioNome}`, margin, yCabecalho)
+    yCabecalho += 6
+  }
+  doc.text(`Ano: ${ano}`, margin, yCabecalho)
+  yCabecalho += 6
+  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, yCabecalho)
+  yCabecalho += 6
+  doc.setTextColor(80)
+  doc.text(`Saldo em 31/12/${ano - 1}: R$ ${fmt2(saldoInicial)}`, margin, yCabecalho)
+  doc.setTextColor(0)
+
+  let y = yCabecalho + 10
+
+  const novaPaginaSeNecessario = (alturaNecessaria: number) => {
+    if (y + alturaNecessaria > pageHeight - 16) {
+      doc.addPage()
+      desenharMarcaDagua()
+      y = 20
+    }
+  }
+
+  let saldoCorrente = saldoInicial
+  let totalEntradaAno = 0
+  let totalSaidaAno = 0
+
+  meses.forEach(({ mes, linhas }) => {
+    const somaEntrada = linhas.reduce((s, l) => s + l.entrada, 0)
+    const somaSaida = linhas.reduce((s, l) => s + l.saida, 0)
+    const saldoMes = somaEntrada - somaSaida
+    saldoCorrente += saldoMes
+    totalEntradaAno += somaEntrada
+    totalSaidaAno += somaSaida
+
+    novaPaginaSeNecessario(22)
+
+    doc.setFillColor(240, 240, 240)
+    doc.rect(margin, y - 4.5, pageWidth - margin * 2, 7, 'F')
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(40)
+    doc.text(`${NOMES_MESES_COMPLETO[mes - 1]} de ${ano}`, margin + 2, y)
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...(saldoMes >= 0 ? COR_RECEITA : COR_DESPESA))
+    doc.text(`Saldo do mês: R$ ${fmt2(saldoMes)}`, pageWidth - margin - 2, y, { align: 'right' })
+    doc.setTextColor(0)
+    y += 6
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Data', 'Histórico', 'Entrada', 'Saída']],
+      body: linhas.length > 0
+        ? linhas.map((l) => [
+            l.data, l.historico,
+            l.entrada > 0 ? `R$ ${fmt2(l.entrada)}` : '',
+            l.saida > 0 ? `R$ ${fmt2(l.saida)}` : '',
+          ])
+        : [['—', 'Nenhuma movimentação neste mês', '', '']],
+      theme: 'striped',
+      styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
+      headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      columnStyles: { 0: { cellWidth: 24 }, 2: { halign: 'left', cellWidth: 34 }, 3: { halign: 'left', cellWidth: 34 } },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      margin: { left: margin, right: margin },
+      didDrawPage: () => desenharMarcaDagua(),
+    })
+
+    y = (doc as any).lastAutoTable.finalY + 8
+  })
+
+  novaPaginaSeNecessario(30)
+  doc.setDrawColor(180)
+  doc.line(margin, y, pageWidth - margin, y)
+  y += 8
+
+  doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(40)
+  doc.text('TOTAL DO ANO', margin, y)
+  doc.setFontSize(9)
+  doc.setTextColor(...COR_RECEITA)
+  doc.text(`Entradas: R$ ${fmt2(totalEntradaAno)}`, margin + 45, y)
+  doc.setTextColor(...COR_DESPESA)
+  doc.text(`Saídas: R$ ${fmt2(totalSaidaAno)}`, margin + 115, y)
+  doc.setTextColor(0)
+  y += 9
+
+  doc.setFontSize(12); doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...(saldoCorrente >= 0 ? COR_RECEITA : COR_DESPESA))
+  doc.text(`SALDO EM 31/12/${ano}: R$ ${fmt2(saldoCorrente)}`, pageWidth - margin, y, { align: 'right' })
   doc.setTextColor(0)
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
