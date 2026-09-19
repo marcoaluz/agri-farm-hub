@@ -104,7 +104,7 @@ export function useRelatorioFinanceiro(
   const transacoes = useQuery({
     queryKey: ['rel-financeiro', idProp, idSafra, filtros],
     queryFn: async () => {
-      let q = db.from('transacoes')
+      let q = db.from('vw_movimentos_financeiros')
         .select('*')
         .eq('propriedade_id', idProp)
         .eq('safra_id', idSafra)
