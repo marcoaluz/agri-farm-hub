@@ -271,8 +271,8 @@ export default function Dashboard() {
   const { data: transData } = useQuery({
     queryKey: ['dash-trans', propId, safraId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('transacoes').select('tipo,valor,status')
+            const { data, error } = await (supabase as any)
+        .from('vw_movimentos_financeiros').select('tipo,valor,status')
         .eq('propriedade_id', propId).eq('safra_id', safraId)
       if (error) throw error
       return (data || []) as any[]
