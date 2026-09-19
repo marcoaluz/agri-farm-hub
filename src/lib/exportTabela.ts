@@ -870,6 +870,137 @@ function desenharGraficoLinha(doc: jsPDF, opts: {
   doc.setTextColor(0)
 }
 
+function desenharGraficoBarras(doc: jsPDF, opts: {
+  x: number; y: number; width: number; height: number
+  labels: string[]
+  credito: number[]
+  debito: number[]
+  saldo: number[]
+}) {
+  const { x, y, width, height, labels, credito, debito, saldo } = opts
+  const n = labels.length
+  const todosValores = [...credito, ...debito, ...saldo]
+  const maxV = Math.max(...todosValores, 0)
+  const minV = Math.min(...todosValores, 0)
+  const range = maxV - minV || 1
+
+  const fmtCompacto = (v: number) => {
+    const abs = Math.abs(v)
+    const sinal = v < 0 ? '-' : ''
+    if (abs >= 1000) return `${sinal}${(abs / 1000).toFixed(0)}k`
+    return `${sinal}${abs.toFixed(0)}`
+  }
+
+  const COR_RECEITA: [number, number, number] = [21, 101, 52]
+  const COR_DESPESA: [number, number, number] = [180, 30, 30]
+  const COR_SALDO: [number, number, number] = [21, 101, 187]
+
+  const labelWidth = 14
+  const plotX = x + labelWidth
+  const plotWidth = width - labelWidth
+  const slotWidth = n > 0 ? plotWidth / n : 0
+  const escalaY = (v: number) => y + height - ((v - minV) / range) * height
+  const zeroY = escalaY(0)
+
+  // Legenda
+  let lx = plotX
+  const ly = y - 5
+  ;[
+    { label: 'Crédito', color: COR_RECEITA },
+    { label: 'Débito', color: COR_DESPESA },
+    { label: 'Saldo', color: COR_SALDO },
+  ].forEach((l) => {
+    doc.setFillColor(...l.color)
+    doc.rect(lx, ly - 2.5, 3, 3, 'F')
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(80)
+    doc.text(l.label, lx + 4.5, ly)
+    lx += doc.getTextWidth(l.label) + 16
+  })
+  doc.setTextColor(0)
+
+  // Eixo Y
+  const NUM_LINHAS_Y = 4
+  doc.setFontSize(6)
+  doc.setFont('helvetica', 'normal')
+  for (let i = 0; i <= NUM_LINHAS_Y; i++) {
+    const v = minV + (range * i) / NUM_LINHAS_Y
+    const py = escalaY(v)
+    doc.setDrawColor(230)
+    doc.line(plotX, py, plotX + plotWidth, py)
+    doc.setTextColor(130)
+    doc.text(fmtCompacto(v), plotX - 2, py + 1.5, { align: 'right' })
+  }
+  doc.setTextColor(0)
+
+  doc.setDrawColor(160)
+  doc.line(plotX, zeroY, plotX + plotWidth, zeroY)
+
+  // Barras: Crédito e Débito lado a lado, por mês
+  const barW = slotWidth * 0.32
+  const gap = slotWidth * 0.06
+  for (let i = 0; i < n; i++) {
+    const slotCenter = plotX + i * slotWidth + slotWidth / 2
+    const cx = slotCenter - gap / 2 - barW
+    const dx = slotCenter + gap / 2
+
+    const cv = credito[i] || 0
+    const cy = escalaY(cv)
+    doc.setFillColor(...COR_RECEITA)
+    doc.rect(cx, Math.min(cy, zeroY), barW, Math.abs(zeroY - cy), 'F')
+    if (cv !== 0) {
+      doc.setFontSize(5)
+      doc.setTextColor(...COR_RECEITA)
+      doc.text(fmtCompacto(cv), cx + barW / 2, Math.max(Math.min(cy, zeroY) - 1.5, y + 2), { align: 'center' })
+    }
+
+    const dv = debito[i] || 0
+    const dy = escalaY(dv)
+    doc.setFillColor(...COR_DESPESA)
+    doc.rect(dx, Math.min(dy, zeroY), barW, Math.abs(zeroY - dy), 'F')
+    if (dv !== 0) {
+      doc.setFontSize(5)
+      doc.setTextColor(...COR_DESPESA)
+      doc.text(fmtCompacto(dv), dx + barW / 2, Math.max(Math.min(dy, zeroY) - 1.5, y + 2), { align: 'center' })
+    }
+  }
+  doc.setTextColor(0)
+
+  // Linha de Saldo por cima das barras
+  doc.setDrawColor(...COR_SALDO)
+  doc.setFillColor(...COR_SALDO)
+  doc.setLineWidth(0.5)
+  for (let i = 0; i < n; i++) {
+    const px = plotX + i * slotWidth + slotWidth / 2
+    const py = escalaY(saldo[i] || 0)
+    if (i > 0) {
+      const prevPx = plotX + (i - 1) * slotWidth + slotWidth / 2
+      const prevPy = escalaY(saldo[i - 1] || 0)
+      doc.line(prevPx, prevPy, px, py)
+    }
+    doc.circle(px, py, 0.7, 'F')
+    if (saldo[i] !== 0) {
+      doc.setFontSize(5.5)
+      doc.setTextColor(...COR_SALDO)
+      const labelY = saldo[i] >= 0 ? Math.max(py - 2, y + 2) : Math.min(py + 4, y + height - 1)
+      doc.text(fmtCompacto(saldo[i]), px, labelY, { align: 'center' })
+    }
+  }
+  doc.setDrawColor(0)
+  doc.setTextColor(0)
+
+  // Eixo X
+  doc.setFontSize(6)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(120)
+  labels.forEach((lbl, i) => {
+    const px = plotX + i * slotWidth + slotWidth / 2
+    doc.text(lbl, px, y + height + 4, { align: 'center' })
+  })
+  doc.setTextColor(0)
+}
+
 const NOMES_MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 export async function exportarBalanceteGeralPDF(opts: {
@@ -968,14 +1099,12 @@ export async function exportarBalanceteGeralPDF(opts: {
   doc.setTextColor(0)
   y += 9
 
-  desenharGraficoLinha(doc, {
+  desenharGraficoBarras(doc, {
     x: margin, y, width: pageWidth - margin * 2, height: 58,
     labels: meses.map((m) => NOMES_MESES_ABREV[m.mes - 1]),
-    series: [
-      { label: 'Crédito', color: COR_RECEITA, valores: meses.map((m) => m.credito) },
-      { label: 'Débito', color: COR_DESPESA, valores: meses.map((m) => m.debito) },
-      { label: 'Saldo', color: COR_SALDO, valores: meses.map((m) => m.saldo), mostrarValores: true },
-    ],
+    credito: meses.map((m) => m.credito),
+    debito: meses.map((m) => m.debito),
+    saldo: meses.map((m) => m.saldo),
   })
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
@@ -1049,7 +1178,7 @@ export async function exportarMovimentoCaixaPDF(opts: {
       : [['—', 'Nenhuma transação paga neste mês', '', '']],
     foot: [['', 'SOMA DO MÊS', `R$ ${fmt2(somaEntrada)}`, `R$ ${fmt2(somaSaida)}`]],
     theme: 'striped',
-    styles: { fontSize: 8.5, cellPadding: 2.5 },
+    styles: { fontSize: 8.5, cellPadding: 2.5, valign: 'middle' },
     headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold' },
     footStyles: { fillColor: [235, 235, 235], textColor: [30, 30, 30], fontStyle: 'bold' },
     columnStyles: { 0: { cellWidth: 24 }, 2: { halign: 'right', cellWidth: 36 }, 3: { halign: 'right', cellWidth: 36 } },
