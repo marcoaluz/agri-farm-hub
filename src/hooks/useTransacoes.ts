@@ -177,8 +177,13 @@ export function useCreateTransacao() {
         const { error } = await supabase.from('transacoes').insert(inserts)
         if (error) throw error
       } else {
-        const { error } = await supabase.from('transacoes').insert({ ...dados, origem: dados.origem || 'manual' })
+        const { data: nova, error } = await supabase
+          .from('transacoes')
+          .insert({ ...dados, origem: dados.origem || 'manual' })
+          .select('id')
+          .single()
         if (error) throw error
+        return { id: (nova as any).id }
       }
     },
     onSuccess: () => {

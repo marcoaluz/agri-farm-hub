@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -38,7 +38,9 @@ import { useTalhoes } from '@/hooks/useTalhoes'
 import { useCreateTransacao, useUpdateTransacao, type Transacao } from '@/hooks/useTransacoes'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { Anexos } from '@/components/Anexos'
+import { Anexos, uploadAnexoArquivo } from '@/components/Anexos'
+import { useAuth } from '@/contexts/AuthContext'
+import { Paperclip } from 'lucide-react'
 import { ContatoCombobox } from '@/components/financeiro/ContatoCombobox'
 
 
@@ -191,6 +193,9 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const watchNumParcelas = form.watch('num_parcelas')
   const watchDataPrimeira = form.watch('data_primeira_parcela')
   const isEditing = !!transacao
+  const { user } = useAuth()
+  const [arquivoNf, setArquivoNf] = useState<File | null>(null)
+  const arquivoNfInputRef = useRef<HTMLInputElement>(null)
 
   const [salvandoParcelado, setSalvandoParcelado] = useState(false)
   const [unidadeLabel, setUnidadeLabel] = useState('')
@@ -417,9 +422,23 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         queryClient.invalidateQueries({ queryKey: ['transacoes'] })
         queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
         queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] })
+        if (arquivoNf && propId && user?.id) {
+          const resultado = await uploadAnexoArquivo({
+            file: arquivoNf, entidadeTipo: 'transacao', entidadeId: (novaTransacao as any).id,
+            propriedadeId: propId, userId: user.id,
+          })
+          if (!resultado.ok) toast.error(resultado.error)
+        }
       } else {
-        await createMutation.mutateAsync(payload)
+        const criada = await createMutation.mutateAsync(payload)
         toast.success('Transação criada')
+        if (arquivoNf && criada?.id && propId && user?.id) {
+          const resultado = await uploadAnexoArquivo({
+            file: arquivoNf, entidadeTipo: 'transacao', entidadeId: criada.id,
+            propriedadeId: propId, userId: user.id,
+          })
+          if (!resultado.ok) toast.error(resultado.error)
+        }
       }
       onOpenChange(false)
     } catch (e: any) {
@@ -721,7 +740,33 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
               <FormField control={form.control} name="numero_nf" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nº NF</FormLabel>
-                  <FormControl><Input {...field} placeholder="Número" /></FormControl>
+                  <div className="flex gap-2">
+                    <FormControl><Input {...field} placeholder="Número" /></FormControl>
+                    {!isEditing && (
+                      <>
+                        <input
+                          ref={arquivoNfInputRef}
+                          type="file"
+                          accept="image/*,application/pdf"
+                          className="hidden"
+                          onChange={(e) => setArquivoNf(e.target.files?.[0] || null)}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          title={arquivoNf ? arquivoNf.name : 'Anexar nota fiscal'}
+                          className={arquivoNf ? 'border-primary text-primary shrink-0' : 'shrink-0'}
+                          onClick={() => arquivoNfInputRef.current?.click()}
+                        >
+                          <Paperclip className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                  {arquivoNf && (
+                    <p className="text-xs text-muted-foreground mt-1">{arquivoNf.name}</p>
+                  )}
                 </FormItem>
               )} />
             </div>

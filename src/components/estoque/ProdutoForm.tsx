@@ -16,14 +16,18 @@ import { Loader2, Package, Plus, Check, X, Trash2, Info } from "lucide-react";
 import { toast } from "sonner";
 
 
-const DICAS_CATEGORIA: Record<string, string> = {
-  "Manutenção": "Categoria exclusiva para peças e insumos usados em manutenção de máquinas (aparece em Máquinas → Manutenção).",
-  "Combustível": "Usado nos abastecimentos de máquinas (aba Máquinas → Abastecimento).",
-  "Ração": "Usado nos registros de alimentação da Pecuária.",
-  "Sal Mineral": "Usado nos registros de alimentação da Pecuária.",
-  "Suplemento": "Usado nos registros de alimentação da Pecuária.",
-  "Vacina": "Usado nos eventos de Sanidade Animal (Pecuária → Sanidade).",
-  "Medicamento": "Usado nos eventos de Sanidade Animal (Pecuária → Sanidade).",
+const DICAS_CATEGORIA: Record<string, Record<string, string>> = {
+  geral: {
+    "Manutenção": "Categoria exclusiva para peças e insumos usados em manutenção de máquinas (aparece em Máquinas → Manutenção).",
+    "Combustível": "Usado nos abastecimentos de máquinas (aba Máquinas → Abastecimento).",
+  },
+  pecuario: {
+    "Ração": "Usado nos registros de alimentação da Pecuária.",
+    "Sal Mineral": "Usado nos registros de alimentação da Pecuária.",
+    "Suplemento": "Usado nos registros de alimentação da Pecuária.",
+    "Vacina": "Usado nos eventos de Sanidade Animal (Pecuária → Sanidade).",
+    "Medicamento": "Usado nos eventos de Sanidade Animal (Pecuária → Sanidade).",
+  },
 };
 
 interface ProdutoFormProps {
@@ -375,10 +379,10 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
               </Button>
             </div>
           )}
-          {!showNovaCategoria && formData.categoria && DICAS_CATEGORIA[formData.categoria] && (
+          {!showNovaCategoria && formData.categoria && DICAS_CATEGORIA[tipoEstoque]?.[formData.categoria] && (
             <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
               <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <span>{DICAS_CATEGORIA[formData.categoria]}</span>
+              <span>{DICAS_CATEGORIA[tipoEstoque][formData.categoria]}</span>
             </div>
           )}
         </div>

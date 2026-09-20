@@ -29,6 +29,47 @@ interface Anexo {
 }
 
 const db = supabase as any
+
+/**
+ * Envia um arquivo pra um registro (transacao, lancamento, etc.) — mesma
+ * lógica que o componente Anexos usa por dentro, exposta pra chamar de
+ * fora dele (ex: logo depois de criar uma transação nova).
+ */
+export async function uploadAnexoArquivo(opts: {
+  file: File
+  entidadeTipo: EntidadeTipo
+  entidadeId: string
+  propriedadeId: string
+  userId: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const { file, entidadeTipo, entidadeId, propriedadeId, userId } = opts
+  if (file.size > MAX_BYTES) return { ok: false, error: `${file.name}: excede 20 MB` }
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const path = `${propriedadeId}/${entidadeTipo}/${entidadeId}/${Date.now()}-${safeName}`
+
+  const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
+    cacheControl: '3600', upsert: false, contentType: file.type || undefined,
+  })
+  if (upErr) return { ok: false, error: `${file.name}: ${upErr.message}` }
+
+  const { error: insErr } = await db.from('anexos').insert({
+    propriedade_id: propriedadeId,
+    entidade_tipo: entidadeTipo,
+    entidade_id: entidadeId,
+    nome_arquivo: file.name,
+    storage_path: path,
+    mime_type: file.type || null,
+    tamanho_bytes: file.size,
+    criado_por: userId,
+  })
+  if (insErr) {
+    await supabase.storage.from(BUCKET).remove([path])
+    return { ok: false, error: `${file.name}: ${insErr.message}` }
+  }
+  return { ok: true }
+}
+
 const BUCKET = 'anexos'
 const ACCEPT = 'image/*,application/pdf'
 const MAX_BYTES = 20 * 1024 * 1024 // 20 MB
@@ -78,33 +119,8 @@ export function Anexos({ entidadeTipo, entidadeId, propriedadeId, titulo = 'Anex
     setUploading(true)
     try {
       for (const file of Array.from(files)) {
-        if (file.size > MAX_BYTES) {
-          toast.error(`${file.name}: excede 20 MB`)
-          continue
-        }
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-        const path = `${propriedadeId}/${entidadeTipo}/${entidadeId}/${Date.now()}-${safeName}`
-
-        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-          cacheControl: '3600', upsert: false, contentType: file.type || undefined,
-        })
-        if (upErr) { toast.error(`${file.name}: ${upErr.message}`); continue }
-
-        const { error: insErr } = await db.from('anexos').insert({
-          propriedade_id: propriedadeId,
-          entidade_tipo: entidadeTipo,
-          entidade_id: entidadeId,
-          nome_arquivo: file.name,
-          storage_path: path,
-          mime_type: file.type || null,
-          tamanho_bytes: file.size,
-          criado_por: user.id,
-        })
-        if (insErr) {
-          await supabase.storage.from(BUCKET).remove([path])
-          toast.error(`${file.name}: ${insErr.message}`)
-          continue
-        }
+        const resultado = await uploadAnexoArquivo({ file, entidadeTipo, entidadeId, propriedadeId, userId: user.id })
+        if (!resultado.ok) { toast.error(resultado.error); continue }
         toast.success(`${file.name} anexado`)
       }
       qc.invalidateQueries({ queryKey })
