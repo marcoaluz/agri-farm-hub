@@ -9,10 +9,12 @@ import { Switch } from '@/components/ui/switch'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { usePapelUsuario } from '@/hooks/usePapelUsuario'
 import { useBalanceteMensal, useToggleFechamento, useGarantirFechamento, type BalanceteMes } from '@/hooks/useFechamentoContabil'
@@ -45,6 +47,11 @@ export function FechamentoContabil() {
   const [gerandoBalancete, setGerandoBalancete] = useState(false)
   const [gerandoMovimentoAnual, setGerandoMovimentoAnual] = useState(false)
   const [gerandoNotaFiscal, setGerandoNotaFiscal] = useState(false)
+  const [nfDialogAberto, setNfDialogAberto] = useState(false)
+  const [nfTipoPeriodo, setNfTipoPeriodo] = useState<'ano' | 'personalizado'>('ano')
+  const [nfDataInicio, setNfDataInicio] = useState('')
+  const [nfDataFim, setNfDataFim] = useState('')
+  const [nfModo, setNfModo] = useState<'ambos' | 'com_nf' | 'sem_nf'>('ambos')
 
   const { data: balancete = [], isLoading } = useBalanceteMensal(propId, ano)
   const toggleFechamento = useToggleFechamento(propId, ano)
@@ -133,6 +140,18 @@ export function FechamentoContabil() {
 
   const baixarRelatorioNotaFiscal = async () => {
     if (!propId) return
+
+    const usaPersonalizado = nfTipoPeriodo === 'personalizado'
+    if (usaPersonalizado && (!nfDataInicio || !nfDataFim)) {
+      toast.error('Preencha as duas datas do período')
+      return
+    }
+    const dataInicio = usaPersonalizado ? nfDataInicio : `${ano}-01-01`
+    const dataFim = usaPersonalizado ? nfDataFim : `${ano}-12-31`
+    const periodoLabel = usaPersonalizado
+      ? `Período: ${format(parseISO(nfDataInicio), 'dd/MM/yyyy')} a ${format(parseISO(nfDataFim), 'dd/MM/yyyy')}`
+      : `Ano: ${ano}`
+
     setGerandoNotaFiscal(true)
     try {
       const { data, error } = await supabase
@@ -140,8 +159,8 @@ export function FechamentoContabil() {
         .select('data_referencia, descricao, valor, tipo, numero_nf, fornecedor_cliente')
         .eq('propriedade_id', propId)
         .eq('status', 'pago')
-        .gte('data_referencia', `${ano}-01-01`)
-        .lte('data_referencia', `${ano}-12-31`)
+        .gte('data_referencia', dataInicio)
+        .lte('data_referencia', dataFim)
         .order('data_referencia', { ascending: true })
       if (error) throw error
 
@@ -158,13 +177,15 @@ export function FechamentoContabil() {
       const semNf = linhas.filter((l) => l.numero_nf.trim() === '')
 
       await exportarNotaFiscalPDF({
-        nomeArquivo: `notas-fiscais-${ano}`,
+        nomeArquivo: usaPersonalizado ? `notas-fiscais-${nfDataInicio}-a-${nfDataFim}` : `notas-fiscais-${ano}`,
         propriedadeNome: propriedadeAtual?.nome || '',
         proprietarioNome: propriedadeAtual?.responsavel || '',
-        ano,
+        periodoLabel,
+        modo: nfModo,
         comNf,
         semNf,
       })
+      setNfDialogAberto(false)
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao gerar o relatório de notas fiscais')
     } finally {
@@ -296,12 +317,10 @@ export function FechamentoContabil() {
               : <><FileText className="h-4 w-4 mr-1" /> Balancete Geral (PDF)</>}
           </Button>
           <Button
-            variant="outline" size="sm" disabled={gerandoNotaFiscal || balancete.length === 0}
-            onClick={baixarRelatorioNotaFiscal}
+            variant="outline" size="sm" disabled={balancete.length === 0}
+            onClick={() => setNfDialogAberto(true)}
           >
-            {gerandoNotaFiscal
-              ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Gerando...</>
-              : <><FileText className="h-4 w-4 mr-1" /> Notas Fiscais (PDF)</>}
+            <FileText className="h-4 w-4 mr-1" /> Notas Fiscais (PDF)
           </Button>
         </div>
       </div>
@@ -491,6 +510,57 @@ export function FechamentoContabil() {
               propriedadeId={propId}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={nfDialogAberto} onOpenChange={setNfDialogAberto}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Relatório de Notas Fiscais</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Período</Label>
+              <Select value={nfTipoPeriodo} onValueChange={(v: any) => setNfTipoPeriodo(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ano">Ano inteiro ({ano})</SelectItem>
+                  <SelectItem value="personalizado">Período específico</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {nfTipoPeriodo === 'personalizado' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>De</Label>
+                  <Input type="date" value={nfDataInicio} onChange={(e) => setNfDataInicio(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Até</Label>
+                  <Input type="date" value={nfDataFim} onChange={(e) => setNfDataFim(e.target.value)} />
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>O que incluir</Label>
+              <Select value={nfModo} onValueChange={(v: any) => setNfModo(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ambos">Com e sem Nota Fiscal</SelectItem>
+                  <SelectItem value="com_nf">Só transações com Nota Fiscal</SelectItem>
+                  <SelectItem value="sem_nf">Só transações sem Nota Fiscal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNfDialogAberto(false)}>Cancelar</Button>
+            <Button onClick={baixarRelatorioNotaFiscal} disabled={gerandoNotaFiscal}>
+              {gerandoNotaFiscal
+                ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Gerando...</>
+                : 'Gerar PDF'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -1387,11 +1387,12 @@ export async function exportarNotaFiscalPDF(opts: {
   nomeArquivo: string
   propriedadeNome: string
   proprietarioNome?: string
-  ano: number
+  periodoLabel: string
+  modo: 'ambos' | 'com_nf' | 'sem_nf'
   comNf: { data: string; descricao: string; numero_nf: string; fornecedor_cliente: string; entrada: number; saida: number }[]
   semNf: { data: string; descricao: string; fornecedor_cliente: string; entrada: number; saida: number }[]
 }) {
-  const { nomeArquivo, propriedadeNome, proprietarioNome, ano, comNf, semNf } = opts
+  const { nomeArquivo, propriedadeNome, proprietarioNome, periodoLabel, modo, comNf, semNf } = opts
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -1424,7 +1425,11 @@ export async function exportarNotaFiscalPDF(opts: {
   doc.setFontSize(14); doc.setFont('helvetica', 'bold')
   doc.text('Agro GFI', textX, 14)
   doc.setFontSize(11); doc.setFont('helvetica', 'normal')
-  doc.text('Relatório: Transações com e sem Nota Fiscal', textX, 20)
+  const tituloRelatorio =
+    modo === 'com_nf' ? 'Relatório: Transações com Nota Fiscal'
+    : modo === 'sem_nf' ? 'Relatório: Transações sem Nota Fiscal'
+    : 'Relatório: Transações com e sem Nota Fiscal'
+  doc.text(tituloRelatorio, textX, 20)
   doc.setFontSize(10)
   doc.text(`Propriedade: ${propriedadeNome}`, margin, 30)
   let yCabecalho = 36
@@ -1432,7 +1437,7 @@ export async function exportarNotaFiscalPDF(opts: {
     doc.text(`Proprietário: ${proprietarioNome}`, margin, yCabecalho)
     yCabecalho += 6
   }
-  doc.text(`Ano: ${ano}`, margin, yCabecalho)
+  doc.text(periodoLabel, margin, yCabecalho)
   yCabecalho += 6
   doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, yCabecalho)
 
@@ -1443,60 +1448,70 @@ export async function exportarNotaFiscalPDF(opts: {
   const somaEntradaSem = semNf.reduce((s, l) => s + l.entrada, 0)
   const somaSaidaSem = semNf.reduce((s, l) => s + l.saida, 0)
 
-  doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(40)
-  doc.text(`Transações com Nota Fiscal (${comNf.length})`, margin, y)
-  doc.setTextColor(0)
-  y += 6
+  const mostrarComNf = modo === 'ambos' || modo === 'com_nf'
+  const mostrarSemNf = modo === 'ambos' || modo === 'sem_nf'
 
-  autoTable(doc, {
-    startY: y,
-    head: [['Data', 'Descrição', 'Nº NF', 'Fornecedor/Cliente', 'Entrada', 'Saída']],
-    body: comNf.length > 0
-      ? comNf.map((l) => [
-          l.data, l.descricao, l.numero_nf || '-', l.fornecedor_cliente || '-',
-          l.entrada > 0 ? `R$ ${fmt2(l.entrada)}` : '',
-          l.saida > 0 ? `R$ ${fmt2(l.saida)}` : '',
-        ])
-      : [['—', 'Nenhuma transação com nota fiscal neste ano', '', '', '', '']],
-    foot: [['', '', '', 'SOMA', `R$ ${fmt2(somaEntradaCom)}`, `R$ ${fmt2(somaSaidaCom)}`]],
-    theme: 'striped',
-    styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
-    headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
-    footStyles: { fillColor: [235, 235, 235], textColor: [30, 30, 30], fontStyle: 'bold' },
-    columnStyles: { 0: { cellWidth: 20 }, 2: { cellWidth: 20 }, 4: { halign: 'left', cellWidth: 26 }, 5: { halign: 'left', cellWidth: 26 } },
-    alternateRowStyles: { fillColor: [248, 248, 248] },
-    margin: { left: margin, right: margin },
-    didDrawPage: () => desenharMarcaDagua(),
-  })
+  if (mostrarComNf) {
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(40)
+    doc.text(`Transações com Nota Fiscal (${comNf.length})`, margin, y)
+    doc.setTextColor(0)
+    y += 6
 
-  y = (doc as any).lastAutoTable.finalY + 12
-  if (y + 30 > pageHeight - 16) { doc.addPage(); desenharMarcaDagua(); y = 20 }
+    autoTable(doc, {
+      startY: y,
+      head: [['Data', 'Descrição', 'Nº NF', 'Fornecedor/Cliente', 'Entrada', 'Saída']],
+      body: comNf.length > 0
+        ? comNf.map((l) => [
+            l.data, l.descricao, l.numero_nf || '-', l.fornecedor_cliente || '-',
+            l.entrada > 0 ? `R$ ${fmt2(l.entrada)}` : '',
+            l.saida > 0 ? `R$ ${fmt2(l.saida)}` : '',
+          ])
+        : [['—', 'Nenhuma transação com nota fiscal neste período', '', '', '', '']],
+      foot: [['', '', '', 'SOMA', `R$ ${fmt2(somaEntradaCom)}`, `R$ ${fmt2(somaSaidaCom)}`]],
+      showFoot: 'lastPage',
+      theme: 'striped',
+      styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
+      headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      footStyles: { fillColor: [235, 235, 235], textColor: [30, 30, 30], fontStyle: 'bold' },
+      columnStyles: { 0: { cellWidth: 20 }, 2: { cellWidth: 20 }, 4: { halign: 'left', cellWidth: 26 }, 5: { halign: 'left', cellWidth: 26 } },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      margin: { left: margin, right: margin },
+      didDrawPage: () => desenharMarcaDagua(),
+    })
 
-  doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(40)
-  doc.text(`Transações sem Nota Fiscal (${semNf.length})`, margin, y)
-  doc.setTextColor(0)
-  y += 6
+    y = (doc as any).lastAutoTable.finalY + 12
+  }
 
-  autoTable(doc, {
-    startY: y,
-    head: [['Data', 'Descrição', 'Fornecedor/Cliente', 'Entrada', 'Saída']],
-    body: semNf.length > 0
-      ? semNf.map((l) => [
-          l.data, l.descricao, l.fornecedor_cliente || '-',
-          l.entrada > 0 ? `R$ ${fmt2(l.entrada)}` : '',
-          l.saida > 0 ? `R$ ${fmt2(l.saida)}` : '',
-        ])
-      : [['—', 'Nenhuma transação sem nota fiscal neste ano', '', '', '']],
-    foot: [['', '', 'SOMA', `R$ ${fmt2(somaEntradaSem)}`, `R$ ${fmt2(somaSaidaSem)}`]],
-    theme: 'striped',
-    styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
-    headStyles: { fillColor: [180, 30, 30], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
-    footStyles: { fillColor: [235, 235, 235], textColor: [30, 30, 30], fontStyle: 'bold' },
-    columnStyles: { 0: { cellWidth: 20 }, 3: { halign: 'left', cellWidth: 30 }, 4: { halign: 'left', cellWidth: 30 } },
-    alternateRowStyles: { fillColor: [248, 248, 248] },
-    margin: { left: margin, right: margin },
-    didDrawPage: () => desenharMarcaDagua(),
-  })
+  if (mostrarSemNf) {
+    if (mostrarComNf) { doc.addPage(); desenharMarcaDagua(); y = 20 }
+
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(40)
+    doc.text(`Transações sem Nota Fiscal (${semNf.length})`, margin, y)
+    doc.setTextColor(0)
+    y += 6
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Data', 'Descrição', 'Fornecedor/Cliente', 'Entrada', 'Saída']],
+      body: semNf.length > 0
+        ? semNf.map((l) => [
+            l.data, l.descricao, l.fornecedor_cliente || '-',
+            l.entrada > 0 ? `R$ ${fmt2(l.entrada)}` : '',
+            l.saida > 0 ? `R$ ${fmt2(l.saida)}` : '',
+          ])
+        : [['—', 'Nenhuma transação sem nota fiscal neste período', '', '', '']],
+      foot: [['', '', 'SOMA', `R$ ${fmt2(somaEntradaSem)}`, `R$ ${fmt2(somaSaidaSem)}`]],
+      showFoot: 'lastPage',
+      theme: 'striped',
+      styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
+      headStyles: { fillColor: [180, 30, 30], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      footStyles: { fillColor: [235, 235, 235], textColor: [30, 30, 30], fontStyle: 'bold' },
+      columnStyles: { 0: { cellWidth: 20 }, 3: { halign: 'left', cellWidth: 30 }, 4: { halign: 'left', cellWidth: 30 } },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      margin: { left: margin, right: margin },
+      didDrawPage: () => desenharMarcaDagua(),
+    })
+  }
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 }
