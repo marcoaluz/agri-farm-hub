@@ -17,7 +17,7 @@ import { useGlobal } from '@/contexts/GlobalContext'
 import { usePapelUsuario } from '@/hooks/usePapelUsuario'
 import { useBalanceteMensal, useToggleFechamento, useGarantirFechamento, type BalanceteMes } from '@/hooks/useFechamentoContabil'
 import { Anexos } from '@/components/Anexos'
-import { exportarBalanceteGeralPDF, exportarMovimentoCaixaPDF, exportarMovimentoCaixaAnualPDF } from '@/lib/exportTabela'
+import { exportarBalanceteGeralPDF, exportarMovimentoCaixaPDF, exportarMovimentoCaixaAnualPDF, exportarNotaFiscalPDF } from '@/lib/exportTabela'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
@@ -44,6 +44,7 @@ export function FechamentoContabil() {
   const [gerandoMovimentoMes, setGerandoMovimentoMes] = useState<number | null>(null)
   const [gerandoBalancete, setGerandoBalancete] = useState(false)
   const [gerandoMovimentoAnual, setGerandoMovimentoAnual] = useState(false)
+  const [gerandoNotaFiscal, setGerandoNotaFiscal] = useState(false)
 
   const { data: balancete = [], isLoading } = useBalanceteMensal(propId, ano)
   const toggleFechamento = useToggleFechamento(propId, ano)
@@ -127,6 +128,47 @@ export function FechamentoContabil() {
       toast.error(e?.message || 'Erro ao gerar o Movimento de Caixa Geral')
     } finally {
       setGerandoMovimentoAnual(false)
+    }
+  }
+
+  const baixarRelatorioNotaFiscal = async () => {
+    if (!propId) return
+    setGerandoNotaFiscal(true)
+    try {
+      const { data, error } = await supabase
+        .from('vw_movimentos_financeiros')
+        .select('data_referencia, descricao, valor, tipo, numero_nf, fornecedor_cliente')
+        .eq('propriedade_id', propId)
+        .eq('status', 'pago')
+        .gte('data_referencia', `${ano}-01-01`)
+        .lte('data_referencia', `${ano}-12-31`)
+        .order('data_referencia', { ascending: true })
+      if (error) throw error
+
+      const linhas = (data || []).map((t: any) => ({
+        data: format(parseISO(t.data_referencia), 'dd/MM/yyyy'),
+        descricao: t.descricao,
+        numero_nf: t.numero_nf || '',
+        fornecedor_cliente: t.fornecedor_cliente || '',
+        entrada: t.tipo === 'receita' ? Number(t.valor) : 0,
+        saida: t.tipo === 'despesa' ? Number(t.valor) : 0,
+      }))
+
+      const comNf = linhas.filter((l) => l.numero_nf.trim() !== '')
+      const semNf = linhas.filter((l) => l.numero_nf.trim() === '')
+
+      await exportarNotaFiscalPDF({
+        nomeArquivo: `notas-fiscais-${ano}`,
+        propriedadeNome: propriedadeAtual?.nome || '',
+        proprietarioNome: propriedadeAtual?.responsavel || '',
+        ano,
+        comNf,
+        semNf,
+      })
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao gerar o relatório de notas fiscais')
+    } finally {
+      setGerandoNotaFiscal(false)
     }
   }
 
@@ -252,6 +294,14 @@ export function FechamentoContabil() {
             {gerandoBalancete
               ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Gerando...</>
               : <><FileText className="h-4 w-4 mr-1" /> Balancete Geral (PDF)</>}
+          </Button>
+          <Button
+            variant="outline" size="sm" disabled={gerandoNotaFiscal || balancete.length === 0}
+            onClick={baixarRelatorioNotaFiscal}
+          >
+            {gerandoNotaFiscal
+              ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Gerando...</>
+              : <><FileText className="h-4 w-4 mr-1" /> Notas Fiscais (PDF)</>}
           </Button>
         </div>
       </div>
