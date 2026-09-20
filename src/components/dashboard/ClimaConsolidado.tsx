@@ -44,9 +44,7 @@ export function ClimaConsolidado({ propriedades }: { propriedades?: Prop[] }) {
 
       if (error) throw error
       const diretas = (data || []) as Prop[]
-      // Usuário comum com zero propriedades é estado normal — não é motivo
-      // pra cair no fallback "admin" (que só faz sentido pra erro de verdade).
-      if (diretas.length > 0 || error === null) return diretas
+      if (diretas.length > 0) return diretas
 
       const { data: adminData, error: adminError } = await supabase.rpc('get_todas_propriedades_admin' as any)
       if (adminError) throw adminError
