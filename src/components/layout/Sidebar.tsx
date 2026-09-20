@@ -70,6 +70,19 @@ export const routes = [
 export function Sidebar({ open, onClose }: SidebarProps) {
   const location = useLocation()
   const { user, signOut } = useAuth()
+  const { data: perfilNome } = useQuery({
+    queryKey: ['sidebar-nome-usuario', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('full_name')
+        .eq('id', user!.id)
+        .single()
+      return (data as any)?.full_name as string | null
+    },
+    enabled: !!user?.id,
+    staleTime: 10 * 60 * 1000,
+  })
   const { propriedadeAtual } = useGlobal()
   const { modulos } = useModulos()
   const { data: modulosAcesso } = useModulosAcesso()
@@ -339,18 +352,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           className="mt-auto shrink-0 border-t border-sidebar-border p-3"
           style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
         >
-          <div className="mb-3 flex items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent/20">
-              <span className="text-sm font-medium text-sidebar-foreground">
-                {user?.email?.[0]?.toUpperCase() ?? '?'}
-              </span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-sidebar-foreground">
-                {(user?.user_metadata as any)?.nome_completo || user?.email?.split('@')[0] || 'Usuário'}
-              </p>
-              <p className="truncate text-xs text-sidebar-foreground/60">{user?.email}</p>
-            </div>
+          <div className="mb-3">
+            <p className="truncate text-sm font-medium text-sidebar-foreground">
+              {perfilNome || user?.email?.split('@')[0] || 'Usuário'}
+            </p>
           </div>
           <Button
             variant="outline"
