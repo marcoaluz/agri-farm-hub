@@ -583,7 +583,7 @@ export function Financeiro() {
                               )}
                             </div>
                             {t.parcela_numero && <span className="text-xs text-muted-foreground">Parcela {t.parcela_numero}/{t.parcela_total}</span>}
-                            <TransacaoOrigemAcoes origem={t.origem} idsComAnexo={idsComAnexo} />
+                            <TransacaoOrigemAcoes origem={t.origem} transacaoId={t.id} idsComAnexo={idsComAnexo} />
                           </div>
                         </div>
                       </TableCell>
@@ -719,7 +719,7 @@ export function Financeiro() {
                             <div>{categoriasLabel[t.categoria] || t.categoria} · {format(parseISO(t.data_vencimento), 'dd/MM/yy')}</div>
                             {t.parcela_numero && <div>Parcela {t.parcela_numero}/{t.parcela_total}</div>}
                           </div>
-                          <TransacaoOrigemAcoes origem={t.origem} compact idsComAnexo={idsComAnexo} />
+                          <TransacaoOrigemAcoes origem={t.origem} transacaoId={t.id} compact idsComAnexo={idsComAnexo} />
                         </div>
                         <div className="shrink-0 text-right">
                           <div className={cn('font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>

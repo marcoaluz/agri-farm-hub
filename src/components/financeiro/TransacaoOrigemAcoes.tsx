@@ -15,7 +15,7 @@ export function useIdsComAnexo(propriedadeId?: string | null) {
         .from('anexos' as any)
         .select('entidade_tipo, entidade_id')
         .eq('propriedade_id', propriedadeId)
-        .in('entidade_tipo', ['lote', 'rebanho_movimentacao'])
+        .in('entidade_tipo', ['lote', 'rebanho_movimentacao', 'transacao'])
       return new Set((data || []).map((a: any) => `${a.entidade_tipo}:${a.entidade_id}`))
     },
     enabled: !!propriedadeId,
@@ -30,25 +30,30 @@ export function transacaoTemAnexo(origem: string | null | undefined, idsComAnexo
 
 interface Props {
   origem?: string | null
+  transacaoId: string
   compact?: boolean
   idsComAnexo?: Set<string>
 }
 
-/** Mostra clipe de anexo (nota fiscal) e link "Ver origem" para transações geradas por triggers. */
-export function TransacaoOrigemAcoes({ origem, compact, idsComAnexo }: Props) {
+/** Mostra clipe de anexo (nota fiscal) e link "Ver origem" para transações geradas por
+ * triggers (Estoque/Pecuária). Para transações manuais ou editadas direto no Financeiro,
+ * sem origem reconhecida, ainda assim mostra o clipe se houver anexo na própria transação. */
+export function TransacaoOrigemAcoes({ origem, transacaoId, compact, idsComAnexo }: Props) {
   const navigate = useNavigate()
   const parsed = parseOrigemTransacao(origem)
+  const temAnexoDireto = !parsed && !!idsComAnexo?.has(`transacao:${transacaoId}`)
 
-  if (!parsed) return null
+  if (!parsed && !temAnexoDireto) return null
 
-  const temAnexo = transacaoTemAnexo(origem, idsComAnexo)
+  const temAnexo = parsed ? transacaoTemAnexo(origem, idsComAnexo) : temAnexoDireto
 
   const abrirAnexo = async () => {
+    const alvo = parsed || { tipo: 'transacao' as const, id: transacaoId }
     const { data, error } = await supabase
       .from('anexos' as any)
       .select('storage_path')
-      .eq('entidade_tipo', parsed.tipo)
-      .eq('entidade_id', parsed.id)
+      .eq('entidade_tipo', alvo.tipo)
+      .eq('entidade_id', alvo.id)
       .order('created_at', { ascending: false })
       .limit(1)
     const anexo = (data || [])[0] as any
@@ -60,6 +65,7 @@ export function TransacaoOrigemAcoes({ origem, compact, idsComAnexo }: Props) {
   }
 
   const irParaOrigem = () => {
+    if (!parsed) return
     if (parsed.tipo === 'lote') navigate(`/estoque?tab=lotes&highlight=${parsed.id}`)
     else navigate(`/pecuaria?tab=movimentacoes&highlight=${parsed.id}`)
   }
@@ -78,16 +84,18 @@ export function TransacaoOrigemAcoes({ origem, compact, idsComAnexo }: Props) {
           <Paperclip className="h-4 w-4" />
         </Button>
       )}
-      <Button
-        size="icon"
-        variant="ghost"
-        className="h-8 w-8"
-        title={parsed.tipo === 'lote' ? 'Ver entrada de estoque' : 'Ver movimentação de rebanho'}
-        onClick={e => { e.stopPropagation(); irParaOrigem() }}
-      >
-        <ExternalLink className="h-4 w-4" />
-      </Button>
-      {!compact && (
+      {parsed && (
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+          title={parsed.tipo === 'lote' ? 'Ver entrada de estoque' : 'Ver movimentação de rebanho'}
+          onClick={e => { e.stopPropagation(); irParaOrigem() }}
+        >
+          <ExternalLink className="h-4 w-4" />
+        </Button>
+      )}
+      {!compact && parsed && (
         <span className="text-xs text-muted-foreground">
           {parsed.tipo === 'lote' ? 'Entrada de estoque' : 'Movimentação de rebanho'}
         </span>
