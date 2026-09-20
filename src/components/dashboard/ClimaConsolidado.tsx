@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 const METEO_BASE = 'https://api.open-meteo.com/v1/forecast'
 
@@ -30,9 +31,10 @@ interface Prop {
 export function ClimaConsolidado({ propriedades }: { propriedades?: Prop[] }) {
   // Se não vier prop, busca diretamente do banco (RLS garante segurança)
   const shouldFetchAll = !propriedades || propriedades.length === 0
+  const { user } = useAuth()
 
   const { data: fetched, isLoading: isLoadingProps } = useQuery({
-    queryKey: ['clima-propriedades-todas'],
+    queryKey: ['clima-propriedades-todas', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('propriedades')
@@ -40,8 +42,11 @@ export function ClimaConsolidado({ propriedades }: { propriedades?: Prop[] }) {
         .eq('ativo', true)
         .order('nome')
 
-      const diretas = error ? [] : ((data || []) as Prop[])
-      if (diretas.length > 0) return diretas
+      if (error) throw error
+      const diretas = (data || []) as Prop[]
+      // Usuário comum com zero propriedades é estado normal — não é motivo
+      // pra cair no fallback "admin" (que só faz sentido pra erro de verdade).
+      if (diretas.length > 0 || error === null) return diretas
 
       const { data: adminData, error: adminError } = await supabase.rpc('get_todas_propriedades_admin' as any)
       if (adminError) throw adminError
@@ -53,7 +58,7 @@ export function ClimaConsolidado({ propriedades }: { propriedades?: Prop[] }) {
         longitude: item.longitude ?? null,
       })) as Prop[]
     },
-    enabled: shouldFetchAll,
+    enabled: shouldFetchAll && !!user?.id,
     staleTime: 5 * 60 * 1000,
   })
 

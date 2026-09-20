@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useModulos } from '@/hooks/useModulos'
 import { useGlobal } from '@/contexts/GlobalContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { ChartCard } from '@/components/common/ChartCard'
 import { exportarResumoDashboard } from '@/lib/exportRelatorio'
@@ -153,6 +154,7 @@ function DashboardPecuaria({ propId, navigate }: { propId: string; navigate: (pa
 
 export default function Dashboard() {
   const { propriedadeAtual, safraAtual, propriedades, setPropriedadeAtual } = useGlobal()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const { modulos } = useModulos()
   const propriedadesLista = Array.isArray(propriedades) ? propriedades : []
@@ -180,7 +182,7 @@ export default function Dashboard() {
 
   // ── NEW CONSOLIDATED V2 ──
   const { data: consolidadoV2, isLoading: loadConsolidadoV2, error: errConsolidadoV2 } = useQuery({
-    queryKey: ['dash-consolidado-v2'],
+    queryKey: ['dash-consolidado-v2', user?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc('get_dashboard_consolidado_v2')
       if (error) throw error
@@ -214,7 +216,7 @@ export default function Dashboard() {
 
   // ── LEGACY QUERIES (charts, recent entries, etc.) ──
   const { data: custosCategConsolidado, isLoading: loadCatConsolidado } = useQuery({
-    queryKey: ['dash-categ-consolidado', consolidadoV2],
+    queryKey: ['dash-categ-consolidado', consolidadoV2, user?.id],
     queryFn: async () => {
       const props = (consolidadoV2 || []).filter((p: any) => p.safra_ativa_id)
       if (!props.length) return []
@@ -235,7 +237,7 @@ export default function Dashboard() {
   })
 
   const { data: lancConsolidado, isLoading: loadLancConsolidado } = useQuery({
-    queryKey: ['dash-lanc-consolidado'],
+    queryKey: ['dash-lanc-consolidado', user?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('lancamentos')

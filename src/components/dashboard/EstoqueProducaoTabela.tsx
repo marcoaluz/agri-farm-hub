@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,8 +20,9 @@ interface EstoqueItem {
 }
 
 export function EstoqueProducaoTabela() {
+  const { user } = useAuth()
   const { data, isLoading } = useQuery({
-    queryKey: ['dash-estoque-producao-consolidado'],
+    queryKey: ['dash-estoque-producao-consolidado', user?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc('get_estoque_producao', {
         p_propriedade_id: null,
@@ -28,6 +30,7 @@ export function EstoqueProducaoTabela() {
       if (error) throw error
       return (data || []) as EstoqueItem[]
     },
+    enabled: !!user?.id,
   })
 
   // Group by propriedade for visual separation
