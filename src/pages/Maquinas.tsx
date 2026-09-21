@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { solicitarExclusaoEntidade } from '@/lib/solicitarExclusao';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -265,6 +266,12 @@ export function Maquinas() {
         return new Date(db).getTime() - new Date(da).getTime();
       });
   }, [manutencoesSafra, mesReferencia]);
+
+  const [filtroStatusManutencao, setFiltroStatusManutencao] = useState<'todos' | 'realizada' | 'agendada' | 'cancelada'>('todos');
+  const manutencoesFiltradas = useMemo(
+    () => filtroStatusManutencao === 'todos' ? manutencoes : manutencoes.filter((m: any) => m.status === filtroStatusManutencao),
+    [manutencoes, filtroStatusManutencao]
+  );
 
   // Horímetro-based alerts per machine
   const alertasHorimetro = useMemo(() => {
@@ -749,11 +756,21 @@ export function Maquinas() {
             </Button>
           </div>
         </div>
-        {!manutencoes || manutencoes.length === 0 ? (
+        <Tabs value={filtroStatusManutencao} onValueChange={(v: any) => setFiltroStatusManutencao(v)}>
+          <TabsList>
+            <TabsTrigger value="todos">Todos ({manutencoes.length})</TabsTrigger>
+            <TabsTrigger value="realizada">Realizado ({manutencoes.filter((m: any) => m.status === 'realizada').length})</TabsTrigger>
+            <TabsTrigger value="agendada">Agendado ({manutencoes.filter((m: any) => m.status === 'agendada').length})</TabsTrigger>
+            <TabsTrigger value="cancelada">Cancelado ({manutencoes.filter((m: any) => m.status === 'cancelada').length})</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        {!manutencoesFiltradas || manutencoesFiltradas.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-8">
               <Wrench className="h-12 w-12 text-muted-foreground mb-3" />
-              <p className="text-muted-foreground text-sm">Nenhuma manutenção neste mês</p>
+              <p className="text-muted-foreground text-sm">
+                {filtroStatusManutencao === 'todos' ? 'Nenhuma manutenção neste mês' : 'Nenhuma manutenção com esse status neste mês'}
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -774,7 +791,7 @@ export function Maquinas() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {manutencoes.map((m: any) => (
+                  {manutencoesFiltradas.map((m: any) => (
                     <TableRow key={m.id}>
                       <TableCell className="font-medium">{m.maquina?.nome || '—'}</TableCell>
                       <TableCell className="capitalize">{m.tipo?.replace(/_/g, ' ') || '—'}</TableCell>
@@ -859,7 +876,7 @@ export function Maquinas() {
 
               {/* Mobile: cards */}
               <div className="block md:hidden p-3 space-y-2">
-                {manutencoes.map((m: any) => (
+                {manutencoesFiltradas.map((m: any) => (
                   <Card key={m.id}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-3">
