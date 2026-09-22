@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Separator } from '@/components/ui/separator'
-import { Anexos } from '@/components/Anexos'
+import { Anexos, uploadAnexoArquivo } from '@/components/Anexos'
 
 import { 
   ArrowLeft, 
@@ -930,7 +930,7 @@ export function LancamentoForm() {
         }
 
         await aplicarConsumoEHorimetro(itensComCusto)
-        await sincronizarAbastecimentos(lancamentoId, itensComCusto, data.data_execucao)
+        await sincronizarAbastecimentos(lancamentoId, itensComCusto, data.data_execucao, userId)
         await sincronizarManutencoes(lancamentoId, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
 
         return { id: lancamentoId, custoTotal }
@@ -982,7 +982,7 @@ export function LancamentoForm() {
       }
 
       await aplicarConsumoEHorimetro(itensComCusto)
-      await sincronizarAbastecimentos(novoLancamento.id, itensComCusto, data.data_execucao)
+      await sincronizarAbastecimentos(novoLancamento.id, itensComCusto, data.data_execucao, userId)
       await sincronizarManutencoes(novoLancamento.id, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
 
       return { id: novoLancamento.id, custoTotal }
@@ -1061,11 +1061,12 @@ export function LancamentoForm() {
   const sincronizarAbastecimentos = async (
     lancamentoIdSalvo: string,
     itens: ItemLancamento[],
-    dataExecucao: string
+    dataExecucao: string,
+    userId?: string
   ) => {
     const abastecimentosDoLancamento = itens.filter(i => i.tipo_ref === 'abastecimento' && i.maquina_id)
     if (abastecimentosDoLancamento.length === 0) return
-    await supabase.from('abastecimentos').insert(abastecimentosDoLancamento.map(item => ({
+    const { data: inseridos } = await supabase.from('abastecimentos').insert(abastecimentosDoLancamento.map(item => ({
       maquina_id: item.maquina_id,
       data: dataExecucao,
       horimetro: item.horimetro_informado ?? 0,
@@ -1075,7 +1076,25 @@ export function LancamentoForm() {
       custo_litro: item.litros && item.litros > 0 ? (item.custo_total || 0) / item.litros : null,
       observacoes: item.observacao || null,
       lancamento_id: lancamentoIdSalvo,
-    })))
+      contato_id: item.contato_id || null,
+    }))).select('id')
+
+    for (let i = 0; i < abastecimentosDoLancamento.length; i++) {
+      const item = abastecimentosDoLancamento[i]
+      const novoId = (inseridos as any)?.[i]?.id
+      if (item.anexo && novoId && !item.origem_estoque) {
+        const { data: transacao } = await supabase
+          .from('transacoes').select('id')
+          .eq('origem', `abastecimento:${novoId}`)
+          .maybeSingle()
+        if (transacao) {
+          await uploadAnexoArquivo({
+            file: item.anexo, entidadeTipo: 'transacao', entidadeId: (transacao as any).id,
+            propriedadeId: propriedadeAtual!.id, userId: userId || '',
+          })
+        }
+      }
+    }
   }
 
   // Helper: sincronizar registros em maquina_manutencoes a partir dos itens de manutenção do lançamento
@@ -1088,7 +1107,7 @@ export function LancamentoForm() {
   ) => {
     const manutencoes = itens.filter(i => i.tipo_ref === 'manutencao' && i.maquina_id)
     if (manutencoes.length === 0) return
-    await supabase.from('maquina_manutencoes').insert(manutencoes.map(item => ({
+    const { data: inseridos } = await supabase.from('maquina_manutencoes').insert(manutencoes.map(item => ({
       propriedade_id: propriedadeId,
       safra_id: safraAtual?.id || null,
       maquina_id: item.maquina_id,
@@ -1106,7 +1125,25 @@ export function LancamentoForm() {
       // Quantidade usada (peças, ex: 2 pneus) — grava sempre, veio do estoque ou não
       produto_id: item.origem_estoque ? (item.produto_id || null) : null,
       quantidade_produto: item.quantidade || null,
-    })))
+      contato_id: item.contato_id || null,
+    }))).select('id')
+
+    for (let i = 0; i < manutencoes.length; i++) {
+      const item = manutencoes[i]
+      const novoId = (inseridos as any)?.[i]?.id
+      if (item.anexo && novoId && !item.origem_estoque) {
+        const { data: transacao } = await supabase
+          .from('transacoes').select('id')
+          .eq('origem', `manutencao:${novoId}`)
+          .maybeSingle()
+        if (transacao) {
+          await uploadAnexoArquivo({
+            file: item.anexo, entidadeTipo: 'transacao', entidadeId: (transacao as any).id,
+            propriedadeId, userId: userId || '',
+          })
+        }
+      }
+    }
   }
 
   // Helper: aplicar consumo FIFO e horímetro
@@ -1447,6 +1484,7 @@ export function LancamentoForm() {
                     formData.itens.map((itemForm, index) => (
                       <ItemLancamentoCard
                         key={`${itemForm.tipo_ref}-${itemForm.produto_id || itemForm.maquina_id || itemForm.servico_ref_id || index}`}
+                        propriedadeId={propriedadeAtual?.id}
                         itemForm={itemForm}
                         produtos={produtos}
                         temMaquinaNoLancamento={!!itemForm.maquina_id && formData.itens.some(i => i.tipo_ref === 'maquina' && i.maquina_id === itemForm.maquina_id)}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Info, AlertCircle, Package, Wrench, Truck, Gauge, Pencil, Tractor } from 'lucide-react'
+import { X, Info, AlertCircle, Package, Wrench, Truck, Gauge, Pencil, Tractor, Paperclip } from 'lucide-react'
 import { PrateleiraIcon } from '@/components/icons/PrateleiraIcon'
 import { usePreviewCustoDireto } from '@/hooks/usePreviewCusto'
 import { PreviewConsumoFIFO } from './PreviewConsumoFIFO'
@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { ContatoCombobox } from '@/components/financeiro/ContatoCombobox'
 
 export interface ItemLancamento {
   // Novo: referências diretas
@@ -47,6 +48,11 @@ export interface ItemLancamento {
   momento_abastecimento?: 'antes' | 'depois' | null
   observacao?: string
 
+  // Fornecedor/nota da opção Livre (Abastecimento e Manutenção)
+  contato_id?: string | null
+  fornecedor_nome?: string
+  anexo?: File | null
+
   // Manutenção
   categoria_manutencao?: string
   descricao?: string
@@ -75,6 +81,7 @@ interface ProdutoCombustivel {
 }
 
 interface ItemLancamentoCardProps {
+  propriedadeId?: string | null
   itemForm: ItemLancamento
   onUpdate: (updated: ItemLancamento) => void
   onRemove: () => void
@@ -110,7 +117,7 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   return config[itemTipo as keyof typeof config] || { label: itemTipo || 'Item', icon: Package, color: 'bg-gray-100 text-gray-800' }
 }
 
-export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao, maquinas, tiposCombustivel }: ItemLancamentoCardProps) {
+export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao, maquinas, tiposCombustivel }: ItemLancamentoCardProps) {
   // Texto puro do que foi digitado — nunca reformatado a cada tecla, senão
   // "0", "0." e outros estados intermediários somem no meio da digitação.
   const [quantidadeTexto, setQuantidadeTexto] = useState(
@@ -591,6 +598,40 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
               </p>
             </div>
 
+            {!itemForm.origem_estoque && (
+              <>
+                <div>
+                  <Label>Fornecedor (opcional)</Label>
+                  <ContatoCombobox
+                    propriedadeId={propriedadeId}
+                    value={itemForm.fornecedor_nome || ''}
+                    contatoId={itemForm.contato_id ?? null}
+                    onChange={(nome, contatoId) => onUpdate({ ...itemForm, fornecedor_nome: nome, contato_id: contatoId })}
+                  />
+                </div>
+                <div>
+                  <Label>Nota fiscal (opcional)</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      id={`anexo-abastecimento-${itemForm.maquina_id || itemForm.item_id}`}
+                      onChange={(e) => onUpdate({ ...itemForm, anexo: e.target.files?.[0] || null })}
+                    />
+                    <Button
+                      type="button" variant="outline" size="sm"
+                      className={itemForm.anexo ? 'border-primary text-primary' : ''}
+                      onClick={() => document.getElementById(`anexo-abastecimento-${itemForm.maquina_id || itemForm.item_id}`)?.click()}
+                    >
+                      <Paperclip className="h-4 w-4 mr-1" />
+                      {itemForm.anexo ? itemForm.anexo.name : 'Anexar nota'}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+
             {temMaquinaNoLancamento && (
               <div>
                 <Label>Esse abastecimento foi antes ou depois do trabalho com a máquina?</Label>
@@ -763,6 +804,35 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                       onChange={(e) => onUpdate({ ...itemForm, oficina: e.target.value })}
                       placeholder="Nome da oficina"
                     />
+                  </div>
+                </div>
+                <div>
+                  <Label>Fornecedor (opcional)</Label>
+                  <ContatoCombobox
+                    propriedadeId={propriedadeId}
+                    value={itemForm.fornecedor_nome || ''}
+                    contatoId={itemForm.contato_id ?? null}
+                    onChange={(nome, contatoId) => onUpdate({ ...itemForm, fornecedor_nome: nome, contato_id: contatoId })}
+                  />
+                </div>
+                <div>
+                  <Label>Nota fiscal (opcional)</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      id={`anexo-manutencao-${itemForm.maquina_id || itemForm.item_id}`}
+                      onChange={(e) => onUpdate({ ...itemForm, anexo: e.target.files?.[0] || null })}
+                    />
+                    <Button
+                      type="button" variant="outline" size="sm"
+                      className={itemForm.anexo ? 'border-primary text-primary' : ''}
+                      onClick={() => document.getElementById(`anexo-manutencao-${itemForm.maquina_id || itemForm.item_id}`)?.click()}
+                    >
+                      <Paperclip className="h-4 w-4 mr-1" />
+                      {itemForm.anexo ? itemForm.anexo.name : 'Anexar nota'}
+                    </Button>
                   </div>
                 </div>
               </>
