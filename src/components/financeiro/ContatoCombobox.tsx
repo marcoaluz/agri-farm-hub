@@ -30,12 +30,9 @@ export function ContatoCombobox({ propriedadeId, value, onChange, placeholder = 
   useEffect(() => {
     if (!propriedadeId || !open) return
     ;(async () => {
-      const { data } = await supabase
-        .from('contatos' as any)
-        .select('id, nome, tipo')
-        .eq('propriedade_id', propriedadeId)
-        .eq('ativo', true)
-        .order('nome')
+      const { data } = await supabase.rpc('listar_contatos_usuario' as any, {
+        p_propriedade_id: propriedadeId,
+      })
       setContatos((data as any) ?? [])
     })()
   }, [propriedadeId, open])
