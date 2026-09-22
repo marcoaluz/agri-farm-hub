@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { formatarCpfCnpj, formatarTelefone } from '@/lib/formatters'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useQueryClient } from '@tanstack/react-query'
@@ -435,11 +436,11 @@ export default function Contatos() {
               </div>
               <div>
                 <Label>Documento (CPF/CNPJ)</Label>
-                <Input maxLength={20} value={form.documento} onChange={e => setForm({ ...form, documento: e.target.value })} />
+                <Input maxLength={18} value={form.documento} onChange={e => setForm({ ...form, documento: formatarCpfCnpj(e.target.value) })} />
               </div>
               <div>
                 <Label>Telefone</Label>
-                <Input maxLength={20} value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} />
+                <Input maxLength={15} value={form.telefone} onChange={e => setForm({ ...form, telefone: formatarTelefone(e.target.value) })} />
               </div>
               <div>
                 <Label>E-mail</Label>

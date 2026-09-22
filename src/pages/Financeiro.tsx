@@ -34,6 +34,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useSafraFechada } from '@/hooks/useSafraFechada'
+import { useSomenteConsulta } from '@/hooks/useSomenteConsulta'
 import {
   useTransacoes, useFluxoCaixaMensal, useMarcarPago, useMarcarPagoParcela, useDeleteTransacao,
   statusEfetivo, type Transacao, type FiltrosTransacao,
@@ -42,7 +43,7 @@ import { TransacaoForm } from '@/components/financeiro/TransacaoForm'
 import { TransacaoOrigemAcoes, useIdsComAnexo } from '@/components/financeiro/TransacaoOrigemAcoes'
 import { CustosOperacionais } from '@/components/financeiro/CustosOperacionais'
 import { FechamentoContabil } from '@/components/financeiro/FechamentoContabil'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
@@ -98,7 +99,22 @@ export function Financeiro() {
   const { propriedadeAtual, safraAtual } = useGlobal()
   const { isFechada, verificarSafra } = useSafraFechada(safraAtual)
   const propId = propriedadeAtual?.id
+  const somenteConsulta = useSomenteConsulta()
   const { data: idsComAnexo } = useIdsComAnexo(propId)
+  const { data: maquinasNomeMapa } = useQuery({
+    queryKey: ['maquinas-nome-mapa', propId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_maquinas_usuario' as any, { p_propriedade_id: propId })
+      if (error) throw error
+      const mapa = new Map<string, string>()
+      ;((data as any[]) || []).forEach((m: any) => {
+        const id = m.id || m.maquina_id
+        if (id && m.nome) mapa.set(id, m.nome)
+      })
+      return mapa
+    },
+    enabled: !!propId,
+  })
   const safraId = safraAtual?.id
 
   const [searchParams, setSearchParams] = useSearchParams()
@@ -345,6 +361,7 @@ export function Financeiro() {
           <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground">Financeiro</h1>
           <p className="text-sm text-muted-foreground">Gestão de receitas, despesas e fluxo de caixa</p>
         </div>
+        {!somenteConsulta && (
         <Button
           className="w-full sm:w-auto"
           onClick={() => { if (!verificarSafra('criar transação')) return; setEditando(null); setFormOpen(true) }}
@@ -353,6 +370,7 @@ export function Financeiro() {
         >
           <Plus className="h-4 w-4 mr-2" /> Nova Transação
         </Button>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -581,6 +599,11 @@ export function Financeiro() {
                                   Auto · {origemLabel(t.origem!)}
                                 </Badge>
                               )}
+                              {t.maquina_id && maquinasNomeMapa?.get(t.maquina_id) && (
+                                <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border shrink-0">
+                                  🚜 {maquinasNomeMapa.get(t.maquina_id)}
+                                </Badge>
+                              )}
                             </div>
                             {t.parcela_numero && <span className="text-xs text-muted-foreground">Parcela {t.parcela_numero}/{t.parcela_total}</span>}
                             <TransacaoOrigemAcoes origem={t.origem} transacaoId={t.id} idsComAnexo={idsComAnexo} />
@@ -712,6 +735,11 @@ export function Financeiro() {
                             {isAutoGerada(t) && (
                               <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border shrink-0">
                                 Auto · {origemLabel(t.origem!)}
+                              </Badge>
+                            )}
+                            {t.maquina_id && maquinasNomeMapa?.get(t.maquina_id) && (
+                              <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border shrink-0">
+                                🚜 {maquinasNomeMapa.get(t.maquina_id)}
                               </Badge>
                             )}
                           </div>

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, Tractor, Car } from 'lucide-react';
+import { Loader2, Tractor, Car, Wrench, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Maquina {
@@ -26,14 +26,16 @@ interface Maquina {
   ativo: boolean;
   created_at: string;
   compartilhado?: boolean;
+  categoria_equipamento?: 'maquina' | 'implemento';
 }
 
 interface MaquinaFormProps {
   maquina: Maquina | null;
   onSuccess: () => void;
+  categoriaPadrao?: 'maquina' | 'implemento';
 }
 
-export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
+export function MaquinaForm({ maquina, onSuccess, categoriaPadrao }: MaquinaFormProps) {
   const { propriedadeAtual } = useGlobal();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -50,6 +52,7 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
   });
   const [unidadeCalculo, setUnidadeCalculo] = useState<'hora' | 'km'>('hora');
   const [compartilhado, setCompartilhado] = useState(false);
+  const [categoriaEquipamento, setCategoriaEquipamento] = useState<'maquina' | 'implemento'>('maquina');
 
   useEffect(() => {
     if (maquina) {
@@ -65,13 +68,16 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
       });
       setUnidadeCalculo(maquina.unidade_calculo === 'km' ? 'km' : 'hora');
       setCompartilhado(!!maquina.compartilhado);
+      setCategoriaEquipamento(maquina.categoria_equipamento === 'implemento' ? 'implemento' : 'maquina');
     } else {
       setUnidadeCalculo('hora');
       setCompartilhado(false);
+      setCategoriaEquipamento(categoriaPadrao === 'implemento' ? 'implemento' : 'maquina');
     }
-  }, [maquina]);
+  }, [maquina, categoriaPadrao]);
 
   const isKm = unidadeCalculo === 'km';
+  const isImplemento = categoriaEquipamento === 'implemento';
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -81,9 +87,16 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
         ano_fabricacao: formData.ano_fabricacao ? parseInt(formData.ano_fabricacao) : null,
         unidade_calculo: unidadeCalculo,
         compartilhado,
+        categoria_equipamento: categoriaEquipamento,
       };
 
-      if (isKm) {
+      if (isImplemento) {
+        payload.horimetro_inicial = 0;
+        payload.horimetro_atual = 0;
+        payload.custo_hora = null;
+        payload.km_atual = null;
+        payload.custo_km = null;
+      } else if (isKm) {
         payload.horimetro_inicial = formData.horimetro_inicial || 0;
         payload.horimetro_atual = formData.horimetro_atual || 0;
         payload.custo_hora = formData.custo_hora ? parseFloat(formData.custo_hora) : null;
@@ -105,8 +118,8 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
         if (error) throw error;
       } else {
         const { data: userData } = await supabase.auth.getUser();
-        const kmInicial = isKm ? (formData.km_atual ? parseFloat(formData.km_atual) : 0) : null;
-        const horimetroInicial = isKm ? 0 : (formData.horimetro_inicial || 0);
+        const kmInicial = isImplemento ? null : (isKm ? (formData.km_atual ? parseFloat(formData.km_atual) : 0) : null);
+        const horimetroInicial = isImplemento ? 0 : (isKm ? 0 : (formData.horimetro_inicial || 0));
 
         const { error } = await supabase
           .from('maquinas')
@@ -119,11 +132,12 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
             unidade_calculo: unidadeCalculo,
             horimetro_inicial: horimetroInicial,
             horimetro_atual: horimetroInicial,
-            custo_hora: formData.custo_hora ? parseFloat(formData.custo_hora) : null,
+            custo_hora: isImplemento ? null : (formData.custo_hora ? parseFloat(formData.custo_hora) : null),
             km_inicial: kmInicial,
             km_atual: kmInicial,
-            custo_km: isKm && formData.custo_km ? parseFloat(formData.custo_km) : null,
+            custo_km: isImplemento ? null : (isKm && formData.custo_km ? parseFloat(formData.custo_km) : null),
             compartilhado,
+            categoria_equipamento: categoriaEquipamento,
             ativo: true,
           } as any);
         if (error) throw error;
@@ -156,17 +170,56 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
     <div className="space-y-6">
       <DialogHeader>
         <DialogTitle>
-          {maquina ? 'Editar Máquina' : 'Nova Máquina'}
+          {maquina
+            ? (isImplemento ? 'Editar Implemento' : 'Editar Máquina')
+            : (isImplemento ? 'Novo Implemento' : 'Nova Máquina')}
         </DialogTitle>
       </DialogHeader>
 
       <div className="space-y-4">
+        <div className="space-y-2">
+          <Label>Tipo de Equipamento</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setCategoriaEquipamento('maquina')}
+              className={cn(
+                'flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium transition-colors',
+                !isImplemento
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-background text-muted-foreground hover:bg-accent'
+              )}
+            >
+              <Tractor className="h-4 w-4" />
+              Máquina
+            </button>
+            <button
+              type="button"
+              onClick={() => setCategoriaEquipamento('implemento')}
+              className={cn(
+                'flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium transition-colors',
+                isImplemento
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-background text-muted-foreground hover:bg-accent'
+              )}
+            >
+              <Package className="h-4 w-4" />
+              Implemento
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {isImplemento
+              ? 'Carreta, roçadeira, pulverizador, secador — sem controle de horímetro/km.'
+              : 'Trator, colheitadeira, caminhão — com controle de horímetro ou km.'}
+          </p>
+        </div>
+
         <div>
           <Label>Nome *</Label>
           <Input
             value={formData.nome}
             onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-            placeholder="Ex: Trator John Deere"
+            placeholder={isImplemento ? 'Ex: Carreta Graneleira' : 'Ex: Trator John Deere'}
             maxLength={200}
           />
         </div>
@@ -194,6 +247,7 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
           </div>
         </div>
 
+        {!isImplemento && (
         <div className="space-y-2">
           <Label>Tipo de Controle</Label>
           <div className="grid grid-cols-2 gap-2">
@@ -230,6 +284,7 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
               : 'Para tratores e colheitadeiras — controle por horímetro.'}
           </p>
         </div>
+        )}
 
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -242,13 +297,15 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
               Usar em todas as propriedades
             </Label>
           </div>
-          {compartilhado && (
+          {compartilhado && !isImplemento && (
             <p className="text-xs text-muted-foreground">
               O {labelMedidor.toLowerCase()} desta máquina será único e compartilhado entre todas as propriedades.
             </p>
           )}
         </div>
 
+        {!isImplemento && (
+        <>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>{labelMedidor} Inicial ({unidadeMedidor})</Label>
@@ -306,6 +363,8 @@ export function MaquinaForm({ maquina, onSuccess }: MaquinaFormProps) {
               placeholder="0.00"
             />
           </div>
+        )}
+        </>
         )}
       </div>
 

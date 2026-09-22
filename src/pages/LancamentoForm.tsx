@@ -152,6 +152,7 @@ export function LancamentoForm() {
           unidade_calculo: m.unidade_calculo ?? 'h',
           km_atual: m.km_atual ?? 0,
           custo_km: m.custo_km ?? null,
+          categoria_equipamento: m.categoria_equipamento ?? 'maquina',
         }))
 
       // A RPC pode não retornar as colunas novas — enriquece direto da tabela.
@@ -159,7 +160,7 @@ export function LancamentoForm() {
       if (ids.length) {
         const { data: extras } = await supabase
           .from('maquinas' as any)
-          .select('id, unidade_calculo, km_atual, custo_km')
+          .select('id, unidade_calculo, km_atual, custo_km, categoria_equipamento')
           .in('id', ids)
         if (extras) {
           const byId = new Map((extras as any[]).map(e => [e.id, e]))
@@ -169,6 +170,7 @@ export function LancamentoForm() {
               m.unidade_calculo = e.unidade_calculo ?? m.unidade_calculo
               m.km_atual = e.km_atual ?? m.km_atual
               m.custo_km = e.custo_km ?? m.custo_km
+              m.categoria_equipamento = e.categoria_equipamento ?? m.categoria_equipamento
             }
           })
         }
@@ -179,6 +181,12 @@ export function LancamentoForm() {
     },
     enabled: !!propriedadeAtual?.id
   })
+
+  // "Uso de Máquina" (hora/km) só faz sentido pra máquinas de verdade — implemento não tem motor pra cobrar horas
+  const maquinasReais = useMemo(() => (maquinas || []).filter((m: any) => (m.categoria_equipamento || 'maquina') === 'maquina'), [maquinas])
+  const implementosLancamento = useMemo(() => (maquinas || []).filter((m: any) => m.categoria_equipamento === 'implemento'), [maquinas])
+  const [tipoEquipamentoManutencao, setTipoEquipamentoManutencao] = useState<'maquina' | 'implemento'>('maquina')
+  const equipamentosManutencao = tipoEquipamentoManutencao === 'implemento' ? implementosLancamento : maquinasReais
 
   const { data: categoriasManutencao } = useQuery({
     queryKey: ['categorias-manutencao'],
@@ -1532,14 +1540,14 @@ export function LancamentoForm() {
                             <SelectValue placeholder="Selecione uma máquina..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {maquinas?.map(m => (
+                            {maquinasReais?.map(m => (
                               <SelectItem key={m.id} value={m.id}>
                                 {(m as any).unidade_calculo === 'km'
                                   ? `${m.nome} — R$ ${((m as any).custo_km || 0).toFixed(2)}/km`
                                   : `${m.nome} — R$ ${(m.custo_hora || 0).toFixed(2)}/h`}
                               </SelectItem>
                             ))}
-                            {(!maquinas || maquinas.length === 0) && (
+                            {(!maquinasReais || maquinasReais.length === 0) && (
                               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                                 Nenhuma máquina cadastrada
                               </div>
@@ -1597,23 +1605,44 @@ export function LancamentoForm() {
                     )}
 
                     {adicionandoTipo === 'manutencao' && (
-                      <div className="mt-3">
+                      <div className="mt-3 space-y-3">
+                        <div>
+                          <Label className="text-xs">Máquina ou Implemento?</Label>
+                          <div className="flex gap-2 mt-1">
+                            <Button
+                              type="button" size="sm"
+                              variant={tipoEquipamentoManutencao === 'maquina' ? 'default' : 'outline'}
+                              onClick={() => setTipoEquipamentoManutencao('maquina')}
+                            >
+                              Máquina
+                            </Button>
+                            <Button
+                              type="button" size="sm"
+                              variant={tipoEquipamentoManutencao === 'implemento' ? 'default' : 'outline'}
+                              onClick={() => setTipoEquipamentoManutencao('implemento')}
+                            >
+                              Implemento
+                            </Button>
+                          </div>
+                        </div>
                         <Select onValueChange={(maquinaId) => {
                           adicionarManutencao(maquinaId)
                           setAdicionandoTipo(null)
                         }}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione a máquina em manutenção..." />
+                            <SelectValue placeholder={tipoEquipamentoManutencao === 'implemento' ? 'Selecione o implemento...' : 'Selecione a máquina em manutenção...'} />
                           </SelectTrigger>
                           <SelectContent>
-                            {maquinas?.map(m => (
+                            {equipamentosManutencao?.map(m => (
                               <SelectItem key={m.id} value={m.id}>
-                                {m.nome} — Horímetro: {m.horimetro_atual ?? 0}h
+                                {tipoEquipamentoManutencao === 'implemento'
+                                  ? m.nome
+                                  : `${m.nome} — Horímetro: ${m.horimetro_atual ?? 0}h`}
                               </SelectItem>
                             ))}
-                            {(!maquinas || maquinas.length === 0) && (
+                            {(!equipamentosManutencao || equipamentosManutencao.length === 0) && (
                               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                                Nenhuma máquina cadastrada
+                                {tipoEquipamentoManutencao === 'implemento' ? 'Nenhum implemento cadastrado' : 'Nenhuma máquina cadastrada'}
                               </div>
                             )}
                           </SelectContent>

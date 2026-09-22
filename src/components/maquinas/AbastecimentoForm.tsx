@@ -143,6 +143,9 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
       if (origemEstoque && !produtoId) {
         throw new Error('Selecione o combustível do estoque');
       }
+      if (!origemEstoque && !combustivel) {
+        throw new Error('Selecione o tipo de combustível');
+      }
       if (estoqueInsuficiente) {
         throw new Error('Estoque insuficiente para essa quantidade de litros');
       }

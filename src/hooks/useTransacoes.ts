@@ -28,6 +28,7 @@ export interface Transacao {
   criado_por: string | null
   cultura_id?: string | null
   quantidade_produzida?: number | null
+  maquina_id?: string | null
   created_at: string
   updated_at: string
   talhao?: { nome: string } | null
@@ -58,6 +59,7 @@ export interface TransacaoPayload {
   observacoes?: string | null
   origem?: string
   parcelas?: number
+  maquina_id?: string | null
 }
 
 export interface FiltrosTransacao {

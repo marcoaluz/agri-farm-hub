@@ -50,6 +50,7 @@ import { useGlobal } from '@/contexts/GlobalContext'
 import { useExcluirLancamento } from '@/hooks/useLancamentos'
 import { useSafraFechada } from '@/hooks/useSafraFechamento'
 import { useTalhoes } from '@/hooks/useTalhoes'
+import { useSomenteConsulta } from '@/hooks/useSomenteConsulta'
 import { format, addDays, subDays, isToday, parseISO, isSameDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -58,6 +59,7 @@ export function Lancamentos() {
   const routerLocation = useLocation()
 
   const { safraAtual, propriedadeAtual } = useGlobal()
+  const somenteConsulta = useSomenteConsulta()
   const { data: lancamentos, isLoading } = useQuery({
     queryKey: ['lancamentos', safraAtual?.id],
     queryFn: async () => {
@@ -209,10 +211,12 @@ export function Lancamentos() {
             }
           </p>
         </div>
+        {!somenteConsulta && (
         <Button className="gap-2 h-11 md:h-9 w-full sm:w-auto" onClick={handleNovoLancamento} disabled={!safraAtual || safraFechada}>
           <Plus className="h-4 w-4" />
           Novo Lançamento
         </Button>
+        )}
       </div>
 
       {safraFechada && (

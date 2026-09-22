@@ -72,6 +72,7 @@ const schema = z.object({
   data_primeira_parcela: z.string().optional(),
   cultura_id: z.string().optional(),
   quantidade_produzida: z.preprocess((v) => (v === '' || v === undefined || v === null ? undefined : Number(v)), z.number().positive().optional()),
+  maquina_id: z.string().nullable().optional(),
 }).refine((d) => {
   if (d.status === 'pago' && !d.data_pagamento) return false
   return true
@@ -88,6 +89,10 @@ const schema = z.object({
   if (d.tipo === 'receita' && d.categoria === 'venda_producao' && !d.cultura_id) return false
   return true
 }, { message: 'Selecione a cultura vendida', path: ['cultura_id'] })
+.refine((d) => {
+  if (d.categoria?.toLowerCase() === 'seguro' && !d.maquina_id) return false
+  return true
+}, { message: 'Selecione a máquina/veículo', path: ['maquina_id'] })
 
 
 type FormData = z.infer<typeof schema>
@@ -181,6 +186,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       parcelar: false,
       num_parcelas: '' as any,
       data_primeira_parcela: '',
+      maquina_id: null,
     },
   })
 
@@ -237,6 +243,21 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
 
 
   const showCulturaFields = watchTipo === 'receita' && watchCategoria === 'venda_producao'
+  const showSeguroField = (watchCategoria || '').toLowerCase() === 'seguro'
+
+  const { data: maquinasSeguro } = useQuery({
+    queryKey: ['maquinas-seguro', propId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_maquinas_usuario' as any, { p_propriedade_id: propId })
+      if (error) throw error
+      return ((data as any[]) || [])
+        .filter((m: any) => m.ativo !== false)
+        .map((m: any) => ({ id: m.id || m.maquina_id, nome: m.nome }))
+        .filter((m: any) => !!m.id && !!m.nome)
+        .sort((a: any, b: any) => (a.nome || '').localeCompare(b.nome || ''))
+    },
+    enabled: showSeguroField && !!propId,
+  })
 
   const { data: culturasConfig } = useQuery({
     queryKey: ['culturas-com-estoque', propId],
@@ -307,6 +328,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         num_parcelas: '' as any,
         cultura_id: (transacao as any)?.cultura_id || '',
         quantidade_produzida: (transacao as any)?.quantidade_produzida || ('' as any),
+        maquina_id: (transacao as any)?.maquina_id || null,
       })
       if ((transacao as any)?.cultura_id && culturasConfig) {
         const c = culturasConfig.find((x: any) => x.id === (transacao as any).cultura_id)
@@ -321,6 +343,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         numero_nf: '', forma_pagamento: '', talhao_id: '', observacoes: '',
         parcelar: false, num_parcelas: '' as any,
         cultura_id: '', quantidade_produzida: '' as any,
+        maquina_id: null,
       })
       setUnidadeLabel('')
       setModoValor('unidade')
@@ -360,6 +383,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       observacoes: data.observacoes || null,
       cultura_id: showCulturaFields ? (data.cultura_id || null) : null,
       quantidade_produzida: showCulturaFields ? (data.quantidade_produzida || null) : null,
+      maquina_id: showSeguroField ? (data.maquina_id || null) : null,
     } as any
 
     try {
@@ -642,6 +666,25 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                   Ao salvar, o estoque disponível do talhão será atualizado automaticamente.
                 </p>
               </div>
+            )}
+
+            {/* Máquina/Veículo (categoria Seguro) */}
+            {showSeguroField && (
+              <FormField control={form.control} name="maquina_id" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Veículo/Máquina *</FormLabel>
+                  <Select value={field.value || 'none'} onValueChange={(v) => field.onChange(v === 'none' ? null : v)}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                    <SelectContent className="bg-popover border border-border">
+                      <SelectItem value="none">Nenhuma</SelectItem>
+                      {maquinasSeguro?.map((m: any) => (
+                        <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
             )}
 
             {/* Valor + Vencimento (non venda_producao) */}

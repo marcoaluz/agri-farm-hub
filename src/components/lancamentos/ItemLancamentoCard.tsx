@@ -244,6 +244,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
   const itemNome = itemForm.nome || itemForm.item?.nome || 'Item'
   const itemUnidade = itemForm.unidade || itemForm.item?.unidade_medida || ''
   const maquinaVinculada = maquinas?.find(m => m.id === itemForm.maquina_id)
+  const ehImplementoVinculado = maquinaVinculada?.categoria_equipamento === 'implemento'
   const ehMaquinaKm = maquinaVinculada?.unidade_calculo === 'km'
   const labelMedidor = ehMaquinaKm ? 'Km' : 'Horímetro'
   const ehReposicao = itemForm.tipo_ref === 'produto' && !!itemForm.maquina_id
@@ -767,6 +768,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
               </>
             )}
 
+            {!ehImplementoVinculado && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>{labelMedidor} na manutenção</Label>
@@ -793,8 +795,9 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                 />
               </div>
             </div>
+            )}
 
-            {temMaquinaNoLancamento && (
+            {!ehImplementoVinculado && temMaquinaNoLancamento && (
               <div>
                 <Label>Essa leitura de {labelMedidor.toLowerCase()} da manutenção foi antes ou depois do trabalho com a máquina?</Label>
                 <div className="flex gap-2 mt-1">
