@@ -642,6 +642,7 @@ export function Financeiro() {
                               <p className="font-semibold">{t.descricao}</p>
                               <div className="grid grid-cols-2 gap-1 text-muted-foreground">
                                 <span>Categoria:</span><span className="text-foreground">{categoriasLabel[t.categoria] || t.categoria}</span>
+                                {t.subcategoria && (<><span>Subcategoria:</span><span className="text-foreground">{t.subcategoria}</span></>)}
                                 <span>Valor:</span><span className="text-foreground">{fmt(t.valor)}</span>
                                 {t.eh_parcela && (<><span>Parcela:</span><span className="text-foreground">{t.numero_parcela}/{t.total_parcelas} · Total {fmt(Number(t.valor_total_transacao) || 0)}</span></>)}
                                 <span>Vencimento:</span><span className="text-foreground">{format(parseISO(t.data_vencimento), 'dd/MM/yyyy')}</span>
