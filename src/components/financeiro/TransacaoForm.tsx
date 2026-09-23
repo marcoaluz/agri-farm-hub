@@ -57,6 +57,7 @@ const schema = z.object({
   tipo: z.enum(['receita', 'despesa']),
   descricao: z.string().min(1, 'Descrição obrigatória'),
   categoria: z.string().min(1, 'Categoria obrigatória'),
+  subcategoria: z.string().optional(),
   valor: z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number({ required_error: 'Valor obrigatório' }).positive('Valor deve ser > 0')),
   data_vencimento: z.date({ required_error: 'Data obrigatória' }),
   status: z.enum(['pendente', 'pago', 'cancelado']),
@@ -129,6 +130,17 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
     },
   })
 
+  const { data: subcategorias, refetch: refetchSubcategorias } = useQuery({
+    queryKey: ['subcategorias-transacao'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_subcategorias_transacao' as any)
+      if (error) throw error
+      return (data || []) as { id: string; nome: string }[]
+    },
+  })
+  const [showNovaSubcategoria, setShowNovaSubcategoria] = useState(false)
+  const [novaSubcategoriaNome, setNovaSubcategoriaNome] = useState('')
+
   const [showNovaCategoria, setShowNovaCategoria] = useState(false)
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
   const [salvandoCategoria, setSalvandoCategoria] = useState(false)
@@ -183,6 +195,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       forma_pagamento: '',
       talhao_id: '',
       observacoes: '',
+      subcategoria: '',
       parcelar: false,
       num_parcelas: '' as any,
       data_primeira_parcela: '',
@@ -324,6 +337,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         forma_pagamento: transacao.forma_pagamento || '',
         talhao_id: transacao.talhao_id || '',
         observacoes: transacao.observacoes || '',
+        subcategoria: (transacao as any)?.subcategoria || '',
         parcelar: false,
         num_parcelas: '' as any,
         cultura_id: (transacao as any)?.cultura_id || '',
@@ -381,6 +395,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       forma_pagamento: data.forma_pagamento || null,
       talhao_id: data.talhao_id || null,
       observacoes: data.observacoes || null,
+      subcategoria: data.subcategoria || null,
       cultura_id: showCulturaFields ? (data.cultura_id || null) : null,
       quantidade_produzida: showCulturaFields ? (data.quantidade_produzida || null) : null,
       maquina_id: showSeguroField ? (data.maquina_id || null) : null,
@@ -548,6 +563,70 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                       </Button>
                       <Button type="button" variant="outline" size="icon" onClick={() => { setShowNovaCategoria(false); setNovaCategoriaNome('') }}>
                         <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="subcategoria" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Subcategoria</FormLabel>
+                  {!showNovaSubcategoria ? (
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <Select value={field.value || ''} onValueChange={field.onChange}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger></FormControl>
+                          <SelectContent className="bg-popover border border-border">
+                            {subcategorias?.map(s => <SelectItem key={s.id} value={s.nome}>{s.nome}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button type="button" variant="outline" size="icon" onClick={() => setShowNovaSubcategoria(true)} title="Nova subcategoria">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      {field.value && (
+                        <Button
+                          type="button" variant="outline" size="icon" title="Remover subcategoria"
+                          onClick={async () => {
+                            const s = subcategorias?.find(x => x.nome === field.value)
+                            if (s) {
+                              await supabase.from('subcategorias_transacao' as any).update({ ativo: false }).eq('id', s.id)
+                              field.onChange('')
+                              refetchSubcategorias()
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nome da subcategoria"
+                        value={novaSubcategoriaNome}
+                        onChange={(e) => setNovaSubcategoriaNome(e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          if (!novaSubcategoriaNome.trim() || !propId) return
+                          const { data: novoId, error } = await supabase.rpc('criar_categoria_compartilhada' as any, {
+                            p_tabela: 'subcategorias_transacao', p_propriedade_id: propId, p_nome: novaSubcategoriaNome.trim(),
+                          })
+                          if (!error && novoId) {
+                            await refetchSubcategorias()
+                            field.onChange(novaSubcategoriaNome.trim())
+                          }
+                          setNovaSubcategoriaNome('')
+                          setShowNovaSubcategoria(false)
+                        }}
+                      >
+                        Salvar
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => { setShowNovaSubcategoria(false); setNovaSubcategoriaNome('') }}>
+                        Cancelar
                       </Button>
                     </div>
                   )}
