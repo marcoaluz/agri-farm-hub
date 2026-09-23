@@ -500,7 +500,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
 
             {itemForm.origem_estoque ? (
               <div>
-                <Label>Combustível (do estoque)</Label>
+                <Label>Combustível (do estoque) *</Label>
                 <Select
                   value={itemForm.produto_id || ''}
                   onValueChange={(v) => {
@@ -537,7 +537,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
               </div>
             ) : (
               <div>
-                <Label>Tipo de combustível</Label>
+                <Label>Tipo de combustível *</Label>
                 <Select value={itemForm.combustivel_tipo || ''} onValueChange={(v) => onUpdate({ ...itemForm, combustivel_tipo: v })}>
                   <SelectTrigger><SelectValue placeholder="Selecione o combustível" /></SelectTrigger>
                   <SelectContent>
@@ -556,7 +556,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Litros</Label>
+                <Label>Litros *</Label>
                 <Input
                   type="number"
                   value={itemForm.litros || ''}
@@ -572,7 +572,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
                 />
               </div>
               <div>
-                <Label>Custo Total (R$)</Label>
+                <Label>Custo Total (R$) *</Label>
                 <Input type="number" value={itemForm.custo_total || ''} onChange={(e) => onUpdate({ ...itemForm, custo_total: Number(e.target.value) })} disabled={itemForm.origem_estoque} />
                 {produtoCombustivelSelecionado && Number(produtoCombustivelSelecionado.custo_medio || 0) > 0 && (
                   <p className="text-xs text-muted-foreground mt-1">
@@ -669,7 +669,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
         {itemForm.tipo_ref === 'manutencao' && (
           <div className="space-y-3 rounded-lg border border-red-200 bg-red-50/30 dark:border-red-800/40 dark:bg-red-950/10 p-3">
             <div>
-              <Label>Categoria da manutenção</Label>
+              <Label>Categoria da manutenção *</Label>
               <Select value={itemForm.categoria_manutencao || ''} onValueChange={(v) => onUpdate({ ...itemForm, categoria_manutencao: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
                 <SelectContent>
@@ -722,7 +722,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
             {itemForm.origem_estoque ? (
               <>
                 <div>
-                  <Label>Peça / produto do estoque</Label>
+                  <Label>Peça / produto do estoque *</Label>
                   <Select
                     value={itemForm.produto_id || ''}
                     onValueChange={(v) => {
@@ -746,7 +746,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Quantidade</Label>
+                    <Label>Quantidade *</Label>
                     <Input
                       type="number" step="0.01"
                       value={itemForm.quantidade || ''}
@@ -759,7 +759,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
                     />
                   </div>
                   <div>
-                    <Label>Custo (R$)</Label>
+                    <Label>Custo (R$) *</Label>
                     <Input type="number" step="0.01" value={itemForm.custo_total || ''} disabled />
                   </div>
                 </div>
@@ -768,7 +768,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Quantidade</Label>
+                    <Label>Quantidade *</Label>
                     <Input
                       type="number" step="0.01"
                       value={itemForm.quantidade || ''}
@@ -794,7 +794,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Custo Total (R$)</Label>
+                    <Label>Custo Total (R$) *</Label>
                     <Input type="number" step="0.01" value={itemForm.custo_total || ''} disabled />
                   </div>
                   <div>

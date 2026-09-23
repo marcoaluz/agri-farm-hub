@@ -930,7 +930,7 @@ export function LancamentoForm() {
         }
 
         await aplicarConsumoEHorimetro(itensComCusto)
-        await sincronizarAbastecimentos(lancamentoId, itensComCusto, data.data_execucao, userId)
+        await sincronizarAbastecimentos(lancamentoId, itensComCusto, data.data_execucao, userId, propriedadeAtual?.id)
         await sincronizarManutencoes(lancamentoId, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
 
         return { id: lancamentoId, custoTotal }
@@ -982,7 +982,7 @@ export function LancamentoForm() {
       }
 
       await aplicarConsumoEHorimetro(itensComCusto)
-      await sincronizarAbastecimentos(novoLancamento.id, itensComCusto, data.data_execucao, userId)
+      await sincronizarAbastecimentos(novoLancamento.id, itensComCusto, data.data_execucao, userId, propriedadeAtual?.id)
       await sincronizarManutencoes(novoLancamento.id, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
 
       return { id: novoLancamento.id, custoTotal }
@@ -1065,7 +1065,8 @@ export function LancamentoForm() {
     lancamentoIdSalvo: string,
     itens: ItemLancamento[],
     dataExecucao: string,
-    userId?: string
+    userId?: string,
+    propriedadeId?: string
   ) => {
     const abastecimentosDoLancamento = itens.filter(i => i.tipo_ref === 'abastecimento' && i.maquina_id)
     if (abastecimentosDoLancamento.length === 0) return
@@ -1079,6 +1080,7 @@ export function LancamentoForm() {
       custo_litro: item.litros && item.litros > 0 ? (item.custo_total || 0) / item.litros : null,
       observacoes: item.observacao || null,
       lancamento_id: lancamentoIdSalvo,
+      propriedade_id: propriedadeId,
       contato_id: item.contato_id || null,
     }))).select('id')
 

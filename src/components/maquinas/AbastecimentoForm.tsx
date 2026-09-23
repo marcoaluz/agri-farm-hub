@@ -164,6 +164,7 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
         .from('abastecimentos' as any)
         .insert({
           maquina_id: maquina.id,
+          propriedade_id: propriedadeAtual!.id,
           data,
           horimetro: horimetroNum,
           combustivel_tipo: origemEstoque ? (produtoSelecionado?.nome || combustivel) : combustivel,
