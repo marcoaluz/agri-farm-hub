@@ -107,6 +107,7 @@ export function useTransacoes(propriedadeId?: string | null, safraId?: string | 
 
       const { data, error } = await query
         .order('data_referencia', { ascending: false })
+        .order('created_at', { ascending: false })
       if (error) throw error
       return (data || []) as unknown as Transacao[]
 

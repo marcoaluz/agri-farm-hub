@@ -1027,6 +1027,9 @@ export function LancamentoForm() {
       }
 
       queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
+      queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+      queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
+      queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] })
       queryClient.invalidateQueries({ queryKey: ['estoque'] })
       queryClient.invalidateQueries({ queryKey: ['produtos'] })
       queryClient.invalidateQueries({ queryKey: ['preview-custo'] })
@@ -1245,6 +1248,50 @@ export function LancamentoForm() {
       toast({ title: 'Estoque insuficiente', description: 'Ajuste as quantidades antes de salvar.', variant: 'destructive' })
       return false
     }
+
+    for (const item of formData.itens) {
+      if (item.tipo_ref === 'manutencao') {
+        if (!item.categoria_manutencao) {
+          toast({ title: 'Manutenção incompleta', description: 'Selecione a categoria da manutenção.', variant: 'destructive' })
+          return false
+        }
+        if (!item.descricao?.trim()) {
+          toast({ title: 'Manutenção incompleta', description: 'Preencha a descrição da manutenção.', variant: 'destructive' })
+          return false
+        }
+        if (!item.quantidade || item.quantidade <= 0) {
+          toast({ title: 'Manutenção incompleta', description: 'Informe a quantidade.', variant: 'destructive' })
+          return false
+        }
+        if (!item.custo_total || item.custo_total <= 0) {
+          toast({ title: 'Manutenção incompleta', description: 'Informe o custo.', variant: 'destructive' })
+          return false
+        }
+        if (item.origem_estoque && !item.produto_id) {
+          toast({ title: 'Manutenção incompleta', description: 'Selecione a peça/produto do estoque.', variant: 'destructive' })
+          return false
+        }
+      }
+      if (item.tipo_ref === 'abastecimento') {
+        if (item.origem_estoque && !item.produto_id) {
+          toast({ title: 'Abastecimento incompleto', description: 'Selecione o combustível do estoque.', variant: 'destructive' })
+          return false
+        }
+        if (!item.origem_estoque && !item.combustivel_tipo) {
+          toast({ title: 'Abastecimento incompleto', description: 'Selecione o tipo de combustível.', variant: 'destructive' })
+          return false
+        }
+        if (!item.litros || item.litros <= 0) {
+          toast({ title: 'Abastecimento incompleto', description: 'Informe a quantidade de litros.', variant: 'destructive' })
+          return false
+        }
+        if (!item.custo_total || item.custo_total <= 0) {
+          toast({ title: 'Abastecimento incompleto', description: 'Informe o custo total.', variant: 'destructive' })
+          return false
+        }
+      }
+    }
+
     return true
   }
 
@@ -1627,7 +1674,7 @@ export function LancamentoForm() {
                             <SelectValue placeholder="Selecione a máquina abastecida..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {maquinas?.map(m => (
+                            {maquinas?.filter((m: any) => m.categoria_equipamento !== 'implemento').map(m => (
                               <SelectItem key={m.id} value={m.id}>
                                 {m.nome} — R$ {(m.custo_hora || 0).toFixed(2)}/h
                               </SelectItem>
@@ -1696,7 +1743,7 @@ export function LancamentoForm() {
                               <SelectValue placeholder="Selecione o trator/máquina..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {maquinas?.map(m => (
+                              {maquinas?.filter((m: any) => m.categoria_equipamento !== 'implemento').map(m => (
                                 <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
                               ))}
                               {(!maquinas || maquinas.length === 0) && (
