@@ -1216,33 +1216,15 @@ export function LancamentoForm() {
           }
         }
       }
-      // Abastecimento: atualiza horímetro informado e baixa combustível do estoque (FIFO)
+      // Abastecimento: apenas atualiza o horímetro informado.
+      // A baixa do combustível no estoque acontece UMA única vez, em
+      // sincronizarAbastecimentos (via consumirFIFO), que também grava o
+      // detalhamento_lotes usado para devolver o saldo na exclusão.
+      // Baixar aqui também duplicava o consumo e deixava saldo irrecuperável.
       if (item.tipo_ref === 'abastecimento' && item.maquina_id && item.horimetro_informado != null) {
         await supabase.from('maquinas').update({
           horimetro_atual: item.horimetro_informado
         }).eq('id', item.maquina_id)
-
-        if (item.origem_estoque && item.produto_id && item.litros && item.litros > 0) {
-          // Mesmo mecanismo de consumo FIFO já usado para itens de produto:
-          // consome dos lotes mais antigos até atender a quantidade (litros).
-          let restante = item.litros
-          const { data: lotes } = await supabase
-            .from('lotes')
-            .select('id, quantidade_disponivel, data_entrada')
-            .eq('produto_id', item.produto_id)
-            .gt('quantidade_disponivel', 0)
-            .order('data_entrada', { ascending: true })
-          if (lotes) {
-            for (const lote of lotes) {
-              if (restante <= 0) break
-              const consumir = Math.min(Number(lote.quantidade_disponivel), restante)
-              await supabase.from('lotes').update({
-                quantidade_disponivel: Math.max(0, Number(lote.quantidade_disponivel) - consumir)
-              }).eq('id', lote.id)
-              restante -= consumir
-            }
-          }
-        }
       }
       // Manutenção: apenas atualiza o horímetro informado, se preenchido (sem baixa de estoque)
       if (item.tipo_ref === 'manutencao' && item.maquina_id && item.horimetro_informado != null) {
