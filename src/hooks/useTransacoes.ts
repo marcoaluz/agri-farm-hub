@@ -8,6 +8,7 @@ export interface Transacao {
   talhao_id: string | null
   tipo: 'receita' | 'despesa'
   categoria: string
+  subcategoria: string | null
   descricao: string
   valor: number
   data_vencimento: string
