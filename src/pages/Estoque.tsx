@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '@/lib/supabase';
 import { useGlobal } from '@/contexts/GlobalContext';
+import { useSomenteConsulta } from '@/hooks/useSomenteConsulta';
 import { useSafraFechada } from '@/hooks/useSafraFechada';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -46,6 +47,7 @@ interface ProdutoComCusto {
 export function Estoque() {
   const { propriedadeAtual } = useGlobal();
   const { isFechada, verificarSafra } = useSafraFechada();
+  const somenteConsulta = useSomenteConsulta();
   const [busca, setBusca] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState<string>('todos');
   const [tipoFiltro, setTipoFiltro] = useState<string>('todos');
@@ -209,10 +211,11 @@ export function Estoque() {
           </p>
         </div>
 
+        {!somenteConsulta && (
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Button 
-            variant="outline" 
-            onClick={() => { setProdutoEditando(null); setDialogProdutoOpen(true); }} 
+          <Button
+            variant="outline"
+            onClick={() => { setProdutoEditando(null); setDialogProdutoOpen(true); }}
             className="w-full sm:w-auto"
           >
             <PackagePlus className="h-4 w-4 mr-2" />
@@ -228,6 +231,7 @@ export function Estoque() {
             Entrada de Estoque
           </Button>
         </div>
+        )}
       </div>
 
       {/* Cards de Estatísticas */}

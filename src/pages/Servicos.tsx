@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useGlobal } from '@/contexts/GlobalContext';
 import { useToast } from '@/hooks/use-toast';
+import { useSomenteConsulta } from '@/hooks/useSomenteConsulta';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,7 @@ interface Servico {
 export function Servicos() {
   const { propriedadeAtual } = useGlobal();
   const { toast } = useToast();
+  const somenteConsulta = useSomenteConsulta();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [servicoEditando, setServicoEditando] = useState<Servico | null>(null);
   const [busca, setBusca] = useState('');
@@ -131,12 +133,14 @@ export function Servicos() {
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          {!somenteConsulta && (
           <DialogTrigger asChild>
             <Button onClick={abrirNovo}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Serviço
             </Button>
           </DialogTrigger>
+          )}
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <ServicoForm
               servico={servicoEditando}

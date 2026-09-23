@@ -8,6 +8,7 @@ export interface Transacao {
   talhao_id: string | null
   tipo: 'receita' | 'despesa'
   categoria: string
+  subcategoria: string | null
   descricao: string
   valor: number
   data_vencimento: string
@@ -28,6 +29,7 @@ export interface Transacao {
   criado_por: string | null
   cultura_id?: string | null
   quantidade_produzida?: number | null
+  maquina_id?: string | null
   created_at: string
   updated_at: string
   talhao?: { nome: string } | null
@@ -58,6 +60,7 @@ export interface TransacaoPayload {
   observacoes?: string | null
   origem?: string
   parcelas?: number
+  maquina_id?: string | null
 }
 
 export interface FiltrosTransacao {
@@ -105,8 +108,26 @@ export function useTransacoes(propriedadeId?: string | null, safraId?: string | 
 
       const { data, error } = await query
         .order('data_referencia', { ascending: false })
+        .order('created_at', { ascending: false })
       if (error) throw error
-      return (data || []) as unknown as Transacao[]
+      const linhas = (data || []) as unknown as Transacao[]
+
+      // A view vw_movimentos_financeiros não expõe subcategoria — busca na tabela
+      // transacoes e mescla pelo id da transação de origem.
+      const ids = Array.from(new Set(linhas.map(l => l.transacao_id || l.id).filter(Boolean))) as string[]
+      if (ids.length) {
+        const { data: subs } = await supabase
+          .from('transacoes')
+          .select('id, subcategoria')
+          .in('id', ids)
+        const mapa = new Map((subs || []).map((s: any) => [s.id, s.subcategoria]))
+        for (const l of linhas) {
+          const chave = l.transacao_id || l.id
+          if (chave && mapa.has(chave)) l.subcategoria = mapa.get(chave) as string | null
+        }
+      }
+
+      return linhas
 
     },
     enabled: !!idProp && !!idSafra,

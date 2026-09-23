@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useGlobal } from '@/contexts/GlobalContext';
+import { useSomenteConsulta } from '@/hooks/useSomenteConsulta';
 import { useToast } from '@/hooks/use-toast';
 import { solicitarExclusaoEntidade } from '@/lib/solicitarExclusao';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format, addMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Tractor, Truck, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets, Wrench, AlertTriangle, Info, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Tractor, Truck, Edit, Trash2, Search, Clock, DollarSign, Gauge, Fuel, History, Droplets, Wrench, AlertTriangle, Info, ChevronLeft, ChevronRight, Package } from 'lucide-react';
 import { MaquinaForm } from '@/components/maquinas/MaquinaForm';
 import { AbastecimentoForm } from '@/components/maquinas/AbastecimentoForm';
 import { HistoricoAbastecimentos } from '@/components/maquinas/HistoricoAbastecimentos';
@@ -40,6 +41,7 @@ interface Maquina {
   ativo: boolean;
   created_at: string;
   compartilhado?: boolean;
+  categoria_equipamento?: 'maquina' | 'implemento';
 }
 
 
@@ -66,6 +68,7 @@ export function Maquinas() {
   const { propriedadeAtual, safraAtual } = useGlobal();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const somenteConsulta = useSomenteConsulta();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [maquinaEditando, setMaquinaEditando] = useState<Maquina | null>(null);
   const [busca, setBusca] = useState('');
@@ -88,6 +91,7 @@ export function Maquinas() {
   } | null>(null);
   const [modoStatus, setModoStatus] = useState<'realizar' | 'cancelar' | null>(null);
   const [mesReferencia, setMesReferencia] = useState(() => startOfMonth(new Date()));
+  const [abaEquipamento, setAbaEquipamento] = useState<'maquina' | 'implemento'>('maquina');
 
   const propId = propriedadeAtual?.id;
   const safraId = safraAtual?.id;
@@ -149,7 +153,7 @@ export function Maquinas() {
       if (lista.length > 0) {
         const { data: extras } = await supabase
           .from('maquinas' as any)
-          .select('id, unidade_calculo, km_atual, km_inicial, custo_km')
+          .select('id, unidade_calculo, km_atual, km_inicial, custo_km, categoria_equipamento')
           .in('id', lista.map((m: any) => m.id));
         if (extras) {
           const map = new Map((extras as any[]).map((e: any) => [e.id, e]));
@@ -159,6 +163,7 @@ export function Maquinas() {
               m.unidade_calculo = e.unidade_calculo ?? m.unidade_calculo;
               m.km_atual = e.km_atual ?? m.km_atual;
               m.custo_km = e.custo_km ?? m.custo_km;
+              m.categoria_equipamento = e.categoria_equipamento ?? m.categoria_equipamento;
             }
           });
         }
@@ -170,6 +175,16 @@ export function Maquinas() {
     enabled: !!propId,
   });
 
+
+  // Separa máquinas de verdade (horímetro/km/custo) de implementos (sem essas métricas)
+  const maquinasReais = useMemo(
+    () => (maquinas || []).filter((m: any) => (m.categoria_equipamento || 'maquina') === 'maquina'),
+    [maquinas]
+  );
+  const implementos = useMemo(
+    () => (maquinas || []).filter((m: any) => m.categoria_equipamento === 'implemento'),
+    [maquinas]
+  );
 
   // Consumption analysis from view
   const { data: analiseConsumo } = useQuery({
@@ -198,7 +213,7 @@ export function Maquinas() {
     queryFn: async () => {
       const now = new Date();
       const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-      const maquinaIds = maquinas?.map((m) => m.id) || [];
+      const maquinaIds = maquinasReais?.map((m: any) => m.id) || [];
       if (!maquinaIds.length) return 0;
       const { data, error } = await supabase
         .from('abastecimentos' as any)
@@ -208,7 +223,7 @@ export function Maquinas() {
       if (error) throw error;
       return (data as any[])?.reduce((s: number, r: any) => s + (r.quantidade_litros || 0), 0) || 0;
     },
-    enabled: !!maquinas?.length,
+    enabled: !!maquinasReais?.length,
   });
 
   const { data: manutencoesProximas } = useQuery({
@@ -275,7 +290,7 @@ export function Maquinas() {
 
   // Horímetro-based alerts per machine
   const alertasHorimetro = useMemo(() => {
-    if (!maquinas?.length || !todasManutencoes?.length) return [];
+    if (!maquinasReais?.length || !todasManutencoes?.length) return [];
 
     const alerts: Array<{
       maquina: Maquina;
@@ -285,7 +300,7 @@ export function Maquinas() {
       faltam: number;
     }> = [];
 
-    maquinas.forEach((maq) => {
+    maquinasReais.forEach((maq: any) => {
       // Find max proximo_horimetro for this machine
       const manuts = (todasManutencoes || []).filter(
         (m: any) => m.maquina_id === maq.id && m.proximo_horimetro != null
@@ -304,17 +319,23 @@ export function Maquinas() {
     });
 
     return alerts;
-  }, [maquinas, todasManutencoes]);
+  }, [maquinasReais, todasManutencoes]);
 
-  const maquinasFiltradas = maquinas?.filter(
-    (m) =>
+  const maquinasFiltradas = maquinasReais?.filter(
+    (m: any) =>
       (m.nome || '').toLowerCase().includes(busca.toLowerCase()) ||
       m.modelo?.toLowerCase().includes(busca.toLowerCase())
   );
+  const implementosFiltrados = implementos?.filter(
+    (m: any) =>
+      (m.nome || '').toLowerCase().includes(busca.toLowerCase()) ||
+      m.modelo?.toLowerCase().includes(busca.toLowerCase())
+  );
+  const equipamentosExibidos = abaEquipamento === 'implemento' ? implementosFiltrados : maquinasFiltradas;
 
-  const totalMaquinas = maquinas?.length || 0;
-  const maquinasHora = maquinas?.filter((m: any) => m.unidade_calculo !== 'km') || [];
-  const maquinasKm = maquinas?.filter((m: any) => m.unidade_calculo === 'km') || [];
+  const totalMaquinas = maquinasReais?.length || 0;
+  const maquinasHora = maquinasReais?.filter((m: any) => m.unidade_calculo !== 'km') || [];
+  const maquinasKm = maquinasReais?.filter((m: any) => m.unidade_calculo === 'km') || [];
 
   const kmTotal = maquinasKm.reduce((sum, m: any) => sum + (m.km_atual || 0), 0);
   const maquinasComCustoKm = maquinasKm.filter((m: any) => m.custo_km != null);
@@ -358,15 +379,18 @@ export function Maquinas() {
           <p className="text-sm text-muted-foreground">Gerencie equipamentos, horímetro e custos</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          {!somenteConsulta && (
           <DialogTrigger asChild>
             <Button className="gap-2 w-full sm:w-auto" onClick={() => setMaquinaEditando(null)}>
               <Plus className="h-4 w-4" />
-              Nova Máquina
+              {abaEquipamento === 'implemento' ? 'Novo Implemento' : 'Nova Máquina'}
             </Button>
           </DialogTrigger>
+          )}
           <DialogContent className="w-[95vw] sm:w-auto max-w-2xl max-h-[90vh] overflow-y-auto">
             <MaquinaForm
               maquina={maquinaEditando}
+              categoriaPadrao={abaEquipamento}
               onSuccess={() => {
                 setDialogOpen(false);
                 setMaquinaEditando(null);
@@ -539,6 +563,7 @@ export function Maquinas() {
               {alerta.tipo === 'proxima' && ` · Faltam ${Math.round(alerta.faltam)} h`}
             </p>
           </div>
+          {!somenteConsulta && (
           <Button
             variant="outline"
             size="sm"
@@ -551,13 +576,27 @@ export function Maquinas() {
             <Wrench className="h-3 w-3 mr-1" />
             Registrar
           </Button>
+          )}
         </div>
       ))}
+
+      {/* Tabs: Máquinas / Implementos */}
+      <Tabs value={abaEquipamento} onValueChange={(v: any) => setAbaEquipamento(v)}>
+        <TabsList>
+          <TabsTrigger value="maquina">Máquinas ({maquinasReais.length})</TabsTrigger>
+          <TabsTrigger value="implemento">Implementos ({implementos.length})</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Buscar por nome ou modelo..." value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-9" />
+        <Input
+          placeholder={abaEquipamento === 'implemento' ? 'Buscar implemento por nome ou modelo...' : 'Buscar por nome ou modelo...'}
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          className="pl-9"
+        />
       </div>
 
       {/* Abastecimento Dialog */}
@@ -595,27 +634,36 @@ export function Maquinas() {
             </Button>
           </CardContent>
         </Card>
-      ) : maquinasFiltradas?.length === 0 ? (
+      ) : equipamentosExibidos?.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
-            <Tractor className="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mb-4" />
+            {abaEquipamento === 'implemento'
+              ? <Package className="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mb-4" />
+              : <Tractor className="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mb-4" />}
             <h3 className="text-lg sm:text-xl font-semibold mb-2 text-center">
-              {busca ? 'Nenhuma máquina encontrada' : 'Nenhuma máquina cadastrada'}
+              {busca
+                ? (abaEquipamento === 'implemento' ? 'Nenhum implemento encontrado' : 'Nenhuma máquina encontrada')
+                : (abaEquipamento === 'implemento' ? 'Nenhum implemento cadastrado' : 'Nenhuma máquina cadastrada')}
             </h3>
             <p className="text-sm text-muted-foreground text-center mb-4 px-4">
-              {busca ? 'Tente ajustar sua busca' : 'Cadastre sua primeira máquina para controlar horas e custos'}
+              {busca
+                ? 'Tente ajustar sua busca'
+                : (abaEquipamento === 'implemento'
+                    ? 'Cadastre seu primeiro implemento (carreta, roçadeira, pulverizador...)'
+                    : 'Cadastre sua primeira máquina para controlar horas e custos')}
             </p>
             {!busca && (
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Cadastrar Primeira Máquina
+                {abaEquipamento === 'implemento' ? 'Cadastrar Primeiro Implemento' : 'Cadastrar Primeira Máquina'}
               </Button>
             )}
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {maquinasFiltradas?.map((maquina) => {
+          {equipamentosExibidos?.map((maquina: any) => {
+            const ehImplemento = maquina.categoria_equipamento === 'implemento';
             const analise = analiseMap.get(maquina.id);
             const dadosSafra = relatorioMaquinasSafra?.[maquina.id];
             const horasNaSafra = (Number(dadosSafra?.horas_trabalhadas || 0) + Number(dadosSafra?.horas_uso_direto || 0));
@@ -626,7 +674,9 @@ export function Maquinas() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
-                        {maquina.unidade_calculo === 'km'
+                        {ehImplemento
+                          ? <Package className="h-5 w-5 text-accent-foreground" />
+                          : maquina.unidade_calculo === 'km'
                           ? <Truck className="h-5 w-5 text-accent-foreground" />
                           : <Tractor className="h-5 w-5 text-accent-foreground" />}
                       </div>
@@ -650,6 +700,7 @@ export function Maquinas() {
                     {maquina.ano_fabricacao && <Badge variant="outline">{maquina.ano_fabricacao}</Badge>}
                   </div>
 
+                  {!ehImplemento && (
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1">
@@ -715,9 +766,12 @@ export function Maquinas() {
                       </div>
                     )}
                   </div>
+                  )}
 
                   <MaquinaCardAcoes
                     maquina={maquina}
+                    ocultarAbastecer={ehImplemento}
+                    somenteConsulta={somenteConsulta}
                     onAbastecer={() => {
                       setAbastecimentoMaquina(maquina);
                       setAbastecimentoDialogOpen(true);

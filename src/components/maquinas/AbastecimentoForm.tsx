@@ -143,6 +143,9 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
       if (origemEstoque && !produtoId) {
         throw new Error('Selecione o combustível do estoque');
       }
+      if (!origemEstoque && !combustivel) {
+        throw new Error('Selecione o tipo de combustível');
+      }
       if (estoqueInsuficiente) {
         throw new Error('Estoque insuficiente para essa quantidade de litros');
       }
@@ -161,6 +164,7 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
         .from('abastecimentos' as any)
         .insert({
           maquina_id: maquina.id,
+          propriedade_id: propriedadeAtual!.id,
           data,
           horimetro: horimetroNum,
           combustivel_tipo: origemEstoque ? (produtoSelecionado?.nome || combustivel) : combustivel,

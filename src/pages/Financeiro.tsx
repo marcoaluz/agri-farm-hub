@@ -34,6 +34,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useSafraFechada } from '@/hooks/useSafraFechada'
+import { useSomenteConsulta } from '@/hooks/useSomenteConsulta'
 import {
   useTransacoes, useFluxoCaixaMensal, useMarcarPago, useMarcarPagoParcela, useDeleteTransacao,
   statusEfetivo, type Transacao, type FiltrosTransacao,
@@ -42,7 +43,7 @@ import { TransacaoForm } from '@/components/financeiro/TransacaoForm'
 import { TransacaoOrigemAcoes, useIdsComAnexo } from '@/components/financeiro/TransacaoOrigemAcoes'
 import { CustosOperacionais } from '@/components/financeiro/CustosOperacionais'
 import { FechamentoContabil } from '@/components/financeiro/FechamentoContabil'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
@@ -98,7 +99,22 @@ export function Financeiro() {
   const { propriedadeAtual, safraAtual } = useGlobal()
   const { isFechada, verificarSafra } = useSafraFechada(safraAtual)
   const propId = propriedadeAtual?.id
+  const somenteConsulta = useSomenteConsulta()
   const { data: idsComAnexo } = useIdsComAnexo(propId)
+  const { data: maquinasNomeMapa } = useQuery({
+    queryKey: ['maquinas-nome-mapa', propId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_maquinas_usuario' as any, { p_propriedade_id: propId })
+      if (error) throw error
+      const mapa = new Map<string, string>()
+      ;((data as any[]) || []).forEach((m: any) => {
+        const id = m.id || m.maquina_id
+        if (id && m.nome) mapa.set(id, m.nome)
+      })
+      return mapa
+    },
+    enabled: !!propId,
+  })
   const safraId = safraAtual?.id
 
   const [searchParams, setSearchParams] = useSearchParams()
@@ -345,6 +361,7 @@ export function Financeiro() {
           <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground">Financeiro</h1>
           <p className="text-sm text-muted-foreground">Gestão de receitas, despesas e fluxo de caixa</p>
         </div>
+        {!somenteConsulta && (
         <Button
           className="w-full sm:w-auto"
           onClick={() => { if (!verificarSafra('criar transação')) return; setEditando(null); setFormOpen(true) }}
@@ -353,6 +370,7 @@ export function Financeiro() {
         >
           <Plus className="h-4 w-4 mr-2" /> Nova Transação
         </Button>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -547,6 +565,7 @@ export function Financeiro() {
                   <TableHead>Data Venc.</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead className="hidden md:table-cell">Categoria</TableHead>
+                  <TableHead className="hidden lg:table-cell">Subcategoria</TableHead>
                   <TableHead className="hidden lg:table-cell">Fornecedor/Cliente</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                   <TableHead>Status</TableHead>
@@ -555,9 +574,9 @@ export function Financeiro() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
                 ) : transacoesPag.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma transação encontrada.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma transação encontrada.</TableCell></TableRow>
                 ) : transacoesPag.map(t => {
                   const st = statusEfetivo(t)
                   return (
@@ -581,6 +600,11 @@ export function Financeiro() {
                                   Auto · {origemLabel(t.origem!)}
                                 </Badge>
                               )}
+                              {t.maquina_id && maquinasNomeMapa?.get(t.maquina_id) && (
+                                <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border shrink-0">
+                                  🚜 {maquinasNomeMapa.get(t.maquina_id)}
+                                </Badge>
+                              )}
                             </div>
                             {t.parcela_numero && <span className="text-xs text-muted-foreground">Parcela {t.parcela_numero}/{t.parcela_total}</span>}
                             <TransacaoOrigemAcoes origem={t.origem} transacaoId={t.id} idsComAnexo={idsComAnexo} />
@@ -588,6 +612,7 @@ export function Financeiro() {
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{categoriasLabel[t.categoria] || t.categoria}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground">{t.subcategoria || '—'}</TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">{t.fornecedor_cliente || '—'}</TableCell>
                       <TableCell className={cn('text-right font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
                         {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
@@ -617,6 +642,7 @@ export function Financeiro() {
                               <p className="font-semibold">{t.descricao}</p>
                               <div className="grid grid-cols-2 gap-1 text-muted-foreground">
                                 <span>Categoria:</span><span className="text-foreground">{categoriasLabel[t.categoria] || t.categoria}</span>
+                                {t.subcategoria && (<><span>Subcategoria:</span><span className="text-foreground">{t.subcategoria}</span></>)}
                                 <span>Valor:</span><span className="text-foreground">{fmt(t.valor)}</span>
                                 {t.eh_parcela && (<><span>Parcela:</span><span className="text-foreground">{t.numero_parcela}/{t.total_parcelas} · Total {fmt(Number(t.valor_total_transacao) || 0)}</span></>)}
                                 <span>Vencimento:</span><span className="text-foreground">{format(parseISO(t.data_vencimento), 'dd/MM/yyyy')}</span>
@@ -714,9 +740,14 @@ export function Financeiro() {
                                 Auto · {origemLabel(t.origem!)}
                               </Badge>
                             )}
+                            {t.maquina_id && maquinasNomeMapa?.get(t.maquina_id) && (
+                              <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border shrink-0">
+                                🚜 {maquinasNomeMapa.get(t.maquina_id)}
+                              </Badge>
+                            )}
                           </div>
                           <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                            <div>{categoriasLabel[t.categoria] || t.categoria} · {format(parseISO(t.data_vencimento), 'dd/MM/yy')}</div>
+                            <div>{categoriasLabel[t.categoria] || t.categoria}{t.subcategoria ? ` · ${t.subcategoria}` : ''} · {format(parseISO(t.data_vencimento), 'dd/MM/yy')}</div>
                             {t.parcela_numero && <div>Parcela {t.parcela_numero}/{t.parcela_total}</div>}
                           </div>
                           <TransacaoOrigemAcoes origem={t.origem} transacaoId={t.id} compact idsComAnexo={idsComAnexo} />

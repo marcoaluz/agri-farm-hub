@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { formatarCpfCnpj, formatarTelefone } from '@/lib/formatters'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useQueryClient } from '@tanstack/react-query'
@@ -96,12 +97,9 @@ export default function Contatos() {
   const fetchContatos = useCallback(async () => {
     if (!propriedadeAtual?.id) return
     setLoading(true)
-    const { data, error } = await supabase
-      .from('contatos' as any)
-      .select('*')
-      .eq('propriedade_id', propriedadeAtual.id)
-      .eq('ativo', true)
-      .order('nome')
+    const { data, error } = await supabase.rpc('listar_contatos_usuario' as any, {
+      p_propriedade_id: propriedadeAtual.id,
+    })
     setLoading(false)
     if (error) {
       toast.error('Erro ao carregar contatos')
@@ -228,9 +226,17 @@ export default function Contatos() {
     if (editando) {
       ({ error } = await supabase.from('contatos' as any).update(payload).eq('id', editando.id))
     } else {
-      payload.propriedade_id = propriedadeAtual.id
-      payload.ativo = true
-      ;({ error } = await supabase.from('contatos' as any).insert(payload))
+      const { error: erroRpc } = await supabase.rpc('criar_contato_compartilhado' as any, {
+        p_propriedade_id: propriedadeAtual.id,
+        p_nome: payload.nome,
+        p_tipo: payload.tipo,
+        p_documento: payload.documento,
+        p_telefone: payload.telefone,
+        p_email: payload.email,
+        p_endereco: payload.endereco,
+        p_observacoes: payload.observacoes,
+      })
+      error = erroRpc
     }
     setSaving(false)
     if (error) {
@@ -430,11 +436,11 @@ export default function Contatos() {
               </div>
               <div>
                 <Label>Documento (CPF/CNPJ)</Label>
-                <Input maxLength={20} value={form.documento} onChange={e => setForm({ ...form, documento: e.target.value })} />
+                <Input maxLength={18} value={form.documento} onChange={e => setForm({ ...form, documento: formatarCpfCnpj(e.target.value) })} />
               </div>
               <div>
                 <Label>Telefone</Label>
-                <Input maxLength={20} value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} />
+                <Input maxLength={15} value={form.telefone} onChange={e => setForm({ ...form, telefone: formatarTelefone(e.target.value) })} />
               </div>
               <div>
                 <Label>E-mail</Label>

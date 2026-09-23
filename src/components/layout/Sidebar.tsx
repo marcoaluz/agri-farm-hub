@@ -28,6 +28,7 @@ import {
   Contact,
   Sprout,
   LogOut,
+  CloudRain,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -57,6 +58,7 @@ export const routes = [
   { label: 'Serviços',      icon: Wheat,           href: '/servicos',     sempre: true },
   { label: 'Lançamentos',   icon: ClipboardList,   href: '/lancamentos',  sempre: true },
   { label: 'Calendário',    icon: CalendarDays,    href: '/calendario',   sempre: true },
+  { label: 'Histórico de Chuva', icon: CloudRain,  href: '/historico-chuva', sempre: true },
   { label: 'Agenda',        icon: Calendar,        href: '/agenda',       sempre: true },
   { label: 'Contatos',      icon: Contact,         href: '/contatos',     sempre: true },
   { label: 'Máquinas',      icon: Tractor,         href: '/maquinas',     sempre: true },

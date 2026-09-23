@@ -28,6 +28,7 @@ interface Maquina {
   horimetro_atual: number;
   unidade_calculo?: string;
   km_atual?: number;
+  categoria_equipamento?: 'maquina' | 'implemento';
 }
 
 interface CategoriaManutencaoRow {
@@ -43,6 +44,7 @@ interface ManutencaoDialogProps {
 }
 
 export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }: ManutencaoDialogProps) {
+  const ehImplemento = maquina?.categoria_equipamento === 'implemento';
   const ehKm = maquina?.unidade_calculo === 'km';
   const medidorAtual = ehKm ? (maquina?.km_atual || 0) : (maquina?.horimetro_atual || 0);
   const labelMedidor = ehKm ? 'Km' : 'Horímetro';
@@ -318,7 +320,8 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
 
         {maquina && (
           <p className="text-sm text-muted-foreground">
-            Máquina: <strong>{maquina.nome}</strong> · {labelMedidor} atual: {medidorAtual}{ehKm ? 'km' : 'h'}
+            {ehImplemento ? 'Implemento' : 'Máquina'}: <strong>{maquina.nome}</strong>
+            {!ehImplemento && ` · ${labelMedidor} atual: ${medidorAtual}${ehKm ? 'km' : 'h'}`}
           </p>
         )}
 
@@ -536,6 +539,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
             )}
           </div>
 
+          {!ehImplemento && (
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>{labelMedidor} na Manutenção</Label>
@@ -554,6 +558,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
               <Input type="number" placeholder="Ex: 1750" value={proximoHorimetro} onChange={e => setProximoHorimetro(e.target.value)} />
             </div>
           </div>
+          )}
 
           {/* Origem do custo — Estoque ou Livre */}
           <div className="space-y-2">

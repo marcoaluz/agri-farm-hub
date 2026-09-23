@@ -99,6 +99,22 @@ export function MovimentacaoDialog({
   }, [open, rebanhoIdInicial, tipoInicial, animalIdInicial, quantidadeInicial])
 
   const rebanhoAtual = (rebanhos || []).find((r: any) => r.id === rebanhoId)
+
+  const { data: agregadoLoteFechado } = useQuery({
+    queryKey: ['agregado-lote-fechado', rebanhoId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('rebanho_movimentacoes')
+        .select('quantidade, valor_total, peso_medio_kg')
+        .eq('rebanho_id', rebanhoId)
+        .in('tipo', ['entrada', 'compra'])
+      const linhas = data || []
+      const valorTotal = linhas.reduce((s: number, l: any) => s + (Number(l.valor_total) || 0), 0)
+      const pesoTotal = linhas.reduce((s: number, l: any) => s + (Number(l.quantidade) || 0) * (Number(l.peso_medio_kg) || 0), 0)
+      return { valorTotal, pesoTotal }
+    },
+    enabled: open && !!rebanhoId && rebanhoAtual?.controle_individual === false,
+  })
   const individual = rebanhoAtual?.controle_individual !== false
 
   const { data: animaisRebanho } = useQuery({
@@ -127,8 +143,13 @@ export function MovimentacaoDialog({
     })
   }, [animaisSelecionados, tipo, venderLoteInteiro, animaisRebanho])
 
-  const pesoTotalLote = (animaisRebanho || []).reduce((s: number, a: any) => s + (Number(a.peso_atual) || 0), 0)
-  const valorCompraTotalLote = (animaisRebanho || []).reduce((s: number, a: any) => s + (Number(a.valor_compra) || 0), 0)
+  const loteEhFechado = rebanhoAtual?.controle_individual === false
+  const pesoTotalLote = loteEhFechado
+    ? (agregadoLoteFechado?.pesoTotal || 0)
+    : (animaisRebanho || []).reduce((s: number, a: any) => s + (Number(a.peso_atual) || 0), 0)
+  const valorCompraTotalLote = loteEhFechado
+    ? (agregadoLoteFechado?.valorTotal || 0)
+    : (animaisRebanho || []).reduce((s: number, a: any) => s + (Number(a.valor_compra) || 0), 0)
 
   const qtdNum = tipo === 'transferencia'
     ? animaisSelecionados.length
@@ -501,7 +522,7 @@ export function MovimentacaoDialog({
               {venderLoteInteiro ? (
                 <>
                   <div className="space-y-1 text-sm text-muted-foreground border rounded-lg p-3 bg-muted/30">
-                    <p>Animais no lote: <span className="font-medium text-foreground">{animaisRebanho?.length || 0}</span></p>
+                    <p>Animais no lote: <span className="font-medium text-foreground">{loteEhFechado ? (rebanhoAtual?.quantidade_atual || 0) : (animaisRebanho?.length || 0)}</span></p>
                     <p>Peso total estimado: <span className="font-medium text-foreground">{pesoTotalLote.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} kg</span></p>
                     <p>Custo de aquisição do lote: <span className="font-medium text-foreground">R$ {fmtMoeda(valorCompraTotalLote)}</span></p>
                   </div>

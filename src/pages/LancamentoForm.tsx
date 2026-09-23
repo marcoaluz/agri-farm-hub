@@ -4,6 +4,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
 import { toast as sonnerToast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { consumirFIFO } from '@/lib/fifoConsumo'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useTalhoes } from '@/hooks/useTalhoes'
 import { ItemLancamentoCard, type ItemLancamento } from '@/components/lancamentos/ItemLancamentoCard'
@@ -25,7 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Separator } from '@/components/ui/separator'
-import { Anexos } from '@/components/Anexos'
+import { Anexos, uploadAnexoArquivo } from '@/components/Anexos'
 
 import { 
   ArrowLeft, 
@@ -152,6 +153,7 @@ export function LancamentoForm() {
           unidade_calculo: m.unidade_calculo ?? 'h',
           km_atual: m.km_atual ?? 0,
           custo_km: m.custo_km ?? null,
+          categoria_equipamento: m.categoria_equipamento ?? 'maquina',
         }))
 
       // A RPC pode não retornar as colunas novas — enriquece direto da tabela.
@@ -159,7 +161,7 @@ export function LancamentoForm() {
       if (ids.length) {
         const { data: extras } = await supabase
           .from('maquinas' as any)
-          .select('id, unidade_calculo, km_atual, custo_km')
+          .select('id, unidade_calculo, km_atual, custo_km, categoria_equipamento')
           .in('id', ids)
         if (extras) {
           const byId = new Map((extras as any[]).map(e => [e.id, e]))
@@ -169,6 +171,7 @@ export function LancamentoForm() {
               m.unidade_calculo = e.unidade_calculo ?? m.unidade_calculo
               m.km_atual = e.km_atual ?? m.km_atual
               m.custo_km = e.custo_km ?? m.custo_km
+              m.categoria_equipamento = e.categoria_equipamento ?? m.categoria_equipamento
             }
           })
         }
@@ -179,6 +182,12 @@ export function LancamentoForm() {
     },
     enabled: !!propriedadeAtual?.id
   })
+
+  // "Uso de Máquina" (hora/km) só faz sentido pra máquinas de verdade — implemento não tem motor pra cobrar horas
+  const maquinasReais = useMemo(() => (maquinas || []).filter((m: any) => (m.categoria_equipamento || 'maquina') === 'maquina'), [maquinas])
+  const implementosLancamento = useMemo(() => (maquinas || []).filter((m: any) => m.categoria_equipamento === 'implemento'), [maquinas])
+  const [tipoEquipamentoManutencao, setTipoEquipamentoManutencao] = useState<'maquina' | 'implemento'>('maquina')
+  const equipamentosManutencao = tipoEquipamentoManutencao === 'implemento' ? implementosLancamento : maquinasReais
 
   const { data: categoriasManutencao } = useQuery({
     queryKey: ['categorias-manutencao'],
@@ -922,7 +931,7 @@ export function LancamentoForm() {
         }
 
         await aplicarConsumoEHorimetro(itensComCusto)
-        await sincronizarAbastecimentos(lancamentoId, itensComCusto, data.data_execucao)
+        await sincronizarAbastecimentos(lancamentoId, itensComCusto, data.data_execucao, userId, propriedadeAtual?.id)
         await sincronizarManutencoes(lancamentoId, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
 
         return { id: lancamentoId, custoTotal }
@@ -974,7 +983,7 @@ export function LancamentoForm() {
       }
 
       await aplicarConsumoEHorimetro(itensComCusto)
-      await sincronizarAbastecimentos(novoLancamento.id, itensComCusto, data.data_execucao)
+      await sincronizarAbastecimentos(novoLancamento.id, itensComCusto, data.data_execucao, userId, propriedadeAtual?.id)
       await sincronizarManutencoes(novoLancamento.id, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
 
       return { id: novoLancamento.id, custoTotal }
@@ -1019,6 +1028,9 @@ export function LancamentoForm() {
       }
 
       queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
+      queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+      queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
+      queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] })
       queryClient.invalidateQueries({ queryKey: ['estoque'] })
       queryClient.invalidateQueries({ queryKey: ['produtos'] })
       queryClient.invalidateQueries({ queryKey: ['preview-custo'] })
@@ -1053,21 +1065,58 @@ export function LancamentoForm() {
   const sincronizarAbastecimentos = async (
     lancamentoIdSalvo: string,
     itens: ItemLancamento[],
-    dataExecucao: string
+    dataExecucao: string,
+    userId?: string,
+    propriedadeId?: string
   ) => {
     const abastecimentosDoLancamento = itens.filter(i => i.tipo_ref === 'abastecimento' && i.maquina_id)
     if (abastecimentosDoLancamento.length === 0) return
-    await supabase.from('abastecimentos').insert(abastecimentosDoLancamento.map(item => ({
-      maquina_id: item.maquina_id,
-      data: dataExecucao,
-      horimetro: item.horimetro_informado ?? 0,
-      combustivel_tipo: item.combustivel_tipo || null,
-      quantidade_litros: item.litros || 0,
-      custo_total: item.custo_total || 0,
-      custo_litro: item.litros && item.litros > 0 ? (item.custo_total || 0) / item.litros : null,
-      observacoes: item.observacao || null,
-      lancamento_id: lancamentoIdSalvo,
-    })))
+
+    const linhasPreparadas = await Promise.all(abastecimentosDoLancamento.map(async (item) => {
+      let custoFinal = item.custo_total || 0
+      let detalhamentoLotes: any = null
+
+      if (item.origem_estoque && item.produto_id && item.litros && item.litros > 0) {
+        const resultado = await consumirFIFO(item.produto_id, item.litros)
+        custoFinal = resultado.custoTotal
+        detalhamentoLotes = resultado.detalhamento
+      }
+
+      return {
+        maquina_id: item.maquina_id,
+        propriedade_id: propriedadeId,
+        data: dataExecucao,
+        horimetro: item.horimetro_informado ?? 0,
+        combustivel_tipo: item.combustivel_tipo || null,
+        quantidade_litros: item.litros || 0,
+        custo_total: custoFinal,
+        custo_litro: item.litros && item.litros > 0 ? custoFinal / item.litros : null,
+        observacoes: item.observacao || null,
+        lancamento_id: lancamentoIdSalvo,
+        contato_id: item.contato_id || null,
+        produto_id: item.origem_estoque ? (item.produto_id || null) : null,
+        detalhamento_lotes: detalhamentoLotes,
+      }
+    }))
+
+    const { data: inseridos } = await supabase.from('abastecimentos').insert(linhasPreparadas).select('id')
+
+    for (let i = 0; i < abastecimentosDoLancamento.length; i++) {
+      const item = abastecimentosDoLancamento[i]
+      const novoId = (inseridos as any)?.[i]?.id
+      if (item.anexo && novoId && !item.origem_estoque) {
+        const { data: transacao } = await supabase
+          .from('transacoes').select('id')
+          .eq('origem', `abastecimento:${novoId}`)
+          .maybeSingle()
+        if (transacao) {
+          await uploadAnexoArquivo({
+            file: item.anexo, entidadeTipo: 'transacao', entidadeId: (transacao as any).id,
+            propriedadeId: propriedadeAtual!.id, userId: userId || '',
+          })
+        }
+      }
+    }
   }
 
   // Helper: sincronizar registros em maquina_manutencoes a partir dos itens de manutenção do lançamento
@@ -1080,7 +1129,7 @@ export function LancamentoForm() {
   ) => {
     const manutencoes = itens.filter(i => i.tipo_ref === 'manutencao' && i.maquina_id)
     if (manutencoes.length === 0) return
-    await supabase.from('maquina_manutencoes').insert(manutencoes.map(item => ({
+    const { data: inseridos } = await supabase.from('maquina_manutencoes').insert(manutencoes.map(item => ({
       propriedade_id: propriedadeId,
       safra_id: safraAtual?.id || null,
       maquina_id: item.maquina_id,
@@ -1098,7 +1147,25 @@ export function LancamentoForm() {
       // Quantidade usada (peças, ex: 2 pneus) — grava sempre, veio do estoque ou não
       produto_id: item.origem_estoque ? (item.produto_id || null) : null,
       quantidade_produto: item.quantidade || null,
-    })))
+      contato_id: item.contato_id || null,
+    }))).select('id')
+
+    for (let i = 0; i < manutencoes.length; i++) {
+      const item = manutencoes[i]
+      const novoId = (inseridos as any)?.[i]?.id
+      if (item.anexo && novoId && !item.origem_estoque) {
+        const { data: transacao } = await supabase
+          .from('transacoes').select('id')
+          .eq('origem', `manutencao:${novoId}`)
+          .maybeSingle()
+        if (transacao) {
+          await uploadAnexoArquivo({
+            file: item.anexo, entidadeTipo: 'transacao', entidadeId: (transacao as any).id,
+            propriedadeId, userId: userId || '',
+          })
+        }
+      }
+    }
   }
 
   // Helper: aplicar consumo FIFO e horímetro
@@ -1149,33 +1216,15 @@ export function LancamentoForm() {
           }
         }
       }
-      // Abastecimento: atualiza horímetro informado e baixa combustível do estoque (FIFO)
+      // Abastecimento: apenas atualiza o horímetro informado.
+      // A baixa do combustível no estoque acontece UMA única vez, em
+      // sincronizarAbastecimentos (via consumirFIFO), que também grava o
+      // detalhamento_lotes usado para devolver o saldo na exclusão.
+      // Baixar aqui também duplicava o consumo e deixava saldo irrecuperável.
       if (item.tipo_ref === 'abastecimento' && item.maquina_id && item.horimetro_informado != null) {
         await supabase.from('maquinas').update({
           horimetro_atual: item.horimetro_informado
         }).eq('id', item.maquina_id)
-
-        if (item.origem_estoque && item.produto_id && item.litros && item.litros > 0) {
-          // Mesmo mecanismo de consumo FIFO já usado para itens de produto:
-          // consome dos lotes mais antigos até atender a quantidade (litros).
-          let restante = item.litros
-          const { data: lotes } = await supabase
-            .from('lotes')
-            .select('id, quantidade_disponivel, data_entrada')
-            .eq('produto_id', item.produto_id)
-            .gt('quantidade_disponivel', 0)
-            .order('data_entrada', { ascending: true })
-          if (lotes) {
-            for (const lote of lotes) {
-              if (restante <= 0) break
-              const consumir = Math.min(Number(lote.quantidade_disponivel), restante)
-              await supabase.from('lotes').update({
-                quantidade_disponivel: Math.max(0, Number(lote.quantidade_disponivel) - consumir)
-              }).eq('id', lote.id)
-              restante -= consumir
-            }
-          }
-        }
       }
       // Manutenção: apenas atualiza o horímetro informado, se preenchido (sem baixa de estoque)
       if (item.tipo_ref === 'manutencao' && item.maquina_id && item.horimetro_informado != null) {
@@ -1200,6 +1249,50 @@ export function LancamentoForm() {
       toast({ title: 'Estoque insuficiente', description: 'Ajuste as quantidades antes de salvar.', variant: 'destructive' })
       return false
     }
+
+    for (const item of formData.itens) {
+      if (item.tipo_ref === 'manutencao') {
+        if (!item.categoria_manutencao) {
+          toast({ title: 'Manutenção incompleta', description: 'Selecione a categoria da manutenção.', variant: 'destructive' })
+          return false
+        }
+        if (!item.descricao?.trim()) {
+          toast({ title: 'Manutenção incompleta', description: 'Preencha a descrição da manutenção.', variant: 'destructive' })
+          return false
+        }
+        if (!item.quantidade || item.quantidade <= 0) {
+          toast({ title: 'Manutenção incompleta', description: 'Informe a quantidade.', variant: 'destructive' })
+          return false
+        }
+        if (!item.custo_total || item.custo_total <= 0) {
+          toast({ title: 'Manutenção incompleta', description: 'Informe o custo.', variant: 'destructive' })
+          return false
+        }
+        if (item.origem_estoque && !item.produto_id) {
+          toast({ title: 'Manutenção incompleta', description: 'Selecione a peça/produto do estoque.', variant: 'destructive' })
+          return false
+        }
+      }
+      if (item.tipo_ref === 'abastecimento') {
+        if (item.origem_estoque && !item.produto_id) {
+          toast({ title: 'Abastecimento incompleto', description: 'Selecione o combustível do estoque.', variant: 'destructive' })
+          return false
+        }
+        if (!item.origem_estoque && !item.combustivel_tipo) {
+          toast({ title: 'Abastecimento incompleto', description: 'Selecione o tipo de combustível.', variant: 'destructive' })
+          return false
+        }
+        if (!item.litros || item.litros <= 0) {
+          toast({ title: 'Abastecimento incompleto', description: 'Informe a quantidade de litros.', variant: 'destructive' })
+          return false
+        }
+        if (!item.custo_total || item.custo_total <= 0) {
+          toast({ title: 'Abastecimento incompleto', description: 'Informe o custo total.', variant: 'destructive' })
+          return false
+        }
+      }
+    }
+
     return true
   }
 
@@ -1439,6 +1532,7 @@ export function LancamentoForm() {
                     formData.itens.map((itemForm, index) => (
                       <ItemLancamentoCard
                         key={`${itemForm.tipo_ref}-${itemForm.produto_id || itemForm.maquina_id || itemForm.servico_ref_id || index}`}
+                        propriedadeId={propriedadeAtual?.id}
                         itemForm={itemForm}
                         produtos={produtos}
                         temMaquinaNoLancamento={!!itemForm.maquina_id && formData.itens.some(i => i.tipo_ref === 'maquina' && i.maquina_id === itemForm.maquina_id)}
@@ -1532,14 +1626,14 @@ export function LancamentoForm() {
                             <SelectValue placeholder="Selecione uma máquina..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {maquinas?.map(m => (
+                            {maquinasReais?.map(m => (
                               <SelectItem key={m.id} value={m.id}>
                                 {(m as any).unidade_calculo === 'km'
                                   ? `${m.nome} — R$ ${((m as any).custo_km || 0).toFixed(2)}/km`
                                   : `${m.nome} — R$ ${(m.custo_hora || 0).toFixed(2)}/h`}
                               </SelectItem>
                             ))}
-                            {(!maquinas || maquinas.length === 0) && (
+                            {(!maquinasReais || maquinasReais.length === 0) && (
                               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                                 Nenhuma máquina cadastrada
                               </div>
@@ -1581,7 +1675,7 @@ export function LancamentoForm() {
                             <SelectValue placeholder="Selecione a máquina abastecida..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {maquinas?.map(m => (
+                            {maquinas?.filter((m: any) => m.categoria_equipamento !== 'implemento').map(m => (
                               <SelectItem key={m.id} value={m.id}>
                                 {m.nome} — R$ {(m.custo_hora || 0).toFixed(2)}/h
                               </SelectItem>
@@ -1597,23 +1691,44 @@ export function LancamentoForm() {
                     )}
 
                     {adicionandoTipo === 'manutencao' && (
-                      <div className="mt-3">
+                      <div className="mt-3 space-y-3">
+                        <div>
+                          <Label className="text-xs">Máquina ou Implemento?</Label>
+                          <div className="flex gap-2 mt-1">
+                            <Button
+                              type="button" size="sm"
+                              variant={tipoEquipamentoManutencao === 'maquina' ? 'default' : 'outline'}
+                              onClick={() => setTipoEquipamentoManutencao('maquina')}
+                            >
+                              Máquina
+                            </Button>
+                            <Button
+                              type="button" size="sm"
+                              variant={tipoEquipamentoManutencao === 'implemento' ? 'default' : 'outline'}
+                              onClick={() => setTipoEquipamentoManutencao('implemento')}
+                            >
+                              Implemento
+                            </Button>
+                          </div>
+                        </div>
                         <Select onValueChange={(maquinaId) => {
                           adicionarManutencao(maquinaId)
                           setAdicionandoTipo(null)
                         }}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione a máquina em manutenção..." />
+                            <SelectValue placeholder={tipoEquipamentoManutencao === 'implemento' ? 'Selecione o implemento...' : 'Selecione a máquina em manutenção...'} />
                           </SelectTrigger>
                           <SelectContent>
-                            {maquinas?.map(m => (
+                            {equipamentosManutencao?.map(m => (
                               <SelectItem key={m.id} value={m.id}>
-                                {m.nome} — Horímetro: {m.horimetro_atual ?? 0}h
+                                {tipoEquipamentoManutencao === 'implemento'
+                                  ? m.nome
+                                  : `${m.nome} — Horímetro: ${m.horimetro_atual ?? 0}h`}
                               </SelectItem>
                             ))}
-                            {(!maquinas || maquinas.length === 0) && (
+                            {(!equipamentosManutencao || equipamentosManutencao.length === 0) && (
                               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                                Nenhuma máquina cadastrada
+                                {tipoEquipamentoManutencao === 'implemento' ? 'Nenhum implemento cadastrado' : 'Nenhuma máquina cadastrada'}
                               </div>
                             )}
                           </SelectContent>
@@ -1629,7 +1744,7 @@ export function LancamentoForm() {
                               <SelectValue placeholder="Selecione o trator/máquina..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {maquinas?.map(m => (
+                              {maquinas?.filter((m: any) => m.categoria_equipamento !== 'implemento').map(m => (
                                 <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
                               ))}
                               {(!maquinas || maquinas.length === 0) && (
