@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { Lancamento } from '@/types/supabase-local'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
+import { restaurarFIFO } from '@/lib/fifoConsumo'
 
 export function useLancamentos(safraId?: string) {
   return useQuery({
@@ -346,7 +347,19 @@ export function useExcluirLancamento() {
         }
       }
 
-      // ETAPA 2.6: EXCLUIR ABASTECIMENTOS/MANUTENÇÕES "LIVRES" DO LANÇAMENTO
+      // ETAPA 2.6: DEVOLVER AO ESTOQUE O COMBUSTÍVEL DOS ABASTECIMENTOS DO LANÇAMENTO
+      // (abastecimento "Do Estoque" consome lotes via FIFO e guarda o
+      // detalhamento_lotes — sem devolver aqui o saldo ficava perdido)
+      const { data: abastecimentosVinculados } = await supabase
+        .from('abastecimentos')
+        .select('id, detalhamento_lotes')
+        .eq('lancamento_id', lancamentoId)
+
+      for (const ab of (abastecimentosVinculados as any[]) || []) {
+        await restaurarFIFO(ab.detalhamento_lotes)
+      }
+
+      // EXCLUIR ABASTECIMENTOS/MANUTENÇÕES "LIVRES" DO LANÇAMENTO
       // (isso dispara a limpeza automática da transação correspondente no
       // Financeiro, via gatilho no banco — sem isso, ela fica órfã)
       console.log('🗑️ Excluindo abastecimentos/manutenções vinculados...')

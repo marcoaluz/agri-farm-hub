@@ -565,6 +565,7 @@ export function Financeiro() {
                   <TableHead>Data Venc.</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead className="hidden md:table-cell">Categoria</TableHead>
+                  <TableHead className="hidden lg:table-cell">Subcategoria</TableHead>
                   <TableHead className="hidden lg:table-cell">Fornecedor/Cliente</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                   <TableHead>Status</TableHead>
@@ -573,9 +574,9 @@ export function Financeiro() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
                 ) : transacoesPag.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma transação encontrada.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma transação encontrada.</TableCell></TableRow>
                 ) : transacoesPag.map(t => {
                   const st = statusEfetivo(t)
                   return (
@@ -611,6 +612,7 @@ export function Financeiro() {
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{categoriasLabel[t.categoria] || t.categoria}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground">{t.subcategoria || '—'}</TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">{t.fornecedor_cliente || '—'}</TableCell>
                       <TableCell className={cn('text-right font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
                         {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
@@ -640,6 +642,7 @@ export function Financeiro() {
                               <p className="font-semibold">{t.descricao}</p>
                               <div className="grid grid-cols-2 gap-1 text-muted-foreground">
                                 <span>Categoria:</span><span className="text-foreground">{categoriasLabel[t.categoria] || t.categoria}</span>
+                                {t.subcategoria && (<><span>Subcategoria:</span><span className="text-foreground">{t.subcategoria}</span></>)}
                                 <span>Valor:</span><span className="text-foreground">{fmt(t.valor)}</span>
                                 {t.eh_parcela && (<><span>Parcela:</span><span className="text-foreground">{t.numero_parcela}/{t.total_parcelas} · Total {fmt(Number(t.valor_total_transacao) || 0)}</span></>)}
                                 <span>Vencimento:</span><span className="text-foreground">{format(parseISO(t.data_vencimento), 'dd/MM/yyyy')}</span>
@@ -744,7 +747,7 @@ export function Financeiro() {
                             )}
                           </div>
                           <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                            <div>{categoriasLabel[t.categoria] || t.categoria} · {format(parseISO(t.data_vencimento), 'dd/MM/yy')}</div>
+                            <div>{categoriasLabel[t.categoria] || t.categoria}{t.subcategoria ? ` · ${t.subcategoria}` : ''} · {format(parseISO(t.data_vencimento), 'dd/MM/yy')}</div>
                             {t.parcela_numero && <div>Parcela {t.parcela_numero}/{t.parcela_total}</div>}
                           </div>
                           <TransacaoOrigemAcoes origem={t.origem} transacaoId={t.id} compact idsComAnexo={idsComAnexo} />
