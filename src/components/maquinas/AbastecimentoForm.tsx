@@ -64,12 +64,13 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
   const produtoSelecionado = produtosEstoque.find((p) => p.id === produtoId);
 
   const { data: tiposCombustivel = [], refetch: refetchTiposCombustivel } = useQuery<{ id: string; nome: string }[]>({
-    queryKey: ['tipos-combustivel'],
+    queryKey: ['tipos-combustivel', propriedadeAtual?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('listar_tipos_combustivel' as any);
+      const { data, error } = await supabase.rpc('listar_tipos_combustivel' as any, { p_propriedade_id: propriedadeAtual!.id });
       if (error) throw error;
       return (data as { id: string; nome: string }[]) || [];
     },
+    enabled: !!propriedadeAtual?.id,
   });
 
   const [showNovoCombustivel, setShowNovoCombustivel] = useState(false);
@@ -81,12 +82,12 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
     const nome = novoCombustivelNome.trim();
     if (!nome) return;
     setSalvandoCombustivel(true);
-    const { data: userData } = await supabase.auth.getUser();
-    const { error } = await supabase.from('tipos_combustivel' as any).insert({
-      usuario_id: userData?.user?.id,
-      nome,
-      ativo: true,
-    } as any);
+    const { error } = await supabase.rpc('criar_categoria_compartilhada' as any, {
+      p_tabela: 'tipos_combustivel',
+      p_propriedade_id: propriedadeAtual!.id,
+      p_nome: nome,
+      p_icone: null,
+    });
     setSalvandoCombustivel(false);
     if (error) {
       toast({

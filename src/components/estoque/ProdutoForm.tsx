@@ -106,14 +106,16 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
 
   // ── Categorias dinâmicas (filtradas pelo tipo de estoque) ──
   const { data: categorias = [], refetch: refetchCategorias } = useQuery<CategoriaProdutoRow[]>({
-    queryKey: ["categorias-produto", tipoEstoque],
+    queryKey: ["categorias-produto", tipoEstoque, propriedadeAtual?.id],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("listar_categorias_produto", {
+        p_propriedade_id: propriedadeAtual?.id,
         p_tipo_estoque: tipoEstoque || null,
       });
       if (error) throw error;
       return (data as CategoriaProdutoRow[]) || [];
     },
+    enabled: !!propriedadeAtual?.id,
   });
 
   useEffect(() => {

@@ -95,12 +95,13 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
 
   // ── Categorias dinâmicas ──
   const { data: categorias = [], refetch: refetchCategorias } = useQuery<CategoriaManutencaoRow[]>({
-    queryKey: ['categorias-manutencao'],
+    queryKey: ['categorias-manutencao', propriedadeId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('listar_categorias_manutencao');
+      const { data, error } = await supabase.rpc('listar_categorias_manutencao', { p_propriedade_id: propriedadeId });
       if (error) throw error;
       return (data as CategoriaManutencaoRow[]) || [];
     },
+    enabled: !!propriedadeId,
   });
 
   const [showNovaCategoria, setShowNovaCategoria] = useState(false);
@@ -110,12 +111,13 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
 
   // ── Descrições dinâmicas ──
   const { data: descricoesLista = [], refetch: refetchDescricoes } = useQuery<{ id: string; nome: string }[]>({
-    queryKey: ['descricoes-manutencao'],
+    queryKey: ['descricoes-manutencao', propriedadeId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('listar_descricoes_manutencao');
+      const { data, error } = await supabase.rpc('listar_descricoes_manutencao', { p_propriedade_id: propriedadeId });
       if (error) throw error;
       return (data as { id: string; nome: string }[]) || [];
     },
+    enabled: !!propriedadeId,
   });
 
   const [showNovaDescricao, setShowNovaDescricao] = useState(false);

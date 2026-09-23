@@ -69,14 +69,15 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
 
   // Categorias do usuário (dinâmicas)
   const { data: categorias, refetch: refetchCategorias } = useQuery({
-    queryKey: ['categorias-servico'],
+    queryKey: ['categorias-servico', propriedadeId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('listar_categorias_servico' as any);
+      const { data, error } = await supabase.rpc('listar_categorias_servico' as any, { p_propriedade_id: propriedadeId });
       if (error) throw error;
       return ((data || []) as { id: string; nome: string }[]).sort((a, b) =>
         a.nome.localeCompare(b.nome)
       );
     },
+    enabled: !!propriedadeId,
   });
 
   const handleAdicionarCategoria = async () => {
