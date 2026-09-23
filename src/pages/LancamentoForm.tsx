@@ -190,30 +190,33 @@ export function LancamentoForm() {
   const equipamentosManutencao = tipoEquipamentoManutencao === 'implemento' ? implementosLancamento : maquinasReais
 
   const { data: categoriasManutencao } = useQuery({
-    queryKey: ['categorias-manutencao'],
+    queryKey: ['categorias-manutencao', propriedadeAtual?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('listar_categorias_manutencao')
+      const { data, error } = await supabase.rpc('listar_categorias_manutencao', { p_propriedade_id: propriedadeAtual?.id })
       if (error) throw error
       return (data as { id: string; nome: string }[]) || []
     },
+    enabled: !!propriedadeAtual?.id,
   })
 
   const { data: descricoesManutencao } = useQuery({
-    queryKey: ['descricoes-manutencao'],
+    queryKey: ['descricoes-manutencao', propriedadeAtual?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('listar_descricoes_manutencao')
+      const { data, error } = await supabase.rpc('listar_descricoes_manutencao', { p_propriedade_id: propriedadeAtual?.id })
       if (error) throw error
       return (data as { id: string; nome: string }[]) || []
     },
+    enabled: !!propriedadeAtual?.id,
   })
 
   const { data: tiposCombustivel } = useQuery({
-    queryKey: ['tipos-combustivel'],
+    queryKey: ['tipos-combustivel', propriedadeAtual?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('listar_tipos_combustivel')
+      const { data, error } = await supabase.rpc('listar_tipos_combustivel', { p_propriedade_id: propriedadeAtual?.id })
       if (error) throw error
       return (data as { id: string; nome: string }[]) || []
     },
+    enabled: !!propriedadeAtual?.id,
   })
 
   const { data: servicosSimples } = useQuery({

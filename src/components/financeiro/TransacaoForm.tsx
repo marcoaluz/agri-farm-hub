@@ -131,12 +131,13 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   })
 
   const { data: subcategorias, refetch: refetchSubcategorias } = useQuery({
-    queryKey: ['subcategorias-transacao'],
+    queryKey: ['subcategorias-transacao', propId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('listar_subcategorias_transacao' as any)
+      const { data, error } = await supabase.rpc('listar_subcategorias_transacao' as any, { p_propriedade_id: propId })
       if (error) throw error
       return (data || []) as { id: string; nome: string }[]
     },
+    enabled: !!propId,
   })
   const [showNovaSubcategoria, setShowNovaSubcategoria] = useState(false)
   const [novaSubcategoriaNome, setNovaSubcategoriaNome] = useState('')
