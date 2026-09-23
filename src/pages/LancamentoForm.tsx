@@ -281,7 +281,9 @@ export function LancamentoForm() {
             unidade: li.produto?.unidade_medida || li.servico_ref?.unidade_medida || 'hora',
             custo_unitario_ref: li.maquina?.custo_hora || li.servico_ref?.custo_padrao || undefined,
             quantidade: li.quantidade,
-            custo_unitario: li.custo_unitario,
+            // custo_unitario é gravado como 0 para itens "Livre" (manutenção/abastecimento) —
+            // recalcula a partir de custo_total/quantidade pra não abrir o form de edição vazio.
+            custo_unitario: li.quantidade > 0 ? li.custo_total / li.quantidade : li.custo_unitario,
             custo_total: li.custo_total,
             detalhamento_lotes: li.detalhamento_lotes,
             origem_estoque: li.tipo_ref === 'abastecimento' ? !!li.produto_id : undefined,

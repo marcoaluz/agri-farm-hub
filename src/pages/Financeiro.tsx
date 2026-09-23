@@ -95,6 +95,21 @@ function ParcelasIndicador({ n }: { n?: number | null }) {
   )
 }
 
+/** Linha da listagem — pode representar várias parcelas pagas juntas (mesmo transacao_id + data_pagamento). */
+type TransacaoAgrupada = Transacao & {
+  _idsGrupo?: string[]
+  _numeroParcelaMin?: number
+  _numeroParcelaMax?: number
+}
+
+/** Texto "3-10/10 · Total R$ ..." (várias parcelas pagas juntas) ou "3/10 · Total R$ ..." (uma só). */
+const labelParcela = (t: TransacaoAgrupada): string => {
+  const min = t._numeroParcelaMin ?? t.numero_parcela
+  const max = t._numeroParcelaMax ?? t.numero_parcela
+  const intervalo = min != null && max != null && min !== max ? `${min}-${max}` : `${t.numero_parcela}`
+  return `${intervalo}/${t.total_parcelas} · Total ${fmt(Number(t.valor_total_transacao) || 0)}`
+}
+
 export function Financeiro() {
   const { propriedadeAtual, safraAtual } = useGlobal()
   const { isFechada, verificarSafra } = useSafraFechada(safraAtual)
@@ -154,11 +169,48 @@ export function Financeiro() {
   const [editando, setEditando] = useState<Transacao | null>(null)
   const [deletandoId, setDeletandoId] = useState<string | null>(null)
 
+  // Agrupa, só para exibição, parcelas da mesma transação pagas na mesma data
+  // (mesmo transacao_id + data_pagamento) em uma única linha. Parcelas
+  // pendentes/vencidas nunca agrupam. Não altera o banco.
+  const transacoesAgrupadas = useMemo<TransacaoAgrupada[]>(() => {
+    const grupos = new Map<string, TransacaoAgrupada>()
+    const resultado: TransacaoAgrupada[] = []
+
+    transacoes.forEach(t => {
+      const agrupavel = !!t.eh_parcela && !!t.transacao_id && !!t.data_pagamento && statusEfetivo(t) === 'pago'
+      if (!agrupavel) {
+        resultado.push(t)
+        return
+      }
+      const chave = `${t.transacao_id}::${t.data_pagamento}`
+      const existente = grupos.get(chave)
+      if (!existente) {
+        const novo: TransacaoAgrupada = {
+          ...t,
+          _idsGrupo: [t.id],
+          _numeroParcelaMin: t.numero_parcela ?? undefined,
+          _numeroParcelaMax: t.numero_parcela ?? undefined,
+        }
+        grupos.set(chave, novo)
+        resultado.push(novo)
+      } else {
+        existente.valor += t.valor
+        existente._idsGrupo!.push(t.id)
+        if (t.numero_parcela != null) {
+          existente._numeroParcelaMin = existente._numeroParcelaMin != null ? Math.min(existente._numeroParcelaMin, t.numero_parcela) : t.numero_parcela
+          existente._numeroParcelaMax = existente._numeroParcelaMax != null ? Math.max(existente._numeroParcelaMax, t.numero_parcela) : t.numero_parcela
+        }
+      }
+    })
+
+    return resultado
+  }, [transacoes])
+
   // Paginação
   const [page, setPage] = useState(0)
   const perPage = 15
-  const totalPages = Math.ceil(transacoes.length / perPage)
-  const transacoesPag = transacoes.slice(page * perPage, (page + 1) * perPage)
+  const totalPages = Math.ceil(transacoesAgrupadas.length / perPage)
+  const transacoesPag = transacoesAgrupadas.slice(page * perPage, (page + 1) * perPage)
 
   // Deep-link para transação específica via ?transacao=abc123 ou aba via ?tab=custos|fechamento
   const initialTab = transacaoDestaqueId
@@ -169,15 +221,15 @@ export function Financeiro() {
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    if (!transacaoDestaqueId || !transacoes.length) return
-    const idx = transacoes.findIndex(t => t.id === transacaoDestaqueId)
+    if (!transacaoDestaqueId || !transacoesAgrupadas.length) return
+    const idx = transacoesAgrupadas.findIndex(t => t.id === transacaoDestaqueId || t._idsGrupo?.includes(transacaoDestaqueId))
     if (idx >= 0) {
       const targetPage = Math.floor(idx / perPage)
       setPage(targetPage)
       setActiveTab('transacoes')
       setHighlightedId(transacaoDestaqueId)
     }
-  }, [transacaoDestaqueId, transacoes.length])
+  }, [transacaoDestaqueId, transacoesAgrupadas.length])
 
   useEffect(() => {
     if (!highlightedId) return
@@ -233,6 +285,20 @@ export function Financeiro() {
       return
     }
     toast.success('Todas as parcelas restantes foram baixadas')
+    invalidarFinanceiro()
+  }
+
+  // Desfaz a baixa de um grupo de parcelas pagas juntas (linha agrupada da listagem)
+  const desfazerGrupo = async (ids: string[]) => {
+    const { error } = await supabase
+      .from('parcelas' as any)
+      .update({ status: 'pendente', data_pagamento: null })
+      .in('id', ids)
+    if (error) {
+      toast.error('Erro ao desfazer: ' + error.message)
+      return
+    }
+    toast.success('Desfeito')
     invalidarFinanceiro()
   }
 
@@ -618,7 +684,7 @@ export function Financeiro() {
                         {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
                         {t.eh_parcela && (
                           <div className="text-xs font-normal text-muted-foreground">
-                            {t.numero_parcela}/{t.total_parcelas} · Total {fmt(Number(t.valor_total_transacao) || 0)}
+                            {labelParcela(t)}
                           </div>
                         )}
                       </TableCell>
@@ -644,7 +710,7 @@ export function Financeiro() {
                                 <span>Categoria:</span><span className="text-foreground">{categoriasLabel[t.categoria] || t.categoria}</span>
                                 {t.subcategoria && (<><span>Subcategoria:</span><span className="text-foreground">{t.subcategoria}</span></>)}
                                 <span>Valor:</span><span className="text-foreground">{fmt(t.valor)}</span>
-                                {t.eh_parcela && (<><span>Parcela:</span><span className="text-foreground">{t.numero_parcela}/{t.total_parcelas} · Total {fmt(Number(t.valor_total_transacao) || 0)}</span></>)}
+                                {t.eh_parcela && (<><span>Parcela:</span><span className="text-foreground">{labelParcela(t)}</span></>)}
                                 <span>Vencimento:</span><span className="text-foreground">{format(parseISO(t.data_vencimento), 'dd/MM/yyyy')}</span>
                                 {t.data_pagamento && (<><span>Pago em:</span><span className="text-foreground">{format(parseISO(t.data_pagamento), 'dd/MM/yyyy')}</span></>)}
                                 <span>{t.tipo === 'receita' ? 'Cliente:' : 'Fornecedor:'}</span><span className="text-foreground">{t.fornecedor_cliente || '—'}</span>
@@ -673,7 +739,9 @@ export function Financeiro() {
                               className="text-muted-foreground"
                               title="Desfazer baixa"
                               onClick={() => {
-                                if (t.eh_parcela) {
+                                if (t._idsGrupo && t._idsGrupo.length > 1) {
+                                  desfazerGrupo(t._idsGrupo)
+                                } else if (t.eh_parcela) {
                                   marcarPagoParcela.mutate({ id: t.id, pagar: false }, { onSuccess: () => toast.success('Desfeito') })
                                 } else {
                                   marcarPago.mutate({ id: t.id, pagar: false }, { onSuccess: () => toast.success('Desfeito') })
@@ -684,7 +752,7 @@ export function Financeiro() {
                               <Undo2 className="h-4 w-4 mr-1" /> Desfazer
                             </Button>
                           )}
-                          {!isAutoGerada(t) ? (
+                          {!isAutoGerada(t) && !(t._idsGrupo && t._idsGrupo.length > 1) ? (
                             <>
                               <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => { setEditando(t); setFormOpen(true) }}>
                                 <Pencil className="h-3.5 w-3.5" />
@@ -693,11 +761,11 @@ export function Financeiro() {
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </>
-                          ) : (
+                          ) : isAutoGerada(t) ? (
                             <span className="text-xs text-muted-foreground italic pr-1">
                               Via {origemLabel(t.origem!)}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -724,11 +792,11 @@ export function Financeiro() {
                     id={`transacao-${t.id}`}
                     className={cn(
                       'transition-colors',
-                      isAutoGerada(t) ? 'cursor-default' : 'cursor-pointer hover:bg-muted/50',
+                      (isAutoGerada(t) || (t._idsGrupo && t._idsGrupo.length > 1)) ? 'cursor-default' : 'cursor-pointer hover:bg-muted/50',
                       st === 'vencido' && 'bg-destructive/5',
                       highlightedId === t.id && 'ring-2 ring-primary bg-primary/10 animate-pulse'
                     )}
-                    onClick={() => { if (!isAutoGerada(t)) { setEditando(t); setFormOpen(true) } }}
+                    onClick={() => { if (!isAutoGerada(t) && !(t._idsGrupo && t._idsGrupo.length > 1)) { setEditando(t); setFormOpen(true) } }}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-3">
@@ -757,7 +825,7 @@ export function Financeiro() {
                             {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
                             {t.eh_parcela && (
                               <div className="text-xs font-normal text-muted-foreground">
-                                {t.numero_parcela}/{t.total_parcelas} · Total {fmt(Number(t.valor_total_transacao) || 0)}
+                                {labelParcela(t)}
                               </div>
                             )}
                           </div>
@@ -789,7 +857,9 @@ export function Financeiro() {
                             className="h-11 text-muted-foreground"
                             onClick={e => {
                               e.stopPropagation()
-                              if (t.eh_parcela) {
+                              if (t._idsGrupo && t._idsGrupo.length > 1) {
+                                desfazerGrupo(t._idsGrupo)
+                              } else if (t.eh_parcela) {
                                 marcarPagoParcela.mutate({ id: t.id, pagar: false }, { onSuccess: () => toast.success('Desfeito') })
                               } else {
                                 marcarPago.mutate({ id: t.id, pagar: false }, { onSuccess: () => toast.success('Desfeito') })
@@ -802,11 +872,11 @@ export function Financeiro() {
                         )}
                         {isAutoGerada(t) ? (
                           <span className="text-xs text-muted-foreground italic self-center">Via {origemLabel(t.origem!)}</span>
-                        ) : (
+                        ) : !(t._idsGrupo && t._idsGrupo.length > 1) ? (
                           <Button size="sm" variant="outline" className="h-11 text-destructive" onClick={e => { e.stopPropagation(); setDeletandoId(t.id) }}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
-                        )}
+                        ) : null}
                       </div>
                     </CardContent>
                   </Card>

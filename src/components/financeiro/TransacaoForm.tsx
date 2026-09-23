@@ -118,16 +118,13 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const [precoUnitario, setPrecoUnitario] = useState<number>(0)
 
   const { data: categorias, refetch: refetchCategorias } = useQuery({
-    queryKey: ['categorias-transacao'],
+    queryKey: ['categorias-transacao', propId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('categorias_transacao' as any)
-        .select('*')
-        .eq('ativo', true)
-        .order('nome_exibicao')
+      const { data, error } = await supabase.rpc('listar_categorias_transacao' as any, { p_propriedade_id: propId })
       if (error) throw error
       return (data || []) as unknown as { valor: string; nome_exibicao: string; id: string; usuario_id: string | null }[]
     },
+    enabled: !!propId,
   })
 
   const { data: subcategorias, refetch: refetchSubcategorias } = useQuery({
@@ -149,9 +146,9 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
 
   const handleAdicionarCategoria = async () => {
     const nome = novaCategoriaNome.trim()
-    if (!nome) return
+    if (!nome || !propId) return
     setSalvandoCategoria(true)
-    const { data, error } = await supabase.rpc('criar_categoria_transacao' as any, { p_nome_exibicao: nome })
+    const { data, error } = await supabase.rpc('criar_categoria_transacao' as any, { p_nome_exibicao: nome, p_propriedade_id: propId })
     setSalvandoCategoria(false)
     if (error) {
       toast.error('Erro ao criar categoria: ' + error.message)
@@ -404,7 +401,12 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
 
     try {
       if (isEditing) {
-        await updateMutation.mutateAsync({ id: transacao!.id, ...payload })
+        await updateMutation.mutateAsync({
+          id: transacao!.eh_parcela ? transacao!.transacao_id! : transacao!.id,
+          ehParcela: !!transacao!.eh_parcela,
+          parcelaId: transacao!.eh_parcela ? transacao!.id : undefined,
+          ...payload,
+        })
         toast.success('Transação atualizada')
       } else if (showCulturaFields && data.cultura_id) {
         // Venda de produção agrícola sempre passa pela RPC validada (mesma da tela Produção) —

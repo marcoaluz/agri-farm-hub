@@ -218,12 +218,37 @@ export function useCreateTransacao() {
 export function useUpdateTransacao() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...dados }: Partial<TransacaoPayload> & { id: string }) => {
+    mutationFn: async ({ id, ehParcela, parcelaId, ...dados }: Partial<TransacaoPayload> & { id: string; ehParcela?: boolean; parcelaId?: string }) => {
+      // Linha vinda de uma parcela: valor/data_vencimento/data_pagamento/status
+      // moram em "parcelas" (são por parcela); o resto (categoria, subcategoria,
+      // descricao, fornecedor etc.) é compartilhado por todas as parcelas e
+      // mora na transação pai — "id" aqui já é sempre o id da transação pai.
+      if (ehParcela && parcelaId) {
+        const { valor, data_vencimento, data_pagamento, status, ...camposCompartilhados } = dados as any
+
+        const dadosParcela: any = {}
+        if (valor !== undefined) dadosParcela.valor = valor
+        if (data_vencimento !== undefined) dadosParcela.data_vencimento = data_vencimento
+        if (data_pagamento !== undefined) dadosParcela.data_pagamento = data_pagamento
+        if (status !== undefined) dadosParcela.status = status
+
+        if (Object.keys(dadosParcela).length > 0) {
+          const { error: erroParcela } = await supabase.from('parcelas' as any).update(dadosParcela).eq('id', parcelaId)
+          if (erroParcela) throw erroParcela
+        }
+        if (Object.keys(camposCompartilhados).length > 0) {
+          const { error: erroTransacao } = await supabase.from('transacoes').update(camposCompartilhados).eq('id', id)
+          if (erroTransacao) throw erroTransacao
+        }
+        return
+      }
+
       const { error } = await supabase.from('transacoes').update(dados).eq('id', id)
       if (error) throw error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+      queryClient.invalidateQueries({ queryKey: ['parcelas'] })
       queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
       queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] })
     },
