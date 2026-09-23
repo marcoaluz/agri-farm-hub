@@ -565,6 +565,7 @@ export function Financeiro() {
                   <TableHead>Data Venc.</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead className="hidden md:table-cell">Categoria</TableHead>
+                  <TableHead className="hidden lg:table-cell">Subcategoria</TableHead>
                   <TableHead className="hidden lg:table-cell">Fornecedor/Cliente</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                   <TableHead>Status</TableHead>
