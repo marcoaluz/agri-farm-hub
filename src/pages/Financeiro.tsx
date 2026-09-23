@@ -612,6 +612,7 @@ export function Financeiro() {
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{categoriasLabel[t.categoria] || t.categoria}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground">{t.subcategoria || '—'}</TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">{t.fornecedor_cliente || '—'}</TableCell>
                       <TableCell className={cn('text-right font-semibold whitespace-nowrap', t.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
                         {t.tipo === 'receita' ? '+' : '-'} {fmt(t.valor)}
