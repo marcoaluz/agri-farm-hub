@@ -278,12 +278,14 @@ export function ServicoForm({ servico, onSuccess }: { servico: any; onSuccess: (
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({ title: `Serviço ${servico ? 'atualizado' : 'criado'} com sucesso` });
-      queryClient.invalidateQueries({ queryKey: ['servicos'] });
-      queryClient.invalidateQueries({ queryKey: ['servicos', propriedadeId] });
-      queryClient.invalidateQueries({ queryKey: ['servicos-simples'] });
-      queryClient.invalidateQueries({ queryKey: ['servicos-simples-lancamento'] });
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['servicos'], type: 'active' }),
+        queryClient.refetchQueries({ queryKey: ['servicos', propriedadeId], type: 'active' }),
+        queryClient.refetchQueries({ queryKey: ['servicos-simples'], type: 'active' }),
+        queryClient.refetchQueries({ queryKey: ['servicos-simples-lancamento'], type: 'active' }),
+      ]);
       onSuccess();
     },
     onError: (err: Error) => {

@@ -4,6 +4,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
 import { toast as sonnerToast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { consumirFIFO } from '@/lib/fifoConsumo'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useTalhoes } from '@/hooks/useTalhoes'
 import { ItemLancamentoCard, type ItemLancamento } from '@/components/lancamentos/ItemLancamentoCard'
@@ -1070,19 +1071,35 @@ export function LancamentoForm() {
   ) => {
     const abastecimentosDoLancamento = itens.filter(i => i.tipo_ref === 'abastecimento' && i.maquina_id)
     if (abastecimentosDoLancamento.length === 0) return
-    const { data: inseridos } = await supabase.from('abastecimentos').insert(abastecimentosDoLancamento.map(item => ({
-      maquina_id: item.maquina_id,
-      data: dataExecucao,
-      horimetro: item.horimetro_informado ?? 0,
-      combustivel_tipo: item.combustivel_tipo || null,
-      quantidade_litros: item.litros || 0,
-      custo_total: item.custo_total || 0,
-      custo_litro: item.litros && item.litros > 0 ? (item.custo_total || 0) / item.litros : null,
-      observacoes: item.observacao || null,
-      lancamento_id: lancamentoIdSalvo,
-      propriedade_id: propriedadeId,
-      contato_id: item.contato_id || null,
-    }))).select('id')
+
+    const linhasPreparadas = await Promise.all(abastecimentosDoLancamento.map(async (item) => {
+      let custoFinal = item.custo_total || 0
+      let detalhamentoLotes: any = null
+
+      if (item.origem_estoque && item.produto_id && item.litros && item.litros > 0) {
+        const resultado = await consumirFIFO(item.produto_id, item.litros)
+        custoFinal = resultado.custoTotal
+        detalhamentoLotes = resultado.detalhamento
+      }
+
+      return {
+        maquina_id: item.maquina_id,
+        propriedade_id: propriedadeId,
+        data: dataExecucao,
+        horimetro: item.horimetro_informado ?? 0,
+        combustivel_tipo: item.combustivel_tipo || null,
+        quantidade_litros: item.litros || 0,
+        custo_total: custoFinal,
+        custo_litro: item.litros && item.litros > 0 ? custoFinal / item.litros : null,
+        observacoes: item.observacao || null,
+        lancamento_id: lancamentoIdSalvo,
+        contato_id: item.contato_id || null,
+        produto_id: item.origem_estoque ? (item.produto_id || null) : null,
+        detalhamento_lotes: detalhamentoLotes,
+      }
+    }))
+
+    const { data: inseridos } = await supabase.from('abastecimentos').insert(linhasPreparadas).select('id')
 
     for (let i = 0; i < abastecimentosDoLancamento.length; i++) {
       const item = abastecimentosDoLancamento[i]
