@@ -747,7 +747,7 @@ export function Financeiro() {
                             )}
                           </div>
                           <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                            <div>{categoriasLabel[t.categoria] || t.categoria} · {format(parseISO(t.data_vencimento), 'dd/MM/yy')}</div>
+                            <div>{categoriasLabel[t.categoria] || t.categoria}{t.subcategoria ? ` · ${t.subcategoria}` : ''} · {format(parseISO(t.data_vencimento), 'dd/MM/yy')}</div>
                             {t.parcela_numero && <div>Parcela {t.parcela_numero}/{t.parcela_total}</div>}
                           </div>
                           <TransacaoOrigemAcoes origem={t.origem} transacaoId={t.id} compact idsComAnexo={idsComAnexo} />
