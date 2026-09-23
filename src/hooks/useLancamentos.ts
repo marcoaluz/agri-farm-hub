@@ -346,6 +346,13 @@ export function useExcluirLancamento() {
         }
       }
 
+      // ETAPA 2.6: EXCLUIR ABASTECIMENTOS/MANUTENÇÕES "LIVRES" DO LANÇAMENTO
+      // (isso dispara a limpeza automática da transação correspondente no
+      // Financeiro, via gatilho no banco — sem isso, ela fica órfã)
+      console.log('🗑️ Excluindo abastecimentos/manutenções vinculados...')
+      await supabase.from('maquina_manutencoes').delete().eq('lancamento_id', lancamentoId)
+      await supabase.from('abastecimentos').delete().eq('lancamento_id', lancamentoId)
+
       // ETAPA 3: EXCLUIR ITENS DO LANÇAMENTO
       console.log('🗑️ Excluindo itens do lançamento...')
       const { error: itensError } = await supabase

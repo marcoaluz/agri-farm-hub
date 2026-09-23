@@ -15,6 +15,7 @@ interface Maquina {
   id: string;
   propriedade_id: string;
   nome: string;
+  marca?: string;
   modelo?: string;
   ano_fabricacao?: number;
   horimetro_inicial: number;
@@ -42,6 +43,7 @@ export function MaquinaForm({ maquina, onSuccess, categoriaPadrao }: MaquinaForm
 
   const [formData, setFormData] = useState({
     nome: '',
+    marca: '',
     modelo: '',
     ano_fabricacao: '',
     horimetro_inicial: 0,
@@ -58,6 +60,7 @@ export function MaquinaForm({ maquina, onSuccess, categoriaPadrao }: MaquinaForm
     if (maquina) {
       setFormData({
         nome: maquina.nome,
+        marca: maquina.marca || '',
         modelo: maquina.modelo || '',
         ano_fabricacao: maquina.ano_fabricacao?.toString() || '',
         horimetro_inicial: maquina.horimetro_inicial,
@@ -83,6 +86,7 @@ export function MaquinaForm({ maquina, onSuccess, categoriaPadrao }: MaquinaForm
     mutationFn: async () => {
       const payload: any = {
         nome: formData.nome,
+        marca: formData.marca || null,
         modelo: formData.modelo || null,
         ano_fabricacao: formData.ano_fabricacao ? parseInt(formData.ano_fabricacao) : null,
         unidade_calculo: unidadeCalculo,
@@ -127,6 +131,7 @@ export function MaquinaForm({ maquina, onSuccess, categoriaPadrao }: MaquinaForm
             propriedade_id: propriedadeAtual?.id,
             usuario_id: userData?.user?.id,
             nome: formData.nome,
+            marca: formData.marca || null,
             modelo: formData.modelo || null,
             ano_fabricacao: formData.ano_fabricacao ? parseInt(formData.ano_fabricacao) : null,
             unidade_calculo: unidadeCalculo,
@@ -226,6 +231,15 @@ export function MaquinaForm({ maquina, onSuccess, categoriaPadrao }: MaquinaForm
 
         <div className="grid grid-cols-2 gap-4">
           <div>
+            <Label>Marca</Label>
+            <Input
+              value={formData.marca || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, marca: e.target.value }))}
+              placeholder={isImplemento ? 'Ex: Baldan' : 'Ex: John Deere'}
+              maxLength={100}
+            />
+          </div>
+          <div>
             <Label>Modelo</Label>
             <Input
               value={formData.modelo}
@@ -234,6 +248,8 @@ export function MaquinaForm({ maquina, onSuccess, categoriaPadrao }: MaquinaForm
               maxLength={100}
             />
           </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Ano de Fabricação</Label>
             <Input
