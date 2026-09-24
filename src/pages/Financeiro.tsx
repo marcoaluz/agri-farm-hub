@@ -115,21 +115,38 @@ export function Financeiro() {
   const { isFechada, verificarSafra } = useSafraFechada(safraAtual)
   const propId = propriedadeAtual?.id
   const somenteConsulta = useSomenteConsulta()
-  const { data: idsComAnexo } = useIdsComAnexo(propId)
-  const { data: maquinasNomeMapa } = useQuery({
+  const { data: idsComAnexoArray } = useIdsComAnexo(propId)
+  // useIdsComAnexo retorna array (JSON-seguro pro cache persistido em
+  // localStorage) — reconstrói o Set aqui, só na memória deste componente,
+  // nunca guardado como resultado de useQuery. Ver TransacaoOrigemAcoes.tsx.
+  // Array.isArray (não só "|| []"): cache antigo em localStorage de antes
+  // desse fix pode ter persistido um Set já corrompido em "{}" — {} é
+  // truthy, então "|| []" não pega, e "new Set({})" lança
+  // "TypeError: object is not iterable". Some sozinho assim que o fetch
+  // fresco (agora excluído da persistência) substituir esse dado velho.
+  const idsComAnexo = useMemo(() => new Set(Array.isArray(idsComAnexoArray) ? idsComAnexoArray : []), [idsComAnexoArray])
+
+  // Idem: a query retorna array de pares [id, nome] (JSON-seguro); o Map é
+  // reconstruído aqui via useMemo, nunca guardado direto no cache do
+  // react-query (que persiste em localStorage via JSON e não reconstrói
+  // Map/Set no round-trip — vira "{}" sem métodos).
+  const { data: maquinasNomePares } = useQuery({
     queryKey: ['maquinas-nome-mapa', propId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('listar_maquinas_usuario' as any, { p_propriedade_id: propId })
       if (error) throw error
-      const mapa = new Map<string, string>()
+      const pares: [string, string][] = []
       ;((data as any[]) || []).forEach((m: any) => {
         const id = m.id || m.maquina_id
-        if (id && m.nome) mapa.set(id, m.nome)
+        if (id && m.nome) pares.push([id, m.nome])
       })
-      return mapa
+      return pares
     },
     enabled: !!propId,
   })
+  // Mesmo cuidado de idsComAnexo acima: Array.isArray, não "|| []", pra
+  // sobreviver a cache antigo corrompido ("{}") já gravado antes desse fix.
+  const maquinasNomeMapa = useMemo(() => new Map(Array.isArray(maquinasNomePares) ? maquinasNomePares : []), [maquinasNomePares])
   const safraId = safraAtual?.id
 
   const [searchParams, setSearchParams] = useSearchParams()
@@ -666,7 +683,7 @@ export function Financeiro() {
                                   Auto · {origemLabel(t.origem!)}
                                 </Badge>
                               )}
-                              {t.maquina_id && maquinasNomeMapa?.get(t.maquina_id) && (
+                              {t.maquina_id && maquinasNomeMapa.get(t.maquina_id) && (
                                 <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border shrink-0">
                                   🚜 {maquinasNomeMapa.get(t.maquina_id)}
                                 </Badge>
@@ -808,7 +825,7 @@ export function Financeiro() {
                                 Auto · {origemLabel(t.origem!)}
                               </Badge>
                             )}
-                            {t.maquina_id && maquinasNomeMapa?.get(t.maquina_id) && (
+                            {t.maquina_id && maquinasNomeMapa.get(t.maquina_id) && (
                               <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border shrink-0">
                                 🚜 {maquinasNomeMapa.get(t.maquina_id)}
                               </Badge>

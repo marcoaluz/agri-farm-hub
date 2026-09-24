@@ -6,7 +6,15 @@ import { supabase } from '@/lib/supabase'
 import { abrirAnexoEmNovaAba, parseOrigemTransacao } from '@/lib/anexoNF'
 import { toast } from 'sonner'
 
-/** Pré-carrega o conjunto "tipo:id" de entidades que possuem anexo, para busca O(1). */
+/**
+ * Pré-carrega a lista "tipo:id" de entidades que possuem anexo. O queryFn
+ * retorna um array (não um Set): o cache do react-query é persistido em
+ * localStorage via JSON.stringify/parse (ver src/lib/queryClient.ts e o
+ * shouldDehydrateQuery em src/App.tsx, que também exclui essa chave por
+ * segurança), e um Set vira "{}" nesse round-trip — {}.has não é função, e
+ * {} é truthy, então o guard "!idsComAnexo" não pegava esse caso. Quem
+ * consome (Financeiro.tsx) reconstrói o Set com useMemo a partir do array.
+ */
 export function useIdsComAnexo(propriedadeId?: string | null) {
   return useQuery({
     queryKey: ['transacoes-com-anexo', propriedadeId],
@@ -16,7 +24,7 @@ export function useIdsComAnexo(propriedadeId?: string | null) {
         .select('entidade_tipo, entidade_id')
         .eq('propriedade_id', propriedadeId)
         .in('entidade_tipo', ['lote', 'rebanho_movimentacao', 'transacao', 'venda_producao'])
-      return new Set((data || []).map((a: any) => `${a.entidade_tipo}:${a.entidade_id}`))
+      return (data || []).map((a: any) => `${a.entidade_tipo}:${a.entidade_id}`)
     },
     enabled: !!propriedadeId,
   })

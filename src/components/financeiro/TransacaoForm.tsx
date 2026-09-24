@@ -241,7 +241,12 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
     })
   }, [watchNumParcelas, watchValor, watchDataPrimeira, periodicidade, valorEntrada])
 
-  const { data: mesesFechados } = useMesesContabilizados(propId)
+  const { data: mesesFechadosArray } = useMesesContabilizados(propId)
+  // useMesesContabilizados retorna array (JSON-seguro pro cache persistido
+  // em localStorage); reconstrói o Set aqui, só na memória deste componente.
+  // Array.isArray, não "|| []": protege contra cache antigo já corrompido em
+  // "{}" (persistido antes desse fix) — "new Set({})" lança TypeError.
+  const mesesFechados = useMemo(() => new Set(Array.isArray(mesesFechadosArray) ? mesesFechadosArray : []), [mesesFechadosArray])
   const watchDataVencimento = form.watch('data_vencimento')
   const dataPrincipalFechada = mesEstaFechado(watchDataVencimento, mesesFechados)
   const primeiraParcelaData = watchDataPrimeira ? new Date(watchDataPrimeira + 'T12:00:00') : null
