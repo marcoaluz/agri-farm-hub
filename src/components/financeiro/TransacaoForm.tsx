@@ -433,6 +433,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
             propriedadeId: propId, userId: user.id,
           })
           if (!resultadoUpload.ok) toast.error(resultadoUpload.error)
+          queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
         }
         queryClient.invalidateQueries({ queryKey: ['transacoes'] })
         queryClient.invalidateQueries({ queryKey: ['producao-safra'] })
@@ -477,6 +478,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
             propriedadeId: propId, userId: user.id,
           })
           if (!resultado.ok) toast.error(resultado.error)
+          queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
         }
       } else {
         const criada = await createMutation.mutateAsync(payload)
@@ -487,6 +489,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
             propriedadeId: propId, userId: user.id,
           })
           if (!resultado.ok) toast.error(resultado.error)
+          queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
         }
       }
       onOpenChange(false)

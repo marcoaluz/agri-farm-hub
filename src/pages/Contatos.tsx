@@ -110,18 +110,16 @@ export default function Contatos() {
   }, [propriedadeAtual?.id])
 
   const fetchCategorias = useCallback(async () => {
-    if (!user?.id) return
-    const { data, error } = await supabase
-      .from('categorias_contato' as any)
-      .select('*')
-      .eq('ativo', true)
-      .order('nome')
+    if (!propriedadeAtual?.id) return
+    const { data, error } = await supabase.rpc('listar_categorias_contato' as any, {
+      p_propriedade_id: propriedadeAtual.id,
+    })
     if (error || !data || (data as any[]).length === 0) {
       setCategorias(TIPOS_PADRAO)
       return
     }
     setCategorias(data as any)
-  }, [user?.id])
+  }, [propriedadeAtual?.id])
 
   useEffect(() => { fetchContatos() }, [fetchContatos])
   useEffect(() => { fetchCategorias() }, [fetchCategorias])

@@ -154,13 +154,19 @@ export function MovimentacaoDialog({
   const qtdNum = tipo === 'transferencia'
     ? animaisSelecionados.length
     : tipo === 'venda'
-      ? (venderLoteInteiro ? (animaisRebanho?.length || 0) : animaisSelecionados.length)
+      ? (venderLoteInteiro
+          ? (animaisRebanho?.length || 0)
+          : (loteEhFechado ? (parseInt(quantidade || '0') || 0) : animaisSelecionados.length))
       : (parseInt(quantidade || '0') || 0)
 
   const totalVendaPorAnimal = Object.values(animaisComPreco).reduce((s, d) => s + (parseFloat(d.preco) || 0), 0)
 
   const totalCalculado = tipo === 'venda'
-    ? (venderLoteInteiro ? (parseFloat(valorTotal || '0') || 0) : totalVendaPorAnimal)
+    ? (venderLoteInteiro
+        ? (parseFloat(valorTotal || '0') || 0)
+        : (loteEhFechado
+            ? (tipoPreco === 'unitario' ? (parseFloat(valorUnitario || '0') || 0) * qtdNum : (parseFloat(valorTotal || '0') || 0))
+            : totalVendaPorAnimal))
     : (tipoPreco === 'unitario'
       ? (parseFloat(valorUnitario || '0') || 0) * qtdNum
       : (parseFloat(valorTotal || '0') || 0))
@@ -274,6 +280,21 @@ export function MovimentacaoDialog({
           toast({ title: 'Informe o valor total da venda', variant: 'destructive' })
           return
         }
+      } else if (loteEhFechado) {
+        const qtdDigitada = parseInt(quantidade || '0') || 0
+        if (qtdDigitada < 1) {
+          toast({ title: 'Informe a quantidade a vender', variant: 'destructive' })
+          return
+        }
+        if (rebanhoAtual?.quantidade_atual != null && qtdDigitada > rebanhoAtual.quantidade_atual) {
+          toast({ title: 'Quantidade maior que o lote', description: `O lote tem ${rebanhoAtual.quantidade_atual} cabeças.`, variant: 'destructive' })
+          return
+        }
+        const precoInformado = tipoPreco === 'unitario' ? !!valorUnitario : !!valorTotal
+        if (!precoInformado) {
+          toast({ title: 'Informe o preço da venda', variant: 'destructive' })
+          return
+        }
       } else {
         if (animaisSelecionados.length === 0) {
           toast({ title: 'Selecione os animais ou marque "Vender o lote inteiro"', variant: 'destructive' })
@@ -294,8 +315,10 @@ export function MovimentacaoDialog({
     setLoading(true)
     const { data: userData } = await supabase.auth.getUser()
 
-    if (tipo === 'venda' && !venderLoteInteiro) {
-      // Uma movimentação por animal — cada um com seu próprio peso e preço
+    if (tipo === 'venda' && !venderLoteInteiro && !loteEhFechado) {
+      // Uma movimentação por animal, cada um com seu próprio peso e preço —
+      // só se aplica a lotes com controle individual. Lote fechado cai no
+      // branch único abaixo, igual "vender o lote inteiro".
       for (const animalId of animaisSelecionados) {
         const dados = animaisComPreco[animalId] || { peso: '', preco: '' }
         const { error } = await supabase.rpc('registrar_movimentacao_animais' as any, {
@@ -531,6 +554,24 @@ export function MovimentacaoDialog({
                     <Label>Valor total da venda (R$) *</Label>
                     <Input type="number" step="0.01" value={valorTotal} onChange={e => { setTipoPreco('total'); setValorTotal(e.target.value) }} />
                   </div>
+                </>
+              ) : loteEhFechado ? (
+                <>
+                  <div>
+                    <Label>Quantidade a vender *</Label>
+                    <Input
+                      type="number"
+                      value={quantidade}
+                      onChange={e => setQuantidade(e.target.value)}
+                      max={rebanhoAtual?.quantidade_atual ?? undefined}
+                    />
+                    {rebanhoAtual?.quantidade_atual != null && (parseInt(quantidade || '0') || 0) > rebanhoAtual.quantidade_atual && (
+                      <p className="text-xs text-red-600 mt-1">
+                        O lote tem só {rebanhoAtual.quantidade_atual} cabeças.
+                      </p>
+                    )}
+                  </div>
+                  {renderPreco('Preço por cabeça (R$)')}
                 </>
               ) : (
                 <>
