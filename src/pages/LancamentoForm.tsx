@@ -267,6 +267,39 @@ export function LancamentoForm() {
       if (error) throw error
 
       if (data) {
+        // Itens Livre (abastecimento/manutenção sem origem_estoque) já têm uma
+        // transação financeira criada por trigger (origem = 'abastecimento:<id>'
+        // ou 'manutencao:<id>', onde <id> é o id da linha em abastecimentos/
+        // maquina_manutencoes ligada a este lançamento). Descobre esse id aqui
+        // pra poder mostrar o componente de anexo de verdade (ver/trocar/apagar).
+        const [{ data: abastecimentosDoLancamento }, { data: manutencoesDoLancamento }] = await Promise.all([
+          supabase.from('abastecimentos').select('id, maquina_id').eq('lancamento_id', id),
+          supabase.from('maquina_manutencoes').select('id, maquina_id').eq('lancamento_id', id),
+        ])
+
+        const origensParaBuscar = [
+          ...((abastecimentosDoLancamento || []) as any[]).map(a => `abastecimento:${a.id}`),
+          ...((manutencoesDoLancamento || []) as any[]).map(m => `manutencao:${m.id}`),
+        ]
+
+        const transacaoIdPorOrigem = new Map<string, string>()
+        if (origensParaBuscar.length > 0) {
+          const { data: transacoesDosItens } = await supabase
+            .from('transacoes')
+            .select('id, origem')
+            .in('origem', origensParaBuscar)
+          for (const t of (transacoesDosItens || []) as any[]) {
+            transacaoIdPorOrigem.set(t.origem, t.id)
+          }
+        }
+
+        const abastecimentoIdPorMaquina = new Map<string, string>(
+          ((abastecimentosDoLancamento || []) as any[]).map(a => [a.maquina_id, a.id])
+        )
+        const manutencaoIdPorMaquina = new Map<string, string>(
+          ((manutencoesDoLancamento || []) as any[]).map(m => [m.maquina_id, m.id])
+        )
+
         const loaded: LancamentoFormData = {
           servico_id: data.servico_id,
           talhao_id: data.talhao_id || undefined,
@@ -297,6 +330,11 @@ export function LancamentoForm() {
             oficina: li.oficina || '',
             proximo_horimetro: li.proximo_horimetro ?? undefined,
             momento_manutencao: li.momento_manutencao || null,
+            itemTransacaoId: li.tipo_ref === 'abastecimento' && !li.produto_id && li.maquina_id
+              ? transacaoIdPorOrigem.get(`abastecimento:${abastecimentoIdPorMaquina.get(li.maquina_id)}`) ?? null
+              : li.tipo_ref === 'manutencao' && !li.produto_id && li.maquina_id
+                ? transacaoIdPorOrigem.get(`manutencao:${manutencaoIdPorMaquina.get(li.maquina_id)}`) ?? null
+                : null,
           })) || []
         }
         setFormData(loaded)

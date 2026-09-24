@@ -411,7 +411,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
       } else if (showCulturaFields && data.cultura_id) {
         // Venda de produção agrícola sempre passa pela RPC validada (mesma da tela Produção) —
         // valida estoque disponível, registra em vendas_producao e fica cancelável por lá.
-        const { error } = await supabase.rpc('registrar_venda_producao' as any, {
+        const { data: resultado, error } = await supabase.rpc('registrar_venda_producao' as any, {
           p_propriedade_id: propId,
           p_cultura_id: data.cultura_id,
           p_safra_id: safraId,
@@ -427,6 +427,13 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         })
         if (error) throw error
         toast.success('Venda registrada')
+        if (arquivoNf && propId && user?.id && (resultado as any)?.venda_id) {
+          const resultadoUpload = await uploadAnexoArquivo({
+            file: arquivoNf, entidadeTipo: 'venda_producao', entidadeId: (resultado as any).venda_id,
+            propriedadeId: propId, userId: user.id,
+          })
+          if (!resultadoUpload.ok) toast.error(resultadoUpload.error)
+        }
         queryClient.invalidateQueries({ queryKey: ['transacoes'] })
         queryClient.invalidateQueries({ queryKey: ['producao-safra'] })
         queryClient.invalidateQueries({ queryKey: ['culturas-com-estoque'] })

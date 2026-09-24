@@ -15,7 +15,7 @@ export function useIdsComAnexo(propriedadeId?: string | null) {
         .from('anexos' as any)
         .select('entidade_tipo, entidade_id')
         .eq('propriedade_id', propriedadeId)
-        .in('entidade_tipo', ['lote', 'rebanho_movimentacao', 'transacao'])
+        .in('entidade_tipo', ['lote', 'rebanho_movimentacao', 'transacao', 'venda_producao'])
       return new Set((data || []).map((a: any) => `${a.entidade_tipo}:${a.entidade_id}`))
     },
     enabled: !!propriedadeId,
@@ -67,7 +67,14 @@ export function TransacaoOrigemAcoes({ origem, transacaoId, compact, idsComAnexo
   const irParaOrigem = () => {
     if (!parsed) return
     if (parsed.tipo === 'lote') navigate(`/estoque?tab=lotes&highlight=${parsed.id}`)
+    else if (parsed.tipo === 'venda_producao') navigate('/producao')
     else navigate(`/pecuaria?tab=movimentacoes&highlight=${parsed.id}`)
+  }
+
+  const labelOrigem = (tipo: NonNullable<typeof parsed>['tipo']) => {
+    if (tipo === 'lote') return 'Entrada de estoque'
+    if (tipo === 'venda_producao') return 'Venda de produção'
+    return 'Movimentação de rebanho'
   }
 
 
@@ -89,7 +96,7 @@ export function TransacaoOrigemAcoes({ origem, transacaoId, compact, idsComAnexo
           size="icon"
           variant="ghost"
           className="h-8 w-8"
-          title={parsed.tipo === 'lote' ? 'Ver entrada de estoque' : 'Ver movimentação de rebanho'}
+          title={`Ver ${labelOrigem(parsed.tipo).toLowerCase()}`}
           onClick={e => { e.stopPropagation(); irParaOrigem() }}
         >
           <ExternalLink className="h-4 w-4" />
@@ -97,7 +104,7 @@ export function TransacaoOrigemAcoes({ origem, transacaoId, compact, idsComAnexo
       )}
       {!compact && parsed && (
         <span className="text-xs text-muted-foreground">
-          {parsed.tipo === 'lote' ? 'Entrada de estoque' : 'Movimentação de rebanho'}
+          {labelOrigem(parsed.tipo)}
         </span>
       )}
     </span>

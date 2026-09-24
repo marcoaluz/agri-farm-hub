@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 
 export const MAX_ANEXO_BYTES = 5 * 1024 * 1024;
 
-export type EntidadeAnexo = "lote" | "rebanho_movimentacao";
+export type EntidadeAnexo = "lote" | "rebanho_movimentacao" | "venda_producao";
 
 /** Faz upload da nota fiscal no bucket `anexos` e registra na tabela `anexos`. */
 export async function uploadAnexoNF(params: {
@@ -64,5 +64,6 @@ export function parseOrigemTransacao(origem?: string | null): { tipo: EntidadeAn
   if (prefixo === "lote") return { tipo: "lote", id };
   if (prefixo === "pecuaria_movimentacao" || prefixo === "rebanho_movimentacao")
     return { tipo: "rebanho_movimentacao", id };
+  if (prefixo === "venda_producao") return { tipo: "venda_producao", id };
   return null;
 }

@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { ContatoCombobox } from '@/components/financeiro/ContatoCombobox'
+import { Anexos } from '@/components/Anexos'
 
 export interface ItemLancamento {
   // Novo: referências diretas
@@ -52,6 +53,10 @@ export interface ItemLancamento {
   contato_id?: string | null
   fornecedor_nome?: string
   anexo?: File | null
+  // Id da transação financeira já existente pra este item (preenchido só ao
+  // reabrir um lançamento salvo) — com ele dá pra usar o componente Anexos de
+  // verdade (ver/trocar/apagar) em vez do seletor de arquivo isolado.
+  itemTransacaoId?: string | null
 
   // Manutenção
   categoria_manutencao?: string
@@ -611,23 +616,27 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
                 </div>
                 <div>
                   <Label>Nota fiscal (opcional)</Label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      className="hidden"
-                      id={`anexo-abastecimento-${itemForm.maquina_id || itemForm.item_id}`}
-                      onChange={(e) => onUpdate({ ...itemForm, anexo: e.target.files?.[0] || null })}
-                    />
-                    <Button
-                      type="button" variant="outline" size="sm"
-                      className={itemForm.anexo ? 'border-primary text-primary' : ''}
-                      onClick={() => document.getElementById(`anexo-abastecimento-${itemForm.maquina_id || itemForm.item_id}`)?.click()}
-                    >
-                      <Paperclip className="h-4 w-4 mr-1" />
-                      {itemForm.anexo ? itemForm.anexo.name : 'Anexar nota'}
-                    </Button>
-                  </div>
+                  {itemForm.itemTransacaoId && propriedadeId ? (
+                    <Anexos entidadeTipo="transacao" entidadeId={itemForm.itemTransacaoId} propriedadeId={propriedadeId} titulo="Nota fiscal" />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        id={`anexo-abastecimento-${itemForm.maquina_id || itemForm.item_id}`}
+                        onChange={(e) => onUpdate({ ...itemForm, anexo: e.target.files?.[0] || null })}
+                      />
+                      <Button
+                        type="button" variant="outline" size="sm"
+                        className={itemForm.anexo ? 'border-primary text-primary' : ''}
+                        onClick={() => document.getElementById(`anexo-abastecimento-${itemForm.maquina_id || itemForm.item_id}`)?.click()}
+                      >
+                        <Paperclip className="h-4 w-4 mr-1" />
+                        {itemForm.anexo ? itemForm.anexo.name : 'Anexar nota'}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -817,23 +826,27 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
                 </div>
                 <div>
                   <Label>Nota fiscal (opcional)</Label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      className="hidden"
-                      id={`anexo-manutencao-${itemForm.maquina_id || itemForm.item_id}`}
-                      onChange={(e) => onUpdate({ ...itemForm, anexo: e.target.files?.[0] || null })}
-                    />
-                    <Button
-                      type="button" variant="outline" size="sm"
-                      className={itemForm.anexo ? 'border-primary text-primary' : ''}
-                      onClick={() => document.getElementById(`anexo-manutencao-${itemForm.maquina_id || itemForm.item_id}`)?.click()}
-                    >
-                      <Paperclip className="h-4 w-4 mr-1" />
-                      {itemForm.anexo ? itemForm.anexo.name : 'Anexar nota'}
-                    </Button>
-                  </div>
+                  {itemForm.itemTransacaoId && propriedadeId ? (
+                    <Anexos entidadeTipo="transacao" entidadeId={itemForm.itemTransacaoId} propriedadeId={propriedadeId} titulo="Nota fiscal" />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        id={`anexo-manutencao-${itemForm.maquina_id || itemForm.item_id}`}
+                        onChange={(e) => onUpdate({ ...itemForm, anexo: e.target.files?.[0] || null })}
+                      />
+                      <Button
+                        type="button" variant="outline" size="sm"
+                        className={itemForm.anexo ? 'border-primary text-primary' : ''}
+                        onClick={() => document.getElementById(`anexo-manutencao-${itemForm.maquina_id || itemForm.item_id}`)?.click()}
+                      >
+                        <Paperclip className="h-4 w-4 mr-1" />
+                        {itemForm.anexo ? itemForm.anexo.name : 'Anexar nota'}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
