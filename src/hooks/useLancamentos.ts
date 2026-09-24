@@ -221,7 +221,7 @@ export function useExcluirLancamento() {
       // senão o histórico de manutenção fica com status "realizada" órfão, sem lançamento.
       const { data: lancamentoCheck, error: checkError } = await supabase
         .from('lancamentos')
-        .select('manutencao_id, sanitario_evento_id, abastecimento_id')
+        .select('manutencao_id, sanitario_evento_id, abastecimento_id, racao_evento_id')
         .eq('id', lancamentoId)
         .single()
 
@@ -237,6 +237,37 @@ export function useExcluirLancamento() {
 
       if (lancamentoCheck?.abastecimento_id) {
         throw new Error('Este lançamento veio de um abastecimento. Para removê-lo, vá em Máquinas → Histórico de Abastecimentos e exclua por lá — assim o estoque e o horímetro são ajustados corretamente.')
+      }
+
+      // Ração Consumo Simples: sem estoque/lotes/horímetro envolvidos — só
+      // apaga o evento de origem. O trigger fn_racao_para_financeiro cuida
+      // de apagar a transação, e o DELETE em racao_eventos... na verdade é
+      // o inverso: o lançamento é filho do evento (racao_evento_id), então
+      // apagar o evento cascateia (via trigger) a exclusão da transação E
+      // do próprio lançamento, que por sua vez cascade-apaga
+      // lancamentos_itens. Não passa pelas etapas de reversão de estoque
+      // abaixo — não há nada pra reverter.
+      if (lancamentoCheck?.racao_evento_id) {
+        console.log('🗑️ Lançamento veio de Ração Consumo Simples — excluindo o evento de origem...')
+        const { error: racaoError } = await supabase
+          .from('racao_eventos' as any)
+          .delete()
+          .eq('id', lancamentoCheck.racao_evento_id)
+
+        if (racaoError) {
+          console.error('❌ Erro ao excluir evento de ração:', racaoError)
+          throw racaoError
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
+        queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+        queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
+        queryClient.invalidateQueries({ queryKey: ['resumo-financeiro'] })
+        queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] })
+        queryClient.invalidateQueries({ queryKey: ['rel-custos-detalhado'] })
+
+        console.log('✅ Evento de ração e registros vinculados excluídos com sucesso!')
+        return { success: true, origem: 'racao' as const }
       }
 
       // ETAPA 1: BUSCAR ITENS DO LANÇAMENTO
@@ -409,14 +440,14 @@ export function useExcluirLancamento() {
       console.log('✅ Lançamento excluído com sucesso!')
       return { success: true }
     },
-    onSuccess: () => {
+    onSuccess: (resultado: any) => {
       queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
       queryClient.invalidateQueries({ queryKey: ['lotes'] })
       queryClient.invalidateQueries({ queryKey: ['produtos'] })
       queryClient.invalidateQueries({ queryKey: ['preview-custo'] })
       queryClient.invalidateQueries({ queryKey: ['maquinas'] })
       queryClient.invalidateQueries({ queryKey: ['maquinas-status'] })
-      toast.success('Lançamento excluído e estoque restaurado com sucesso!')
+      toast.success(resultado?.origem === 'racao' ? 'Registro de ração excluído com sucesso!' : 'Lançamento excluído e estoque restaurado com sucesso!')
     },
     onError: (error: any) => {
       console.error('❌ Erro ao excluir lançamento:', JSON.stringify(error, null, 2))
