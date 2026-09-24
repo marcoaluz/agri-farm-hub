@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
@@ -14,7 +14,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Check, X, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Check, X, Trash2, Loader2, Paperclip } from 'lucide-react'
+import { uploadAnexoArquivo } from '@/components/Anexos'
 
 const UNIDADES = [
   { value: 'kg', label: 'kg' },
@@ -53,13 +54,18 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
   const [produtoId, setProdutoId] = useState('')
   const [quantidadeConsumo, setQuantidadeConsumo] = useState('')
 
+  // Nota fiscal (modo simples)
+  const [arquivoNf, setArquivoNf] = useState<File | null>(null)
+  const arquivoNfInputRef = useRef<HTMLInputElement>(null)
+
   // Tipos de ração — editável
   const { data: tiposRacao, refetch: refetchTiposRacao } = useQuery({
-    queryKey: ['tipos-racao'],
+    queryKey: ['tipos-racao', propriedadeId],
     queryFn: async () => {
-      const { data } = await supabase.from('tipos_racao' as any).select('*').eq('ativo', true).order('nome')
+      const { data } = await supabase.rpc('listar_tipos_racao' as any, { p_propriedade_id: propriedadeId })
       return (data as any[]) || []
     },
+    enabled: !!propriedadeId,
   })
   const [showNovoTipo, setShowNovoTipo] = useState(false)
   const [novoTipoNome, setNovoTipoNome] = useState('')
@@ -130,6 +136,7 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
     setObservacoes('')
     setProdutoId('')
     setQuantidadeConsumo('')
+    setArquivoNf(null)
   }
 
   const handleSaveSimples = async () => {
@@ -138,36 +145,47 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
       return
     }
 
-    const rebanhoNome = rebanhos.find((r: any) => r.id === rebanhoId)?.nome || ''
-
     setSaving(true)
     try {
       const { data: userData } = await supabase.auth.getUser()
 
-      const { data: safraAtiva } = await supabase
-        .from('safras' as any)
-        .select('id')
-        .eq('propriedade_id', propriedadeId)
-        .eq('ativa', true)
-        .maybeSingle()
-
-      const { error } = await supabase.from('transacoes' as any).insert({
+      // Insere o evento — a trigger fn_racao_para_financeiro cuida de criar a
+      // Transação e o Lançamento vinculados (mesmo padrão de Sanidade com
+      // custo direto).
+      const { data: novoEvento, error } = await supabase.from('racao_eventos' as any).insert({
         propriedade_id: propriedadeId,
-        safra_id: safraAtiva?.id,
-        tipo: 'despesa',
-        categoria: 'racao_animal',
-        descricao: `Ração — ${rebanhoNome}: ${tipoRacao}`,
-        valor: parseFloat(custo),
-        data_vencimento: data,
-        data_pagamento: data,
-        status: 'pago',
-        criado_por: userData?.user?.id,
-      } as any)
+        rebanho_id: rebanhoId,
+        tipo_racao: tipoRacao,
+        quantidade: quantidade ? parseFloat(quantidade) : null,
+        unidade,
+        custo: parseFloat(custo),
+        fornecedor: fornecedor || null,
+        data,
+        observacoes: observacoes || null,
+        usuario_id: userData?.user?.id,
+      } as any).select('id').single()
 
       if (error) throw error
 
+      if (arquivoNf && (novoEvento as any)?.id) {
+        const { data: transacaoNova } = await supabase
+          .from('transacoes')
+          .select('id')
+          .eq('origem', `racao:${(novoEvento as any).id}`)
+          .maybeSingle()
+        if (transacaoNova) {
+          const resultadoUpload = await uploadAnexoArquivo({
+            file: arquivoNf, entidadeTipo: 'transacao', entidadeId: (transacaoNova as any).id,
+            propriedadeId, userId: userData?.user?.id || '',
+          })
+          if (!resultadoUpload.ok) toast({ title: 'Ração salva, mas o anexo falhou', description: resultadoUpload.error, variant: 'destructive' })
+          queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
+        }
+      }
+
       toast({ title: 'Ração registrada com sucesso!' })
       queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+      queryClient.invalidateQueries({ queryKey: ['lancamentos'] })
       resetForm()
       onOpenChange(false)
     } catch (err: any) {
@@ -444,6 +462,27 @@ export function RacaoDialog({ open, onOpenChange, propriedadeId, safraId, rebanh
               <div className="space-y-2">
                 <Label>Fornecedor</Label>
                 <Input value={fornecedor} onChange={e => setFornecedor(e.target.value)} placeholder="Nome do fornecedor (opcional)" />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Nota fiscal (opcional)</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={arquivoNfInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={(e) => setArquivoNf(e.target.files?.[0] || null)}
+                  />
+                  <Button
+                    type="button" variant="outline" size="sm"
+                    className={arquivoNf ? 'border-primary text-primary' : ''}
+                    onClick={() => arquivoNfInputRef.current?.click()}
+                  >
+                    <Paperclip className="h-4 w-4 mr-1" />
+                    {arquivoNf ? arquivoNf.name : 'Anexar nota'}
+                  </Button>
+                </div>
               </div>
             </>
           )}

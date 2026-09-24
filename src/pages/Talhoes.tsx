@@ -55,7 +55,7 @@ export function Talhoes() {
 const { data: culturas } = useQuery({
     queryKey: ["culturas-config-todas"],
     queryFn: async () => {
-      const { data } = await supabase.from("culturas_config" as any).select("*");
+      const { data } = await supabase.from("culturas_config" as any).select("*").eq("ativo", true);
       return (data || []) as any[];
     },
   });

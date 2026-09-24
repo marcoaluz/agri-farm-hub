@@ -1515,3 +1515,119 @@ export async function exportarNotaFiscalPDF(opts: {
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 }
+
+export async function exportarRelatorioPorSubcategoriaPDF(opts: {
+  nomeArquivo: string
+  propriedadeNome: string
+  proprietarioNome?: string
+  periodoLabel: string
+  tipoLabel?: string
+  subcategorias: string[]
+  linhas: {
+    descricao: string
+    categoria: string
+    tipo: string
+    valoresPorSubcategoria: Record<string, number>
+    dataPagamento: string
+    formaPagamento: string
+  }[]
+}) {
+  const { nomeArquivo, propriedadeNome, proprietarioNome, periodoLabel, tipoLabel, subcategorias, linhas } = opts
+  // Paisagem — o número de colunas de subcategoria é dinâmico e pode passar de 10.
+  const doc = new jsPDF({ orientation: 'landscape' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 14
+
+  const fmt2 = (v: number) =>
+    Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  const logo = await getLogoBase64()
+  const desenharMarcaDagua = () => {
+    if (!logo) return
+    try {
+      const tamanho = 90
+      doc.saveGraphicsState()
+      // @ts-ignore
+      doc.setGState(new (doc as any).GState({ opacity: 0.06 }))
+      doc.addImage(logo, 'PNG', (pageWidth - tamanho) / 2, (pageHeight - tamanho) / 2, tamanho, tamanho)
+      doc.restoreGraphicsState()
+    } catch {}
+  }
+
+  desenharMarcaDagua()
+  let textX = margin
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', margin, 8, 12, 12); textX = margin + 16 } catch {}
+  }
+  doc.setFontSize(14); doc.setFont('helvetica', 'bold')
+  doc.text('Agro GFI', textX, 14)
+  doc.setFontSize(11); doc.setFont('helvetica', 'normal')
+  doc.text('Relatório: Transações por Subcategoria', textX, 20)
+  doc.setFontSize(10)
+  doc.text(`Propriedade: ${propriedadeNome}`, margin, 30)
+  let yCabecalho = 36
+  if (proprietarioNome) {
+    doc.text(`Proprietário: ${proprietarioNome}`, margin, yCabecalho)
+    yCabecalho += 6
+  }
+  doc.text(periodoLabel, margin, yCabecalho)
+  yCabecalho += 6
+  if (tipoLabel) {
+    doc.text(tipoLabel, margin, yCabecalho)
+    yCabecalho += 6
+  }
+  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, yCabecalho)
+
+  const y = yCabecalho + 10
+
+  const head = ['Descrição', 'Categoria', 'Tipo', ...subcategorias, 'Data de pagamento', 'Forma de pagamento']
+  const body = linhas.length > 0
+    ? linhas.map((l) => [
+        l.descricao, l.categoria, l.tipo,
+        ...subcategorias.map((s) => {
+          const v = l.valoresPorSubcategoria[s]
+          return v ? `R$ ${fmt2(v)}` : ''
+        }),
+        l.dataPagamento, l.formaPagamento,
+      ])
+    : [['—', 'Nenhuma transação encontrada para este filtro', '', ...subcategorias.map(() => ''), '', '']]
+
+  // Colunas fixas com largura própria; as de subcategoria dividem o espaço restante —
+  // com muitas subcategorias, cada coluna fica estreita, então reduzimos a fonte.
+  const LARG_DESCRICAO = 42
+  const LARG_CATEGORIA = 28
+  const LARG_TIPO = 16
+  const LARG_DATA = 26
+  const LARG_FORMA = 26
+  const totalFixo = LARG_DESCRICAO + LARG_CATEGORIA + LARG_TIPO + LARG_DATA + LARG_FORMA
+  const larguraDisponivel = pageWidth - margin * 2 - totalFixo
+  const largSub = subcategorias.length > 0 ? Math.max(larguraDisponivel / subcategorias.length, 14) : 0
+  const fontSize = subcategorias.length > 8 ? 6.5 : subcategorias.length > 4 ? 7.5 : 8.5
+
+  const columnStyles: Record<number, any> = {
+    0: { cellWidth: LARG_DESCRICAO },
+    1: { cellWidth: LARG_CATEGORIA },
+    2: { cellWidth: LARG_TIPO },
+  }
+  subcategorias.forEach((_, i) => {
+    columnStyles[3 + i] = { cellWidth: largSub, halign: 'right' }
+  })
+  columnStyles[3 + subcategorias.length] = { cellWidth: LARG_DATA }
+  columnStyles[4 + subcategorias.length] = { cellWidth: LARG_FORMA }
+
+  autoTable(doc, {
+    startY: y,
+    head: [head],
+    body,
+    theme: 'grid',
+    styles: { fontSize, cellPadding: 1.8, overflow: 'linebreak', valign: 'middle', lineColor: [220, 220, 220], lineWidth: 0.2 },
+    headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold', fontSize },
+    alternateRowStyles: { fillColor: [248, 248, 248] },
+    columnStyles,
+    margin: { left: margin, right: margin },
+    didDrawPage: () => desenharMarcaDagua(),
+  })
+
+  doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+}

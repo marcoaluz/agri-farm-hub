@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Bell, CheckCheck, Eye, Home } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -34,6 +35,7 @@ export function NotificationBell() {
   const { user } = useAuth()
   const { propriedadeAtual } = useGlobal()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [count, setCount] = useState(0)
   const [items, setItems] = useState<Notificacao[]>([])
@@ -105,6 +107,8 @@ export function NotificationBell() {
     if (count > 0) {
       // Marca como lidas só as que estão sendo mostradas (respeitando o filtro atual)
       await supabase.rpc('marcar_todas_notificacoes_lidas' as any)
+      queryClient.invalidateQueries({ queryKey: ['contar-notificacoes-dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['alertas-nao-lidos'] })
       setCount(0)
       setItems((prev) => prev.map((item) => ({ ...item, lida: true })))
     }
@@ -113,6 +117,8 @@ export function NotificationBell() {
   const handleClickItem = async (n: Notificacao) => {
     if (!n.lida) {
       await supabase.rpc('marcar_notificacao_lida' as any, { p_notificacao_id: n.id })
+      queryClient.invalidateQueries({ queryKey: ['contar-notificacoes-dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['alertas-nao-lidos'] })
     }
     setOpen(false)
     await Promise.all([fetchCount(), fetchList()])
@@ -122,6 +128,8 @@ export function NotificationBell() {
 
   const handleMarcarTodas = async () => {
     await supabase.rpc('marcar_todas_notificacoes_lidas' as any)
+    queryClient.invalidateQueries({ queryKey: ['contar-notificacoes-dashboard'] })
+    queryClient.invalidateQueries({ queryKey: ['alertas-nao-lidos'] })
     await Promise.all([fetchCount(), fetchList()])
   }
 

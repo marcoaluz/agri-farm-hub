@@ -118,16 +118,13 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
   const [precoUnitario, setPrecoUnitario] = useState<number>(0)
 
   const { data: categorias, refetch: refetchCategorias } = useQuery({
-    queryKey: ['categorias-transacao'],
+    queryKey: ['categorias-transacao', propId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('categorias_transacao' as any)
-        .select('*')
-        .eq('ativo', true)
-        .order('nome_exibicao')
+      const { data, error } = await supabase.rpc('listar_categorias_transacao' as any, { p_propriedade_id: propId })
       if (error) throw error
       return (data || []) as unknown as { valor: string; nome_exibicao: string; id: string; usuario_id: string | null }[]
     },
+    enabled: !!propId,
   })
 
   const { data: subcategorias, refetch: refetchSubcategorias } = useQuery({
@@ -149,9 +146,9 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
 
   const handleAdicionarCategoria = async () => {
     const nome = novaCategoriaNome.trim()
-    if (!nome) return
+    if (!nome || !propId) return
     setSalvandoCategoria(true)
-    const { data, error } = await supabase.rpc('criar_categoria_transacao' as any, { p_nome_exibicao: nome })
+    const { data, error } = await supabase.rpc('criar_categoria_transacao' as any, { p_nome_exibicao: nome, p_propriedade_id: propId })
     setSalvandoCategoria(false)
     if (error) {
       toast.error('Erro ao criar categoria: ' + error.message)
@@ -244,7 +241,12 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
     })
   }, [watchNumParcelas, watchValor, watchDataPrimeira, periodicidade, valorEntrada])
 
-  const { data: mesesFechados } = useMesesContabilizados(propId)
+  const { data: mesesFechadosArray } = useMesesContabilizados(propId)
+  // useMesesContabilizados retorna array (JSON-seguro pro cache persistido
+  // em localStorage); reconstrói o Set aqui, só na memória deste componente.
+  // Array.isArray, não "|| []": protege contra cache antigo já corrompido em
+  // "{}" (persistido antes desse fix) — "new Set({})" lança TypeError.
+  const mesesFechados = useMemo(() => new Set(Array.isArray(mesesFechadosArray) ? mesesFechadosArray : []), [mesesFechadosArray])
   const watchDataVencimento = form.watch('data_vencimento')
   const dataPrincipalFechada = mesEstaFechado(watchDataVencimento, mesesFechados)
   const primeiraParcelaData = watchDataPrimeira ? new Date(watchDataPrimeira + 'T12:00:00') : null
@@ -404,12 +406,17 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
 
     try {
       if (isEditing) {
-        await updateMutation.mutateAsync({ id: transacao!.id, ...payload })
+        await updateMutation.mutateAsync({
+          id: transacao!.eh_parcela ? transacao!.transacao_id! : transacao!.id,
+          ehParcela: !!transacao!.eh_parcela,
+          parcelaId: transacao!.eh_parcela ? transacao!.id : undefined,
+          ...payload,
+        })
         toast.success('Transação atualizada')
       } else if (showCulturaFields && data.cultura_id) {
         // Venda de produção agrícola sempre passa pela RPC validada (mesma da tela Produção) —
         // valida estoque disponível, registra em vendas_producao e fica cancelável por lá.
-        const { error } = await supabase.rpc('registrar_venda_producao' as any, {
+        const { data: resultado, error } = await supabase.rpc('registrar_venda_producao' as any, {
           p_propriedade_id: propId,
           p_cultura_id: data.cultura_id,
           p_safra_id: safraId,
@@ -425,6 +432,14 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
         })
         if (error) throw error
         toast.success('Venda registrada')
+        if (arquivoNf && propId && user?.id && (resultado as any)?.venda_id) {
+          const resultadoUpload = await uploadAnexoArquivo({
+            file: arquivoNf, entidadeTipo: 'venda_producao', entidadeId: (resultado as any).venda_id,
+            propriedadeId: propId, userId: user.id,
+          })
+          if (!resultadoUpload.ok) toast.error(resultadoUpload.error)
+          queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
+        }
         queryClient.invalidateQueries({ queryKey: ['transacoes'] })
         queryClient.invalidateQueries({ queryKey: ['producao-safra'] })
         queryClient.invalidateQueries({ queryKey: ['culturas-com-estoque'] })
@@ -468,6 +483,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
             propriedadeId: propId, userId: user.id,
           })
           if (!resultado.ok) toast.error(resultado.error)
+          queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
         }
       } else {
         const criada = await createMutation.mutateAsync(payload)
@@ -478,6 +494,7 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
             propriedadeId: propId, userId: user.id,
           })
           if (!resultado.ok) toast.error(resultado.error)
+          queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
         }
       }
       onOpenChange(false)

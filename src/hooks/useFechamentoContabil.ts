@@ -100,9 +100,11 @@ export function useGarantirFechamento(propriedadeId?: string | null, ano?: numbe
 }
 
 /**
- * Busca todos os meses já contabilizados (fechados) de uma propriedade,
- * de qualquer ano, e devolve como um Set de chaves "ano-mes" pra checagem
- * rápida em O(1). Usado pra avisar/travar antes de lançar em período fechado.
+ * Busca todos os meses já contabilizados (fechados) de uma propriedade, de
+ * qualquer ano. Retorna array de chaves "ano-mes" (JSON-seguro pro cache
+ * persistido em localStorage — ver shouldDehydrateQuery em src/App.tsx, que
+ * também exclui essa chave por segurança). Quem consome reconstrói o Set
+ * com useMemo, pra checagem em O(1).
  */
 export function useMesesContabilizados(propriedadeId?: string | null) {
   return useQuery({
@@ -114,7 +116,7 @@ export function useMesesContabilizados(propriedadeId?: string | null) {
         .eq('propriedade_id', propriedadeId)
         .eq('contabilizado', true)
       if (error) throw error
-      return new Set((data || []).map((r: any) => `${r.ano}-${r.mes}`))
+      return (data || []).map((r: any) => `${r.ano}-${r.mes}`)
     },
     enabled: !!propriedadeId,
   })
