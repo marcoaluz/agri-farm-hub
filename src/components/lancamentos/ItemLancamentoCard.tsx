@@ -57,6 +57,11 @@ export interface ItemLancamento {
   // reabrir um lançamento salvo) — com ele dá pra usar o componente Anexos de
   // verdade (ver/trocar/apagar) em vez do seletor de arquivo isolado.
   itemTransacaoId?: string | null
+  // Id da linha original em abastecimentos/maquina_manutencoes (preenchido só
+  // ao reabrir um lançamento salvo) — usado no save pra fazer UPDATE na linha
+  // existente em vez de apagar-e-recriar, preservando a transação vinculada.
+  abastecimentoId?: string | null
+  manutencaoId?: string | null
 
   // Manutenção
   categoria_manutencao?: string

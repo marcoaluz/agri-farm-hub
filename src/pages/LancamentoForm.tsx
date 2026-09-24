@@ -335,6 +335,15 @@ export function LancamentoForm() {
               : li.tipo_ref === 'manutencao' && !li.produto_id && li.maquina_id
                 ? transacaoIdPorOrigem.get(`manutencao:${manutencaoIdPorMaquina.get(li.maquina_id)}`) ?? null
                 : null,
+            // Id da linha original em abastecimentos/maquina_manutencoes (Livre OU Do
+            // Estoque) — preservado pra permitir UPDATE em vez de apagar-e-recriar ao
+            // salvar uma edição (o que trocaria o id e órfão qualquer anexo vinculado).
+            abastecimentoId: li.tipo_ref === 'abastecimento' && li.maquina_id
+              ? abastecimentoIdPorMaquina.get(li.maquina_id) ?? null
+              : null,
+            manutencaoId: li.tipo_ref === 'manutencao' && li.maquina_id
+              ? manutencaoIdPorMaquina.get(li.maquina_id) ?? null
+              : null,
           })) || []
         }
         setFormData(loaded)
@@ -827,8 +836,10 @@ export function LancamentoForm() {
         }
 
         await supabase.from('lancamentos_itens').delete().eq('lancamento_id', lancamentoId)
-        await supabase.from('maquina_manutencoes').delete().eq('lancamento_id', lancamentoId)
-        await supabase.from('abastecimentos').delete().eq('lancamento_id', lancamentoId)
+        // maquina_manutencoes e abastecimentos NÃO são apagados em massa aqui —
+        // sincronizarAbastecimentos/sincronizarManutencoes fazem upsert por id
+        // (ver dadosOriginais mais abaixo), preservando a linha (e a transação
+        // financeira/anexo vinculados a ela) de itens Livre que continuam no form.
       }
 
       setValidandoEstoque(true)
@@ -974,8 +985,14 @@ export function LancamentoForm() {
         }
 
         await aplicarConsumoEHorimetro(itensComCusto)
-        await sincronizarAbastecimentos(lancamentoId, itensComCusto, data.data_execucao, userId, propriedadeAtual?.id)
-        await sincronizarManutencoes(lancamentoId, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
+        const idsAbastecimentoOriginais = (dadosOriginais?.itens || [])
+          .filter(i => i.tipo_ref === 'abastecimento' && i.abastecimentoId)
+          .map(i => i.abastecimentoId as string)
+        const idsManutencaoOriginais = (dadosOriginais?.itens || [])
+          .filter(i => i.tipo_ref === 'manutencao' && i.manutencaoId)
+          .map(i => i.manutencaoId as string)
+        await sincronizarAbastecimentos(lancamentoId, itensComCusto, data.data_execucao, userId, propriedadeAtual?.id, idsAbastecimentoOriginais)
+        await sincronizarManutencoes(lancamentoId, itensComCusto, data.data_execucao, propriedadeAtual.id, userId, idsManutencaoOriginais)
 
         return { id: lancamentoId, custoTotal }
       }
@@ -1026,8 +1043,8 @@ export function LancamentoForm() {
       }
 
       await aplicarConsumoEHorimetro(itensComCusto)
-      await sincronizarAbastecimentos(novoLancamento.id, itensComCusto, data.data_execucao, userId, propriedadeAtual?.id)
-      await sincronizarManutencoes(novoLancamento.id, itensComCusto, data.data_execucao, propriedadeAtual.id, userId)
+      await sincronizarAbastecimentos(novoLancamento.id, itensComCusto, data.data_execucao, userId, propriedadeAtual?.id, [])
+      await sincronizarManutencoes(novoLancamento.id, itensComCusto, data.data_execucao, propriedadeAtual.id, userId, [])
 
       return { id: novoLancamento.id, custoTotal }
     },
@@ -1110,22 +1127,30 @@ export function LancamentoForm() {
     itens: ItemLancamento[],
     dataExecucao: string,
     userId?: string,
-    propriedadeId?: string
+    propriedadeId?: string,
+    idsOriginais: string[] = []
   ) => {
     const abastecimentosDoLancamento = itens.filter(i => i.tipo_ref === 'abastecimento' && i.maquina_id)
-    if (abastecimentosDoLancamento.length === 0) return
+    if (abastecimentosDoLancamento.length === 0 && idsOriginais.length === 0) return
 
-    const linhasPreparadas = await Promise.all(abastecimentosDoLancamento.map(async (item) => {
-      let custoFinal = item.custo_total || 0
-      let detalhamentoLotes: any = null
+    // Itens Livre que já tinham uma linha (abastecimentoId preservado do load) —
+    // fazem UPDATE na própria linha, mantendo o id. O trigger
+    // trg_abastecimento_para_lancamento trata UPDATE atualizando a transação
+    // existente em vez de recriá-la, então a transação (e qualquer anexo nela)
+    // continua a mesma. Itens "Do Estoque" e itens novos (sem id) vão por INSERT,
+    // igual já era feito — eles não têm transação/anexo vinculados.
+    const itensParaAtualizar = abastecimentosDoLancamento.filter(i => !i.origem_estoque && i.abastecimentoId)
+    const itensParaInserir = abastecimentosDoLancamento.filter(i => i.origem_estoque || !i.abastecimentoId)
 
-      if (item.origem_estoque && item.produto_id && item.litros && item.litros > 0) {
-        const resultado = await consumirFIFO(item.produto_id, item.litros)
-        custoFinal = resultado.custoTotal
-        detalhamentoLotes = resultado.detalhamento
-      }
+    const idsParaManter = new Set(itensParaAtualizar.map(i => i.abastecimentoId as string))
+    const idsParaRemover = idsOriginais.filter(idOriginal => !idsParaManter.has(idOriginal))
+    if (idsParaRemover.length > 0) {
+      await supabase.from('abastecimentos').delete().in('id', idsParaRemover)
+    }
 
-      return {
+    for (const item of itensParaAtualizar) {
+      const custoFinal = item.custo_total || 0
+      await supabase.from('abastecimentos').update({
         maquina_id: item.maquina_id,
         propriedade_id: propriedadeId,
         data: dataExecucao,
@@ -1135,28 +1160,56 @@ export function LancamentoForm() {
         custo_total: custoFinal,
         custo_litro: item.litros && item.litros > 0 ? custoFinal / item.litros : null,
         observacoes: item.observacao || null,
-        lancamento_id: lancamentoIdSalvo,
         contato_id: item.contato_id || null,
-        produto_id: item.origem_estoque ? (item.produto_id || null) : null,
-        detalhamento_lotes: detalhamentoLotes,
-      }
-    }))
+        produto_id: null,
+        detalhamento_lotes: null,
+      }).eq('id', item.abastecimentoId as string)
+    }
 
-    const { data: inseridos } = await supabase.from('abastecimentos').insert(linhasPreparadas).select('id')
+    if (itensParaInserir.length > 0) {
+      const linhasPreparadas = await Promise.all(itensParaInserir.map(async (item) => {
+        let custoFinal = item.custo_total || 0
+        let detalhamentoLotes: any = null
 
-    for (let i = 0; i < abastecimentosDoLancamento.length; i++) {
-      const item = abastecimentosDoLancamento[i]
-      const novoId = (inseridos as any)?.[i]?.id
-      if (item.anexo && novoId && !item.origem_estoque) {
-        const { data: transacao } = await supabase
-          .from('transacoes').select('id')
-          .eq('origem', `abastecimento:${novoId}`)
-          .maybeSingle()
-        if (transacao) {
-          await uploadAnexoArquivo({
-            file: item.anexo, entidadeTipo: 'transacao', entidadeId: (transacao as any).id,
-            propriedadeId: propriedadeAtual!.id, userId: userId || '',
-          })
+        if (item.origem_estoque && item.produto_id && item.litros && item.litros > 0) {
+          const resultado = await consumirFIFO(item.produto_id, item.litros)
+          custoFinal = resultado.custoTotal
+          detalhamentoLotes = resultado.detalhamento
+        }
+
+        return {
+          maquina_id: item.maquina_id,
+          propriedade_id: propriedadeId,
+          data: dataExecucao,
+          horimetro: item.horimetro_informado ?? 0,
+          combustivel_tipo: item.combustivel_tipo || null,
+          quantidade_litros: item.litros || 0,
+          custo_total: custoFinal,
+          custo_litro: item.litros && item.litros > 0 ? custoFinal / item.litros : null,
+          observacoes: item.observacao || null,
+          lancamento_id: lancamentoIdSalvo,
+          contato_id: item.contato_id || null,
+          produto_id: item.origem_estoque ? (item.produto_id || null) : null,
+          detalhamento_lotes: detalhamentoLotes,
+        }
+      }))
+
+      const { data: inseridos } = await supabase.from('abastecimentos').insert(linhasPreparadas).select('id')
+
+      for (let i = 0; i < itensParaInserir.length; i++) {
+        const item = itensParaInserir[i]
+        const novoId = (inseridos as any)?.[i]?.id
+        if (item.anexo && novoId && !item.origem_estoque) {
+          const { data: transacao } = await supabase
+            .from('transacoes').select('id')
+            .eq('origem', `abastecimento:${novoId}`)
+            .maybeSingle()
+          if (transacao) {
+            await uploadAnexoArquivo({
+              file: item.anexo, entidadeTipo: 'transacao', entidadeId: (transacao as any).id,
+              propriedadeId: propriedadeAtual!.id, userId: userId || '',
+            })
+          }
         }
       }
     }
@@ -1168,44 +1221,81 @@ export function LancamentoForm() {
     itens: ItemLancamento[],
     dataExecucao: string,
     propriedadeId: string,
-    userId?: string
+    userId?: string,
+    idsOriginais: string[] = []
   ) => {
     const manutencoes = itens.filter(i => i.tipo_ref === 'manutencao' && i.maquina_id)
-    if (manutencoes.length === 0) return
-    const { data: inseridos } = await supabase.from('maquina_manutencoes').insert(manutencoes.map(item => ({
-      propriedade_id: propriedadeId,
-      safra_id: safraAtual?.id || null,
-      maquina_id: item.maquina_id,
-      tipo: item.categoria_manutencao || 'Outros',
-      descricao: item.descricao || item.nome || 'Manutenção',
-      data_realizada: dataExecucao,
-      status: 'realizada',
-      horimetro_na_manutencao: item.horimetro_informado ?? null,
-      proximo_horimetro: item.proximo_horimetro ?? null,
-      custo: item.custo_total ?? null,
-      oficina: item.oficina || null,
-      observacoes: item.observacao || null,
-      usuario_id: userId || null,
-      lancamento_id: lancamentoIdSalvo,
-      // Quantidade usada (peças, ex: 2 pneus) — grava sempre, veio do estoque ou não
-      produto_id: item.origem_estoque ? (item.produto_id || null) : null,
-      quantidade_produto: item.quantidade || null,
-      contato_id: item.contato_id || null,
-    }))).select('id')
+    if (manutencoes.length === 0 && idsOriginais.length === 0) return
 
-    for (let i = 0; i < manutencoes.length; i++) {
-      const item = manutencoes[i]
-      const novoId = (inseridos as any)?.[i]?.id
-      if (item.anexo && novoId && !item.origem_estoque) {
-        const { data: transacao } = await supabase
-          .from('transacoes').select('id')
-          .eq('origem', `manutencao:${novoId}`)
-          .maybeSingle()
-        if (transacao) {
-          await uploadAnexoArquivo({
-            file: item.anexo, entidadeTipo: 'transacao', entidadeId: (transacao as any).id,
-            propriedadeId, userId: userId || '',
-          })
+    // Mesma lógica de sincronizarAbastecimentos: itens Livre com id preservado
+    // do load fazem UPDATE (mantém a transação/anexo); Do Estoque e itens novos
+    // vão por INSERT, como já era feito.
+    const itensParaAtualizar = manutencoes.filter(i => !i.origem_estoque && i.manutencaoId)
+    const itensParaInserir = manutencoes.filter(i => i.origem_estoque || !i.manutencaoId)
+
+    const idsParaManter = new Set(itensParaAtualizar.map(i => i.manutencaoId as string))
+    const idsParaRemover = idsOriginais.filter(idOriginal => !idsParaManter.has(idOriginal))
+    if (idsParaRemover.length > 0) {
+      await supabase.from('maquina_manutencoes').delete().in('id', idsParaRemover)
+    }
+
+    for (const item of itensParaAtualizar) {
+      await supabase.from('maquina_manutencoes').update({
+        propriedade_id: propriedadeId,
+        safra_id: safraAtual?.id || null,
+        maquina_id: item.maquina_id,
+        tipo: item.categoria_manutencao || 'Outros',
+        descricao: item.descricao || item.nome || 'Manutenção',
+        data_realizada: dataExecucao,
+        status: 'realizada',
+        horimetro_na_manutencao: item.horimetro_informado ?? null,
+        proximo_horimetro: item.proximo_horimetro ?? null,
+        custo: item.custo_total ?? null,
+        oficina: item.oficina || null,
+        observacoes: item.observacao || null,
+        usuario_id: userId || null,
+        produto_id: null,
+        quantidade_produto: item.quantidade || null,
+        contato_id: item.contato_id || null,
+      }).eq('id', item.manutencaoId as string)
+    }
+
+    if (itensParaInserir.length > 0) {
+      const { data: inseridos } = await supabase.from('maquina_manutencoes').insert(itensParaInserir.map(item => ({
+        propriedade_id: propriedadeId,
+        safra_id: safraAtual?.id || null,
+        maquina_id: item.maquina_id,
+        tipo: item.categoria_manutencao || 'Outros',
+        descricao: item.descricao || item.nome || 'Manutenção',
+        data_realizada: dataExecucao,
+        status: 'realizada',
+        horimetro_na_manutencao: item.horimetro_informado ?? null,
+        proximo_horimetro: item.proximo_horimetro ?? null,
+        custo: item.custo_total ?? null,
+        oficina: item.oficina || null,
+        observacoes: item.observacao || null,
+        usuario_id: userId || null,
+        lancamento_id: lancamentoIdSalvo,
+        // Quantidade usada (peças, ex: 2 pneus) — grava sempre, veio do estoque ou não
+        produto_id: item.origem_estoque ? (item.produto_id || null) : null,
+        quantidade_produto: item.quantidade || null,
+        contato_id: item.contato_id || null,
+      }))).select('id')
+
+      for (let i = 0; i < itensParaInserir.length; i++) {
+        const item = itensParaInserir[i]
+        const novoId = (inseridos as any)?.[i]?.id
+        if (item.anexo && novoId && !item.origem_estoque) {
+          const { data: transacao } = await supabase
+            .from('transacoes').select('id')
+            .eq('origem', `manutencao:${novoId}`)
+            .maybeSingle()
+          if (transacao) {
+            await uploadAnexoArquivo({
+              file: item.anexo, entidadeTipo: 'transacao', entidadeId: (transacao as any).id,
+              propriedadeId, userId: userId || '',
+            })
+          }
         }
       }
     }
