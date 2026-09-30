@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
@@ -28,6 +29,8 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { ChevronLeft, ChevronRight, Plus, Loader2, Play, Check, X, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { MinhaAgenda } from '@/components/agenda/MinhaAgenda'
 
 interface Tarefa {
   id: string
@@ -75,7 +78,40 @@ function corStatus(s: string) {
   return map[s] ?? 'bg-slate-100'
 }
 
+const ABAS_AGENDA = ['tarefas', 'minha'] as const
+type AbaAgenda = typeof ABAS_AGENDA[number]
+
 export default function Agenda() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const abaUrl = searchParams.get('aba')
+  const aba: AbaAgenda = (ABAS_AGENDA as readonly string[]).includes(abaUrl ?? '') ? (abaUrl as AbaAgenda) : 'tarefas'
+
+  function trocarAba(v: string) {
+    const next = new URLSearchParams(searchParams)
+    if (v === 'tarefas') next.delete('aba')
+    else next.set('aba', v)
+    setSearchParams(next, { replace: true })
+  }
+
+  return (
+    <Tabs value={aba} onValueChange={trocarAba}>
+      <div className="px-4 md:px-6 pt-4 md:pt-6">
+        <TabsList>
+          <TabsTrigger value="tarefas">Tarefas da propriedade</TabsTrigger>
+          <TabsTrigger value="minha">Minha agenda</TabsTrigger>
+        </TabsList>
+      </div>
+      <TabsContent value="tarefas" className="mt-0">
+        <AgendaTarefasPropriedade />
+      </TabsContent>
+      <TabsContent value="minha" className="mt-0">
+        <MinhaAgenda />
+      </TabsContent>
+    </Tabs>
+  )
+}
+
+function AgendaTarefasPropriedade() {
   const { propriedadeAtual } = useGlobal()
   const { user } = useAuth()
   const queryClient = useQueryClient()
