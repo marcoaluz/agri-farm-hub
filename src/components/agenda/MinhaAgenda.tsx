@@ -25,8 +25,18 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ChevronLeft, ChevronRight, Plus, Loader2, Trash2, MapPin, Bell, Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Loader2, Trash2, MapPin, Bell, Pencil, Users, X, Check, Mail } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+
+export interface AgendaConvidado {
+  id: string
+  evento_id: string
+  usuario_id: string | null
+  email: string
+  status: 'pendente' | 'aceito' | 'recusado'
+  created_at: string
+}
 
 export interface AgendaEvento {
   id: string
@@ -41,7 +51,17 @@ export interface AgendaEvento {
   lembrete_minutos: number | null
   lembrete_enviado_em: string | null
   created_at: string
+  // RLS: o dono recebe todos os convidados; o convidado recebe só a própria linha.
+  agenda_convidados?: AgendaConvidado[]
 }
+
+const STATUS_CONVITE: Record<AgendaConvidado['status'], { l: string; className: string }> = {
+  pendente: { l: 'Pendente', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+  aceito: { l: 'Aceito', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  recusado: { l: 'Recusado', className: 'bg-rose-100 text-rose-800 border-rose-200' },
+}
+
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 const LEMBRETES = [
   { v: 'none', l: 'Sem lembrete' },
@@ -73,6 +93,13 @@ export function MinhaAgenda() {
   const [editando, setEditando] = useState<AgendaEvento | null>(null)
   const [paraExcluir, setParaExcluir] = useState<AgendaEvento | null>(null)
   const [saving, setSaving] = useState(false)
+  const [convidados, setConvidados] = useState<string[]>([])
+  const [emailConvite, setEmailConvite] = useState('')
+  const [respondendo, setRespondendo] = useState<string | null>(null)
+
+  const souDono = (ev: AgendaEvento) => ev.usuario_id === user?.id
+  const meuConvite = (ev: AgendaEvento) =>
+    souDono(ev) ? undefined : ev.agenda_convidados?.find(c => c.usuario_id === user?.id)
 
   const formVazio = (dia: Date) => {
     const key = format(dia, 'yyyy-MM-dd')
@@ -115,7 +142,7 @@ export function MinhaAgenda() {
       const iniIso = janelaInicio.toISOString()
       const { data, error } = await supabase
         .from('agenda_eventos' as any)
-        .select('*')
+        .select('*, agenda_convidados(id, evento_id, usuario_id, email, status, created_at)')
         .lt('inicio', janelaFim.toISOString())
         .or(`fim.gte."${iniIso}",inicio.gte."${iniIso}"`)
         .order('inicio')
@@ -145,10 +172,51 @@ export function MinhaAgenda() {
   function abrirNovo(dia: Date = diaSelecionado) {
     setEditando(null)
     setForm(formVazio(dia))
+    setConvidados([])
+    setEmailConvite('')
     setFormOpen(true)
   }
 
+  function adicionarConvidado() {
+    const email = emailConvite.trim().toLowerCase()
+    if (!email) return
+    if (!EMAIL_RE.test(email)) {
+      toast.error('E-mail inválido')
+      return
+    }
+    if (email === (user?.email ?? '').toLowerCase()) {
+      toast.error('Você não pode convidar a si mesmo')
+      return
+    }
+    if (!convidados.includes(email)) setConvidados([...convidados, email])
+    setEmailConvite('')
+  }
+
+  async function responderConvite(convite: AgendaConvidado, status: 'aceito' | 'recusado') {
+    setRespondendo(convite.id)
+    const { data, error } = await supabase
+      .from('agenda_convidados' as any)
+      .update({ status })
+      .eq('id', convite.id)
+      .select('id')
+    setRespondendo(null)
+    if (error) {
+      toast.error('Erro ao responder o convite: ' + error.message)
+      return
+    }
+    if (!data || (data as any[]).length === 0) {
+      toast.error('Convite não encontrado.')
+      return
+    }
+    toast.success(status === 'aceito' ? 'Convite aceito' : 'Convite recusado')
+    invalidar()
+  }
+
   function abrirEdicao(ev: AgendaEvento) {
+    // Evento de outra pessoa (convite): só o dono edita.
+    if (!souDono(ev)) return
+    setConvidados((ev.agenda_convidados ?? []).map(c => c.email))
+    setEmailConvite('')
     const ini = parseISO(ev.inicio)
     const fim = ev.fim ? parseISO(ev.fim) : ini
     setEditando(ev)
@@ -203,18 +271,79 @@ export function MinhaAgenda() {
       lembrete_minutos: form.lembrete === 'none' ? null : Number(form.lembrete),
     }
 
-    setSaving(true)
-    const { error } = editando
-      ? await supabase.from('agenda_eventos' as any).update(payload).eq('id', editando.id)
-      : await supabase.from('agenda_eventos' as any).insert({ ...payload, usuario_id: user.id })
-    setSaving(false)
-    if (error) {
-      toast.error('Erro ao salvar compromisso: ' + error.message)
-      return
+    // E-mail digitado e não adicionado com "+" também entra.
+    const pendenteDigitado = emailConvite.trim().toLowerCase()
+    const listaConvidados = [...convidados]
+    if (pendenteDigitado) {
+      if (!EMAIL_RE.test(pendenteDigitado)) {
+        toast.error('E-mail de convidado inválido')
+        return
+      }
+      if (!listaConvidados.includes(pendenteDigitado)) listaConvidados.push(pendenteDigitado)
     }
-    toast.success(editando ? 'Compromisso atualizado' : 'Compromisso criado')
+
+    setSaving(true)
+    let eventoId = editando?.id
+    if (editando) {
+      const { error } = await supabase.from('agenda_eventos' as any).update(payload).eq('id', editando.id)
+      if (error) {
+        setSaving(false)
+        toast.error('Erro ao salvar compromisso: ' + error.message)
+        return
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('agenda_eventos' as any)
+        .insert({ ...payload, usuario_id: user.id })
+        .select('id')
+        .single()
+      if (error || !data) {
+        setSaving(false)
+        toast.error('Erro ao salvar compromisso: ' + (error?.message ?? 'sem retorno'))
+        return
+      }
+      eventoId = (data as any).id
+    }
+
+    // Sincroniza convidados: remove quem saiu da lista, adiciona os novos.
+    const existentes = editando?.agenda_convidados ?? []
+    const remover = existentes.filter(c => !listaConvidados.includes(c.email)).map(c => c.id)
+    const adicionar = listaConvidados.filter(email => !existentes.some(c => c.email === email))
+    let erroConvidados: string | null = null
+    let novosIds: string[] = []
+
+    if (remover.length) {
+      const { error } = await supabase.from('agenda_convidados' as any).delete().in('id', remover)
+      if (error) erroConvidados = error.message
+    }
+    if (adicionar.length && !erroConvidados) {
+      const { data, error } = await supabase
+        .from('agenda_convidados' as any)
+        .insert(adicionar.map(email => ({ evento_id: eventoId, email })))
+        .select('id')
+      if (error) erroConvidados = error.message
+      else novosIds = ((data as any[]) ?? []).map(r => r.id)
+    }
+    setSaving(false)
+
+    if (erroConvidados) {
+      toast.error('Compromisso salvo, mas houve erro nos convidados: ' + erroConvidados)
+    } else {
+      toast.success(editando ? 'Compromisso atualizado' : 'Compromisso criado')
+    }
+
+    // Só quem acabou de ser convidado recebe aviso (editar não reenvia convite).
+    if (novosIds.length && eventoId) {
+      const { error } = await supabase.functions.invoke('enviar-agenda-email', {
+        body: { evento_id: eventoId, convidado_ids: novosIds },
+      })
+      if (error) toast.error('Não foi possível notificar os convidados: ' + error.message)
+      else toast.success(`Convite enviado para ${novosIds.length} pessoa(s)`)
+    }
+
     setFormOpen(false)
     setEditando(null)
+    setEmailConvite('')
     setDiaSelecionado(inicio)
     invalidar()
   }
@@ -248,7 +377,7 @@ export function MinhaAgenda() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Minha agenda</h1>
-          <p className="text-sm text-muted-foreground">Seus compromissos pessoais — só você vê</p>
+          <p className="text-sm text-muted-foreground">Seus compromissos e os convites que você recebeu</p>
         </div>
         <Button onClick={() => abrirNovo()}>
           <Plus className="h-4 w-4 mr-1" /> Novo compromisso
@@ -309,19 +438,28 @@ export function MinhaAgenda() {
                   >
                     <div className="text-xs font-medium">{format(dia, 'd')}</div>
                     <div className="flex flex-col gap-1 overflow-hidden">
-                      {lista.slice(0, 3).map(ev => (
+                      {lista.slice(0, 3).map(ev => {
+                        const convite = meuConvite(ev)
+                        return (
                         <button
                           key={ev.id}
                           onClick={e => { e.stopPropagation(); setDiaSelecionado(dia); abrirEdicao(ev) }}
-                          className="truncate text-[10px] leading-tight px-1.5 py-0.5 rounded text-left bg-primary text-primary-foreground"
-                          title={ev.titulo}
+                          className={cn(
+                            'truncate text-[10px] leading-tight px-1.5 py-0.5 rounded text-left',
+                            !convite && 'bg-primary text-primary-foreground',
+                            convite?.status === 'pendente' && 'border border-dashed border-amber-500 bg-amber-50 text-amber-900',
+                            convite?.status === 'aceito' && 'bg-emerald-600 text-white',
+                            convite?.status === 'recusado' && 'bg-muted text-muted-foreground line-through',
+                          )}
+                          title={convite ? `Convite (${STATUS_CONVITE[convite.status].l.toLowerCase()}): ${ev.titulo}` : ev.titulo}
                         >
                           {!ev.dia_inteiro && isSameDay(parseISO(ev.inicio), dia) && (
                             <span className="opacity-80 mr-1">{format(parseISO(ev.inicio), 'HH:mm')}</span>
                           )}
                           {ev.titulo}
                         </button>
-                      ))}
+                        )
+                      })}
                       {lista.length > 3 && (
                         <span className="text-[10px] text-muted-foreground">+{lista.length - 3}</span>
                       )}
@@ -330,8 +468,11 @@ export function MinhaAgenda() {
                 )
               })}
             </div>
-            <div className="mt-3 text-xs text-muted-foreground text-right">
-              Clique em um dia para ver os compromissos
+            <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-primary" /> Meu compromisso</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border border-dashed border-amber-500 bg-amber-50" /> Convite pendente</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-600" /> Convite aceito</span>
+              <span className="ml-auto">Clique em um dia para ver os compromissos</span>
             </div>
           </CardContent>
         </Card>
@@ -350,13 +491,17 @@ export function MinhaAgenda() {
               <p className="text-sm text-muted-foreground py-6 text-center">Nenhum compromisso neste dia</p>
             ) : (
               <div className="space-y-2">
-                {eventosDoDia.map(ev => (
-                  <div key={ev.id} className="border rounded-md p-2 text-sm">
+                {eventosDoDia.map(ev => {
+                  const convite = meuConvite(ev)
+                  const dono = souDono(ev)
+                  return (
+                  <div key={ev.id} className={cn('border rounded-md p-2 text-sm', convite?.status === 'recusado' && 'opacity-60')}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-xs text-muted-foreground">{horarioEvento(ev)}</p>
-                        <p className="font-medium break-words">{ev.titulo}</p>
+                        <p className={cn('font-medium break-words', convite?.status === 'recusado' && 'line-through')}>{ev.titulo}</p>
                       </div>
+                      {dono ? (
                       <div className="flex shrink-0">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => abrirEdicao(ev)}>
                           <Pencil className="h-3.5 w-3.5" />
@@ -370,13 +515,60 @@ export function MinhaAgenda() {
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
+                      ) : convite ? (
+                        <Badge variant="outline" className={cn('shrink-0 text-[10px]', STATUS_CONVITE[convite.status].className)}>
+                          <Mail className="h-3 w-3 mr-1" /> Convite · {STATUS_CONVITE[convite.status].l}
+                        </Badge>
+                      ) : null}
                     </div>
+                    {convite && (
+                      <div className="flex gap-2 mt-2">
+                        {convite.status !== 'aceito' && (
+                          <Button
+                            size="sm"
+                            className="h-7 bg-emerald-600 hover:bg-emerald-700"
+                            disabled={respondendo === convite.id}
+                            onClick={() => responderConvite(convite, 'aceito')}
+                          >
+                            <Check className="h-3.5 w-3.5 mr-1" /> Aceitar
+                          </Button>
+                        )}
+                        {convite.status !== 'recusado' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7"
+                            disabled={respondendo === convite.id}
+                            onClick={() => responderConvite(convite, 'recusado')}
+                          >
+                            <X className="h-3.5 w-3.5 mr-1" /> Recusar
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                    {dono && (ev.agenda_convidados?.length ?? 0) > 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Users className="h-3 w-3" /> Convidados
+                        </p>
+                        {ev.agenda_convidados!.map(c => (
+                          <div key={c.id} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="truncate" title={c.email}>
+                              {c.email}{!c.usuario_id && <span className="text-muted-foreground"> (externo)</span>}
+                            </span>
+                            <Badge variant="outline" className={cn('shrink-0 text-[10px]', STATUS_CONVITE[c.status].className)}>
+                              {c.usuario_id ? STATUS_CONVITE[c.status].l : 'E-mail'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {ev.local && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                         <MapPin className="h-3 w-3" /> {ev.local}
                       </p>
                     )}
-                    {ev.lembrete_minutos != null && (
+                    {dono && ev.lembrete_minutos != null && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                         <Bell className="h-3 w-3" /> {rotuloLembrete(ev.lembrete_minutos)}
                       </p>
@@ -385,7 +577,8 @@ export function MinhaAgenda() {
                       <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{ev.descricao}</p>
                     )}
                   </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </CardContent>
@@ -397,7 +590,7 @@ export function MinhaAgenda() {
         <DialogContent className="w-[95vw] sm:w-auto max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editando ? 'Editar compromisso' : 'Novo compromisso'}</DialogTitle>
-            <DialogDescription>Compromisso pessoal, visível só para você.</DialogDescription>
+            <DialogDescription>Visível só para você e para quem você convidar.</DialogDescription>
           </DialogHeader>
           <form onSubmit={salvar} className="space-y-3">
             <div>
@@ -458,6 +651,55 @@ export function MinhaAgenda() {
                   {LEMBRETES.map(l => <SelectItem key={l.v} value={l.v}>{l.l}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Convidar pessoas</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  placeholder="email@exemplo.com"
+                  value={emailConvite}
+                  onChange={e => setEmailConvite(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ',') {
+                      e.preventDefault()
+                      adicionarConvidado()
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" onClick={adicionarConvidado}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Usuários do Agro GFI recebem o convite na agenda e no sininho; os demais recebem por e-mail com o
+                arquivo para adicionar ao calendário.
+              </p>
+              {convidados.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {convidados.map(email => {
+                    const existente = editando?.agenda_convidados?.find(c => c.email === email)
+                    return (
+                      <Badge key={email} variant="secondary" className="gap-1 pr-1">
+                        <span className="max-w-[200px] truncate">{email}</span>
+                        {existente?.usuario_id && (
+                          <span className={cn('rounded px-1 text-[10px]', STATUS_CONVITE[existente.status].className)}>
+                            {STATUS_CONVITE[existente.status].l}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className="rounded hover:bg-muted p-0.5"
+                          onClick={() => setConvidados(convidados.filter(c => c !== email))}
+                          aria-label={`Remover ${email}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    )
+                  })}
+                </div>
+              )}
             </div>
             <DialogFooter className="pt-2 gap-2 flex-wrap">
               {editando && (
