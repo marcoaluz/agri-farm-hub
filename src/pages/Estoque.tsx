@@ -15,7 +15,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Package, Search, AlertTriangle, DollarSign, PackagePlus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Package, Search, AlertTriangle, DollarSign, PackagePlus, Pencil, Trash2, Loader2, EyeOff, RotateCcw } from 'lucide-react';
 import { PrateleiraIcon } from '@/components/icons/PrateleiraIcon';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -62,22 +62,70 @@ export function Estoque() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [produtoParaDesativar, setProdutoParaDesativar] = useState<ProdutoComCusto | null>(null);
+
+  const invalidarProdutos = () => {
+    for (const key of [
+      'produtos', 'produtos-custos', 'produtos-lancamento', 'produtos-desativados', 'lotes',
+      'transacoes', 'transacoes-com-anexo', 'rel-estoque', 'rel-estoque-categorias',
+    ]) {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    }
+  };
+
+  // Exclusão "de verdade" no banco (tudo ou nada): apaga lotes + despesas do
+  // Financeiro e o produto. Produto já usado é recusado pela RPC com o motivo.
   const excluirProdutoMutation = useMutation({
     mutationFn: async (produto: ProdutoComCusto) => {
-      const { error } = await supabase.from('produtos' as any).update({ ativo: false }).eq('id', produto.id);
+      const { data, error } = await supabase.rpc('excluir_produto_completo' as any, { p_produto_id: produto.id });
       if (error) throw error;
+      return data as { acao: 'excluido' | 'desativado'; lotes_excluidos: number; transacoes_excluidas: number };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] });
-      queryClient.invalidateQueries({ queryKey: ['produtos-custos'] });
-      queryClient.invalidateQueries({ queryKey: ['produtos-lancamento'] });
-      queryClient.invalidateQueries({ queryKey: ['rel-estoque'] });
-      queryClient.invalidateQueries({ queryKey: ['rel-estoque-categorias'] });
-      toast({ title: 'Produto excluído. Lançamentos e lotes existentes não foram afetados.' });
+    onSuccess: (res) => {
+      invalidarProdutos();
+      const detalhe = `${res?.lotes_excluidos ?? 0} entrada(s) de estoque e ${res?.transacoes_excluidas ?? 0} despesa(s) do Financeiro foram excluídas.`;
+      if (res?.acao === 'desativado') {
+        toast({
+          title: 'Produto desativado',
+          description: `Ele ainda está em modelos de serviço, por isso foi desativado em vez de excluído. ${detalhe} Veja na aba Desativados.`,
+        });
+      } else {
+        toast({ title: 'Produto excluído', description: detalhe });
+      }
       setProdutoParaExcluir(null);
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao excluir produto', description: err.message, variant: 'destructive' });
+      toast({ title: 'Não foi possível excluir o produto', description: err?.message, variant: 'destructive' });
+      setProdutoParaExcluir(null);
+    },
+  });
+
+  // Desativar/reativar só muda ativo: lotes, despesas e histórico ficam intactos.
+  const alterarAtivoMutation = useMutation({
+    mutationFn: async ({ id, ativo }: { id: string; ativo: boolean }) => {
+      const { data, error } = await supabase
+        .from('produtos' as any)
+        .update({ ativo })
+        .eq('id', id)
+        .select('id');
+      if (error) throw error;
+      if (!data || (data as any[]).length === 0) {
+        throw new Error('Produto não encontrado ou você não tem permissão para alterá-lo.');
+      }
+      return ativo;
+    },
+    onSuccess: (ativo) => {
+      invalidarProdutos();
+      toast({
+        title: ativo ? 'Produto reativado' : 'Produto desativado',
+        description: ativo
+          ? 'Ele voltou para a lista do Estoque.'
+          : 'Ele saiu da lista do Estoque. O histórico foi mantido e você pode reativá-lo na aba Desativados.',
+      });
+      setProdutoParaDesativar(null);
+    },
+    onError: (err: any) => {
+      toast({ title: 'Erro ao alterar produto', description: err?.message, variant: 'destructive' });
     },
   });
   const [searchParams, setSearchParams] = useSearchParams();
@@ -127,6 +175,21 @@ export function Estoque() {
     enabled: !!propriedadeAtual?.id
   });
 
+  const { data: produtosDesativados, isLoading: loadingDesativados } = useQuery({
+    queryKey: ['produtos-desativados', propriedadeAtual?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_produtos_desativados' as any, {
+        p_propriedade_id: propriedadeAtual?.id,
+      });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string; nome: string; categoria: string | null; unidade_medida: string;
+        saldo_atual: number; compartilhado: boolean; tipo_estoque: string | null;
+      }>;
+    },
+    enabled: !!propriedadeAtual?.id,
+  });
+
   // Abre o produto do lote destacado quando vindo do Financeiro
   useEffect(() => {
     if (!highlightLoteId || !produtos?.length) return;
@@ -174,6 +237,11 @@ export function Estoque() {
       tipoFiltro === 'todos' || ((produto as any).tipo_estoque || 'agricola') === tipoFiltro;
     return matchBusca && matchCategoria && matchTipo;
   });
+
+  const abaDesativados = tipoFiltro === 'desativados';
+  const desativadosFiltrados = (produtosDesativados || []).filter(p =>
+    (p.nome || '').toLowerCase().includes(busca.toLowerCase())
+  );
 
 
   const totalProdutos = produtos?.length || 0;
@@ -302,6 +370,7 @@ export function Estoque() {
           <TabsTrigger value="agricola">🌱 Agrícola ({contarTipo('agricola')})</TabsTrigger>
           <TabsTrigger value="pecuario">🐄 Pecuário ({contarTipo('pecuario')})</TabsTrigger>
           <TabsTrigger value="geral">📦 Geral ({contarTipo('geral')})</TabsTrigger>
+          <TabsTrigger value="desativados">Desativados ({produtosDesativados?.length || 0})</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -318,6 +387,7 @@ export function Estoque() {
           />
         </div>
 
+        {!abaDesativados && (
         <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
           <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue placeholder="Categoria" />
@@ -331,10 +401,57 @@ export function Estoque() {
             ))}
           </SelectContent>
         </Select>
+        )}
       </div>
 
       {/* Lista de Produtos */}
-      {isLoading ? (
+      {abaDesativados ? (
+        loadingDesativados ? (
+          <Skeleton className="h-32 w-full" />
+        ) : desativadosFiltrados.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <EyeOff className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-1">
+                {busca ? 'Nenhum produto encontrado' : 'Nenhum produto desativado'}
+              </h3>
+              <p className="text-sm text-muted-foreground text-center">
+                Produtos desativados saem da lista do Estoque, mas o histórico é mantido.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-0 divide-y">
+              {desativadosFiltrados.map(p => (
+                <div key={p.id} className="flex items-center justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    <p className="font-semibold truncate">{p.nome}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      {p.categoria && <Badge variant="outline" className="text-xs">{p.categoria}</Badge>}
+                      {p.compartilhado && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">Global</Badge>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        Saldo: {Number(p.saldo_atual || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {p.unidade_medida}
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1 shrink-0"
+                    disabled={alterarAtivoMutation.isPending}
+                    onClick={() => alterarAtivoMutation.mutate({ id: p.id, ativo: true })}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" /> Reativar
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )
+      ) : isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map(i => (
             <Skeleton key={i} className="h-64 w-full" />
@@ -372,6 +489,7 @@ export function Estoque() {
                 setDialogProdutoOpen(true);
               }}
               onExcluir={() => setProdutoParaExcluir(produto)}
+              onDesativar={() => setProdutoParaDesativar(produto)}
             />
           ))}
         </div>
@@ -382,18 +500,54 @@ export function Estoque() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
             <AlertDialogDescription>
-              O produto <strong>{produtoParaExcluir?.nome}</strong> será desativado e some do Estoque.
-              Lançamentos e lotes já registrados não serão afetados.
+              <strong>{produtoParaExcluir?.nome}</strong>: as entradas de estoque deste produto e as despesas
+              correspondentes no Financeiro serão excluídas. Não pode ser desfeito.
+              Produtos que já foram usados não podem ser excluídos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={excluirProdutoMutation.isPending}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => produtoParaExcluir && excluirProdutoMutation.mutate(produtoParaExcluir)}
+              onClick={(e) => {
+                // Mantém o diálogo aberto até o banco responder (fecha no onSuccess/onError)
+                e.preventDefault();
+                if (produtoParaExcluir) excluirProdutoMutation.mutate(produtoParaExcluir);
+              }}
               disabled={excluirProdutoMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {excluirProdutoMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Excluindo...</> : 'Sim, Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!produtoParaDesativar} onOpenChange={(open) => { if (!open) setProdutoParaDesativar(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desativar produto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{produtoParaDesativar?.nome}</strong> sai da lista do Estoque. Entradas, despesas e histórico
+              são mantidos. Você pode reativá-lo a qualquer momento na aba Desativados.
+              {(produtoParaDesativar?.saldo_atual ?? 0) > 0 && (
+                <span className="block mt-2 font-medium text-orange-700">
+                  Atenção: ainda há {produtoParaDesativar?.saldo_atual.toLocaleString('pt-BR', { maximumFractionDigits: 3 })}{' '}
+                  {produtoParaDesativar?.unidade_medida} em estoque. Enquanto estiver desativado, esse saldo não aparece
+                  para lançamentos e consumo.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={alterarAtivoMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (produtoParaDesativar) alterarAtivoMutation.mutate({ id: produtoParaDesativar.id, ativo: false });
+              }}
+              disabled={alterarAtivoMutation.isPending}
+            >
+              {alterarAtivoMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Desativando...</> : 'Desativar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -453,12 +607,14 @@ function ProdutoCard({
   onVender,
   onEditar,
   onExcluir,
-}: { 
-  produto: ProdutoComCusto; 
+  onDesativar,
+}: {
+  produto: ProdutoComCusto;
   onVerLotes: () => void;
   onVender: () => void;
   onEditar: () => void;
   onExcluir: () => void;
+  onDesativar: () => void;
 }) {
   const getStatusEstoque = () => {
     if (produto.saldo_atual === 0) {
@@ -560,7 +716,10 @@ function ProdutoCard({
           <Button size="sm" variant="outline" onClick={onEditar} className="gap-1">
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button size="sm" variant="outline" onClick={onExcluir} className="gap-1 text-destructive hover:text-destructive">
+          <Button size="sm" variant="outline" onClick={onDesativar} className="gap-1" title="Desativar">
+            <EyeOff className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={onExcluir} className="gap-1 text-destructive hover:text-destructive" title="Excluir">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
           {produto.vendavel && produto.saldo_atual > 0 && (
