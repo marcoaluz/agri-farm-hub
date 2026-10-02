@@ -201,29 +201,36 @@ BEGIN
     v_total := v_total + 1;
 
     -- E-mail do lembrete: respeita a preferência (sem linha = ligado) e só
-    -- dispara uma vez por evento/horário.
-    IF COALESCE((SELECT p.lembrete_email FROM agenda_preferencias p WHERE p.usuario_id = r.usuario_id), true) THEN
-      INSERT INTO agenda_lembretes_email (evento_id, usuario_id, inicio_evento)
-      VALUES (r.id, r.usuario_id, r.inicio)
-      ON CONFLICT DO NOTHING;
+    -- dispara uma vez por evento/horário. Bloco isolado: qualquer falha aqui
+    -- (vault, pg_net, tabela de controle) vira WARNING e NUNCA aborta o loop
+    -- nem desfaz a notificação do sininho acima.
+    BEGIN
+      IF COALESCE((SELECT p.lembrete_email FROM agenda_preferencias p WHERE p.usuario_id = r.usuario_id), true) THEN
+        INSERT INTO agenda_lembretes_email (evento_id, usuario_id, inicio_evento)
+        VALUES (r.id, r.usuario_id, r.inicio)
+        ON CONFLICT DO NOTHING;
 
-      IF FOUND THEN
-        IF v_cron_secret IS NULL THEN
-          SELECT decrypted_secret INTO v_cron_secret FROM vault.decrypted_secrets WHERE name = 'CRON_SECRET_INGESTAO_CLIMA';
+        IF FOUND THEN
+          IF v_cron_secret IS NULL THEN
+            SELECT decrypted_secret INTO v_cron_secret FROM vault.decrypted_secrets WHERE name = 'CRON_SECRET_INGESTAO_CLIMA';
+          END IF;
+
+          PERFORM net.http_post(
+            url := 'https://kivnjwkomrkvdpvklakw.supabase.co/functions/v1/enviar-lembrete-agenda-email',
+            headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', v_cron_secret),
+            body := jsonb_build_object(
+              'evento_id', r.id,
+              'usuario_id', r.usuario_id,
+              'inicio_evento', r.inicio
+            ),
+            timeout_milliseconds := 8000
+          );
         END IF;
-
-        PERFORM net.http_post(
-          url := 'https://kivnjwkomrkvdpvklakw.supabase.co/functions/v1/enviar-lembrete-agenda-email',
-          headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', v_cron_secret),
-          body := jsonb_build_object(
-            'evento_id', r.id,
-            'usuario_id', r.usuario_id,
-            'inicio_evento', r.inicio
-          ),
-          timeout_milliseconds := 8000
-        );
       END IF;
-    END IF;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'processar_lembretes_agenda: falha ao disparar e-mail do lembrete do evento % (%): %',
+        r.id, SQLSTATE, SQLERRM;
+    END;
   END LOOP;
 
   RETURN v_total;

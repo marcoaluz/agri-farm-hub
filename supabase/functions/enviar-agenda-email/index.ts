@@ -17,6 +17,10 @@ import {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// Limites contra abuso (envio de e-mail em massa pela conta do Agro GFI).
+const MAX_CONVIDADOS_POR_EVENTO = 10;
+const MAX_EXTERNOS_24H_POR_USUARIO = 20;
+
 interface Evento {
   id: string; usuario_id: string; titulo: string; descricao: string | null; local: string | null;
   inicio: string; fim: string | null; dia_inteiro: boolean;
@@ -110,6 +114,41 @@ Deno.serve(async (req) => {
     if (evErr) throw evErr;
     if (!ev) return json({ error: 'compromisso não encontrado' }, 404);
     if (ev.usuario_id !== chamador.id) return json({ error: 'apenas o dono do compromisso pode enviar convites' }, 403);
+
+    // Limite 1: convidados por compromisso.
+    const { count: totalNoEvento, error: cntErr } = await sb
+      .from('agenda_convidados')
+      .select('id', { count: 'exact', head: true })
+      .eq('evento_id', eventoId);
+    if (cntErr) throw cntErr;
+    if ((totalNoEvento ?? 0) > MAX_CONVIDADOS_POR_EVENTO) {
+      return json({
+        error: `Limite de ${MAX_CONVIDADOS_POR_EVENTO} convidados por compromisso atingido (este tem ${totalNoEvento}). Remova alguns convidados e salve de novo.`,
+      }, 429);
+    }
+
+    // Limite 2: convites externos (sem conta no sistema) do usuário nas últimas 24h.
+    const { data: meusEventos, error: meErr } = await sb
+      .from('agenda_eventos')
+      .select('id')
+      .eq('usuario_id', chamador.id);
+    if (meErr) throw meErr;
+    const idsMeusEventos = (meusEventos ?? []).map((e: { id: string }) => e.id);
+    if (idsMeusEventos.length) {
+      const desde = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const { count: externos24h, error: extErr } = await sb
+        .from('agenda_convidados')
+        .select('id', { count: 'exact', head: true })
+        .in('evento_id', idsMeusEventos)
+        .is('usuario_id', null)
+        .gte('created_at', desde);
+      if (extErr) throw extErr;
+      if ((externos24h ?? 0) > MAX_EXTERNOS_24H_POR_USUARIO) {
+        return json({
+          error: `Limite de ${MAX_EXTERNOS_24H_POR_USUARIO} convites por e-mail para pessoas de fora do sistema em 24 horas atingido. Tente novamente mais tarde.`,
+        }, 429);
+      }
+    }
 
     let q = sb.from('agenda_convidados').select('id, usuario_id, email, status').eq('evento_id', eventoId);
     const ids: string[] | undefined = Array.isArray(body?.convidado_ids) ? body.convidado_ids : undefined;

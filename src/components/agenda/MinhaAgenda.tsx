@@ -62,6 +62,24 @@ const STATUS_CONVITE: Record<AgendaConvidado['status'], { l: string; className: 
 }
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+// Mesmo limite validado na edge function enviar-agenda-email.
+const MAX_CONVIDADOS = 10
+
+interface ResultadoConvite {
+  convidado_id: string
+  interno: boolean
+  notificacao: string | null
+  email: { enviado: boolean; erro?: string; destinatario_original: string }
+}
+
+/** Mensagem de erro de uma edge function (o corpo JSON vem em error.context). */
+async function mensagemErroFuncao(error: any): Promise<string> {
+  try {
+    const corpo = await error?.context?.json?.()
+    if (corpo?.error) return String(corpo.error)
+  } catch { /* corpo não-JSON */ }
+  return error?.message ?? 'erro desconhecido'
+}
 
 const LEMBRETES = [
   { v: 'none', l: 'Sem lembrete' },
@@ -281,6 +299,10 @@ export function MinhaAgenda() {
       }
       if (!listaConvidados.includes(pendenteDigitado)) listaConvidados.push(pendenteDigitado)
     }
+    if (listaConvidados.length > MAX_CONVIDADOS) {
+      toast.error(`No máximo ${MAX_CONVIDADOS} convidados por compromisso.`)
+      return
+    }
 
     setSaving(true)
     let eventoId = editando?.id
@@ -334,11 +356,29 @@ export function MinhaAgenda() {
 
     // Só quem acabou de ser convidado recebe aviso (editar não reenvia convite).
     if (novosIds.length && eventoId) {
-      const { error } = await supabase.functions.invoke('enviar-agenda-email', {
+      const { data, error } = await supabase.functions.invoke('enviar-agenda-email', {
         body: { evento_id: eventoId, convidado_ids: novosIds },
       })
-      if (error) toast.error('Não foi possível notificar os convidados: ' + error.message)
-      else toast.success(`Convite enviado para ${novosIds.length} pessoa(s)`)
+      if (error) {
+        toast.error('Os convites não foram enviados: ' + (await mensagemErroFuncao(error)))
+      } else {
+        // Sucesso só para quem realmente recebeu o e-mail.
+        const resultados = ((data as any)?.resultados ?? []) as ResultadoConvite[]
+        const enviados = resultados.filter(r => r.email?.enviado)
+        const falhos = resultados.filter(r => !r.email?.enviado)
+        if (enviados.length) {
+          toast.success(`Convite enviado por e-mail para ${enviados.length} pessoa(s)`)
+        }
+        for (const r of falhos) {
+          const quem = r.email?.destinatario_original ?? 'convidado'
+          const motivo = r.email?.erro ? ` (${r.email.erro})` : ''
+          if (r.interno && r.notificacao === 'criada') {
+            toast.warning(`${quem}: convidado avisado no sininho, mas o e-mail não foi enviado${motivo}`)
+          } else {
+            toast.error(`${quem}: o convite não foi enviado${motivo}`)
+          }
+        }
+      }
     }
 
     setFormOpen(false)
