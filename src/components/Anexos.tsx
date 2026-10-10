@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 
-export type EntidadeTipo = 'transacao' | 'lancamento' | 'sanitario' | 'maquina' | 'talhao' | 'lote' | 'fechamento_contabil'
+export type EntidadeTipo = 'transacao' | 'lancamento' | 'sanitario' | 'maquina' | 'talhao' | 'lote' | 'fechamento_contabil' | 'venda_producao'
 
 interface AnexosProps {
   entidadeTipo: EntidadeTipo
@@ -124,6 +124,7 @@ export function Anexos({ entidadeTipo, entidadeId, propriedadeId, titulo = 'Anex
         toast.success(`${file.name} anexado`)
       }
       qc.invalidateQueries({ queryKey })
+      if (entidadeTipo === 'transacao') qc.invalidateQueries({ queryKey: ['transacoes-com-anexo', propriedadeId] })
     } finally {
       setUploading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -150,6 +151,7 @@ export function Anexos({ entidadeTipo, entidadeId, propriedadeId, titulo = 'Anex
     onSuccess: () => {
       toast.success('Anexo excluído')
       qc.invalidateQueries({ queryKey })
+      if (entidadeTipo === 'transacao') qc.invalidateQueries({ queryKey: ['transacoes-com-anexo', propriedadeId] })
     },
     onError: (e: any) => toast.error(e?.message || 'Erro ao excluir'),
     onSettled: () => setToDelete(null),

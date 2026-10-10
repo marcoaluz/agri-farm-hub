@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,12 +10,13 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
-import { CalendarIcon } from 'lucide-react'
+import { CalendarIcon, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Anexos, uploadAnexoArquivo } from '@/components/Anexos'
 
 
 const TIPOS_SANITARIO = [
@@ -45,6 +46,8 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
   const [quantidadeUsada, setQuantidadeUsada] = useState('')
   const [unidadeDose, setUnidadeDose] = useState('ml')
   const [unidadeCustom, setUnidadeCustom] = useState(false)
+  const [arquivoNf, setArquivoNf] = useState<File | null>(null)
+  const arquivoNfInputRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({
     rebanho_id: '',
     tipo: 'vacina',
@@ -82,6 +85,7 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
       setQuantidadeUsada('')
       setAnimaisSelecionados([])
       setStatusAnimais({})
+      setArquivoNf(null)
     } else if (open && !eventoEditando) {
       setForm({
         rebanho_id: '',
@@ -102,8 +106,28 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
       setQuantidadeUsada('')
       setAnimaisSelecionados([])
       setStatusAnimais({})
+      setArquivoNf(null)
     }
   }, [open, eventoEditando])
+
+  // Evento em edição com custo direto (sem estoque) já tem uma transação
+  // financeira vinculada (origem = 'sanitario:<id>') — usa o custo real do
+  // evento como sinal, não o toggle local (que sempre reseta pra false ao
+  // abrir em edição).
+  const mostrarCampoAnexo = eventoEditando ? Number(eventoEditando.custo) > 0 : !usarEstoque
+
+  const { data: transacaoVinculada } = useQuery({
+    queryKey: ['sanitario-transacao', eventoEditando?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('transacoes')
+        .select('id')
+        .eq('origem', `sanitario:${eventoEditando.id}`)
+        .maybeSingle()
+      return data as any
+    },
+    enabled: open && !!eventoEditando?.id && Number(eventoEditando?.custo) > 0,
+  })
 
   const { data: produtosPecuarios } = useQuery({
     queryKey: ['produtos-pecuarios', propriedadeId],
@@ -250,6 +274,23 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
         queryClient.invalidateQueries({ queryKey: ['rel-custos-detalhado'] })
       }
 
+      if (!usarEstoque && arquivoNf && resultado.evento_id) {
+        const { data: transacaoNova } = await supabase
+          .from('transacoes')
+          .select('id')
+          .eq('origem', `sanitario:${resultado.evento_id}`)
+          .maybeSingle()
+        if (transacaoNova) {
+          const { data: userData } = await supabase.auth.getUser()
+          const resultadoUpload = await uploadAnexoArquivo({
+            file: arquivoNf, entidadeTipo: 'transacao', entidadeId: (transacaoNova as any).id,
+            propriedadeId, userId: userData?.user?.id || '',
+          })
+          if (!resultadoUpload.ok) toast.error(resultadoUpload.error)
+          queryClient.invalidateQueries({ queryKey: ['transacoes-com-anexo'] })
+        }
+      }
+
       if (resultado.animais_bloqueados > 0) {
         toast.warning(
           `${resultado.animais_vacinados || 0} vacinado(s), ${resultado.animais_bloqueados} bloqueado(s) por intervalo mínimo`
@@ -274,6 +315,7 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
     setQuantidadeUsada('')
     setUnidadeDose('ml')
     setUnidadeCustom(false)
+    setArquivoNf(null)
     onOpenChange(false)
   }
 
@@ -464,6 +506,35 @@ export function EventoSanitarioDialog({ open, onOpenChange, propriedadeId, reban
               {usarEstoque && <p className="text-xs text-muted-foreground mt-1">Calculado automaticamente pelo custo médio do produto.</p>}
             </div>
           </div>
+
+          {mostrarCampoAnexo && (
+            <div>
+              <Label>Nota fiscal (opcional)</Label>
+              {eventoEditando ? (
+                transacaoVinculada?.id && (
+                  <Anexos entidadeTipo="transacao" entidadeId={transacaoVinculada.id} propriedadeId={propriedadeId} titulo="Nota fiscal" />
+                )
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={arquivoNfInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={(e) => setArquivoNf(e.target.files?.[0] || null)}
+                  />
+                  <Button
+                    type="button" variant="outline" size="sm"
+                    className={arquivoNf ? 'border-primary text-primary' : ''}
+                    onClick={() => arquivoNfInputRef.current?.click()}
+                  >
+                    <Paperclip className="h-4 w-4 mr-1" />
+                    {arquivoNf ? arquivoNf.name : 'Anexar nota'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

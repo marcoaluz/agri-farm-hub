@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { format, parseISO, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { FileText, Paperclip, Loader2, Download } from 'lucide-react'
+import { FileText, Paperclip, Loader2, Download, FileSpreadsheet } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -19,7 +20,11 @@ import { useGlobal } from '@/contexts/GlobalContext'
 import { usePapelUsuario } from '@/hooks/usePapelUsuario'
 import { useBalanceteMensal, useToggleFechamento, useGarantirFechamento, type BalanceteMes } from '@/hooks/useFechamentoContabil'
 import { Anexos } from '@/components/Anexos'
-import { exportarBalanceteGeralPDF, exportarMovimentoCaixaPDF, exportarMovimentoCaixaAnualPDF, exportarNotaFiscalPDF } from '@/lib/exportTabela'
+import {
+  exportarBalanceteGeralPDF, exportarMovimentoCaixaPDF, exportarMovimentoCaixaAnualPDF,
+  exportarNotaFiscalPDF, exportarRelatorioPorSubcategoriaPDF, exportarExcel, type Coluna,
+} from '@/lib/exportTabela'
+import { MultiSelectFilter } from '@/components/relatorios/MultiSelectFilter'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
@@ -53,9 +58,71 @@ export function FechamentoContabil() {
   const [nfDataFim, setNfDataFim] = useState('')
   const [nfModo, setNfModo] = useState<'ambos' | 'com_nf' | 'sem_nf'>('ambos')
 
+  // ── Relatório por Subcategoria ──
+  const [relDialogAberto, setRelDialogAberto] = useState(false)
+  const [relTipoPeriodo, setRelTipoPeriodo] = useState<'periodo' | 'ano'>('periodo')
+  const [relDataInicio, setRelDataInicio] = useState('')
+  const [relDataFim, setRelDataFim] = useState('')
+  const [relAno, setRelAno] = useState(ANO_ATUAL)
+  const [relTipo, setRelTipo] = useState<'ambos' | 'despesa' | 'receita'>('ambos')
+  const [relCategorias, setRelCategorias] = useState<string[]>([])
+  const [relSubcategorias, setRelSubcategorias] = useState<string[]>([])
+  const [gerandoRelatorioPDF, setGerandoRelatorioPDF] = useState(false)
+  const [gerandoRelatorioExcel, setGerandoRelatorioExcel] = useState(false)
+
   const { data: balancete = [], isLoading } = useBalanceteMensal(propId, ano)
   const toggleFechamento = useToggleFechamento(propId, ano)
   const garantirFechamento = useGarantirFechamento(propId, ano)
+
+  // Nome real do proprietário — vem de propriedades.user_id -> user_profiles.full_name
+  // (diferente de propriedadeAtual?.responsavel, usado nos outros relatórios desta tela)
+  const { data: proprietarioNomeReal } = useQuery({
+    queryKey: ['proprietario-nome-real', propId],
+    queryFn: async () => {
+      const { data: prop } = await supabase.from('propriedades').select('user_id').eq('id', propId).maybeSingle()
+      if (!(prop as any)?.user_id) return ''
+      const { data: perfil } = await supabase.from('user_profiles').select('full_name').eq('id', (prop as any).user_id).maybeSingle()
+      return (perfil as any)?.full_name || ''
+    },
+    enabled: !!propId,
+  })
+
+  const { data: categoriasDisponiveis = [] } = useQuery({
+    queryKey: ['transacoes-categorias-distintas', propId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('transacoes').select('categoria').eq('propriedade_id', propId)
+      if (error) throw error
+      return Array.from(new Set((data || []).map((r: any) => r.categoria).filter(Boolean))).sort() as string[]
+    },
+    enabled: !!propId,
+  })
+
+  const { data: subcategoriasDisponiveis = [] } = useQuery({
+    queryKey: ['transacoes-subcategorias-distintas', propId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('transacoes').select('subcategoria').eq('propriedade_id', propId)
+      if (error) throw error
+      return Array.from(new Set((data || []).map((r: any) => r.subcategoria).filter(Boolean))).sort() as string[]
+    },
+    enabled: !!propId,
+  })
+
+  const { data: anosComTransacao = [] } = useQuery({
+    queryKey: ['transacoes-anos-distintos', propId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('transacoes')
+        .select('data_pagamento')
+        .eq('propriedade_id', propId)
+        .not('data_pagamento', 'is', null)
+      if (error) throw error
+      const anos = Array.from(new Set(
+        (data || []).map((r: any) => r.data_pagamento ? Number(String(r.data_pagamento).substring(0, 4)) : null).filter(Boolean)
+      )) as number[]
+      return anos.sort((a, b) => b - a)
+    },
+    enabled: !!propId,
+  })
 
   const linhasFiltradas = useMemo(() => {
     if (filtroStatus === 'aberto') return balancete.filter((m) => !m.contabilizado)
@@ -193,6 +260,128 @@ export function FechamentoContabil() {
     }
   }
 
+  const baixarRelatorioSubcategoria = async (formato: 'pdf' | 'excel') => {
+    if (!propId) return
+
+    const usaAno = relTipoPeriodo === 'ano'
+    if (!usaAno && (!relDataInicio || !relDataFim)) {
+      toast.error('Preencha as duas datas do período')
+      return
+    }
+    const dataInicio = usaAno ? `${relAno}-01-01` : relDataInicio
+    const dataFim = usaAno ? `${relAno}-12-31` : relDataFim
+    const periodoLabel = usaAno
+      ? `Ano: ${relAno}`
+      : `Período: ${format(parseISO(relDataInicio), 'dd/MM/yyyy')} a ${format(parseISO(relDataFim), 'dd/MM/yyyy')}`
+    const tipoLabel = relTipo !== 'ambos' ? `Tipo: ${relTipo === 'despesa' ? 'Despesa' : 'Receita'}` : undefined
+
+    const setGerando = formato === 'pdf' ? setGerandoRelatorioPDF : setGerandoRelatorioExcel
+    setGerando(true)
+    try {
+      let query = supabase
+        .from('transacoes')
+        .select('descricao, categoria, subcategoria, valor, tipo, data_pagamento, forma_pagamento')
+        .eq('propriedade_id', propId)
+        .eq('status', 'pago')
+        .gte('data_pagamento', dataInicio)
+        .lte('data_pagamento', dataFim)
+        .order('data_pagamento', { ascending: true })
+      if (relTipo !== 'ambos') query = query.eq('tipo', relTipo)
+      if (relCategorias.length > 0) query = query.in('categoria', relCategorias)
+      if (relSubcategorias.length > 0) query = query.in('subcategoria', relSubcategorias)
+
+      const { data, error } = await query
+      if (error) throw error
+      const registros = (data || []) as any[]
+
+      // Subcategorias distintas no resultado, na ordem em que aparecem — viram colunas.
+      const subcategoriasEncontradas: string[] = []
+      registros.forEach((r) => {
+        const sub = r.subcategoria || '—'
+        if (!subcategoriasEncontradas.includes(sub)) subcategoriasEncontradas.push(sub)
+      })
+
+      // Agrupa por (descricao, categoria, tipo) — tipo entra na chave pra não somar
+      // receita com despesa na mesma linha quando o filtro "Ambos" traz os dois.
+      const grupos = new Map<string, {
+        descricao: string; categoria: string; tipo: string
+        valoresPorSubcategoria: Record<string, number>
+        datas: string[]; formas: string[]
+      }>()
+
+      registros.forEach((r: any) => {
+        const chave = `${r.descricao}|||${r.categoria}|||${r.tipo}`
+        const sub = r.subcategoria || '—'
+        if (!grupos.has(chave)) {
+          grupos.set(chave, { descricao: r.descricao, categoria: r.categoria, tipo: r.tipo, valoresPorSubcategoria: {}, datas: [], formas: [] })
+        }
+        const g = grupos.get(chave)!
+        g.valoresPorSubcategoria[sub] = (g.valoresPorSubcategoria[sub] || 0) + Number(r.valor)
+        g.datas.push(r.data_pagamento ? format(parseISO(r.data_pagamento), 'dd/MM') : '')
+        g.formas.push(r.forma_pagamento || '')
+      })
+
+      const linhas = Array.from(grupos.values())
+        .map((g) => ({
+          descricao: g.descricao,
+          categoria: g.categoria,
+          tipoLabel: g.tipo === 'receita' ? 'Receita' : 'Despesa',
+          valoresPorSubcategoria: g.valoresPorSubcategoria,
+          dataPagamento: g.datas.join(', '),
+          formaPagamento: g.formas.join(', '),
+        }))
+        .sort((a, b) => a.categoria.localeCompare(b.categoria) || a.descricao.localeCompare(b.descricao))
+
+      const nomeArquivo = usaAno ? `relatorio-subcategoria-${relAno}` : `relatorio-subcategoria-${relDataInicio}-a-${relDataFim}`
+
+      if (formato === 'pdf') {
+        await exportarRelatorioPorSubcategoriaPDF({
+          nomeArquivo,
+          propriedadeNome: propriedadeAtual?.nome || '',
+          proprietarioNome: proprietarioNomeReal || '',
+          periodoLabel,
+          tipoLabel,
+          subcategorias: subcategoriasEncontradas,
+          linhas: linhas.map((l) => ({ ...l, tipo: l.tipoLabel })),
+        })
+      } else {
+        const colunasExcel: Coluna[] = [
+          { header: 'Descrição', key: 'descricao', width: 30 },
+          { header: 'Categoria', key: 'categoria', width: 20 },
+          { header: 'Tipo', key: 'tipo', width: 12 },
+          ...subcategoriasEncontradas.map((s, i) => ({ header: s, key: `sub_${i}`, width: 16 })),
+          { header: 'Data de pagamento', key: 'dataPagamento', width: 22 },
+          { header: 'Forma de pagamento', key: 'formaPagamento', width: 22 },
+        ]
+        const linhasExcel = linhas.map((l) => {
+          const row: any = { descricao: l.descricao, categoria: l.categoria, tipo: l.tipoLabel, dataPagamento: l.dataPagamento, formaPagamento: l.formaPagamento }
+          subcategoriasEncontradas.forEach((s, i) => { row[`sub_${i}`] = l.valoresPorSubcategoria[s] ? l.valoresPorSubcategoria[s].toFixed(2) : '' })
+          return row
+        })
+        const resumoFiltros = [
+          periodoLabel,
+          tipoLabel,
+          relCategorias.length > 0 ? `Categorias: ${relCategorias.join(', ')}` : 'Categorias: Todas',
+          relSubcategorias.length > 0 ? `Subcategorias: ${relSubcategorias.join(', ')}` : 'Subcategorias: Todas',
+        ].filter(Boolean).join(' · ')
+
+        exportarExcel({
+          nomeArquivo,
+          nomeAba: 'Transações por Subcategoria',
+          colunas: colunasExcel,
+          linhas: linhasExcel,
+          propriedadeNome: propriedadeAtual?.nome || '',
+          resumoFiltros,
+        })
+      }
+      setRelDialogAberto(false)
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao gerar o relatório')
+    } finally {
+      setGerando(false)
+    }
+  }
+
   const baixarBalanceteGeral = async () => {
     if (!propId || balancete.length === 0) return
     setGerandoBalancete(true)
@@ -321,6 +510,12 @@ export function FechamentoContabil() {
             onClick={() => setNfDialogAberto(true)}
           >
             <FileText className="h-4 w-4 mr-1" /> Notas Fiscais (PDF)
+          </Button>
+          <Button
+            variant="outline" size="sm" disabled={balancete.length === 0}
+            onClick={() => setRelDialogAberto(true)}
+          >
+            <FileText className="h-4 w-4 mr-1" /> Relatório por Subcategoria
           </Button>
         </div>
       </div>
@@ -557,6 +752,101 @@ export function FechamentoContabil() {
             <Button variant="outline" onClick={() => setNfDialogAberto(false)}>Cancelar</Button>
             <Button onClick={baixarRelatorioNotaFiscal} disabled={gerandoNotaFiscal}>
               {gerandoNotaFiscal
+                ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Gerando...</>
+                : 'Gerar PDF'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={relDialogAberto} onOpenChange={setRelDialogAberto}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Relatório por Subcategoria</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Período</Label>
+              <Select value={relTipoPeriodo} onValueChange={(v: any) => setRelTipoPeriodo(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="periodo">Período específico</SelectItem>
+                  <SelectItem value="ano">Ano inteiro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {relTipoPeriodo === 'periodo' ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>De</Label>
+                  <Input type="date" value={relDataInicio} onChange={(e) => setRelDataInicio(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Até</Label>
+                  <Input type="date" value={relDataFim} onChange={(e) => setRelDataFim(e.target.value)} />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Ano</Label>
+                <Select value={String(relAno)} onValueChange={(v) => setRelAno(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-popover border border-border">
+                    {(anosComTransacao.length > 0 ? anosComTransacao : [ANO_ATUAL]).map((a) => (
+                      <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select value={relTipo} onValueChange={(v: any) => setRelTipo(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ambos">Ambos</SelectItem>
+                  <SelectItem value="despesa">Despesa</SelectItem>
+                  <SelectItem value="receita">Receita</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <MultiSelectFilter
+                opcoes={categoriasDisponiveis.map((c) => ({ value: c, label: c }))}
+                selecionados={relCategorias}
+                onChange={setRelCategorias}
+                placeholder="Todas"
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Subcategoria</Label>
+              <MultiSelectFilter
+                opcoes={subcategoriasDisponiveis.map((s) => ({ value: s, label: s }))}
+                selecionados={relSubcategorias}
+                onChange={setRelSubcategorias}
+                placeholder="Todas"
+                className="w-full"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setRelDialogAberto(false)}>Cancelar</Button>
+            <Button
+              variant="outline"
+              onClick={() => baixarRelatorioSubcategoria('excel')}
+              disabled={gerandoRelatorioPDF || gerandoRelatorioExcel}
+            >
+              {gerandoRelatorioExcel
+                ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Gerando...</>
+                : <><FileSpreadsheet className="h-4 w-4 mr-1" /> Gerar Excel</>}
+            </Button>
+            <Button
+              onClick={() => baixarRelatorioSubcategoria('pdf')}
+              disabled={gerandoRelatorioPDF || gerandoRelatorioExcel}
+            >
+              {gerandoRelatorioPDF
                 ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Gerando...</>
                 : 'Gerar PDF'}
             </Button>

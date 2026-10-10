@@ -82,3 +82,35 @@ export const fmtMoedaBR = (value: number) =>
 // Rótulo exibido quando um lançamento não está vinculado a um talhão específico
 export const talhaoLabel = (nome?: string | null) =>
   nome && String(nome).trim() ? String(nome) : 'Propriedade'
+
+/** Formata CPF (até 11 dígitos) ou CNPJ (12+) automaticamente, conforme
+ * a pessoa digita — detecta sozinho qual dos dois é pela quantidade de
+ * números. */
+export function formatarCpfCnpj(valor: string): string {
+  const digits = valor.replace(/\D/g, '').slice(0, 14)
+  if (digits.length <= 11) {
+    return digits
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+  }
+  return digits
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+}
+
+/** Formata telefone como (00) 0000-0000 (fixo, 10 dígitos) ou
+ * (00) 00000-0000 (celular, 11 dígitos) automaticamente. */
+export function formatarTelefone(valor: string): string {
+  const digits = valor.replace(/\D/g, '').slice(0, 11)
+  if (digits.length <= 10) {
+    return digits
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4})(\d{1,4})$/, '$1-$2')
+  }
+  return digits
+    .replace(/(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d{1,4})$/, '$1-$2')
+}

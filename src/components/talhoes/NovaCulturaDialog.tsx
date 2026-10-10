@@ -117,7 +117,9 @@ export function NovaCulturaDialog({ open, onOpenChange, onCreated, culturaEditan
       }
 
       toast({ title: "Cultura atualizada com sucesso" });
-      queryClient.invalidateQueries({ queryKey: ["culturas-config"] });
+      queryClient.invalidateQueries({ queryKey: ["culturas-config-todas"] });
+      queryClient.invalidateQueries({ queryKey: ["culturas-config-ativas"] });
+      queryClient.invalidateQueries({ queryKey: ["culturas-config-list"] });
       onCreated(data);
       onOpenChange(false);
       return;
@@ -140,7 +142,9 @@ export function NovaCulturaDialog({ open, onOpenChange, onCreated, culturaEditan
     }
 
     toast({ title: "Cultura criada com sucesso" });
-    queryClient.invalidateQueries({ queryKey: ["culturas-config"] });
+    queryClient.invalidateQueries({ queryKey: ["culturas-config-todas"] });
+    queryClient.invalidateQueries({ queryKey: ["culturas-config-ativas"] });
+    queryClient.invalidateQueries({ queryKey: ["culturas-config-list"] });
     onCreated(data);
     resetForm();
     onOpenChange(false);

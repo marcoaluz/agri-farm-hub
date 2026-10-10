@@ -69,7 +69,7 @@ export function TalhaoForm({ talhao, propriedadeId, onSuccess }: TalhaoFormProps
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { data: culturas } = useQuery({
-    queryKey: ["culturas-config"],
+    queryKey: ["culturas-config-ativas"],
     queryFn: async () => {
       const { data } = await supabase
         .from("culturas_config" as any)

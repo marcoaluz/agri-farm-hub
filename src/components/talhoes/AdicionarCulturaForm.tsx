@@ -56,7 +56,7 @@ export function AdicionarCulturaForm({ talhao, culturaExistente, culturasJaCadas
   const [editouManualmente, setEditouManualmente] = useState(false);
 
   const { data: culturasConfig } = useQuery({
-    queryKey: ["culturas-config"],
+    queryKey: ["culturas-config-ativas"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("culturas_config")

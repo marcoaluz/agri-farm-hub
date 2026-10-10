@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useSafraFechada } from '@/hooks/useSafraFechada'
 import { useSafraContext } from '@/contexts/SafraContext'
+import { useSomenteConsulta } from '@/hooks/useSomenteConsulta'
 import { useToast } from '@/hooks/use-toast'
 import { solicitarExclusaoEntidade } from '@/lib/solicitarExclusao'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -54,6 +55,7 @@ export default function Pecuaria() {
   const { isFechada, verificarSafra } = useSafraFechada(safraSelecionada)
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const somenteConsulta = useSomenteConsulta()
   const propId = propriedadeAtual?.id
 
   const [searchParams, setSearchParams] = useSearchParams()
@@ -552,12 +554,16 @@ export default function Pecuaria() {
                       <Button size="sm" variant="outline" onClick={() => setAnimaisRebanho(r)}>
                         <Users className="h-3 w-3 mr-1" /> Animais
                       </Button>
+                      {!somenteConsulta && (
                       <Button size="sm" variant="outline" onClick={() => { setCompraRebanho(r); setCompraDialog(true) }}>
                         <ShoppingCart className="h-3 w-3 mr-1" /> Registrar compra
                       </Button>
+                      )}
+                      {!somenteConsulta && (
                       <Button size="sm" variant="outline" onClick={() => { setMovRebanhoId(r.id); setMovDialog(true) }}>
                         <ArrowLeftRight className="h-3 w-3 mr-1" /> Movimentação
                       </Button>
+                      )}
                       <Button size="sm" variant="outline" onClick={() => { setEditLote(r); setLoteDialog(true) }}>
                         <Pencil className="h-3 w-3 mr-1" /> Editar
                       </Button>
@@ -610,7 +616,9 @@ export default function Pecuaria() {
                 </SelectContent>
               </Select>
             </div>
+            {!somenteConsulta && (
             <Button onClick={() => { if (!verificarSafra('registrar evento sanitário')) return; setSanitarioDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Plus className="h-4 w-4 mr-1" /> Registrar Evento</Button>
+            )}
           </div>
 
           {loadingSan ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24" />) : !eventosFiltrados.length ? (
@@ -716,7 +724,9 @@ export default function Pecuaria() {
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
+                {!somenteConsulta && (
                 <Button onClick={() => { if (!verificarSafra('registrar ordenha')) return; setOrdenhaDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Plus className="h-4 w-4 mr-1" /> Registrar Ordenha</Button>
+                )}
               </div>
 
               <RankingLeiteCard propriedadeId={propId} />
@@ -771,7 +781,9 @@ export default function Pecuaria() {
         {/* ========= ABA MOVIMENTAÇÕES ========= */}
         <TabsContent value="movimentacoes" className="space-y-4">
           <div className="flex justify-end">
+            {!somenteConsulta && (
             <Button onClick={() => { if (!verificarSafra('registrar movimentação')) return; setMovRebanhoId(undefined); setMovDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Plus className="h-4 w-4 mr-1" /> Nova Movimentação</Button>
+            )}
           </div>
 
           {loadingMov ? <Skeleton className="h-48" /> : !movimentacoes?.length ? (
@@ -829,7 +841,9 @@ export default function Pecuaria() {
         {/* ========= ABA PESAGENS ========= */}
         <TabsContent value="pesagens" className="space-y-4">
           <div className="flex justify-end">
+            {!somenteConsulta && (
             <Button onClick={() => { if (!verificarSafra('registrar pesagem')) return; setPesagemDialog(true) }} disabled={isFechada} title={isFechada ? 'Safra fechada' : ''}><Scale className="h-4 w-4 mr-1" /> Registrar Pesagem</Button>
+            )}
           </div>
 
           <RankingPesoCard propriedadeId={propId} />

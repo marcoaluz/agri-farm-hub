@@ -99,6 +99,22 @@ export function MovimentacaoDialog({
   }, [open, rebanhoIdInicial, tipoInicial, animalIdInicial, quantidadeInicial])
 
   const rebanhoAtual = (rebanhos || []).find((r: any) => r.id === rebanhoId)
+
+  const { data: agregadoLoteFechado } = useQuery({
+    queryKey: ['agregado-lote-fechado', rebanhoId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('rebanho_movimentacoes')
+        .select('quantidade, valor_total, peso_medio_kg')
+        .eq('rebanho_id', rebanhoId)
+        .in('tipo', ['entrada', 'compra'])
+      const linhas = data || []
+      const valorTotal = linhas.reduce((s: number, l: any) => s + (Number(l.valor_total) || 0), 0)
+      const pesoTotal = linhas.reduce((s: number, l: any) => s + (Number(l.quantidade) || 0) * (Number(l.peso_medio_kg) || 0), 0)
+      return { valorTotal, pesoTotal }
+    },
+    enabled: open && !!rebanhoId && rebanhoAtual?.controle_individual === false,
+  })
   const individual = rebanhoAtual?.controle_individual !== false
 
   const { data: animaisRebanho } = useQuery({
@@ -127,19 +143,30 @@ export function MovimentacaoDialog({
     })
   }, [animaisSelecionados, tipo, venderLoteInteiro, animaisRebanho])
 
-  const pesoTotalLote = (animaisRebanho || []).reduce((s: number, a: any) => s + (Number(a.peso_atual) || 0), 0)
-  const valorCompraTotalLote = (animaisRebanho || []).reduce((s: number, a: any) => s + (Number(a.valor_compra) || 0), 0)
+  const loteEhFechado = rebanhoAtual?.controle_individual === false
+  const pesoTotalLote = loteEhFechado
+    ? (agregadoLoteFechado?.pesoTotal || 0)
+    : (animaisRebanho || []).reduce((s: number, a: any) => s + (Number(a.peso_atual) || 0), 0)
+  const valorCompraTotalLote = loteEhFechado
+    ? (agregadoLoteFechado?.valorTotal || 0)
+    : (animaisRebanho || []).reduce((s: number, a: any) => s + (Number(a.valor_compra) || 0), 0)
 
   const qtdNum = tipo === 'transferencia'
     ? animaisSelecionados.length
     : tipo === 'venda'
-      ? (venderLoteInteiro ? (animaisRebanho?.length || 0) : animaisSelecionados.length)
+      ? (venderLoteInteiro
+          ? (animaisRebanho?.length || 0)
+          : (loteEhFechado ? (parseInt(quantidade || '0') || 0) : animaisSelecionados.length))
       : (parseInt(quantidade || '0') || 0)
 
   const totalVendaPorAnimal = Object.values(animaisComPreco).reduce((s, d) => s + (parseFloat(d.preco) || 0), 0)
 
   const totalCalculado = tipo === 'venda'
-    ? (venderLoteInteiro ? (parseFloat(valorTotal || '0') || 0) : totalVendaPorAnimal)
+    ? (venderLoteInteiro
+        ? (parseFloat(valorTotal || '0') || 0)
+        : (loteEhFechado
+            ? (tipoPreco === 'unitario' ? (parseFloat(valorUnitario || '0') || 0) * qtdNum : (parseFloat(valorTotal || '0') || 0))
+            : totalVendaPorAnimal))
     : (tipoPreco === 'unitario'
       ? (parseFloat(valorUnitario || '0') || 0) * qtdNum
       : (parseFloat(valorTotal || '0') || 0))
@@ -253,6 +280,21 @@ export function MovimentacaoDialog({
           toast({ title: 'Informe o valor total da venda', variant: 'destructive' })
           return
         }
+      } else if (loteEhFechado) {
+        const qtdDigitada = parseInt(quantidade || '0') || 0
+        if (qtdDigitada < 1) {
+          toast({ title: 'Informe a quantidade a vender', variant: 'destructive' })
+          return
+        }
+        if (rebanhoAtual?.quantidade_atual != null && qtdDigitada > rebanhoAtual.quantidade_atual) {
+          toast({ title: 'Quantidade maior que o lote', description: `O lote tem ${rebanhoAtual.quantidade_atual} cabeças.`, variant: 'destructive' })
+          return
+        }
+        const precoInformado = tipoPreco === 'unitario' ? !!valorUnitario : !!valorTotal
+        if (!precoInformado) {
+          toast({ title: 'Informe o preço da venda', variant: 'destructive' })
+          return
+        }
       } else {
         if (animaisSelecionados.length === 0) {
           toast({ title: 'Selecione os animais ou marque "Vender o lote inteiro"', variant: 'destructive' })
@@ -273,8 +315,10 @@ export function MovimentacaoDialog({
     setLoading(true)
     const { data: userData } = await supabase.auth.getUser()
 
-    if (tipo === 'venda' && !venderLoteInteiro) {
-      // Uma movimentação por animal — cada um com seu próprio peso e preço
+    if (tipo === 'venda' && !venderLoteInteiro && !loteEhFechado) {
+      // Uma movimentação por animal, cada um com seu próprio peso e preço —
+      // só se aplica a lotes com controle individual. Lote fechado cai no
+      // branch único abaixo, igual "vender o lote inteiro".
       for (const animalId of animaisSelecionados) {
         const dados = animaisComPreco[animalId] || { peso: '', preco: '' }
         const { error } = await supabase.rpc('registrar_movimentacao_animais' as any, {
@@ -501,7 +545,7 @@ export function MovimentacaoDialog({
               {venderLoteInteiro ? (
                 <>
                   <div className="space-y-1 text-sm text-muted-foreground border rounded-lg p-3 bg-muted/30">
-                    <p>Animais no lote: <span className="font-medium text-foreground">{animaisRebanho?.length || 0}</span></p>
+                    <p>Animais no lote: <span className="font-medium text-foreground">{loteEhFechado ? (rebanhoAtual?.quantidade_atual || 0) : (animaisRebanho?.length || 0)}</span></p>
                     <p>Peso total estimado: <span className="font-medium text-foreground">{pesoTotalLote.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} kg</span></p>
                     <p>Custo de aquisição do lote: <span className="font-medium text-foreground">R$ {fmtMoeda(valorCompraTotalLote)}</span></p>
                   </div>
@@ -510,6 +554,24 @@ export function MovimentacaoDialog({
                     <Label>Valor total da venda (R$) *</Label>
                     <Input type="number" step="0.01" value={valorTotal} onChange={e => { setTipoPreco('total'); setValorTotal(e.target.value) }} />
                   </div>
+                </>
+              ) : loteEhFechado ? (
+                <>
+                  <div>
+                    <Label>Quantidade a vender *</Label>
+                    <Input
+                      type="number"
+                      value={quantidade}
+                      onChange={e => setQuantidade(e.target.value)}
+                      max={rebanhoAtual?.quantidade_atual ?? undefined}
+                    />
+                    {rebanhoAtual?.quantidade_atual != null && (parseInt(quantidade || '0') || 0) > rebanhoAtual.quantidade_atual && (
+                      <p className="text-xs text-red-600 mt-1">
+                        O lote tem só {rebanhoAtual.quantidade_atual} cabeças.
+                      </p>
+                    )}
+                  </div>
+                  {renderPreco('Preço por cabeça (R$)')}
                 </>
               ) : (
                 <>

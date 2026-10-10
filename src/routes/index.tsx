@@ -26,6 +26,7 @@ import { LancamentoForm } from '@/pages/LancamentoForm'
 import { Maquinas } from '@/pages/Maquinas'
 import Pecuaria from '@/pages/Pecuaria'
 import Calendario from '@/pages/Calendario'
+import HistoricoChuva from '@/pages/HistoricoChuva'
 import { Financeiro } from '@/pages/Financeiro'
 import { Relatorios } from '@/pages/Relatorios'
 import { Configuracoes } from '@/pages/Configuracoes'
@@ -131,6 +132,7 @@ export function AppRoutes() {
         <Route path="lancamentos/novo" element={<LancamentoForm />} />
         <Route path="lancamentos/:id" element={<LancamentoForm />} />
         <Route path="calendario" element={<Calendario />} />
+        <Route path="historico-chuva" element={<HistoricoChuva />} />
         <Route path="agenda" element={<Agenda />} />
         <Route path="contatos" element={<Contatos />} />
         <Route path="maquinas" element={<Maquinas />} />

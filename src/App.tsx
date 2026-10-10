@@ -32,7 +32,16 @@ function App() {
         dehydrateOptions: {
           shouldDehydrateQuery: (query) => {
             const key = String(query.queryKey?.[0] ?? '')
-            return !key.toLowerCase().includes('auth') && !key.toLowerCase().includes('session')
+            const keyLower = key.toLowerCase()
+            if (keyLower.includes('auth') || keyLower.includes('session')) return false
+            // Essas consultas guardam Set/Map como resultado — JSON.stringify
+            // (usado pelo persister) não reconstrói Set/Map ao dar parse de
+            // volta (vira {} sem métodos), então nunca devem ser persistidas.
+            // Ver também o fix estrutural em cada uma delas (retornam array
+            // JSON-seguro agora), mas mantemos essa exclusão como cinto de
+            // segurança contra qualquer Set/Map futuro que apareça aqui.
+            if (['transacoes-com-anexo', 'maquinas-nome-mapa', 'meses-contabilizados'].includes(key)) return false
+            return true
           },
         },
       }}

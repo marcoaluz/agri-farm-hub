@@ -126,7 +126,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
     void (async () => {
       const { data, error } = await supabase
         .from('propriedades')
-        .select('id, nome, area_total, localizacao, ativo, latitude, longitude')
+        .select('id, nome, area_total, localizacao, ativo, latitude, longitude, responsavel')
         .eq('id', prop.id)
         .maybeSingle()
 
@@ -142,6 +142,7 @@ export function HeaderGlobal({ onMenuClick }: HeaderGlobalProps) {
         ativo: data?.ativo ?? true,
         latitude: data?.latitude ?? prop.latitude ?? null,
         longitude: data?.longitude ?? prop.longitude ?? null,
+        responsavel: data?.responsavel ?? null,
       })
     })()
   }

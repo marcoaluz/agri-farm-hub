@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Info, AlertCircle, Package, Wrench, Truck, Gauge, Pencil, Tractor } from 'lucide-react'
+import { X, Info, AlertCircle, Package, Wrench, Truck, Gauge, Pencil, Tractor, Paperclip } from 'lucide-react'
 import { PrateleiraIcon } from '@/components/icons/PrateleiraIcon'
 import { usePreviewCustoDireto } from '@/hooks/usePreviewCusto'
 import { PreviewConsumoFIFO } from './PreviewConsumoFIFO'
@@ -13,6 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { ContatoCombobox } from '@/components/financeiro/ContatoCombobox'
+import { Anexos } from '@/components/Anexos'
 
 export interface ItemLancamento {
   // Novo: referências diretas
@@ -47,6 +49,20 @@ export interface ItemLancamento {
   momento_abastecimento?: 'antes' | 'depois' | null
   observacao?: string
 
+  // Fornecedor/nota da opção Livre (Abastecimento e Manutenção)
+  contato_id?: string | null
+  fornecedor_nome?: string
+  anexo?: File | null
+  // Id da transação financeira já existente pra este item (preenchido só ao
+  // reabrir um lançamento salvo) — com ele dá pra usar o componente Anexos de
+  // verdade (ver/trocar/apagar) em vez do seletor de arquivo isolado.
+  itemTransacaoId?: string | null
+  // Id da linha original em abastecimentos/maquina_manutencoes (preenchido só
+  // ao reabrir um lançamento salvo) — usado no save pra fazer UPDATE na linha
+  // existente em vez de apagar-e-recriar, preservando a transação vinculada.
+  abastecimentoId?: string | null
+  manutencaoId?: string | null
+
   // Manutenção
   categoria_manutencao?: string
   descricao?: string
@@ -75,6 +91,7 @@ interface ProdutoCombustivel {
 }
 
 interface ItemLancamentoCardProps {
+  propriedadeId?: string | null
   itemForm: ItemLancamento
   onUpdate: (updated: ItemLancamento) => void
   onRemove: () => void
@@ -110,7 +127,7 @@ function getTipoConfig(tipoRef?: string, itemTipo?: string) {
   return config[itemTipo as keyof typeof config] || { label: itemTipo || 'Item', icon: Package, color: 'bg-gray-100 text-gray-800' }
 }
 
-export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao, maquinas, tiposCombustivel }: ItemLancamentoCardProps) {
+export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove, produtos, temMaquinaNoLancamento, categoriasManutencao, descricoesManutencao, maquinas, tiposCombustivel }: ItemLancamentoCardProps) {
   // Texto puro do que foi digitado — nunca reformatado a cada tecla, senão
   // "0", "0." e outros estados intermediários somem no meio da digitação.
   const [quantidadeTexto, setQuantidadeTexto] = useState(
@@ -244,6 +261,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
   const itemNome = itemForm.nome || itemForm.item?.nome || 'Item'
   const itemUnidade = itemForm.unidade || itemForm.item?.unidade_medida || ''
   const maquinaVinculada = maquinas?.find(m => m.id === itemForm.maquina_id)
+  const ehImplementoVinculado = maquinaVinculada?.categoria_equipamento === 'implemento'
   const ehMaquinaKm = maquinaVinculada?.unidade_calculo === 'km'
   const labelMedidor = ehMaquinaKm ? 'Km' : 'Horímetro'
   const ehReposicao = itemForm.tipo_ref === 'produto' && !!itemForm.maquina_id
@@ -492,7 +510,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
             {itemForm.origem_estoque ? (
               <div>
-                <Label>Combustível (do estoque)</Label>
+                <Label>Combustível (do estoque) *</Label>
                 <Select
                   value={itemForm.produto_id || ''}
                   onValueChange={(v) => {
@@ -529,7 +547,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
               </div>
             ) : (
               <div>
-                <Label>Tipo de combustível</Label>
+                <Label>Tipo de combustível *</Label>
                 <Select value={itemForm.combustivel_tipo || ''} onValueChange={(v) => onUpdate({ ...itemForm, combustivel_tipo: v })}>
                   <SelectTrigger><SelectValue placeholder="Selecione o combustível" /></SelectTrigger>
                   <SelectContent>
@@ -548,7 +566,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Litros</Label>
+                <Label>Litros *</Label>
                 <Input
                   type="number"
                   value={itemForm.litros || ''}
@@ -564,7 +582,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                 />
               </div>
               <div>
-                <Label>Custo Total (R$)</Label>
+                <Label>Custo Total (R$) *</Label>
                 <Input type="number" value={itemForm.custo_total || ''} onChange={(e) => onUpdate({ ...itemForm, custo_total: Number(e.target.value) })} disabled={itemForm.origem_estoque} />
                 {produtoCombustivelSelecionado && Number(produtoCombustivelSelecionado.custo_medio || 0) > 0 && (
                   <p className="text-xs text-muted-foreground mt-1">
@@ -589,6 +607,44 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                 Digite o valor exato do painel — isso substitui o {labelMedidor.toLowerCase()} atual, não soma.
               </p>
             </div>
+
+            {!itemForm.origem_estoque && (
+              <>
+                <div>
+                  <Label>Fornecedor (opcional)</Label>
+                  <ContatoCombobox
+                    propriedadeId={propriedadeId}
+                    value={itemForm.fornecedor_nome || ''}
+                    contatoId={itemForm.contato_id ?? null}
+                    onChange={(nome, contatoId) => onUpdate({ ...itemForm, fornecedor_nome: nome, contato_id: contatoId })}
+                  />
+                </div>
+                <div>
+                  <Label>Nota fiscal (opcional)</Label>
+                  {itemForm.itemTransacaoId && propriedadeId ? (
+                    <Anexos entidadeTipo="transacao" entidadeId={itemForm.itemTransacaoId} propriedadeId={propriedadeId} titulo="Nota fiscal" />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        id={`anexo-abastecimento-${itemForm.maquina_id || itemForm.item_id}`}
+                        onChange={(e) => onUpdate({ ...itemForm, anexo: e.target.files?.[0] || null })}
+                      />
+                      <Button
+                        type="button" variant="outline" size="sm"
+                        className={itemForm.anexo ? 'border-primary text-primary' : ''}
+                        onClick={() => document.getElementById(`anexo-abastecimento-${itemForm.maquina_id || itemForm.item_id}`)?.click()}
+                      >
+                        <Paperclip className="h-4 w-4 mr-1" />
+                        {itemForm.anexo ? itemForm.anexo.name : 'Anexar nota'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             {temMaquinaNoLancamento && (
               <div>
@@ -627,7 +683,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
         {itemForm.tipo_ref === 'manutencao' && (
           <div className="space-y-3 rounded-lg border border-red-200 bg-red-50/30 dark:border-red-800/40 dark:bg-red-950/10 p-3">
             <div>
-              <Label>Categoria da manutenção</Label>
+              <Label>Categoria da manutenção *</Label>
               <Select value={itemForm.categoria_manutencao || ''} onValueChange={(v) => onUpdate({ ...itemForm, categoria_manutencao: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
                 <SelectContent>
@@ -680,7 +736,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
             {itemForm.origem_estoque ? (
               <>
                 <div>
-                  <Label>Peça / produto do estoque</Label>
+                  <Label>Peça / produto do estoque *</Label>
                   <Select
                     value={itemForm.produto_id || ''}
                     onValueChange={(v) => {
@@ -704,7 +760,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Quantidade</Label>
+                    <Label>Quantidade *</Label>
                     <Input
                       type="number" step="0.01"
                       value={itemForm.quantidade || ''}
@@ -717,7 +773,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                     />
                   </div>
                   <div>
-                    <Label>Custo (R$)</Label>
+                    <Label>Custo (R$) *</Label>
                     <Input type="number" step="0.01" value={itemForm.custo_total || ''} disabled />
                   </div>
                 </div>
@@ -726,7 +782,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Quantidade</Label>
+                    <Label>Quantidade *</Label>
                     <Input
                       type="number" step="0.01"
                       value={itemForm.quantidade || ''}
@@ -752,7 +808,7 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Custo Total (R$)</Label>
+                    <Label>Custo Total (R$) *</Label>
                     <Input type="number" step="0.01" value={itemForm.custo_total || ''} disabled />
                   </div>
                   <div>
@@ -764,9 +820,43 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                     />
                   </div>
                 </div>
+                <div>
+                  <Label>Fornecedor (opcional)</Label>
+                  <ContatoCombobox
+                    propriedadeId={propriedadeId}
+                    value={itemForm.fornecedor_nome || ''}
+                    contatoId={itemForm.contato_id ?? null}
+                    onChange={(nome, contatoId) => onUpdate({ ...itemForm, fornecedor_nome: nome, contato_id: contatoId })}
+                  />
+                </div>
+                <div>
+                  <Label>Nota fiscal (opcional)</Label>
+                  {itemForm.itemTransacaoId && propriedadeId ? (
+                    <Anexos entidadeTipo="transacao" entidadeId={itemForm.itemTransacaoId} propriedadeId={propriedadeId} titulo="Nota fiscal" />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        id={`anexo-manutencao-${itemForm.maquina_id || itemForm.item_id}`}
+                        onChange={(e) => onUpdate({ ...itemForm, anexo: e.target.files?.[0] || null })}
+                      />
+                      <Button
+                        type="button" variant="outline" size="sm"
+                        className={itemForm.anexo ? 'border-primary text-primary' : ''}
+                        onClick={() => document.getElementById(`anexo-manutencao-${itemForm.maquina_id || itemForm.item_id}`)?.click()}
+                      >
+                        <Paperclip className="h-4 w-4 mr-1" />
+                        {itemForm.anexo ? itemForm.anexo.name : 'Anexar nota'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
+            {!ehImplementoVinculado && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>{labelMedidor} na manutenção</Label>
@@ -793,8 +883,9 @@ export function ItemLancamentoCard({ itemForm, onUpdate, onRemove, produtos, tem
                 />
               </div>
             </div>
+            )}
 
-            {temMaquinaNoLancamento && (
+            {!ehImplementoVinculado && temMaquinaNoLancamento && (
               <div>
                 <Label>Essa leitura de {labelMedidor.toLowerCase()} da manutenção foi antes ou depois do trabalho com a máquina?</Label>
                 <div className="flex gap-2 mt-1">

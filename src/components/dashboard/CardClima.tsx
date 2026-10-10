@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { CloudSun } from 'lucide-react'
+import { CloudSun, CloudRain } from 'lucide-react'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -139,6 +140,12 @@ export function CardClima() {
               Defina a localização da propriedade para ver o clima
             </p>
           )}
+
+          <div className="border-t pt-3 mt-3">
+            <Link to="/historico-chuva" className="text-xs text-primary hover:underline flex items-center gap-1">
+              <CloudRain className="h-3 w-3" /> Ver histórico de chuva
+            </Link>
+          </div>
         </CardContent>
       </Card>
 

@@ -35,6 +35,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Switch } from '@/components/ui/switch'
 
 interface UserProfile {
   id: string
@@ -51,6 +52,7 @@ interface UserProfile {
   plano_slug?: string | null
   assinatura_status?: string | null
   vencimento?: string | null
+  somente_consulta?: boolean
 }
 
 interface PropriedadeDetalhe {
@@ -130,6 +132,7 @@ export default function GestaoUsuarios() {
   const [usuarioEditando, setUsuarioEditando] = useState<UserProfile | null>(null)
   const [novoPerfilSelecionado, setNovoPerfilSelecionado] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [somenteConsultaEditando, setSomenteConsultaEditando] = useState(false)
 
   // Plan change dialog
   const [usuarioAlterandoPlano, setUsuarioAlterandoPlano] = useState<UserProfile | null>(null)
@@ -207,6 +210,7 @@ export default function GestaoUsuarios() {
         plano_slug: item.plano_slug || null,
         assinatura_status: item.assinatura_status || null,
         vencimento: item.vencimento || item.data_fim || null,
+        somente_consulta: item.somente_consulta === true,
       })
 
       const donos = ((resultado.proprietarios || []) as any[]).map((item) => {
@@ -340,6 +344,7 @@ export default function GestaoUsuarios() {
         .update({
           full_name: nomeEditando.trim(),
           perfil: novoPerfilSelecionado,
+          somente_consulta: novoPerfilSelecionado === 'proprietario' ? somenteConsultaEditando : false,
           updated_at: new Date().toISOString(),
         } as any)
         .eq('id', usuarioEditando.id)
@@ -516,6 +521,7 @@ export default function GestaoUsuarios() {
     setUsuarioEditando(u)
     setNovoPerfilSelecionado(u.perfil)
     setNomeEditando(u.nome || '')
+    setSomenteConsultaEditando(u.somente_consulta || false)
   }
 
   async function abrirDetalhes(u: UserProfile) {
@@ -955,6 +961,28 @@ export default function GestaoUsuarios() {
                   </Select>
                 )}
               </div>
+
+              {novoPerfilSelecionado === 'proprietario' && !usuarioEditando.is_super_admin && (
+                <div className="flex items-start gap-3 rounded-md border p-3">
+                  <Switch
+                    checked={somenteConsultaEditando}
+                    onCheckedChange={setSomenteConsultaEditando}
+                    id="somente-consulta"
+                  />
+                  <div>
+                    <label htmlFor="somente-consulta" className="text-sm font-medium text-foreground cursor-pointer">
+                      Somente consulta
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Visualiza tudo e gera relatórios normalmente, mas não
+                      pode criar ou editar lançamentos operacionais
+                      (Financeiro, Lançamentos, Pecuária, Estoque, Máquinas,
+                      Serviços). Continua podendo criar propriedade, safra
+                      e enviar convites.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -968,7 +996,9 @@ export default function GestaoUsuarios() {
                 salvando ||
                 usuarioEditando?.is_super_admin ||
                 !novoPerfilSelecionado ||
-                (novoPerfilSelecionado === usuarioEditando?.perfil && nomeEditando.trim() === (usuarioEditando?.nome || ''))
+                (novoPerfilSelecionado === usuarioEditando?.perfil
+                  && nomeEditando.trim() === (usuarioEditando?.nome || '')
+                  && somenteConsultaEditando === (usuarioEditando?.somente_consulta || false))
               }
             >
               {salvando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
