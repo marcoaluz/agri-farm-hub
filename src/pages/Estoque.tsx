@@ -62,20 +62,35 @@ export function Estoque() {
 
   const excluirProdutoMutation = useMutation({
     mutationFn: async (produto: ProdutoComCusto) => {
-      const { error } = await supabase.from('produtos' as any).update({ ativo: false }).eq('id', produto.id);
+      // Passa pela RPC: ela bloqueia se o produto já foi usado e trata lotes/vínculos.
+      // Nunca fazer DELETE direto em produtos (lotes e vendas_estoque são ON DELETE CASCADE).
+      const { data, error } = await supabase.rpc('excluir_produto_completo' as any, {
+        p_produto_id: produto.id,
+      });
       if (error) throw error;
+      const resultado = Array.isArray(data) ? data[0] : data;
+      return resultado as { acao?: string } | null;
     },
-    onSuccess: () => {
+    onSuccess: (resultado) => {
       queryClient.invalidateQueries({ queryKey: ['produtos'] });
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] });
       queryClient.invalidateQueries({ queryKey: ['produtos-lancamento'] });
       queryClient.invalidateQueries({ queryKey: ['rel-estoque'] });
       queryClient.invalidateQueries({ queryKey: ['rel-estoque-categorias'] });
-      toast({ title: 'Produto excluído. Lançamentos e lotes existentes não foram afetados.' });
+      queryClient.invalidateQueries({ queryKey: ['transacoes'] });
+      if (resultado?.acao === 'desativado') {
+        toast({
+          title: 'Produto desativado',
+          description: 'Ele continua vinculado a modelos de item/serviço, por isso ficou apenas desativado.',
+        });
+      } else {
+        toast({ title: 'Produto excluído.' });
+      }
       setProdutoParaExcluir(null);
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao excluir produto', description: err.message, variant: 'destructive' });
+      toast({ title: 'Não foi possível excluir o produto', description: err.message, variant: 'destructive' });
+      setProdutoParaExcluir(null);
     },
   });
   const [searchParams, setSearchParams] = useSearchParams();
@@ -378,8 +393,9 @@ export function Estoque() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
             <AlertDialogDescription>
-              O produto <strong>{produtoParaExcluir?.nome}</strong> será desativado e some do Estoque.
-              Lançamentos e lotes já registrados não serão afetados.
+              O produto <strong>{produtoParaExcluir?.nome}</strong> será excluído de forma definitiva.
+              A exclusão é bloqueada se o produto já foi usado em lançamento, abastecimento, manutenção,
+              evento sanitário, venda ou saída de estoque.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
