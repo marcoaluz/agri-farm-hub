@@ -196,7 +196,8 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
 
         if (error) throw error;
       } else {
-        const { data: novo, error } = await supabase.rpc("criar_produto_compartilhado", {
+        // Tudo numa chamada só: tipo_estoque, vendavel e nivel_minimo vão no INSERT da função
+        const { error } = await supabase.rpc("criar_produto_compartilhado" as any, {
           p_propriedade_id: propriedadeAtual.id,
           p_nome: data.nome.trim(),
           p_categoria: data.categoria,
@@ -204,18 +205,12 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
           p_compartilhado: compartilhado,
           p_descricao: null,
           p_preco_estimado: null,
+          p_vendavel: vendavel,
+          p_nivel_minimo: data.nivel_minimo,
+          p_tipo_estoque: tipoEstoque,
         });
 
         if (error) throw error;
-
-        const novoId = typeof novo === "string" ? novo : (novo as any)?.id || (novo as any)?.produto_id;
-
-        if (novoId) {
-          await supabase
-            .from("produtos")
-            .update({ vendavel, nivel_minimo: data.nivel_minimo, tipo_estoque: tipoEstoque } as any)
-            .eq("id", novoId);
-        }
       }
     },
 
