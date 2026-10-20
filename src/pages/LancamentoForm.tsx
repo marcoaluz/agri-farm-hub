@@ -816,6 +816,50 @@ export function LancamentoForm() {
 
       const userId = (await supabase.auth.getUser()).data.user?.id
 
+      // Combustível "Do Estoque": confere o saldo real dos lotes ANTES de gravar
+      // qualquer coisa. A baixa FIFO só acontece no fim (sincronizarAbastecimentos);
+      // se falhasse lá, o lançamento e os itens já estariam gravados, sem o
+      // abastecimento — e cada nova tentativa criava outra cópia.
+      const litrosPorProduto = new Map<string, number>()
+      for (const item of data.itens) {
+        if (item.tipo_ref === 'abastecimento' && item.origem_estoque && item.produto_id && item.litros && item.litros > 0) {
+          litrosPorProduto.set(item.produto_id, (litrosPorProduto.get(item.produto_id) || 0) + item.litros)
+        }
+      }
+      if (litrosPorProduto.size > 0) {
+        const produtoIds = Array.from(litrosPorProduto.keys())
+        const { data: lotesDisp, error: erroLotes } = await supabase
+          .from('lotes')
+          .select('produto_id, quantidade_disponivel')
+          .in('produto_id', produtoIds)
+          .gt('quantidade_disponivel', 0)
+        if (erroLotes) throw erroLotes
+        const disponivel = new Map<string, number>()
+        for (const l of (lotesDisp || []) as any[]) {
+          disponivel.set(l.produto_id, (disponivel.get(l.produto_id) || 0) + Number(l.quantidade_disponivel))
+        }
+        // Edição: o combustível já consumido por este lançamento volta ao estoque
+        // antes da nova baixa, então conta como disponível.
+        if (lancamentoId) {
+          const { data: jaConsumido, error: erroJaConsumido } = await supabase
+            .from('abastecimentos')
+            .select('produto_id, quantidade_litros')
+            .eq('lancamento_id', lancamentoId)
+            .in('produto_id', produtoIds)
+          if (erroJaConsumido) throw erroJaConsumido
+          for (const a of (jaConsumido || []) as any[]) {
+            disponivel.set(a.produto_id, (disponivel.get(a.produto_id) || 0) + Number(a.quantidade_litros || 0))
+          }
+        }
+        for (const [produtoId, litros] of litrosPorProduto) {
+          const saldo = disponivel.get(produtoId) || 0
+          if (litros > saldo + 0.0001) {
+            const nome = (produtos as any[] | undefined)?.find(p => p.id === produtoId)?.nome || 'combustível'
+            throw new Error(`Estoque insuficiente de "${nome}": disponível ${saldo.toFixed(2)} L, informado ${litros.toFixed(2)} L. Nada foi gravado.`)
+          }
+        }
+      }
+
       // Em modo edição, reverte o consumo do lançamento antigo ANTES de calcular
       // o novo — senão o cálculo de estoque disponível compara contra o saldo já
       // descontado por este mesmo lançamento, gerando "estoque insuficiente" falso
@@ -1115,6 +1159,10 @@ export function LancamentoForm() {
       queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] })
       queryClient.invalidateQueries({ queryKey: ['estoque'] })
       queryClient.invalidateQueries({ queryKey: ['produtos'] })
+      // Listas próprias deste form (saldo de estoque e horímetro) — sem isso, o
+      // próximo lançamento da sequência validava contra saldo já consumido.
+      queryClient.invalidateQueries({ queryKey: ['produtos-lancamento'] })
+      queryClient.invalidateQueries({ queryKey: ['maquinas-lancamento'] })
       queryClient.invalidateQueries({ queryKey: ['preview-custo'] })
       queryClient.invalidateQueries({ queryKey: ['preview-custo-direto'] })
       queryClient.invalidateQueries({ queryKey: ['produtos-custos'] })
