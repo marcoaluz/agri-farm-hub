@@ -58,3 +58,7 @@ DROP TRIGGER IF EXISTS trg_validar_abastecimento_implemento ON public.lancamento
 CREATE TRIGGER trg_validar_abastecimento_implemento
   BEFORE INSERT OR UPDATE OF maquina_id, tipo_ref ON public.lancamentos_itens
   FOR EACH ROW EXECUTE FUNCTION public.fn_validar_abastecimento_implemento();
+
+-- Faz o PostgREST enxergar a coluna nova imediatamente (evita
+-- "could not find 'consome_combustivel' column ... in the schema cache").
+NOTIFY pgrst, 'reload schema';

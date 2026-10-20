@@ -4,7 +4,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
 import { toast as sonnerToast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { consumirFIFO } from '@/lib/fifoConsumo'
+import { consumirFIFO, restaurarFIFO } from '@/lib/fifoConsumo'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useTalhoes } from '@/hooks/useTalhoes'
 import { ItemLancamentoCard, type ItemLancamento } from '@/components/lancamentos/ItemLancamentoCard'
@@ -1155,24 +1155,43 @@ export function LancamentoForm() {
     const abastecimentosDoLancamento = itens.filter(i => i.tipo_ref === 'abastecimento' && i.maquina_id)
     if (abastecimentosDoLancamento.length === 0 && idsOriginais.length === 0) return
 
-    // Itens Livre que já tinham uma linha (abastecimentoId preservado do load) —
-    // fazem UPDATE na própria linha, mantendo o id. O trigger
-    // trg_abastecimento_para_lancamento trata UPDATE atualizando a transação
-    // existente em vez de recriá-la, então a transação (e qualquer anexo nela)
-    // continua a mesma. Itens "Do Estoque" e itens novos (sem id) vão por INSERT,
-    // igual já era feito — eles não têm transação/anexo vinculados.
-    const itensParaAtualizar = abastecimentosDoLancamento.filter(i => !i.origem_estoque && i.abastecimentoId)
-    const itensParaInserir = abastecimentosDoLancamento.filter(i => i.origem_estoque || !i.abastecimentoId)
+    // Situação das linhas originais no banco (a origem pode ter mudado no form)
+    const originaisPorId = new Map<string, { produto_id: string | null; detalhamento_lotes: any }>()
+    if (idsOriginais.length > 0) {
+      const { data: originais, error: erroOriginais } = await supabase
+        .from('abastecimentos')
+        .select('id, produto_id, detalhamento_lotes')
+        .in('id', idsOriginais)
+      if (erroOriginais) throw erroOriginais
+      for (const o of (originais || []) as any[]) originaisPorId.set(o.id, o)
+    }
+
+    // Só faz UPDATE o item que era Livre E continua Livre — mantém o id, e o
+    // trigger trg_abastecimento_para_lancamento atualiza a transação existente
+    // (preservando anexo). Um item que era "Do Estoque" e virou Livre NÃO tem
+    // transação: no UPDATE o trigger só atualiza, não cria — então vai por
+    // INSERT, que é onde o trigger gera o financeiro. "Do Estoque" e itens
+    // novos (sem id) também vão por INSERT, como já era feito.
+    const eraLivre = (id?: string | null) => !!id && originaisPorId.has(id) && !originaisPorId.get(id)!.produto_id
+    const itensParaAtualizar = abastecimentosDoLancamento.filter(i => !i.origem_estoque && eraLivre(i.abastecimentoId))
+    const itensParaInserir = abastecimentosDoLancamento.filter(i => !itensParaAtualizar.includes(i))
 
     const idsParaManter = new Set(itensParaAtualizar.map(i => i.abastecimentoId as string))
     const idsParaRemover = idsOriginais.filter(idOriginal => !idsParaManter.has(idOriginal))
     if (idsParaRemover.length > 0) {
-      await supabase.from('abastecimentos').delete().in('id', idsParaRemover)
+      // Linha "Do Estoque" removida/recriada: devolve o combustível consumido
+      // antes de apagar (mesma lógica da exclusão em useLancamentos), senão o
+      // novo consumo FIFO abaixo desconta o estoque de novo.
+      for (const id of idsParaRemover) {
+        await restaurarFIFO(originaisPorId.get(id)?.detalhamento_lotes)
+      }
+      const { error: erroRemover } = await supabase.from('abastecimentos').delete().in('id', idsParaRemover)
+      if (erroRemover) throw erroRemover
     }
 
     for (const item of itensParaAtualizar) {
       const custoFinal = item.custo_total || 0
-      await supabase.from('abastecimentos').update({
+      const { error: erroAtualizar } = await supabase.from('abastecimentos').update({
         maquina_id: item.maquina_id,
         propriedade_id: propriedadeId,
         data: dataExecucao,
@@ -1186,6 +1205,7 @@ export function LancamentoForm() {
         produto_id: null,
         detalhamento_lotes: null,
       }).eq('id', item.abastecimentoId as string)
+      if (erroAtualizar) throw erroAtualizar
     }
 
     if (itensParaInserir.length > 0) {
@@ -1216,7 +1236,10 @@ export function LancamentoForm() {
         }
       }))
 
-      const { data: inseridos } = await supabase.from('abastecimentos').insert(linhasPreparadas).select('id')
+      const { data: inseridos, error: erroInserir } = await supabase.from('abastecimentos').insert(linhasPreparadas).select('id')
+      // Antes o erro era ignorado: o lançamento ficava salvo sem a linha em
+      // abastecimentos e, no Livre, sem a transação no Financeiro.
+      if (erroInserir) throw erroInserir
 
       for (let i = 0; i < itensParaInserir.length; i++) {
         const item = itensParaInserir[i]
