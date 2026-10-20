@@ -28,6 +28,7 @@ interface Maquina {
   created_at: string;
   compartilhado?: boolean;
   categoria_equipamento?: 'maquina' | 'implemento';
+  consome_combustivel?: boolean;
 }
 
 interface MaquinaFormProps {
@@ -55,6 +56,7 @@ export function MaquinaForm({ maquina, onSuccess, categoriaPadrao }: MaquinaForm
   const [unidadeCalculo, setUnidadeCalculo] = useState<'hora' | 'km'>('hora');
   const [compartilhado, setCompartilhado] = useState(false);
   const [categoriaEquipamento, setCategoriaEquipamento] = useState<'maquina' | 'implemento'>('maquina');
+  const [consomeCombustivel, setConsomeCombustivel] = useState(false);
 
   useEffect(() => {
     if (maquina) {
@@ -72,10 +74,12 @@ export function MaquinaForm({ maquina, onSuccess, categoriaPadrao }: MaquinaForm
       setUnidadeCalculo(maquina.unidade_calculo === 'km' ? 'km' : 'hora');
       setCompartilhado(!!maquina.compartilhado);
       setCategoriaEquipamento(maquina.categoria_equipamento === 'implemento' ? 'implemento' : 'maquina');
+      setConsomeCombustivel(!!maquina.consome_combustivel);
     } else {
       setUnidadeCalculo('hora');
       setCompartilhado(false);
       setCategoriaEquipamento(categoriaPadrao === 'implemento' ? 'implemento' : 'maquina');
+      setConsomeCombustivel(false);
     }
   }, [maquina, categoriaPadrao]);
 
@@ -95,6 +99,8 @@ export function MaquinaForm({ maquina, onSuccess, categoriaPadrao }: MaquinaForm
       };
 
       if (isImplemento) {
+        // Só implemento usa o indicador — máquina sempre pode ser abastecida
+        payload.consome_combustivel = consomeCombustivel;
         payload.horimetro_inicial = 0;
         payload.horimetro_atual = 0;
         payload.custo_hora = null;
@@ -143,6 +149,7 @@ export function MaquinaForm({ maquina, onSuccess, categoriaPadrao }: MaquinaForm
             custo_km: isImplemento ? null : (isKm && formData.custo_km ? parseFloat(formData.custo_km) : null),
             compartilhado,
             categoria_equipamento: categoriaEquipamento,
+            ...(isImplemento ? { consome_combustivel: consomeCombustivel } : {}),
             ativo: true,
           } as any);
         if (error) throw error;
@@ -262,6 +269,24 @@ export function MaquinaForm({ maquina, onSuccess, categoriaPadrao }: MaquinaForm
             />
           </div>
         </div>
+
+        {isImplemento && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="consome_combustivel"
+                checked={consomeCombustivel}
+                onCheckedChange={(v) => setConsomeCombustivel(v === true)}
+              />
+              <Label htmlFor="consome_combustivel" className="text-sm font-normal cursor-pointer">
+                Consome combustível?
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Marque para poder lançar abastecimento deste implemento (ex: secador, gerador, motobomba).
+            </p>
+          </div>
+        )}
 
         {!isImplemento && (
         <div className="space-y-2">

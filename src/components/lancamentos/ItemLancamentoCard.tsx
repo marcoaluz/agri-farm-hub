@@ -592,6 +592,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
               </div>
             </div>
 
+            {!ehImplementoVinculado && (
             <div>
               <Label>{labelMedidor} no momento do abastecimento</Label>
               <Input
@@ -607,6 +608,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
                 Digite o valor exato do painel — isso substitui o {labelMedidor.toLowerCase()} atual, não soma.
               </p>
             </div>
+            )}
 
             {!itemForm.origem_estoque && (
               <>
@@ -646,7 +648,7 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
               </>
             )}
 
-            {temMaquinaNoLancamento && (
+            {!ehImplementoVinculado && temMaquinaNoLancamento && (
               <div>
                 <Label>Esse abastecimento foi antes ou depois do trabalho com a máquina?</Label>
                 <div className="flex gap-2 mt-1">

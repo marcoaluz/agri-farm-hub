@@ -42,6 +42,7 @@ interface Maquina {
   created_at: string;
   compartilhado?: boolean;
   categoria_equipamento?: 'maquina' | 'implemento';
+  consome_combustivel?: boolean;
 }
 
 
@@ -165,6 +166,19 @@ export function Maquinas() {
               m.custo_km = e.custo_km ?? m.custo_km;
               m.categoria_equipamento = e.categoria_equipamento ?? m.categoria_equipamento;
             }
+          });
+        }
+
+        // Consulta separada: se a coluna ainda não existir no banco, só o
+        // indicador fica ausente — o enriquecimento acima não é afetado.
+        const { data: flags } = await supabase
+          .from('maquinas' as any)
+          .select('id, consome_combustivel')
+          .in('id', lista.map((m: any) => m.id));
+        if (flags) {
+          const flagMap = new Map((flags as any[]).map((f: any) => [f.id, !!f.consome_combustivel]));
+          lista.forEach((m: any) => {
+            if (flagMap.has(m.id)) m.consome_combustivel = flagMap.get(m.id);
           });
         }
       }

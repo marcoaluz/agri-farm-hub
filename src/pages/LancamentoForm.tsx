@@ -154,6 +154,7 @@ export function LancamentoForm() {
           km_atual: m.km_atual ?? 0,
           custo_km: m.custo_km ?? null,
           categoria_equipamento: m.categoria_equipamento ?? 'maquina',
+          consome_combustivel: false as boolean,
         }))
 
       // A RPC pode não retornar as colunas novas — enriquece direto da tabela.
@@ -175,6 +176,17 @@ export function LancamentoForm() {
             }
           })
         }
+
+        // Consulta separada: se a coluna ainda não existir no banco, só o
+        // indicador fica ausente (nenhum implemento abastecível) sem afetar o resto.
+        const { data: flags } = await supabase
+          .from('maquinas' as any)
+          .select('id, consome_combustivel')
+          .in('id', ids)
+        if (flags) {
+          const flagMap = new Map((flags as any[]).map(f => [f.id, !!f.consome_combustivel]))
+          lista.forEach(m => { m.consome_combustivel = flagMap.get(m.id) ?? false })
+        }
       }
 
       return lista.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
@@ -188,6 +200,10 @@ export function LancamentoForm() {
   const implementosLancamento = useMemo(() => (maquinas || []).filter((m: any) => m.categoria_equipamento === 'implemento'), [maquinas])
   const [tipoEquipamentoManutencao, setTipoEquipamentoManutencao] = useState<'maquina' | 'implemento'>('maquina')
   const equipamentosManutencao = tipoEquipamentoManutencao === 'implemento' ? implementosLancamento : maquinasReais
+  // Abastecimento: só implementos marcados como "Consome combustível?"
+  const implementosAbastecimento = useMemo(() => implementosLancamento.filter((m: any) => m.consome_combustivel === true), [implementosLancamento])
+  const [tipoEquipamentoAbastecimento, setTipoEquipamentoAbastecimento] = useState<'maquina' | 'implemento'>('maquina')
+  const equipamentosAbastecimento = tipoEquipamentoAbastecimento === 'implemento' ? implementosAbastecimento : maquinasReais
 
   const { data: categoriasManutencao } = useQuery({
     queryKey: ['categorias-manutencao', propriedadeAtual?.id],
@@ -546,8 +562,13 @@ export function LancamentoForm() {
   const adicionarAbastecimento = (maquinaId: string) => {
     const maquina = maquinas?.find(m => m.id === maquinaId)
     if (!maquina) return
+    const ehImplemento = maquina.categoria_equipamento === 'implemento'
+    if (ehImplemento && !maquina.consome_combustivel) {
+      toast({ title: 'Implemento não consome combustível', description: 'Marque "Consome combustível?" no cadastro do implemento.', variant: 'destructive' })
+      return
+    }
     if (formData.itens.some(i => i.tipo_ref === 'abastecimento' && i.maquina_id === maquinaId)) {
-      toast({ title: 'Já existe abastecimento para essa máquina neste lançamento', variant: 'destructive' })
+      toast({ title: `Já existe abastecimento para ${ehImplemento ? 'esse implemento' : 'essa máquina'} neste lançamento`, variant: 'destructive' })
       return
     }
     const temHorasNoMesmoLancamento = formData.itens.some(i => i.tipo_ref === 'maquina' && i.maquina_id === maquinaId)
@@ -562,7 +583,8 @@ export function LancamentoForm() {
         litros: 0,
         combustivel_tipo: '',
         custo_total: 0,
-        horimetro_informado: maquina.horimetro_atual || 0,
+        // Implemento não tem horímetro — sem leitura, o horímetro não é tocado ao salvar
+        horimetro_informado: ehImplemento ? undefined : (maquina.horimetro_atual || 0),
         momento_abastecimento: temHorasNoMesmoLancamento ? 'antes' : null,
         observacao: '',
         quantidade: 1,
@@ -1407,6 +1429,12 @@ export function LancamentoForm() {
         }
       }
       if (item.tipo_ref === 'abastecimento') {
+        // Barra antes de qualquer gravação (o banco também rejeita via trigger)
+        const equipamento = (maquinas as any[] | undefined)?.find(m => m.id === item.maquina_id)
+        if (equipamento?.categoria_equipamento === 'implemento' && !equipamento.consome_combustivel) {
+          toast({ title: 'Implemento não consome combustível', description: `"${equipamento.nome}" não está marcado como "Consome combustível?" no cadastro. Ajuste o cadastro ou remova o abastecimento.`, variant: 'destructive' })
+          return false
+        }
         if (item.origem_estoque && !item.produto_id) {
           toast({ title: 'Abastecimento incompleto', description: 'Selecione o combustível do estoque.', variant: 'destructive' })
           return false
@@ -1799,23 +1827,46 @@ export function LancamentoForm() {
                     )}
 
                     {adicionandoTipo === 'abastecimento' && (
-                      <div className="mt-3">
+                      <div className="mt-3 space-y-3">
+                        <div>
+                          <Label className="text-xs">Máquina ou Implemento?</Label>
+                          <div className="flex gap-2 mt-1">
+                            <Button
+                              type="button" size="sm"
+                              variant={tipoEquipamentoAbastecimento === 'maquina' ? 'default' : 'outline'}
+                              onClick={() => setTipoEquipamentoAbastecimento('maquina')}
+                            >
+                              Máquina
+                            </Button>
+                            <Button
+                              type="button" size="sm"
+                              variant={tipoEquipamentoAbastecimento === 'implemento' ? 'default' : 'outline'}
+                              onClick={() => setTipoEquipamentoAbastecimento('implemento')}
+                            >
+                              Implemento
+                            </Button>
+                          </div>
+                        </div>
                         <Select onValueChange={(maquinaId) => {
                           adicionarAbastecimento(maquinaId)
                           setAdicionandoTipo(null)
                         }}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione a máquina abastecida..." />
+                            <SelectValue placeholder={tipoEquipamentoAbastecimento === 'implemento' ? 'Selecione o implemento abastecido...' : 'Selecione a máquina abastecida...'} />
                           </SelectTrigger>
                           <SelectContent>
-                            {maquinas?.filter((m: any) => m.categoria_equipamento !== 'implemento').map(m => (
+                            {equipamentosAbastecimento.map(m => (
                               <SelectItem key={m.id} value={m.id}>
-                                {m.nome} — R$ {(m.custo_hora || 0).toFixed(2)}/h
+                                {tipoEquipamentoAbastecimento === 'implemento'
+                                  ? m.nome
+                                  : `${m.nome} — R$ ${(m.custo_hora || 0).toFixed(2)}/h`}
                               </SelectItem>
                             ))}
-                            {(!maquinas || maquinas.length === 0) && (
+                            {equipamentosAbastecimento.length === 0 && (
                               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                                Nenhuma máquina cadastrada
+                                {tipoEquipamentoAbastecimento === 'implemento'
+                                  ? 'Nenhum implemento marcado como "Consome combustível?"'
+                                  : 'Nenhuma máquina cadastrada'}
                               </div>
                             )}
                           </SelectContent>
