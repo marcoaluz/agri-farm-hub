@@ -187,6 +187,25 @@ const formatarQtdeOperacional = (item: any): string => {
   }
 }
 
+// Sigla curta da unidade para o tooltip do gráfico (ex.: diaria -> "d", hora -> "h").
+// Unidade desconhecida cai no texto original (sem sufixo entre parênteses).
+const SIGLA_UNIDADE: Record<string, string> = {
+  diaria: 'd', dia: 'd', hora: 'h', h: 'h',
+  litro: 'L', l: 'L', ml: 'ml',
+  kg: 'kg', ton: 't', saca: 'sc',
+  ha: 'ha', unidade: 'un', un: 'un', servico: 'serv',
+}
+
+// Texto "27(d)" = quantidade total + sigla da unidade usada no item.
+// Sem quantidade (dado antigo), volta para o formato anterior "3x".
+const formatarQtdeUnidadeTooltip = (item: any): string => {
+  if (item.quantidade == null) return `${item.vezes}x`
+  const qtd = Number(item.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+  const un = String(item.unidade ?? '').trim()
+  const sigla = SIGLA_UNIDADE[un.toLowerCase()] ?? unidadeCurta(un)
+  return sigla ? `${qtd}(${sigla})` : qtd
+}
+
 const PALETTE = [
   'hsl(142,70%,40%)', 'hsl(0,72%,51%)', 'hsl(40,90%,50%)', 'hsl(200,70%,50%)',
   'hsl(270,60%,50%)', 'hsl(180,60%,40%)', 'hsl(20,80%,55%)', 'hsl(330,65%,55%)',
@@ -489,7 +508,7 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
                           <div className="border-t pt-1 mt-1 space-y-0.5">
                             {d.itens.map((it: any, idx: number) => (
                               <p key={idx} className="text-xs">
-                                {it.nome} {it.vezes}x = {fmt(Number(it.valor))}
+                                {it.nome} {formatarQtdeUnidadeTooltip(it)} = {fmt(Number(it.valor))}
                               </p>
                             ))}
                           </div>
