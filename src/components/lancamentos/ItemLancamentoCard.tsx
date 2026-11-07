@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { DicaCategoriaEstoque } from '@/components/estoque/DicaCategoriaEstoque'
+import { ehCategoriaCombustivel, ehCategoriaManutencao } from '@/lib/categoriasEstoqueUso'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
@@ -523,11 +525,21 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
                 >
                   <SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
                   <SelectContent>
-                    {produtos?.filter(p => (p.categoria || '').toLowerCase().includes('combust')).map(p => (
+                    {produtos?.filter(p => ehCategoriaCombustivel(p.categoria)).map(p => (
                       <SelectItem key={p.id} value={p.id}>{p.nome} — {p.saldo_atual} {p.unidade_medida}</SelectItem>
                     ))}
+                    {!(produtos || []).some(p => ehCategoriaCombustivel(p.categoria)) && (
+                      <div className="px-2 py-3 text-xs text-muted-foreground">
+                        Nenhum produto com categoria "Combustível".
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
+                <DicaCategoriaEstoque
+                  uso="combustivel"
+                  vazio={!(produtos || []).some(p => ehCategoriaCombustivel(p.categoria))}
+                  temLivre
+                />
                 {produtoCombustivelSelecionado && Number(produtoCombustivelSelecionado.saldo_atual || 0) <= 0 && (
                   <Alert variant="destructive" className="py-2 mt-2">
                     <AlertCircle className="h-4 w-4" />
@@ -749,16 +761,21 @@ export function ItemLancamentoCard({ propriedadeId, itemForm, onUpdate, onRemove
                   >
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
-                      {produtos?.filter(p => (p.categoria || '').toLowerCase().includes('manutenç') || (p.categoria || '').toLowerCase().includes('manutenc')).map(p => (
+                      {produtos?.filter(p => ehCategoriaManutencao(p.categoria)).map(p => (
                         <SelectItem key={p.id} value={p.id}>{p.nome} (saldo: {p.saldo_atual ?? 0} {p.unidade_medida})</SelectItem>
                       ))}
-                      {(!produtos || produtos.filter(p => (p.categoria || '').toLowerCase().includes('manutenç') || (p.categoria || '').toLowerCase().includes('manutenc')).length === 0) && (
+                      {!(produtos || []).some(p => ehCategoriaManutencao(p.categoria)) && (
                         <div className="px-2 py-3 text-xs text-muted-foreground">
                           Nenhum produto na categoria "Manutenção".
                         </div>
                       )}
                     </SelectContent>
                   </Select>
+                  <DicaCategoriaEstoque
+                    uso="manutencao"
+                    vazio={!(produtos || []).some(p => ehCategoriaManutencao(p.categoria))}
+                    temLivre
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>

@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DicaCategoriaEstoque } from '@/components/estoque/DicaCategoriaEstoque';
+import { ehCategoriaManutencao } from '@/lib/categoriasEstoqueUso';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -80,7 +82,9 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
       });
       if (error) throw error;
       return ((data as any[]) || []).filter(
-        (p) => p.ativo !== false && p.tipo_estoque === 'geral' && p.categoria === 'Manutenção'
+        // Mesma regra do lançamento (antes era só "Manutenção" exato no estoque Geral,
+        // então "MANUTENÇÃO" ou "Manutenção Trator" não apareciam aqui).
+        (p) => p.ativo !== false && ehCategoriaManutencao(p.categoria)
       );
     },
     enabled: !!propriedadeId && open,
@@ -604,6 +608,7 @@ export function ManutencaoDialog({ open, onOpenChange, maquina, propriedadeId }:
                     ))}
                   </SelectContent>
                 </Select>
+                <DicaCategoriaEstoque uso="manutencao" vazio={produtosEstoque.length === 0} temLivre />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

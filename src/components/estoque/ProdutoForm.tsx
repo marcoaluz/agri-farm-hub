@@ -13,6 +13,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Loader2, Package, Plus, Check, X, Trash2, Info } from "lucide-react";
+import { QuadroUsoCategorias } from "@/components/estoque/QuadroUsoCategorias";
+import { usoDaCategoria, USO_CATEGORIA } from "@/lib/categoriasEstoqueUso";
 import { toast } from "sonner";
 
 
@@ -264,6 +266,9 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
       </DialogHeader>
 
       <form onSubmit={handleSubmit} className="space-y-4 py-4">
+        {/* Explica que a categoria decide em qual lançamento o produto aparece */}
+        <QuadroUsoCategorias />
+
         {/* Nome */}
         <div className="space-y-2">
           <Label htmlFor="nome">Nome do Produto *</Label>
@@ -376,12 +381,20 @@ export function ProdutoForm({ onSuccess, produto }: ProdutoFormProps) {
               </Button>
             </div>
           )}
-          {!showNovaCategoria && formData.categoria && DICAS_CATEGORIA[tipoEstoque]?.[formData.categoria] && (
-            <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <span>{DICAS_CATEGORIA[tipoEstoque][formData.categoria]}</span>
-            </div>
-          )}
+          {!showNovaCategoria && formData.categoria && (() => {
+            // Diz, para a categoria escolhida, onde exatamente o produto vai aparecer.
+            const uso = usoDaCategoria(formData.categoria);
+            const dica = uso
+              ? `Este produto vai aparecer em: ${USO_CATEGORIA[uso].ondeAparece}.`
+              : DICAS_CATEGORIA[tipoEstoque]?.[formData.categoria]
+                ?? "Este produto vai aparecer em “+ Produto do Estoque” no lançamento (não aparece em Abastecimento, Manutenção nem Troca/Reposição).";
+            return (
+              <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>{dica}</span>
+              </div>
+            );
+          })()}
         </div>
 
 
