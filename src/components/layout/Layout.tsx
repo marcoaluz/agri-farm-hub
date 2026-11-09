@@ -6,6 +6,7 @@ import { AssistenteIA } from '@/components/assistente/AssistenteIA'
 import { SafraFechadaBanner } from '@/components/safras/SafraFechadaBanner'
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { useIsOffline } from '@/hooks/useIsOffline'
+import { AceiteTermosGate } from '@/components/legal/AceiteTermosGate'
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -28,6 +29,7 @@ export function Layout() {
       </div>
 
       {!isOffline && <AssistenteIA />}
+      <AceiteTermosGate />
     </div>
   )
 }

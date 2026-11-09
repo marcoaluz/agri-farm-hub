@@ -29,6 +29,7 @@ import {
   Sprout,
   LogOut,
   CloudRain,
+  LifeBuoy,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -66,6 +67,7 @@ export const routes = [
   { label: 'Financeiro',    icon: DollarSign,      href: '/financeiro',   modulo: 'financeiro' as const },
   { label: 'Relatórios',    icon: BarChart3,       href: '/relatorios',   modulo: 'relatorios' as const },
   { label: 'Auditoria',     icon: ShieldCheck,     href: '/auditoria',    modulo: 'auditoria' as const },
+  { label: 'Chamados',      icon: LifeBuoy,        href: '/chamados',     sempre: true },
   { label: 'Configurações', icon: Settings,        href: '/configuracoes',sempre: true },
 ]
 

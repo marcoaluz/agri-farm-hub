@@ -44,6 +44,8 @@ import NotFound from '@/pages/NotFound'
 import MinhaEquipe from '@/pages/MinhaEquipe'
 import Agenda from '@/pages/Agenda'
 import Contatos from '@/pages/Contatos'
+import Chamados from '@/pages/Chamados'
+import DocumentoLegal from '@/pages/legal/DocumentoLegal'
 
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -80,6 +82,10 @@ export function AppRoutes() {
       
       {/* Convite público (sem auth) */}
       <Route path="/convite" element={<Convite />} />
+
+      {/* Termos de Uso e Política de Privacidade (públicas) */}
+      <Route path="/termos" element={<DocumentoLegal tipo="termos" />} />
+      <Route path="/privacidade" element={<DocumentoLegal tipo="privacidade" />} />
       
       {/* Recuperar senha */}
       <Route 
@@ -135,6 +141,7 @@ export function AppRoutes() {
         <Route path="historico-chuva" element={<HistoricoChuva />} />
         <Route path="agenda" element={<Agenda />} />
         <Route path="contatos" element={<Contatos />} />
+        <Route path="chamados" element={<Chamados />} />
         <Route path="maquinas" element={<Maquinas />} />
         <Route path="pecuaria" element={<Pecuaria />} />
         <Route path="financeiro" element={<Financeiro />} />
