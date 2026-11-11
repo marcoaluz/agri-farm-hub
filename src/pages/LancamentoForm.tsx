@@ -783,13 +783,14 @@ export function LancamentoForm() {
     || formData.itens.length > 0
     || !!formData.observacoes?.trim()
 
-  const resetarFormulario = useCallback(() => {
+  // dataManter: se informada, mantém essa data (usado após salvar); senão usa a data de hoje
+  const resetarFormulario = useCallback((dataManter?: string) => {
     const hoje = new Date()
     const dataHoje = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
     setFormData({
       servico_id: '',
       talhao_id: undefined,
-      data_execucao: dataHoje,
+      data_execucao: dataManter || dataHoje,
       observacoes: '',
       itens: [],
     })
@@ -1174,7 +1175,8 @@ export function LancamentoForm() {
       if (lancamentoId) {
         navigate('/lancamentos')
       } else {
-        resetarFormulario()
+        // Mantém a data de execução escolhida após salvar
+        resetarFormulario(variables?.data_execucao)
       }
     },
     onError: (error: Error) => {
