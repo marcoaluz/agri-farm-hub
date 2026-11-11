@@ -1631,3 +1631,138 @@ export async function exportarRelatorioPorSubcategoriaPDF(opts: {
 
   doc.save(`${nomeArquivo}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 }
+
+/* ──────────────────────────────────────────────────────────────
+   Relatórios > Operacional > "Custo por Categoria" em PDF:
+   gráfico de barras (desenhado no próprio PDF, nítido em qualquer zoom)
+   + detalhamento de cada categoria (itens, quantidade, vezes, valor).
+   Respeita o filtro de talhão da tela (talhaoNome).
+   ────────────────────────────────────────────────────────────── */
+export type CategoriaPDF = {
+  categoria: string
+  custo_total: number
+  total_lancamentos: number
+  itens: { nome: string; quantidade: string; vezes: number; valor: number }[]
+}
+
+export async function exportarCustoPorCategoriaPDF(opts: {
+  nomeArquivo: string
+  propriedadeNome: string
+  safraNome?: string
+  talhaoNome?: string
+  resumo: { totalLancamentos: number; custoTotal: number; custoMedio: number; custoHa: number }
+  categorias: CategoriaPDF[]
+}) {
+  const { nomeArquivo, propriedadeNome, safraNome, talhaoNome, resumo } = opts
+  const categorias = [...opts.categorias].sort((a, b) => b.custo_total - a.custo_total)
+  const brl = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const pct = (v: number, t: number) => (t > 0 ? `${((v / t) * 100).toFixed(1).replace('.', ',')}%` : '0%')
+  const totalGeral = categorias.reduce((s, c) => s + c.custo_total, 0)
+
+  const doc = new jsPDF({ orientation: 'landscape', compress: true }) // compress: PDF bem menor (logo)
+  const W = doc.internal.pageSize.getWidth()
+  const H = doc.internal.pageSize.getHeight()
+  const M = 14
+  const VERDE: [number, number, number] = [34, 139, 34]
+  const logo = await getLogoBase64()
+
+  // ── Cabeçalho ──
+  let textX = M
+  if (logo) { try { doc.addImage(logo, 'PNG', M, 8, 12, 12, 'logo-agrogfi'); textX = 30 } catch { /* segue sem logo */ } }
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.text('Agro GFI', textX, 14)
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.text('Relatório: Custo por Categoria (Operacional)', textX, 20)
+  doc.setFontSize(10)
+  doc.text(`Propriedade: ${propriedadeNome}`, M, 30)
+  doc.text(`Safra: ${safraNome || '-'}`, M, 36)
+  doc.setFont('helvetica', 'bold')
+  doc.text(`Talhão: ${talhaoNome || 'Todos (geral)'}`, M, 42)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, W - M, 30, { align: 'right' })
+
+  // ── Cartões de resumo ──
+  const cards: [string, string][] = [
+    ['Total de Lançamentos', String(resumo.totalLancamentos)],
+    ['Custo Total', brl(resumo.custoTotal)],
+    ['Custo Médio / Lançamento', brl(resumo.custoMedio)],
+    ['Custo Médio / Hectare', brl(resumo.custoHa)],
+  ]
+  const gap = 4
+  const cw = (W - 2 * M - gap * 3) / 4
+  let y = 48
+  cards.forEach(([rotulo, valor], i) => {
+    const x = M + i * (cw + gap)
+    doc.setDrawColor(210); doc.setFillColor(250, 250, 248); doc.roundedRect(x, y, cw, 17, 2, 2, 'FD')
+    doc.setFontSize(8.5); doc.setTextColor(110); doc.text(rotulo, x + 4, y + 6)
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold')
+    if (i === 1) doc.setTextColor(170, 40, 40); else doc.setTextColor(20)
+    doc.text(valor, x + 4, y + 13.5)
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(0)
+  })
+  y += 26
+
+  // ── Gráfico de barras horizontais (maior custo em cima) ──
+  const titulo = (t: string, yy: number) => { doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(20); doc.text(t, M, yy); doc.setFont('helvetica', 'normal') }
+  titulo('Custo por Categoria', y)
+  y += 6
+  const LABEL_W = 55
+  const VALOR_W = 48
+  const barraMaxW = W - 2 * M - LABEL_W - VALOR_W
+  const ALT = 7.5
+  const maior = Math.max(...categorias.map((c) => c.custo_total), 0)
+  categorias.forEach((c) => {
+    if (y + ALT > H - 14) { doc.addPage(); y = 18; titulo('Custo por Categoria (continuação)', y); y += 6 }
+    doc.setFontSize(10); doc.setTextColor(40)
+    const nome = doc.splitTextToSize(c.categoria, LABEL_W - 3)[0]
+    doc.text(nome, M + LABEL_W - 3, y + ALT / 2 + 1.3, { align: 'right' })
+    const bw = maior > 0 ? Math.max(0.8, (c.custo_total / maior) * barraMaxW) : 0
+    doc.setFillColor(...VERDE); doc.rect(M + LABEL_W, y + 1, bw, ALT - 2, 'F')
+    doc.setTextColor(20)
+    doc.text(`${brl(c.custo_total)}  (${pct(c.custo_total, totalGeral)})`, M + LABEL_W + bw + 2, y + ALT / 2 + 1.3)
+    y += ALT
+  })
+
+  // ── Detalhamento por categoria ──
+  doc.addPage(); y = 18
+  titulo('Detalhamento por categoria — o que foi lançado em cada uma', y)
+  y += 4
+  categorias.forEach((c) => {
+    autoTable(doc, {
+      startY: y + 3,
+      head: [
+        [{ content: `${c.categoria}  —  ${brl(c.custo_total)}  ·  ${c.total_lancamentos} lançamento(s)  ·  ${pct(c.custo_total, totalGeral)} do total`, colSpan: 5,
+           styles: { fillColor: VERDE, textColor: 255, fontStyle: 'bold', fontSize: 11, halign: 'left' } }],
+        ['Item', ...['Quantidade', 'Vezes', 'Valor (R$)', '% da categoria'].map((t) => ({ content: t, styles: { halign: 'right' as const } }))],
+      ],
+      body: (c.itens.length ? c.itens : [{ nome: '(sem itens detalhados)', quantidade: '-', vezes: 0, valor: c.custo_total }])
+        .map((it) => [it.nome, it.quantidade, it.vezes ? `${it.vezes}x` : '-', brl(it.valor), pct(it.valor, c.custo_total)]),
+      styles: { fontSize: 10, cellPadding: 2.2 },
+      headStyles: { fillColor: [232, 240, 232], textColor: 30, fontStyle: 'bold' },
+      columnStyles: { 1: { halign: 'right', cellWidth: 40 }, 2: { halign: 'right', cellWidth: 22 }, 3: { halign: 'right', cellWidth: 40 }, 4: { halign: 'right', cellWidth: 34 } },
+      alternateRowStyles: { fillColor: [247, 247, 245] },
+      margin: { left: M, right: M, top: 16 },
+      rowPageBreak: 'avoid',
+    })
+    y = (doc as any).lastAutoTable.finalY + 4
+  })
+
+  // ── Rodapé + marca d'água em todas as páginas ──
+  const total = doc.getNumberOfPages()
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i)
+    doc.setFontSize(8); doc.setTextColor(120)
+    doc.text(`${propriedadeNome} · ${safraNome || ''} · Talhão: ${talhaoNome || 'Todos (geral)'}`, M, H - 7)
+    doc.text(`Página ${i} de ${total}`, W - M, H - 7, { align: 'right' })
+    if (logo) {
+      try {
+        const t = 90
+        doc.saveGraphicsState()
+        // @ts-ignore - GState existe em runtime no jsPDF
+        doc.setGState(new (doc as any).GState({ opacity: 0.05 }))
+        doc.addImage(logo, 'PNG', (W - t) / 2, (H - t) / 2, t, t, 'logo-agrogfi')
+        doc.restoreGraphicsState()
+      } catch { /* marca d'água é opcional */ }
+    }
+  }
+  doc.setTextColor(0)
+  doc.save(`${nomeArquivo}-${hoje()}.pdf`)
+}

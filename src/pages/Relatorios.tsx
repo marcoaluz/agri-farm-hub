@@ -137,7 +137,7 @@ function mergeMaquinas(listas: any[][]) {
 
 
 
-import { exportarExcel, exportarPDF, exportarCustosDetalhadosPDF, exportarEstoquePDF, exportarInsumosPDF, exportarObservacoesPDF, exportarMaquinasPDF, type Coluna } from '@/lib/exportTabela'
+import { exportarExcel, exportarPDF, exportarCustoPorCategoriaPDF, exportarCustosDetalhadosPDF, exportarEstoquePDF, exportarInsumosPDF, exportarObservacoesPDF, exportarMaquinasPDF, type Coluna } from '@/lib/exportTabela'
 import { TRANSACAO_CATEGORIA_LABELS } from '@/lib/enumLabels'
 
 function labelGrupo(valor: any): string {
@@ -185,6 +185,25 @@ const formatarQtdeOperacional = (item: any): string => {
     default:
       return qtd != null ? `${qtd}${un ? ` (${un})` : ''}` : '-'
   }
+}
+
+// Sigla curta da unidade para o tooltip do gráfico (ex.: diaria -> "d", hora -> "h").
+// Unidade desconhecida cai no texto original (sem sufixo entre parênteses).
+const SIGLA_UNIDADE: Record<string, string> = {
+  diaria: 'd', dia: 'd', hora: 'h', h: 'h',
+  litro: 'L', l: 'L', ml: 'ml',
+  kg: 'kg', ton: 't', saca: 'sc',
+  ha: 'ha', unidade: 'un', un: 'un', servico: 'serv',
+}
+
+// Texto "27(d)" = quantidade total + sigla da unidade usada no item.
+// Sem quantidade (dado antigo), volta para o formato anterior "3x".
+const formatarQtdeUnidadeTooltip = (item: any): string => {
+  if (item.quantidade == null) return `${item.vezes}x`
+  const qtd = Number(item.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+  const un = String(item.unidade ?? '').trim()
+  const sigla = SIGLA_UNIDADE[un.toLowerCase()] ?? unidadeCurta(un)
+  return sigla ? `${qtd}(${sigla})` : qtd
 }
 
 const PALETTE = [
@@ -341,22 +360,32 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
       return (data || []) as any[]
     },
   })
-  const catQ = useQuery({
-    queryKey: ['rel-op-cat', propId, safraId],
-    queryFn: async () => {
-      const { data, error } = await db.rpc('get_relatorio_por_categoria', {
-        p_propriedade_id: propId, p_safra_id: safraId,
-      })
-      if (error) throw error
-      return (data || []) as any[]
-    },
-  })
-
   const [filtroCat, setFiltroCat] = useState<string>('_all')
+  // Talhão: filtra cartões, gráfico "Custo por Categoria" e tabela. '_all' = geral.
   const [filtroTalhao, setFiltroTalhao] = useState<string>('_all')
   const [sort, setSort] = useState<{ col: string; dir: 'asc' | 'desc' }>({ col: 'data_execucao', dir: 'desc' })
   const [page, setPage] = useState(0)
   const PER = 10
+
+  const catQ = useQuery({
+    queryKey: ['rel-op-cat', propId, safraId, filtroTalhao],
+    queryFn: async () => {
+      // Geral: mesma função de sempre. Com talhão: versão que filtra pelo talhão.
+      const { data, error } = filtroTalhao === '_all'
+        ? await db.rpc('get_relatorio_por_categoria', {
+            p_propriedade_id: propId, p_safra_id: safraId,
+          })
+        : await db.rpc('get_relatorio_por_categoria_talhao', {
+            p_propriedade_id: propId, p_safra_id: safraId, p_talhao_id: filtroTalhao,
+          })
+      if (error) throw error
+      return (data || []) as any[]
+    },
+    // Mantém o gráfico anterior na tela enquanto carrega o do talhão escolhido
+    placeholderData: (anterior: any[] | undefined) => anterior,
+  })
+
+  const mudarTalhao = (v: string) => { setFiltroTalhao(v); setPage(0) }
 
   const lanc = lancQ.data || []
   const cats = (catQ.data || []).map((c: any) => ({
@@ -369,8 +398,9 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
   const talhoesUnicos = useMemo(() => {
     const m = new Map<string, string>()
     lanc.forEach((l: any) => { if (l.talhao_id) m.set(l.talhao_id, l.talhao_nome || '—') })
-    return Array.from(m.entries())
+    return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1], 'pt-BR', { numeric: true }))
   }, [lanc])
+  const nomeTalhaoSelecionado = filtroTalhao === '_all' ? '' : (talhoesUnicos.find(([id]) => id === filtroTalhao)?.[1] || '')
 
   const filtrados = useMemo(() => {
     return lanc.filter((l: any) =>
@@ -395,11 +425,12 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
   const pageData = ordenados.slice(page * PER, (page + 1) * PER)
 
   const kpis = useMemo(() => {
-    const total = lanc.length
-    const custo = lanc.reduce((s: number, l: any) => s + Number(l.custo_total || 0), 0)
+    const base = filtroTalhao === '_all' ? lanc : lanc.filter((l: any) => l.talhao_id === filtroTalhao)
+    const total = base.length
+    const custo = base.reduce((s: number, l: any) => s + Number(l.custo_total || 0), 0)
     const areas = new Set<string>()
     let area = 0
-    lanc.forEach((l: any) => {
+    base.forEach((l: any) => {
       if (l.talhao_id && !areas.has(l.talhao_id)) {
         areas.add(l.talhao_id)
         area += Number(l.talhao_area_ha || 0)
@@ -411,7 +442,7 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
       medio: total > 0 ? custo / total : 0,
       custoHa: area > 0 ? custo / area : 0,
     }
-  }, [lanc])
+  }, [lanc, filtroTalhao])
 
   const toggleSort = (col: string) =>
     setSort((c) => (c.col === col ? { col, dir: c.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' }))
@@ -433,7 +464,7 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
       <ExportButtons
         propriedadeNome={propriedadeNome}
         safraNome={safraAtual?.nome}
-        nomeAba="Operacional"
+        nomeAba={nomeTalhaoSelecionado ? `Operacional - ${nomeTalhaoSelecionado}` : 'Operacional'}
         nomeArquivo="relatorio-operacional"
         colunas={[
           { header: 'Data', key: 'data', width: 12 },
@@ -467,7 +498,55 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
 
       {/* Gráfico por categoria */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Custo por Categoria</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <CardTitle className="text-base">Custo por Categoria</CardTitle>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">Talhão</label>
+              <Select value={filtroTalhao} onValueChange={mudarTalhao}>
+                <SelectTrigger className="h-8 w-[200px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">Todos (geral)</SelectItem>
+                  {talhoesUnicos.map(([id, nome]) => (
+                    <SelectItem key={id} value={id}>{nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {nomeTalhaoSelecionado && (
+              <span className="text-xs text-muted-foreground">
+                Cartões, gráfico e tabela mostrando só <strong>{nomeTalhaoSelecionado}</strong>
+              </span>
+            )}
+            <Button
+              variant="outline" size="sm" className="ml-auto"
+              disabled={cats.length === 0 || catQ.isFetching}
+              title="PDF com o gráfico e o que foi lançado em cada categoria"
+              onClick={() => exportarCustoPorCategoriaPDF({
+                nomeArquivo: nomeTalhaoSelecionado
+                  ? `custo-por-categoria-${nomeTalhaoSelecionado.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}`
+                  : 'custo-por-categoria',
+                propriedadeNome,
+                safraNome: safraAtual?.nome,
+                talhaoNome: nomeTalhaoSelecionado || undefined,
+                resumo: { totalLancamentos: kpis.total, custoTotal: kpis.custo, custoMedio: kpis.medio, custoHa: kpis.custoHa },
+                categorias: cats.map((c: any) => ({
+                  categoria: c.categoria,
+                  custo_total: c.custo_total,
+                  total_lancamentos: Number(c.total_lancamentos || 0),
+                  itens: (c.itens || []).map((it: any) => ({
+                    nome: it.nome,
+                    quantidade: it.quantidade == null ? '-' : formatarQtdeUnidadeTooltip(it),
+                    vezes: Number(it.vezes || 0),
+                    valor: Number(it.valor || 0),
+                  })),
+                })),
+              })}
+            >
+              <FileText className="h-4 w-4 mr-1" /> Exportar gráfico (PDF)
+            </Button>
+          </div>
+        </CardHeader>
         <CardContent className="h-[280px]">
           {cats.length === 0 ? (
             <EmptyChart />
@@ -489,7 +568,7 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
                           <div className="border-t pt-1 mt-1 space-y-0.5">
                             {d.itens.map((it: any, idx: number) => (
                               <p key={idx} className="text-xs">
-                                {it.nome} {it.vezes}x = {fmt(Number(it.valor))}
+                                {it.nome} {formatarQtdeUnidadeTooltip(it)} = {fmt(Number(it.valor))}
                               </p>
                             ))}
                           </div>
@@ -523,7 +602,7 @@ function AbaOperacional({ propId, safraId, propriedadeNome }: { propId: string; 
           </div>
           <div className="flex-1 min-w-[180px]">
             <label className="text-xs text-muted-foreground">Talhão</label>
-            <Select value={filtroTalhao} onValueChange={(v) => { setFiltroTalhao(v); setPage(0) }}>
+            <Select value={filtroTalhao} onValueChange={mudarTalhao}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_all">Todos</SelectItem>

@@ -15,6 +15,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DicaCategoriaEstoque } from '@/components/estoque/DicaCategoriaEstoque';
+import { ehCategoriaCombustivel } from '@/lib/categoriasEstoqueUso';
 import { Fuel, Plus, Trash2, Check, X, Loader2, AlertCircle } from 'lucide-react';
 import { consumirFIFO } from '@/lib/fifoConsumo';
 
@@ -55,7 +57,7 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
       });
       if (error) throw error;
       return ((data as any[]) || []).filter(
-        (p) => p.ativo !== false && (p.categoria || '').toLowerCase().includes('combust')
+        (p) => p.ativo !== false && ehCategoriaCombustivel(p.categoria)
       );
     },
     enabled: !!propriedadeAtual?.id,
@@ -287,6 +289,7 @@ export function AbastecimentoForm({ maquina, onSuccess }: AbastecimentoFormProps
               ))}
             </SelectContent>
           </Select>
+          <DicaCategoriaEstoque uso="combustivel" vazio={produtosEstoque.length === 0} temLivre />
           {produtoSelecionado && (
             <p className="text-xs text-muted-foreground">
               Preço médio: R$ {Number(produtoSelecionado.custo_medio || 0).toFixed(2)}/{produtoSelecionado.unidade_medida} · Saldo: {Number(produtoSelecionado.saldo_atual || 0).toFixed(0)} {produtoSelecionado.unidade_medida}

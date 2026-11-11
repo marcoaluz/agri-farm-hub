@@ -13,6 +13,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { uploadAnexoNF, MAX_ANEXO_BYTES } from '@/lib/anexoNF';
 import { Loader2, Info } from 'lucide-react';
+import { QuadroUsoCategorias } from '@/components/estoque/QuadroUsoCategorias';
+import { usoDaCategoria, USO_CATEGORIA } from '@/lib/categoriasEstoqueUso';
 
 interface Produto {
   id: string;
@@ -230,6 +232,9 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
         </Alert>
       )}
 
+      {/* Explica que a categoria do produto decide em qual lançamento ele aparece */}
+      <QuadroUsoCategorias />
+
       <Alert className="py-2">
         <Info className="h-4 w-4" />
         <AlertDescription className="text-xs">
@@ -322,6 +327,13 @@ export function EntradaEstoqueForm({ onSuccess }: EntradaEstoqueFormProps) {
             <Info className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-900">
               Unidade de medida: <strong>{produtoSelecionado.unidade_medida}</strong>
+              <br />
+              {(() => {
+                const uso = usoDaCategoria(produtoSelecionado.categoria);
+                return uso
+                  ? <>Categoria <strong>{produtoSelecionado.categoria}</strong>: aparece em {USO_CATEGORIA[uso].ondeAparece}.</>
+                  : <>Categoria <strong>{produtoSelecionado.categoria || 'sem categoria'}</strong>: aparece em “+ Produto do Estoque” no lançamento.</>;
+              })()}
             </AlertDescription>
           </Alert>
         )}

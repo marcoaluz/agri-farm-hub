@@ -587,8 +587,23 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField control={form.control} name="subcategoria" render={({ field }) => (
-                <FormItem>
+              <FormField control={form.control} name="subcategoria" render={({ field }) => {
+                const salvarNovaSubcategoria = async () => {
+                  if (!novaSubcategoriaNome.trim() || !propId) return
+                  const { data: novoId, error } = await supabase.rpc('criar_categoria_compartilhada' as any, {
+                    p_tabela: 'subcategorias_transacao', p_propriedade_id: propId, p_nome: novaSubcategoriaNome.trim(),
+                  })
+                  if (!error && novoId) {
+                    await refetchSubcategorias()
+                    field.onChange(novaSubcategoriaNome.trim())
+                  }
+                  setNovaSubcategoriaNome('')
+                  setShowNovaSubcategoria(false)
+                }
+                return (
+                // Ao criar uma subcategoria nova, o campo ocupa a linha inteira
+                // (antes ficava espremido entre os botões e não dava pra ler o texto).
+                <FormItem className={showNovaSubcategoria ? 'sm:col-span-2' : undefined}>
                   <FormLabel>Subcategoria</FormLabel>
                   {!showNovaSubcategoria ? (
                     <div className="flex gap-2">
@@ -625,32 +640,22 @@ export function TransacaoForm({ open, onOpenChange, transacao }: Props) {
                         placeholder="Nome da subcategoria"
                         value={novaSubcategoriaNome}
                         onChange={(e) => setNovaSubcategoriaNome(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void salvarNovaSubcategoria() } }}
+                        autoFocus
+                        className="flex-1 min-w-0"
                       />
-                      <Button
-                        type="button"
-                        onClick={async () => {
-                          if (!novaSubcategoriaNome.trim() || !propId) return
-                          const { data: novoId, error } = await supabase.rpc('criar_categoria_compartilhada' as any, {
-                            p_tabela: 'subcategorias_transacao', p_propriedade_id: propId, p_nome: novaSubcategoriaNome.trim(),
-                          })
-                          if (!error && novoId) {
-                            await refetchSubcategorias()
-                            field.onChange(novaSubcategoriaNome.trim())
-                          }
-                          setNovaSubcategoriaNome('')
-                          setShowNovaSubcategoria(false)
-                        }}
-                      >
+                      <Button type="button" className="shrink-0" onClick={() => void salvarNovaSubcategoria()}>
                         Salvar
                       </Button>
-                      <Button type="button" variant="outline" onClick={() => { setShowNovaSubcategoria(false); setNovaSubcategoriaNome('') }}>
+                      <Button type="button" variant="outline" className="shrink-0" onClick={() => { setShowNovaSubcategoria(false); setNovaSubcategoriaNome('') }}>
                         Cancelar
                       </Button>
                     </div>
                   )}
                   <FormMessage />
                 </FormItem>
-              )} />
+                )
+              }} />
 
             </div>
 

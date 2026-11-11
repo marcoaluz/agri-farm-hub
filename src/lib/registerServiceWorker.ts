@@ -8,6 +8,10 @@ const LEGACY_SW_URLS = ["/sw.js", "/push-sw.js"];
 
 let registrationRef: ServiceWorkerRegistration | null = null;
 let pendingUpdateCallback: (() => void) | null = null;
+let iniciado = false; // registerServiceWorker() é chamado em main.tsx e App.tsx — só o 1º vale
+
+// Quanto tempo o app leva, no máximo, para perceber uma versão nova com a janela aberta.
+const INTERVALO_CHECAGEM_MS = 60 * 1000;
 
 function isBlockedContext(): boolean {
   if (!import.meta.env.PROD) return true;
@@ -56,6 +60,8 @@ export function aplicarAtualizacaoPendente() {
 
 export function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
+  if (iniciado) return;
+  iniciado = true;
 
   if (isBlockedContext()) {
     void unregisterAppServiceWorkers();
@@ -69,7 +75,7 @@ export function registerServiceWorker() {
     window.location.reload();
   });
 
-  window.addEventListener("load", async () => {
+  const iniciarRegistro = async () => {
     // Limpa registros legados (/sw.js antigo, push-sw.js) e espera terminar
     // antes de registrar o novo — evita os dois brigando pelo mesmo escopo ao mesmo tempo.
     await unregisterAppServiceWorkers();
@@ -79,9 +85,16 @@ export function registerServiceWorker() {
       .then((registration) => {
         registrationRef = registration;
 
-        setInterval(() => {
+        const verificarAtualizacao = () => {
           void registration.update().catch(() => {});
-        }, 5 * 60 * 1000);
+        };
+        setInterval(verificarAtualizacao, INTERVALO_CHECAGEM_MS);
+        // Ao voltar para a janela/aba (app instalado no computador fica aberto por horas),
+        // checa na hora em vez de esperar o próximo ciclo.
+        window.addEventListener("focus", verificarAtualizacao);
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") verificarAtualizacao();
+        });
 
         if (registration.waiting) {
           // Nova versão já está esperando — notifica e arma callback.
@@ -105,6 +118,12 @@ export function registerServiceWorker() {
       .catch(() => {
         /* silencioso: PWA é opcional */
       });
-  });
+  };
+
+  if (document.readyState === "complete") {
+    void iniciarRegistro();
+  } else {
+    window.addEventListener("load", () => void iniciarRegistro());
+  }
 }
 

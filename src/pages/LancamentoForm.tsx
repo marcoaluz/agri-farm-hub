@@ -8,6 +8,8 @@ import { consumirFIFO, restaurarFIFO } from '@/lib/fifoConsumo'
 import { useGlobal } from '@/contexts/GlobalContext'
 import { useTalhoes } from '@/hooks/useTalhoes'
 import { ItemLancamentoCard, type ItemLancamento } from '@/components/lancamentos/ItemLancamentoCard'
+import { DicaCategoriaEstoque } from '@/components/estoque/DicaCategoriaEstoque'
+import { ehCategoriaMaquina } from '@/lib/categoriasEstoqueUso'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -2022,16 +2024,20 @@ export function LancamentoForm() {
                                 <SelectValue placeholder="Selecione a peça (categoria Máquina)..." />
                               </SelectTrigger>
                               <SelectContent>
-                                {produtos?.filter(p => (p.categoria || '').toLowerCase().includes('máquina') || (p.categoria || '').toLowerCase().includes('maquina')).map(p => (
+                                {produtos?.filter(p => ehCategoriaMaquina(p.categoria)).map(p => (
                                   <SelectItem key={p.id} value={p.id}>{p.nome} — {p.saldo_atual} {p.unidade_medida}</SelectItem>
                                 ))}
-                                {(!produtos || produtos.filter(p => (p.categoria || '').toLowerCase().includes('máquina') || (p.categoria || '').toLowerCase().includes('maquina')).length === 0) && (
+                                {!(produtos || []).some(p => ehCategoriaMaquina(p.categoria)) && (
                                   <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                                     Nenhum produto cadastrado na categoria "Máquina"
                                   </div>
                                 )}
                               </SelectContent>
                             </Select>
+                            <DicaCategoriaEstoque
+                              uso="maquina"
+                              vazio={!(produtos || []).some(p => ehCategoriaMaquina(p.categoria))}
+                            />
                             <Button
                               type="button" variant="outline" size="sm" className="w-full"
                               onClick={() => { setAdicionandoTipo(null); setReposicaoMaquinaId(null) }}
